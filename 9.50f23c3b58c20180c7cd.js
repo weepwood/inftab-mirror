@@ -1,0 +1,1 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[9],{783:function(n,r,e){"use strict";e.r(r),e.d(r,"createWorkBox",(function(){return i}));e(9);var t=e(0);let o=null;const i=async()=>{if(o)return o;if(t.s&&"serviceWorker"in navigator){const{Workbox:n}=await e.e(37).then(e.bind(null,781));return o=new n("./serviceworker.js?v=1787193695967"),o.register(),o}return null}}}]);

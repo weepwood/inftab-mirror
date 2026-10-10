@@ -1,0 +1,15 @@
+# ---- dev / build helper scripts (not part of the deployed mirror) ----
+dl_cdn.sh
+rewrite.js
+rewrite_relative.js
+fix_corruption.js
+capture.js
+screenshot.js
+mirror_complete.js
+fetch_chunks.js
+server.js
+cdn_urls.txt
+dl_log.txt
+.server_port
+
+capture_report.json
