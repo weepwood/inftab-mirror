@@ -13,3 +13,5 @@ dl_log.txt
 .server_port
 
 capture_report.json
+live_check.js
+live_preview.png
