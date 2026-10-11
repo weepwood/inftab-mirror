@@ -40,8 +40,12 @@ const pages = computed(() => {
 const contextItem = ref<LauncherItem>()
 const contextPosition = ref({ left: 0, top: 0 })
 const draggingId = ref('')
+const gridViewport = ref<HTMLElement>()
 let pointer: { id: number; type: string; x: number; y: number; sourceId: string; targetId: string; dragging: boolean; hold?: number } | undefined
 let suppressClick = false
+let edgeTimer: number | undefined
+let edgeDirection = 0
+let lastEdgeDirection = 0
 
 function startDrag() {
   if (!pointer || pointer.dragging) return
@@ -82,6 +86,31 @@ function onPointerMove(event: PointerEvent) {
   event.preventDefault()
   const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-item-id]')
   if (target?.dataset.itemId) pointer.targetId = target.dataset.itemId
+  scheduleEdgePageTurn(event.clientX)
+}
+
+function scheduleEdgePageTurn(clientX: number) {
+  const bounds = gridViewport.value?.getBoundingClientRect()
+  if (!bounds) return
+  const direction = clientX < bounds.left + 26 && props.currentPage > 0
+    ? -1
+    : clientX > bounds.right - 26 && props.currentPage < pages.value.length - 1 ? 1 : 0
+  if (direction !== edgeDirection) {
+    if (edgeTimer) window.clearTimeout(edgeTimer)
+    edgeTimer = undefined
+    edgeDirection = direction
+  }
+  if (!direction) {
+    lastEdgeDirection = 0
+    return
+  }
+  if (!edgeTimer && lastEdgeDirection !== direction) {
+    edgeTimer = window.setTimeout(() => {
+      emit('swipe', direction)
+      lastEdgeDirection = direction
+      edgeTimer = undefined
+    }, 480)
+  }
 }
 
 function cleanPointer() {
@@ -89,6 +118,10 @@ function cleanPointer() {
   window.removeEventListener('pointerup', onPointerUp)
   window.removeEventListener('pointercancel', cancelPointer)
   if (pointer?.hold) window.clearTimeout(pointer.hold)
+  if (edgeTimer) window.clearTimeout(edgeTimer)
+  edgeTimer = undefined
+  edgeDirection = 0
+  lastEdgeDirection = 0
 }
 
 function onPointerUp(event: PointerEvent) {
@@ -184,7 +217,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="shortcut-grid-wrap" @click="closeContextMenu">
-    <div class="shortcut-grid-viewport">
+    <div ref="gridViewport" class="shortcut-grid-viewport">
       <div class="shortcut-pages" :style="{ transform: `translate3d(-${currentPage * 100}%, 0, 0)` }">
           <section
             v-for="(page, pageIndex) in pages"
