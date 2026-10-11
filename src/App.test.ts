@@ -129,6 +129,12 @@ describe('new-tab keyboard search', () => {
     expect(JSON.parse(localStorage.getItem('inftab.weather-city.v1') ?? '""')).toBe('广州')
   })
 
+  it('routes the browser bookmarks launcher to its permission-aware panel', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开书签"]').trigger('click')
+    expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('此功能需要浏览器扩展')
+  })
+
   it('rejects unsafe shortcut URLs and restores a valid shortcut after remount', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')

@@ -53,7 +53,7 @@ describe('workspace backups', () => {
     }))
     expect(parsed.countdowns).toEqual([{ id: 'anniversary', title: 'Anniversary', date: '2020-02-29', recurrence: 'yearly' }])
     expect(parsed.folders[0]?.shortcutIds).toEqual(['custom'])
-    expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'countdowns', 'todos', 'notes', 'settings'])
+    expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'countdowns', 'todos', 'notes', 'settings', 'bookmarks'])
   })
 
   it('keeps older backups compatible with the new clock preference', () => {

@@ -71,6 +71,7 @@ export const launcherItems: LauncherItem[] = [
   { id: 'todos', title: '待办事项', action: 'todos', color: '#fff', mark: '✓', icon: '6e49210c084629259f22609980c48ecf.png' },
   { id: 'notes', title: '笔记', action: 'notes', color: '#fff', mark: '▮', icon: '006b88c07a2e87d5a61f3c969a70575c.png' },
   { id: 'settings', title: 'settings', action: 'settings', color: '#fff', mark: '⚙', icon: '9622b98e90dd4f107d23481566095b34.png' },
+  { id: 'bookmarks', title: '书签', action: 'bookmarks', color: '#fff', mark: '☆' },
 ]
 
 export const defaultLauncherOrder = [

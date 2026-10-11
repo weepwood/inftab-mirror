@@ -45,6 +45,12 @@ if (JSON.stringify(hostPermissions) !== JSON.stringify(allowedHosts)) {
 }
 for (const permissionField of ['permissions', 'optional_permissions']) {
   const permissions = manifest[permissionField]
+  if (permissionField === 'optional_permissions') {
+    if (!Array.isArray(permissions) || JSON.stringify(permissions) !== JSON.stringify(['bookmarks'])) {
+      fail('optional_permissions must contain only the opt-in bookmarks feature.')
+    }
+    continue
+  }
   if (permissions !== undefined && (!Array.isArray(permissions) || permissions.length > 0)) {
     fail(`${permissionField} must be absent or empty; unexpected permissions: ${Array.isArray(permissions) ? permissions.join(', ') : 'invalid value'}.`)
   }
@@ -73,4 +79,4 @@ if (existsSync(htmlPath)) {
   for (const asset of localAssets) resolvePackageFile(asset.slice(2), 'index.html asset')
 }
 
-if (process.exitCode !== 1) console.log('Extension package check passed: Manifest V3, new-tab entry, local assets, and narrow weather permissions are valid.')
+if (process.exitCode !== 1) console.log('Extension package check passed: Manifest V3, new-tab entry, local assets, weather hosts, and optional bookmarks access are valid.')

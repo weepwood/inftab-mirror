@@ -11,6 +11,13 @@ export interface CustomSearchEngine {
   template: string
 }
 
+export interface BrowserBookmarkNode {
+  id: string
+  title: string
+  url?: string
+  children?: BrowserBookmarkNode[]
+}
+
 export interface Shortcut {
   id: string
   title: string

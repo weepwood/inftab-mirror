@@ -143,6 +143,22 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .custom-engine-form .wallpaper-note { margin: 0; }
 .custom-engine-list { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
 .custom-engine-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; color: #555d66; font-size: 13px; }
+.browser-bookmarks-content { display: flex; flex: 1; flex-direction: column; min-height: 0; padding: 18px 20px 24px; }
+.bookmark-search { margin-bottom: 12px; }
+.bookmark-permission { display: grid; justify-items: center; gap: 10px; padding: 42px 18px; color: #858c95; text-align: center; }
+.bookmark-permission > svg { color: #6885ac; }
+.bookmark-permission p { margin: 0; color: #454d56; font-size: 15px; font-weight: 600; }
+.bookmark-permission small { max-width: 290px; font-size: 12px; line-height: 1.6; }
+.browser-bookmark-list { display: grid; align-content: start; gap: 3px; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
+.browser-bookmark-list li { min-width: 0; }
+.browser-bookmark-folder, .browser-bookmark-link { width: 100%; min-height: 39px; display: flex; align-items: center; gap: 9px; padding: 7px 9px; border: 0; border-radius: 8px; background: transparent; color: #3f4852; font: inherit; text-align: left; text-decoration: none; }
+.browser-bookmark-folder { cursor: pointer; }
+.browser-bookmark-folder:hover, .browser-bookmark-link:hover { background: #eef2f7; }
+.browser-bookmark-folder span, .browser-bookmark-link span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.browser-bookmark-link > svg:first-child, .browser-bookmark-folder > svg { flex: 0 0 auto; color: #71839b; }
+.browser-bookmark-link > svg:last-child { flex: 0 0 auto; color: #a0a7b0; opacity: 0; }
+.browser-bookmark-link:hover > svg:last-child { opacity: 1; }
+.empty-folder { color: #858c95; }
 .text-button { border: 0; padding: 4px 0; background: transparent; color: #6b86bc; font-size: 12px; cursor: pointer; }
 .wallpaper-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-bottom: 16px; }
 .wallpaper-note { margin: -8px 0 13px; color: #a0a5ac; font-size: 10px; }

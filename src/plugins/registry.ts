@@ -1,5 +1,6 @@
 import type { Component } from 'vue'
 import CountdownPanel from '../components/CountdownPanel.vue'
+import BookmarksPanel from '../components/BookmarksPanel.vue'
 import NotesPanel from '../components/NotesPanel.vue'
 import SettingsPanel from '../components/SettingsPanel.vue'
 import TodoPanel from '../components/TodoPanel.vue'
@@ -14,6 +15,7 @@ export const launcherPanelRoutes = {
   countdowns: 'countdowns',
   settings: 'settings',
   wallpaper: 'settings',
+  bookmarks: 'bookmarks',
 } as const
 
 export type LauncherPanelAction = keyof typeof launcherPanelRoutes
@@ -63,6 +65,13 @@ export interface PanelPlugin {
 }
 
 export const panelPlugins = {
+  bookmarks: {
+    title: '浏览器书签',
+    description: '查看当前浏览器中保存的书签',
+    component: BookmarksPanel,
+    props: () => ({}),
+    listeners: () => ({}),
+  },
   settings: {
     title: '设置',
     description: '按自己的习惯调整新标签页',
