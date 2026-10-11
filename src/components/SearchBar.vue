@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ChevronDown, Search } from '@lucide/vue'
 import { engines, searchModes } from '../data/defaults'
 import type { CustomSearchEngine, SearchEngineSelection, SearchMode } from '../types'
@@ -11,7 +11,8 @@ const props = withDefaults(defineProps<{
   visibleModes: SearchMode[]
   customEngines?: CustomSearchEngine[]
   darkTheme?: boolean
-}>(), { customEngines: () => [], darkTheme: false })
+  localSearch?: boolean
+}>(), { customEngines: () => [], darkTheme: false, localSearch: false })
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -61,6 +62,16 @@ function focusSelectedEngine() {
 function closeEngineMenu(restoreFocus = false) {
   showEngines.value = false
   if (restoreFocus) void nextTick(() => enginePicker.value?.focus())
+}
+
+function handleLocalSearchKeydown(event: KeyboardEvent) {
+  if (props.localSearch && event.key === 'ArrowDown') {
+    const firstResult = document.querySelector<HTMLButtonElement>('.local-search-result')
+    if (firstResult) {
+      event.preventDefault()
+      firstResult.focus()
+    }
+  }
 }
 
 function handleEngineOptionKeydown(event: KeyboardEvent) {
@@ -116,13 +127,16 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', closeOnOutsidePointer)
   window.removeEventListener('keydown', closeOnEscape)
 })
+watch(() => props.localSearch, (enabled) => {
+  if (enabled) closeEngineMenu()
+})
 
 defineExpose({ focusSearch })
 </script>
 
 <template>
-  <section class="search-area" aria-label="站内搜索">
-    <nav v-if="activeModes.length" class="search-tabs" role="group" aria-label="搜索类型">
+  <section class="search-area" :class="{ 'local-search-mode': localSearch }" aria-label="站内搜索">
+    <nav v-if="activeModes.length && !localSearch" class="search-tabs" role="group" aria-label="搜索类型">
       <button
         v-for="item in activeModes"
         :key="item.id"
@@ -142,6 +156,7 @@ defineExpose({ focusSearch })
         ref="enginePicker"
         class="engine-picker"
         type="button"
+        v-if="!localSearch"
         :aria-label="`当前搜索引擎：${selectedEngine.label}`"
         aria-haspopup="listbox"
         :aria-expanded="showEngines"
@@ -156,12 +171,14 @@ defineExpose({ focusSearch })
         :value="modelValue"
         type="search"
         autocomplete="off"
-        placeholder="输入并搜索"
-        aria-label="输入并搜索"
+        :placeholder="localSearch ? '搜索快捷入口名称或网址' : '输入并搜索'"
+        :aria-label="localSearch ? '搜索快捷入口名称或网址' : '输入并搜索'"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+        @keydown="handleLocalSearchKeydown"
       />
-      <button class="submit-search" type="submit" aria-label="搜索"><Search :size="18" /></button>
+      <button class="submit-search" type="submit" :aria-label="localSearch ? '打开第一个匹配的快捷入口' : '搜索'"><Search :size="18" /></button>
     </form>
+    <slot v-if="localSearch" name="local-results" />
     <Teleport to="body">
       <Transition name="engine-menu">
         <div v-if="showEngines" ref="engineMenu" class="engine-menu" :class="{ 'theme-dark': darkTheme }" role="listbox" aria-label="选择搜索引擎" :style="{ top: `${engineMenuPosition.top}px`, left: `${engineMenuPosition.left}px` }">

@@ -128,6 +128,44 @@ describe('new-tab color theme', () => {
 })
 
 describe('new-tab keyboard search', () => {
+  it('filters launcher shortcuts with Ctrl/Command+F and opens a selected result', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    const shortcut = new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true, cancelable: true })
+    window.dispatchEvent(shortcut)
+
+    expect(shortcut.defaultPrevented).toBe(true)
+    await nextTick()
+    const input = wrapper.get('input[type="search"]')
+    expect(input.attributes('placeholder')).toBe('搜索快捷入口名称或网址')
+    await input.setValue('计算器')
+    expect(wrapper.get('.local-search-results').text()).toContain('计算器')
+    expect(wrapper.findAll('.local-search-result')).toHaveLength(1)
+
+    await input.trigger('keydown', { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(wrapper.get('.local-search-result').element)
+    await wrapper.get('.local-search-result').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('计算器')
+    expect(wrapper.find('.local-search-results').exists()).toBe(false)
+  })
+
+  it('keeps empty local searches local and exits with Escape', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', metaKey: true, bubbles: true, cancelable: true }))
+    await nextTick()
+    const input = wrapper.get('input[type="search"]')
+    await input.setValue('there-is-no-matching-shortcut')
+    expect(wrapper.get('.local-search-empty').text()).toContain('没有匹配')
+    await wrapper.get('.search-box').trigger('submit')
+    expect(wrapper.find('.side-panel').exists()).toBe(false)
+    expect(wrapper.find('.local-search-empty').exists()).toBe(true)
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await nextTick()
+    expect(wrapper.find('.local-search-results').exists()).toBe(false)
+    expect(input.attributes('placeholder')).toBe('输入并搜索')
+  })
+
   it('focuses search with slash or Ctrl/Command+K', () => {
     wrapper = mount(App, { attachTo: document.body })
     const input = wrapper.get('input[type="search"]').element

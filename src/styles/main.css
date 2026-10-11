@@ -40,6 +40,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 
 .home-content { position: relative; z-index: 1; width: min(1440px, calc(100vw - 64px)); margin: 0 auto; padding-top: clamp(72px, 9vh, 112px); }
 .search-area { position: relative; z-index: 1; width: min(var(--search-width, 548px), 100%); margin: 0 auto; }
+.search-area.local-search-mode { z-index: 4; }
+.local-search-results { position: absolute; top: calc(100% + 8px); left: 0; width: 100%; max-height: min(50vh, 360px); overflow-y: auto; border: 1px solid #e3e6ea; border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgba(0, 0, 0, .2); color: #292e34; }
+.local-search-result { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 8px 14px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.local-search-result:hover, .local-search-result:focus-visible { background: #f2f5f9; }
+.local-search-result-title { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.local-search-result-url { max-width: 65%; overflow: hidden; color: #838b96; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.local-search-empty { margin: 0; padding: 16px; color: #727b86; font-size: 13px; }
 .search-tabs { height: 33px; display: flex; align-items: flex-start; justify-content: center; gap: 38px; }
 .search-tab { border: 0; padding: 0 0 8px; background: transparent; color: rgba(255, 255, 255, .58); font-size: 14px; cursor: pointer; transition: color .15s; }
 .search-tab:hover, .search-tab.active { color: #fff; }
@@ -404,6 +411,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .theme-dark .search-box,
 .theme-dark .engine-picker,
 .theme-dark .submit-search,
+.theme-dark .local-search-results,
 .engine-menu.theme-dark,
 .theme-dark .shortcut-context-menu,
 .theme-dark .shortcut-dialog,
@@ -414,13 +422,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 }
 .theme-dark .search-box { border-color: rgba(255, 255, 255, .35); }
 .theme-dark .search-box input[type='search'],
+.theme-dark .local-search-result,
 .theme-dark .engine-menu button,
 .theme-dark .shortcut-context-menu button { color: #e7eaf0; }
 .theme-dark .engine-menu button { background: #1c2028; }
 .engine-menu.theme-dark button { background: #1c2028; color: #e7eaf0; }
 .theme-dark .engine-menu button:hover,
 .theme-dark .engine-menu button[aria-selected='true'],
+.theme-dark .local-search-result:hover,
+.theme-dark .local-search-result:focus-visible,
 .theme-dark .shortcut-context-menu button:hover { background: #2a303a; }
+.theme-dark .local-search-result-url,
+.theme-dark .local-search-empty { color: #a4adba; }
 .engine-menu.theme-dark button:hover,
 .engine-menu.theme-dark button[aria-selected='true'] { background: #2a303a; }
 .theme-dark .search-box input::placeholder { color: #929aa7; }

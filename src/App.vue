@@ -55,6 +55,7 @@ const {
 } = useLocalWorkspace()
 
 const query = ref('')
+const localSearchMode = ref(false)
 const systemPrefersDark = ref(false)
 const effectiveTheme = computed(() => preferences.value.themeMode === 'system'
   ? (systemPrefersDark.value ? 'dark' : 'light')
@@ -118,6 +119,12 @@ const unavailableFolderShortcutIds = computed(() => folders.value
   .flatMap((folder) => folder.shortcutIds))
 const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
 const pageNavigation = computed(() => getPageNavigation(pageCount.value, currentPage.value))
+const localSearchMatches = computed(() => {
+  const needle = query.value.trim().toLowerCase()
+  if (!needle) return []
+  return allLauncherItems.value.filter((item) => item.title.toLowerCase().includes(needle)
+    || item.shortcut?.url.toLowerCase().includes(needle)).slice(0, 8)
+})
 let panelReturnFocusTarget: HTMLElement | undefined
 let systemThemeQuery: MediaQueryList | undefined
 function updateSystemTheme(event?: MediaQueryListEvent) {
@@ -235,8 +242,32 @@ function handlePanelKeydown(event: KeyboardEvent) {
 }
 
 function submitSearch() {
+  if (localSearchMode.value) {
+    const [firstMatch] = localSearchMatches.value
+    if (firstMatch) openLocalSearchResult(firstMatch)
+    return
+  }
   const destination = buildSearchUrl(preferences.value.engine, preferences.value.mode, query.value, customSearchEngines.value)
   if (destination) window.location.assign(destination)
+}
+
+function openLocalSearchResult(item: LauncherItem) {
+  localSearchMode.value = false
+  query.value = ''
+  openItem(item)
+}
+
+function handleLocalSearchResultKeydown(event: KeyboardEvent) {
+  const results = [...document.querySelectorAll<HTMLButtonElement>('.local-search-result')]
+  const index = results.indexOf(event.currentTarget as HTMLButtonElement)
+  const nextIndex = event.key === 'ArrowDown' ? Math.min(index + 1, results.length - 1)
+    : event.key === 'ArrowUp' ? Math.max(index - 1, 0)
+      : event.key === 'Home' ? 0
+        : event.key === 'End' ? results.length - 1
+          : -1
+  if (nextIndex < 0 || !results.length) return
+  event.preventDefault()
+  results[nextIndex]?.focus()
 }
 
 function openItem(item: LauncherItem) {
@@ -451,6 +482,11 @@ function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode:
 function handleKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented) return
   if (event.key === 'Escape') {
+    if (localSearchMode.value) {
+      localSearchMode.value = false
+      query.value = ''
+      return
+    }
     if (shortcutDialog.value) {
       shortcutDialog.value = false
       return
@@ -466,15 +502,25 @@ function handleKeydown(event: KeyboardEvent) {
   }
   const target = event.target instanceof HTMLElement ? event.target : null
   const editingText = target?.matches('input, textarea, [contenteditable="true"]') ?? false
+  const localSearchShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f'
+  if (localSearchShortcut && (!editingText || target?.closest('.search-area'))
+    && !activePanel.value && !shortcutDialog.value && !folderDialogOpen.value && preferences.value.showSearchBar && searchBar.value) {
+    event.preventDefault()
+    localSearchMode.value = true
+    query.value = ''
+    searchBar.value.focusSearch()
+    return
+  }
   const focusSearchShortcut = event.key === '/' && !event.altKey && !event.ctrlKey && !event.metaKey
     || event.key.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)
   if (focusSearchShortcut && !editingText && !activePanel.value && !shortcutDialog.value && searchBar.value) {
     event.preventDefault()
+    localSearchMode.value = false
     searchBar.value.focusSearch()
     return
   }
-  if (event.key === 'ArrowRight' && !editingText && !shortcutDialog.value && !activePanel.value) movePage(1)
-  if (event.key === 'ArrowLeft' && !editingText && !shortcutDialog.value && !activePanel.value) movePage(-1)
+  if (event.key === 'ArrowRight' && !editingText && !localSearchMode.value && !shortcutDialog.value && !activePanel.value) movePage(1)
+  if (event.key === 'ArrowLeft' && !editingText && !localSearchMode.value && !shortcutDialog.value && !activePanel.value) movePage(-1)
 }
 
 function updateViewport() {
@@ -527,8 +573,27 @@ onBeforeUnmount(() => {
         :visible-modes="preferences.visibleSearchModes"
         :custom-engines="customSearchEngines"
         :dark-theme="effectiveTheme === 'dark'"
+        :local-search="localSearchMode"
         @search="submitSearch"
-      />
+      >
+        <template #local-results>
+          <div v-if="query.trim()" class="local-search-results" role="listbox" aria-label="快捷入口搜索结果">
+            <p v-if="!localSearchMatches.length" class="local-search-empty" role="status">没有匹配的快捷入口</p>
+            <button
+              v-for="item in localSearchMatches"
+              :key="item.id"
+              type="button"
+              role="option"
+              class="local-search-result"
+              @click="openLocalSearchResult(item)"
+              @keydown="handleLocalSearchResultKeydown"
+            >
+              <span class="local-search-result-title">{{ item.title }}</span>
+              <span v-if="item.shortcut" class="local-search-result-url">{{ item.shortcut.url }}</span>
+            </button>
+          </div>
+        </template>
+      </SearchBar>
       <ShortcutGrid
         :items="allLauncherItems"
         :columns="preferences.columns"
