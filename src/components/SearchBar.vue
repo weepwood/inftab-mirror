@@ -25,6 +25,11 @@ const baseUrl = import.meta.env.BASE_URL
 const searchBox = ref<HTMLElement>()
 const engineMenu = ref<HTMLElement>()
 const engineMenuPosition = ref({ top: 0, left: 0 })
+const searchInput = ref<HTMLInputElement>()
+
+function focusSearch() {
+  searchInput.value?.focus()
+}
 
 function toggleEngines() {
   if (showEngines.value) {
@@ -54,6 +59,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', closeOnOutsidePointer)
   window.removeEventListener('keydown', closeOnEscape)
 })
+
+defineExpose({ focusSearch })
 </script>
 
 <template>
@@ -84,6 +91,7 @@ onBeforeUnmount(() => {
         <ChevronDown :size="14" />
       </button>
       <input
+        ref="searchInput"
         :value="modelValue"
         type="search"
         autocomplete="off"

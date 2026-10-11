@@ -18,6 +18,12 @@ npm run build
 npm run preview
 ```
 
+Run the automated regression suite with:
+
+```sh
+npm test
+```
+
 GitHub Pages 使用 `dist/` 作为发布目录。首次部署前，在仓库 **Settings → Pages → Build and deployment** 中将 Source 设为 **GitHub Actions**。之后推送到 `main` 会自动构建并发布；也可以在 Actions 页面手动运行工作流。`vite.config.ts` 使用相对资源路径，支持部署在仓库子路径下。
 
 ## 项目结构
@@ -43,6 +49,7 @@ reference/
 
 - 百度、Google、Bing、搜狗、360、Yahoo 和 DuckDuckGo 搜索；支持网页、图片、新闻、视频和地图分类
 - 快捷入口的添加、编辑、删除、拖动排序和分页；支持右键菜单、触屏长按排序、左右滑动/触控板切页，以及微粒消散、光迹拖尾和平滑滑动三种翻页效果
+- 按 `/` 或 `Ctrl+K`（macOS 为 `⌘+K`）可快速聚焦搜索框；正在输入文字时快捷键不会抢占焦点
 - 默认入口优先使用旧镜像保存的站点图标；自定义入口支持上传图片并压缩为 Base64 存入本机，离线可用（远程图标网址会在保存时尝试转存，遇到跨域限制时请上传图片）
 - 首页内容会随宽度扩展到 1440px，并按窗口高度和当前入口数量自适应图标与行距，尽量让完整图标页、页码和底部信息同时可见
 - 本地待办（新增、编辑、完成、删除、清除已完成）与笔记

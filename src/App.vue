@@ -46,6 +46,7 @@ const currentPage = ref(0)
 const pageDirection = ref(1)
 const activePanel = ref<Panel>(null)
 const backupExportError = ref('')
+const searchBar = ref<{ focusSearch: () => void }>()
 const shortcutDialog = ref(false)
 const editingId = ref('')
 const shortcutTitle = ref('')
@@ -310,6 +311,13 @@ function handleKeydown(event: KeyboardEvent) {
   }
   const target = event.target instanceof HTMLElement ? event.target : null
   const editingText = target?.matches('input, textarea, [contenteditable="true"]') ?? false
+  const focusSearchShortcut = event.key === '/' && !event.altKey && !event.ctrlKey && !event.metaKey
+    || event.key.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)
+  if (focusSearchShortcut && !editingText && !activePanel.value && !shortcutDialog.value && searchBar.value) {
+    event.preventDefault()
+    searchBar.value.focusSearch()
+    return
+  }
   if (event.key === 'ArrowRight' && !editingText && !shortcutDialog.value && !activePanel.value) movePage(1)
   if (event.key === 'ArrowLeft' && !editingText && !shortcutDialog.value && !activePanel.value) movePage(-1)
 }
@@ -338,6 +346,7 @@ onBeforeUnmount(() => {
 
     <section class="home-content">
       <SearchBar
+        ref="searchBar"
         v-if="preferences.showSearchBar"
         v-model="query"
         v-model:engine="preferences.engine"
