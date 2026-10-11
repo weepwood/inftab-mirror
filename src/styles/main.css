@@ -59,6 +59,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .home-widget-preview { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
 .home-widget-preview li { overflow: hidden; color: #505966; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .home-widget-empty { margin: 0; color: #737d88; font-size: 11px; line-height: 1.5; }
+.home-widget-calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; padding: 2px 4px 0; font-variant-numeric: tabular-nums; }
+.home-widget-calendar-weekday, .home-widget-calendar-day { min-width: 0; display: grid; place-items: center; aspect-ratio: 1; border-radius: 5px; color: #5f6874; font-size: 10px; }
+.home-widget-calendar-weekday { color: #828b97; font-size: 9px; }
+.home-widget-calendar-day.outside-month { opacity: .38; }
+.home-widget-calendar-day.today { background: #3974d6; color: #fff; font-weight: 700; }
 .home-dock { position: fixed; z-index: 2; bottom: 42px; left: 50%; display: flex; gap: 5px; max-width: calc(100vw - 88px); overflow-x: auto; padding: 7px; transform: translateX(-50%); border: 1px solid rgba(255, 255, 255, .46); border-radius: 16px; background: rgba(30, 35, 39, .52); box-shadow: 0 8px 24px rgba(0, 0, 0, .2); backdrop-filter: blur(16px); scrollbar-width: thin; touch-action: pan-x; }
 .home-dock-entry { position: relative; width: 56px; flex: 0 0 56px; }
 .home-dock-item { width: 56px; min-height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; border-radius: 10px; padding: 4px 2px; background: transparent; color: #fff; cursor: pointer; }
@@ -510,6 +515,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .theme-dark .home-widget-preview li { color: #e0e4eb; }
 .theme-dark .home-widget-metric { color: #86adff; }
 .theme-dark .home-widget-empty { color: #a4adba; }
+.theme-dark .home-widget-calendar-weekday,
+.theme-dark .home-widget-calendar-day { color: #e0e4eb; }
+.theme-dark .home-widget-calendar-weekday { color: #a4adba; }
+.theme-dark .home-widget-calendar-day.today { background: #5c8de7; color: #fff; }
 .theme-dark .home-widget-order,
 .theme-dark .home-widget-remove { color: #a4adba; }
 .theme-dark .home-widget-order:hover:not(:disabled),

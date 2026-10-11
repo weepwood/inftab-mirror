@@ -273,6 +273,24 @@ test('enabled home widgets remain visible and scrollable in a short viewport', a
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', activePage ?? '')
 })
 
+test('calendar home widget can be enabled and opens the interactive calendar panel', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByLabel('显示月历').check()
+  await page.getByRole('button', { name: '关闭' }).click()
+
+  const calendarWidget = page.locator('[data-widget-id="calendar-summary"]')
+  await expect(calendarWidget).toBeVisible()
+  await expect(calendarWidget.locator('.home-widget-calendar-day')).toHaveCount(42)
+  await expect(calendarWidget.locator('[aria-current="date"]')).toBeVisible()
+
+  await calendarWidget.getByRole('button', { name: '打开月历' }).click()
+  const calendarPanel = page.getByRole('dialog', { name: '日历' })
+  await expect(calendarPanel).toBeVisible()
+  const monthBefore = await calendarPanel.locator('.calendar-month-nav h3').textContent()
+  await calendarPanel.getByRole('button', { name: '下个月' }).click()
+  await expect(calendarPanel.locator('.calendar-month-nav h3')).not.toHaveText(monthBefore ?? '')
+})
+
 test('countdowns can be created, edited, deleted, and persist across reloads', async ({ page }) => {
   await page.getByRole('button', { name: '打开纪念日' }).click()
   const panel = page.getByRole('dialog', { name: '纪念日与倒计时' })

@@ -11,6 +11,7 @@ export const defaultPreferences: Preferences = {
     'todo-summary': 'standard',
     'countdown-summary': 'standard',
     'notes-summary': 'standard',
+    'calendar-summary': 'standard',
   },
   engine: 'baidu',
   mode: 'html',

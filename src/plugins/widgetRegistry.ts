@@ -60,4 +60,11 @@ export const homeWidgetPlugins = {
     component: lazyWidget(() => import('../components/NotesSummaryWidget.vue')),
     props: (context) => ({ notes: context.notes, activeId: context.activeNoteId }),
   },
+  'calendar-summary': {
+    title: '月历',
+    description: '在首页查看本月日期和今天',
+    panel: 'calendar',
+    component: lazyWidget(() => import('../components/CalendarSummaryWidget.vue')),
+    props: () => ({}),
+  },
 } satisfies Record<HomeWidgetId, HomeWidgetPlugin>

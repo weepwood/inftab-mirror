@@ -60,7 +60,7 @@ describe('local state sanitization', () => {
 
   it('keeps only supported home widget sizes and defaults older settings to standard', () => {
     expect(sanitizePreferences({ homeWidgetSizes: { 'todo-summary': 'wide', 'notes-summary': 'huge', unknown: 'wide' } }).homeWidgetSizes)
-      .toEqual({ 'todo-summary': 'wide', 'countdown-summary': 'standard', 'notes-summary': 'standard' })
+      .toEqual({ 'todo-summary': 'wide', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard' })
     expect(sanitizePreferences({}).homeWidgetSizes).toEqual(defaultPreferences.homeWidgetSizes)
   })
 

@@ -13,6 +13,6 @@ export const availablePanelIds = [
 
 export type PanelId = typeof availablePanelIds[number]
 
-export const availableHomeWidgetIds = ['todo-summary', 'countdown-summary', 'notes-summary'] as const
+export const availableHomeWidgetIds = ['todo-summary', 'countdown-summary', 'notes-summary', 'calendar-summary'] as const
 
 export type HomeWidgetId = typeof availableHomeWidgetIds[number]
