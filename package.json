@@ -8,7 +8,7 @@
     "build": "vue-tsc --noEmit && vite build && node scripts/check-bundle-size.mjs && node scripts/check-extension-build.mjs",
     "preview": "vite preview",
     "check": "vue-tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run && node scripts/check-default-assets.mjs"
   },
   "dependencies": {
     "@lucide/vue": "^1.55.0",

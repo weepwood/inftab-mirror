@@ -3,6 +3,7 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultPreferences } from './data/defaults'
+import WeatherPanel from './components/WeatherPanel.vue'
 import App from './App.vue'
 
 let wrapper: VueWrapper | undefined
@@ -115,6 +116,17 @@ describe('new-tab keyboard search', () => {
     await wrapper.get('.panel-close').trigger('click')
     await nextTick()
     expect(document.activeElement).toBe(opener)
+  })
+
+  it('connects plugin events with colons to the workspace state', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开weather"]').trigger('click')
+    expect(wrapper.findComponent(WeatherPanel).exists()).toBe(true)
+
+    wrapper.findComponent(WeatherPanel).vm.$emit('update:city', '广州')
+    await flushLocalStorageWrites()
+
+    expect(JSON.parse(localStorage.getItem('inftab.weather-city.v1') ?? '""')).toBe('广州')
   })
 
   it('rejects unsafe shortcut URLs and restores a valid shortcut after remount', async () => {

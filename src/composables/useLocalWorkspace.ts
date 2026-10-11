@@ -24,9 +24,16 @@ export function useLocalWorkspace() {
   const weatherCity = useStoredState<string>('inftab.weather-city.v1', previousWeatherCity, sanitizeWeatherCity)
 
   const defaultShortcutById = new Map(defaultShortcuts.map((shortcut) => [shortcut.id, shortcut]))
+  const outdatedDefaultIcons: Record<string, string> = {
+    lunwenmao: 'ebd5cc9193de437e76de2ca1abd2121.png',
+    fox: '24f02a8178e623d22dc563857bf32f8.png',
+    infinitytab: 'bc545d7b32d3c84c3041ca092fb2689.png',
+  }
   shortcuts.value = shortcuts.value.map((shortcut) => {
     const defaults = defaultShortcutById.get(shortcut.id)
-    return defaults ? { ...defaults, ...shortcut, icon: shortcut.icon ?? defaults.icon } : shortcut
+    const outdatedIcon = outdatedDefaultIcons[shortcut.id]
+    const icon = shortcut.icon === outdatedIcon ? defaults?.icon : shortcut.icon ?? defaults?.icon
+    return defaults ? { ...defaults, ...shortcut, icon } : shortcut
   })
 
   function saveShortcut(shortcut: Shortcut) {

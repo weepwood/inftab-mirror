@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ShortcutGrid from './ShortcutGrid.vue'
 import type { LauncherItem } from '../types'
+import { launcherItems } from '../data/defaults'
 
 const items: LauncherItem[] = Array.from({ length: 4 }, (_, index) => ({
   id: `item-${index}`,
@@ -24,6 +25,29 @@ afterEach(() => {
 })
 
 describe('ShortcutGrid page cycling', () => {
+  it('renders a non-empty icon for every built-in launcher action', () => {
+    installAnimationEnvironment()
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items: launcherItems,
+        columns: 6,
+        rows: 3,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 0,
+        transitionDirection: 1,
+        transitionEffect: 'slide',
+        transitionDuration: 0,
+      },
+    })
+
+    for (const item of launcherItems.filter((launcherItem) => launcherItem.action)) {
+      expect(wrapper.get(`[data-item-id="${item.id}"] .shortcut-icon`).find('svg, img').exists(), item.id).toBe(true)
+    }
+    wrapper.unmount()
+  })
+
   it('keeps the correct page interactive when rapid turns reach the loop rebase', async () => {
     installAnimationEnvironment()
     const wrapper = mount(ShortcutGrid, {
