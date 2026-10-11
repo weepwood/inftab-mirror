@@ -47,6 +47,7 @@ describe('local state sanitization', () => {
   it('keeps enabled home widgets unique and limited to registered ids', () => {
     expect(sanitizePreferences({ homeWidgetIds: ['todo-summary', 'todo-summary', 'unknown', 3, 'countdown-summary'] }).homeWidgetIds)
       .toEqual(['todo-summary', 'countdown-summary'])
+    expect(sanitizePreferences({ homeWidgetIds: ['notes-summary'] }).homeWidgetIds).toEqual(['notes-summary'])
     expect(sanitizePreferences({}).homeWidgetIds).toEqual([])
   })
 

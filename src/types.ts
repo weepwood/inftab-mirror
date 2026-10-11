@@ -6,7 +6,7 @@ export type SearchEngineSelection = EngineId | `custom:${string}`
 export type PageTransitionEffect = 'slide' | 'particles' | 'trails'
 export type WallpaperRotation = 'off' | 'hourly' | 'daily'
 export type ThemeMode = 'light' | 'dark' | 'system'
-export const availableHomeWidgetIds = ['todo-summary', 'countdown-summary'] as const
+export const availableHomeWidgetIds = ['todo-summary', 'countdown-summary', 'notes-summary'] as const
 export type HomeWidgetId = typeof availableHomeWidgetIds[number]
 
 export interface CustomSearchEngine {

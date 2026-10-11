@@ -68,8 +68,8 @@ describe('workspace backups', () => {
 
   it('backs up valid home widgets and rejects unknown widget ids', () => {
     expect(parseWorkspaceBackup(backup({
-      preferences: { ...defaultPreferences, homeWidgetIds: ['todo-summary', 'countdown-summary'] },
-    })).preferences.homeWidgetIds).toEqual(['todo-summary', 'countdown-summary'])
+      preferences: { ...defaultPreferences, homeWidgetIds: ['todo-summary', 'countdown-summary', 'notes-summary'] },
+    })).preferences.homeWidgetIds).toEqual(['todo-summary', 'countdown-summary', 'notes-summary'])
     expect(() => parseWorkspaceBackup(backup({
       preferences: { ...defaultPreferences, homeWidgetIds: ['remote-code'] },
     }))).toThrow(/页面设置无法识别/)

@@ -125,3 +125,26 @@ test('enabled home widgets remain visible and scrollable in a short viewport', a
   await expect.poll(() => home.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', activePage ?? '')
 })
+
+test('notes widget previews the selected note and opens the notes panel', async ({ page }) => {
+  await page.getByRole('button', { name: '打开笔记' }).click()
+  const notesPanel = page.getByRole('dialog', { name: '笔记' })
+  await notesPanel.getByRole('button', { name: '新建笔记' }).click()
+  await notesPanel.getByLabel('笔记标题').fill('发布检查')
+  await notesPanel.getByLabel('笔记内容').fill('确认打包、回归和发布记录。')
+  await notesPanel.getByRole('button', { name: '关闭' }).click()
+
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByLabel('显示便签').check()
+  await page.getByRole('button', { name: '关闭' }).click()
+
+  const widget = page.locator('[data-widget-id="notes-summary"]')
+  await expect(widget).toContainText('发布检查')
+  await expect(widget).toContainText('确认打包、回归和发布记录。')
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').homeWidgetIds))
+    .toEqual(['notes-summary'])
+  await page.reload()
+  await expect(page.locator('[data-widget-id="notes-summary"]')).toContainText('发布检查')
+  await widget.getByRole('button', { name: '打开便签' }).click()
+  await expect(page.getByRole('dialog', { name: '笔记' }).getByLabel('笔记内容')).toHaveValue('确认打包、回归和发布记录。')
+})

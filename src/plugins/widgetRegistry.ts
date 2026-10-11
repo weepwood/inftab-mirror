@@ -1,10 +1,12 @@
 import { defineAsyncComponent, h, type Component } from 'vue'
-import type { CountdownItem, HomeWidgetId, TodoItem } from '../types'
+import type { CountdownItem, HomeWidgetId, Note, TodoItem } from '../types'
 import type { PanelId } from './registry'
 
 export interface HomeWidgetContext {
   todos: TodoItem[]
   countdowns: CountdownItem[]
+  notes: Note[]
+  activeNoteId: string
 }
 
 export interface HomeWidgetPlugin {
@@ -49,5 +51,12 @@ export const homeWidgetPlugins = {
     panel: 'countdowns',
     component: lazyWidget(() => import('../components/CountdownSummaryWidget.vue')),
     props: (context) => ({ items: context.countdowns }),
+  },
+  'notes-summary': {
+    title: '便签',
+    description: '在首页预览最近编辑的笔记',
+    panel: 'notes',
+    component: lazyWidget(() => import('../components/NotesSummaryWidget.vue')),
+    props: (context) => ({ notes: context.notes, activeId: context.activeNoteId }),
   },
 } satisfies Record<HomeWidgetId, HomeWidgetPlugin>
