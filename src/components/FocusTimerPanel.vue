@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Pause, Play, RotateCcw } from '@lucide/vue'
 import { useStoredState } from '../composables/useStoredState'
 import {
@@ -55,15 +55,31 @@ function changeFocusDuration(event: Event) {
   state.value = setFocusDuration(state.value, Number((event.target as HTMLSelectElement).value))
 }
 
+function syncTickTimer() {
+  if (state.value.endsAt === null) {
+    if (tickTimer !== undefined) window.clearInterval(tickTimer)
+    tickTimer = undefined
+    return
+  }
+
+  if (tickTimer === undefined) tickTimer = window.setInterval(tick, 1000)
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible' && state.value.endsAt !== null) tick()
+}
+
+watch(() => state.value.endsAt, syncTickTimer)
+
 onMounted(() => {
   tick()
-  tickTimer = window.setInterval(tick, 1000)
-  document.addEventListener('visibilitychange', tick)
+  syncTickTimer()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onBeforeUnmount(() => {
   if (tickTimer !== undefined) window.clearInterval(tickTimer)
-  document.removeEventListener('visibilitychange', tick)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 

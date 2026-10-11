@@ -14,6 +14,20 @@ afterEach(() => {
 })
 
 describe('FocusTimerPanel', () => {
+  it('polls only while the timer is running', async () => {
+    vi.useFakeTimers()
+    const setInterval = vi.spyOn(window, 'setInterval')
+    const clearInterval = vi.spyOn(window, 'clearInterval')
+    wrapper = mount(FocusTimerPanel)
+
+    expect(setInterval).not.toHaveBeenCalled()
+    await wrapper.get('[aria-label="开始计时"]').trigger('click')
+    expect(setInterval).toHaveBeenCalledTimes(1)
+
+    await wrapper.get('[aria-label="暂停计时"]').trigger('click')
+    expect(clearInterval).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps the countdown running across panel unmount and remount', async () => {
     vi.useFakeTimers()
     const now = 1_800_000_000_000
