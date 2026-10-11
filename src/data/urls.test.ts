@@ -7,6 +7,12 @@ describe('normalizeWebUrl', () => {
     expect(normalizeWebUrl('HTTP://Example.com')).toBe('http://example.com/')
   })
 
+  it('accepts localhost and hostname addresses with explicit ports', () => {
+    expect(normalizeWebUrl('localhost:5173')).toBe('https://localhost:5173/')
+    expect(normalizeWebUrl('example.com:8080/tools')).toBe('https://example.com:8080/tools')
+    expect(normalizeWebUrl('http://localhost:3000/')).toBe('http://localhost:3000/')
+  })
+
   it('rejects executable schemes, missing hosts, and malformed URLs', () => {
     expect(normalizeWebUrl('javascript:alert(1)')).toBeUndefined()
     expect(normalizeWebUrl('data:text/html,hi')).toBeUndefined()
