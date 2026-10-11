@@ -1,10 +1,4 @@
-import type { Component } from 'vue'
-import CountdownPanel from '../components/CountdownPanel.vue'
-import BookmarksPanel from '../components/BookmarksPanel.vue'
-import NotesPanel from '../components/NotesPanel.vue'
-import SettingsPanel from '../components/SettingsPanel.vue'
-import TodoPanel from '../components/TodoPanel.vue'
-import WeatherPanel from '../components/WeatherPanel.vue'
+import { defineAsyncComponent, h, type Component } from 'vue'
 import type { WorkspaceBackup } from '../data/backup'
 import type { CountdownItem, CustomSearchEngine, Note, Preferences, TodoItem } from '../types'
 
@@ -64,18 +58,29 @@ export interface PanelPlugin {
   listeners: (context: PanelPluginContext) => Record<string, (...args: never[]) => void>
 }
 
+const panelLoadingComponent: Component = {
+  render: () => h('p', { class: 'panel-loading', role: 'status' }, '正在加载面板…'),
+}
+const panelErrorComponent: Component = {
+  render: () => h('p', { class: 'panel-loading', role: 'alert' }, '面板加载失败，请刷新页面后重试。'),
+}
+
+function lazyPanel(loader: () => Promise<{ default: Component }>) {
+  return defineAsyncComponent({ loader, loadingComponent: panelLoadingComponent, errorComponent: panelErrorComponent, delay: 0 })
+}
+
 export const panelPlugins = {
   bookmarks: {
     title: '浏览器书签',
     description: '查看当前浏览器中保存的书签',
-    component: BookmarksPanel,
+    component: lazyPanel(() => import('../components/BookmarksPanel.vue')),
     props: () => ({}),
     listeners: () => ({}),
   },
   settings: {
     title: '设置',
     description: '按自己的习惯调整新标签页',
-    component: SettingsPanel,
+    component: lazyPanel(() => import('../components/SettingsPanel.vue')),
     props: (context) => ({ preferences: context.preferences, exportError: context.backupExportError, customEngines: context.customSearchEngines }),
     listeners: (context) => ({
       update: context.updatePreferences,
@@ -91,7 +96,7 @@ export const panelPlugins = {
   todos: {
     title: '待办事项',
     description: '内容会自动保存在本地',
-    component: TodoPanel,
+    component: lazyPanel(() => import('../components/TodoPanel.vue')),
     props: (context) => ({ items: context.todos }),
     listeners: (context) => ({
       add: context.addTodo,
@@ -104,7 +109,7 @@ export const panelPlugins = {
   notes: {
     title: '笔记',
     description: '内容会自动保存在本地',
-    component: NotesPanel,
+    component: lazyPanel(() => import('../components/NotesPanel.vue')),
     props: (context) => ({ notes: context.notes, activeId: context.activeNoteId }),
     listeners: (context) => ({
       add: context.addNote,
@@ -116,7 +121,7 @@ export const panelPlugins = {
   countdowns: {
     title: '纪念日与倒计时',
     description: '内容会自动保存在本地',
-    component: CountdownPanel,
+    component: lazyPanel(() => import('../components/CountdownPanel.vue')),
     props: (context) => ({ items: context.countdowns }),
     listeners: (context) => ({
       add: context.addCountdown,
@@ -127,7 +132,7 @@ export const panelPlugins = {
   weather: {
     title: '天气',
     description: '内容会自动保存在本地',
-    component: WeatherPanel,
+    component: lazyPanel(() => import('../components/WeatherPanel.vue')),
     props: (context) => ({ city: context.weatherCity }),
     listeners: (context) => ({ 'update:city': context.updateWeatherCity }),
   },

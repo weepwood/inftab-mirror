@@ -127,6 +127,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 
 .panel-backdrop, .modal-backdrop { position: fixed; inset: 0; z-index: 10; display: flex; justify-content: flex-end; background: rgba(0, 0, 0, .36); backdrop-filter: blur(3px); animation: fade-in .15s ease-out; }
 .side-panel { width: min(410px, 100vw); height: 100%; display: flex; flex-direction: column; overflow-y: auto; background: #fbfbfc; color: #22252a; box-shadow: -16px 0 48px rgba(0, 0, 0, .2); animation: slide-in .2s ease-out; }
+.panel-loading { margin: auto; padding: 24px; color: #747983; font-size: 13px; text-align: center; }
 .panel-header { position: sticky; top: 0; z-index: 2; min-height: 86px; display: flex; align-items: center; gap: 12px; padding: 18px 22px; border-bottom: 1px solid #eceef1; background: rgba(251, 251, 252, .94); backdrop-filter: blur(10px); }
 .panel-header h2, .shortcut-dialog h2 { margin: 0; font-size: 19px; font-weight: 650; }
 .panel-header p, .shortcut-dialog header p { margin: 4px 0 0; color: #91959b; font-size: 12px; }
