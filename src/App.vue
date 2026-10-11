@@ -588,11 +588,11 @@ function handleKeydown(event: KeyboardEvent) {
   const editingText = target?.matches('input, textarea, [contenteditable="true"]') ?? false
   const localSearchShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f'
   if (localSearchShortcut && (!editingText || target?.closest('.search-area'))
-    && !activePanel.value && !shortcutDialog.value && !folderDialogOpen.value && preferences.value.showSearchBar && searchBar.value) {
+    && !activePanel.value && !shortcutDialog.value && !folderDialogOpen.value) {
     event.preventDefault()
     localSearchMode.value = true
     query.value = ''
-    searchBar.value.focusSearch()
+    void nextTick(() => searchBar.value?.focusSearch())
     return
   }
   const focusSearchShortcut = event.key === '/' && !event.altKey && !event.ctrlKey && !event.metaKey
@@ -693,7 +693,7 @@ onBeforeUnmount(() => {
       />
       <SearchBar
         ref="searchBar"
-        v-if="preferences.showSearchBar"
+        v-if="preferences.showSearchBar || localSearchMode"
         v-model="query"
         v-model:engine="preferences.engine"
         v-model:mode="preferences.mode"

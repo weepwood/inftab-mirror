@@ -71,6 +71,23 @@ test('keyboard launcher search opens the matching built-in panel', async ({ page
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
+test('launcher search shortcut works while the homepage search bar is hidden', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByLabel('显示搜索栏').uncheck()
+  await page.getByRole('button', { name: '关闭' }).click()
+  await expect(page.locator('.search-area')).toHaveCount(0)
+
+  await page.keyboard.press('Control+f')
+  const search = page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })
+  await expect(search).toBeFocused()
+  await search.fill('天气')
+  await search.press('Enter')
+
+  await expect(page.getByRole('dialog', { name: '天气' })).toBeVisible()
+  await page.getByRole('button', { name: '关闭' }).click()
+  await expect(page.locator('.search-area')).toHaveCount(0)
+})
+
 test('reduced-motion preference skips page effects and long transitions', async ({ page }) => {
   await page.evaluate(() => {
     const key = 'inftab.preferences.v1'
