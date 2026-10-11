@@ -33,7 +33,7 @@ const visibleItems = computed(() => props.items.slice(props.currentPage * pageSi
 
 function dropOn(event: DragEvent, item: LauncherItem) {
   const sourceId = event.dataTransfer?.getData('text/plain')
-  if (sourceId && item.shortcut && sourceId !== item.shortcut.id) emit('reorder', sourceId, item.shortcut.id)
+  if (sourceId && sourceId !== item.id) emit('reorder', sourceId, item.id)
 }
 </script>
 
@@ -47,14 +47,15 @@ function dropOn(event: DragEvent, item: LauncherItem) {
         v-for="item in visibleItems"
         :key="item.id"
         class="shortcut-cell"
-        :draggable="Boolean(item.shortcut)"
-        @dragstart="item.shortcut && $event.dataTransfer?.setData('text/plain', item.shortcut.id)"
+        :draggable="true"
+        @dragstart="$event.dataTransfer?.setData('text/plain', item.id)"
         @dragover.prevent
         @drop="dropOn($event, item)"
       >
         <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" @click="emit('open', item)">
           <span class="shortcut-icon" :class="{ builtin: item.action }" :style="{ backgroundColor: item.color }">
-            <component v-if="item.action" :is="itemIcons[item.action]" :size="35" :stroke-width="2.6" />
+            <img v-if="item.icon" class="shortcut-picture" :src="item.icon" alt="" draggable="false" />
+            <component v-else-if="item.action" :is="itemIcons[item.action]" :size="35" :stroke-width="2.6" />
             <span v-else class="shortcut-mark">{{ item.mark }}</span>
             <span v-if="item.badge" class="shortcut-badge">{{ item.badge }}</span>
           </span>

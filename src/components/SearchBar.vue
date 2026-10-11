@@ -19,6 +19,7 @@ const emit = defineEmits<{
 
 const showEngines = ref(false)
 const selectedEngine = computed(() => engines.find((item) => item.id === props.engine) ?? engines[0]!)
+const baseUrl = import.meta.env.BASE_URL
 </script>
 
 <template>
@@ -45,7 +46,7 @@ const selectedEngine = computed(() => engines.find((item) => item.id === props.e
         :aria-expanded="showEngines"
         @click="showEngines = !showEngines"
       >
-        <span class="engine-mark" :style="{ color: selectedEngine.color }">{{ selectedEngine.mark }}</span>
+        <img class="engine-logo" :src="`${baseUrl}search-engines/${selectedEngine.logo}`" :alt="selectedEngine.label" />
         <ChevronDown :size="14" />
       </button>
       <input
@@ -67,7 +68,7 @@ const selectedEngine = computed(() => engines.find((item) => item.id === props.e
           :aria-selected="engine === item.id"
           @click="emit('update:engine', item.id); showEngines = false"
         >
-          <span class="engine-mark" :style="{ color: item.color }">{{ item.mark }}</span>
+          <img class="engine-logo" :src="`${baseUrl}search-engines/${item.logo}`" alt="" />
           {{ item.label }}
           <span v-if="engine === item.id" class="engine-check">✓</span>
         </button>

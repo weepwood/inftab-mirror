@@ -1,5 +1,5 @@
 export type SearchMode = 'html' | 'photos' | 'news' | 'videos' | 'map'
-export type EngineId = 'google' | 'baidu' | 'bing' | 'duckduckgo'
+export type EngineId = 'google' | 'baidu' | 'bing' | 'duckduckgo' | 'sogou' | 'yahoo' | '360'
 
 export interface Shortcut {
   id: string
@@ -7,6 +7,7 @@ export interface Shortcut {
   url: string
   color: string
   mark: string
+  icon?: string
 }
 
 export interface TodoItem {
@@ -43,5 +44,6 @@ export interface LauncherItem {
   shortcut?: Shortcut
   color: string
   mark: string
+  icon?: string
   badge?: number
 }

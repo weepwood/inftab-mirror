@@ -18,12 +18,13 @@ const baseUrl = import.meta.env.BASE_URL
 const {
   preferences,
   shortcuts,
+  launcherOrder,
   todos,
   notes,
   activeNoteId,
   saveShortcut: saveShortcutData,
   removeShortcut: removeShortcutData,
-  reorderShortcuts,
+  reorderLauncherItems: reorderLauncherOrder,
   addTodo,
   toggleTodo,
   removeTodo,
@@ -43,19 +44,27 @@ const shortcutTitle = ref('')
 const shortcutUrl = ref('https://')
 const shortcutColor = ref('#3d82f6')
 const shortcutMark = ref('')
+const shortcutIcon = ref('')
 const pageSize = computed(() => preferences.value.columns * 3)
-const allLauncherItems = computed<LauncherItem[]>(() => [
-  ...launcherItems.map((item) => item.id === 'todos'
-    ? { ...item, badge: todos.value.filter((todo) => !todo.done).length || undefined }
-    : item),
-  ...shortcuts.value.map((shortcut) => ({
-    id: shortcut.id,
-    title: shortcut.title,
-    color: shortcut.color,
-    mark: shortcut.mark,
-    shortcut,
-  })),
-])
+const allLauncherItems = computed<LauncherItem[]>(() => {
+  const items = [
+    ...launcherItems.map((item) => item.id === 'todos'
+      ? { ...item, icon: item.icon ? `${baseUrl}inftab-icons/${item.icon}` : undefined, badge: todos.value.filter((todo) => !todo.done).length || undefined }
+      : { ...item, icon: item.icon ? `${baseUrl}inftab-icons/${item.icon}` : undefined }),
+    ...shortcuts.value.map((shortcut) => ({
+      id: shortcut.id,
+      title: shortcut.title,
+      color: shortcut.color,
+      mark: shortcut.mark,
+      icon: shortcut.icon
+        ? (/^(https?:|data:|\/)/i.test(shortcut.icon) ? shortcut.icon : `${baseUrl}inftab-icons/${shortcut.icon}`)
+        : undefined,
+      shortcut,
+    })),
+  ]
+  const order = new Map(launcherOrder.value.map((id, index) => [id, index]))
+  return items.sort((left, right) => (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER))
+})
 const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
 const pageDots = computed(() => Array.from({ length: pageCount.value }, (_, index) => index))
 const panelTitle = computed(() => ({ settings: '设置', todos: '待办事项', notes: '笔记', weather: '天气' }[activePanel.value ?? 'settings']))
@@ -91,6 +100,7 @@ function openShortcutDialog(item?: LauncherItem) {
   shortcutUrl.value = item?.shortcut?.url ?? 'https://'
   shortcutColor.value = item?.shortcut?.color ?? '#3d82f6'
   shortcutMark.value = item?.shortcut?.mark ?? ''
+  shortcutIcon.value = item?.shortcut?.icon ?? ''
   shortcutDialog.value = true
 }
 
@@ -105,6 +115,7 @@ function saveShortcut() {
     url: destination,
     color: shortcutColor.value,
     mark: shortcutMark.value.trim() || title.slice(0, 2),
+    icon: shortcutIcon.value.trim() || undefined,
   }
   saveShortcutData(next)
   shortcutDialog.value = false
@@ -117,6 +128,10 @@ function removeShortcut(item: LauncherItem) {
 
 function movePage(direction: number) {
   currentPage.value = (currentPage.value + direction + pageCount.value) % pageCount.value
+}
+
+function reorderItems(sourceId: string, targetId: string) {
+  reorderLauncherOrder(sourceId, targetId, allLauncherItems.value.map((item) => item.id))
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -159,7 +174,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         @open="openItem"
         @edit="openShortcutDialog"
         @remove="removeShortcut"
-        @reorder="reorderShortcuts"
+      @reorder="reorderItems"
       />
       <nav v-if="pageCount > 1" class="page-dots" aria-label="快捷入口页码">
         <button type="button" aria-label="上一页" class="page-arrow" @click="movePage(-1)"><ArrowLeft :size="15" /></button>
@@ -169,6 +184,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
     </section>
 
     <img class="windmill" :src="`${baseUrl}windmill.svg`" alt="" />
+    <footer class="home-footer">渝ICP备15002199号-1</footer>
 
     <div v-if="activePanel" class="panel-backdrop" @click.self="activePanel = null">
       <aside class="side-panel" :class="{ 'notes-panel': activePanel === 'notes' }" aria-modal="true" role="dialog" :aria-label="panelTitle">
@@ -193,6 +209,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
           <label>图标文字<input v-model="shortcutMark" maxlength="5" placeholder="自动取名称" /></label>
           <label class="color-field">图标颜色<input v-model="shortcutColor" type="color" /></label>
         </div>
+        <label>图标图片网址（可选）<input v-model="shortcutIcon" placeholder="图标文件名或图片网址" /></label>
         <footer><button class="button-secondary" type="button" @click="shortcutDialog = false">取消</button><button class="button-primary" type="submit">保存</button></footer>
       </form>
     </div>

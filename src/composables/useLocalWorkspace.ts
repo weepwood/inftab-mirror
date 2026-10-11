@@ -1,34 +1,43 @@
 import { useStoredState } from './useStoredState'
-import { defaultPreferences, defaultShortcuts } from '../data/defaults'
+import { defaultLauncherOrder, defaultPreferences, defaultShortcuts } from '../data/defaults'
 import type { Note, Preferences, Shortcut, TodoItem } from '../types'
 
 export function useLocalWorkspace() {
   const preferences = useStoredState<Preferences>('inftab.preferences.v1', defaultPreferences)
   const shortcuts = useStoredState<Shortcut[]>('inftab.shortcuts.v1', defaultShortcuts)
+  const launcherOrder = useStoredState<string[]>('inftab.launcher-order.v1', defaultLauncherOrder)
   const todos = useStoredState<TodoItem[]>('inftab.todos.v1', [])
   const notes = useStoredState<Note[]>('inftab.notes.v1', [])
   const activeNoteId = useStoredState<string>('inftab.active-note.v1', '')
+
+  const defaultShortcutById = new Map(defaultShortcuts.map((shortcut) => [shortcut.id, shortcut]))
+  shortcuts.value = shortcuts.value.map((shortcut) => {
+    const defaults = defaultShortcutById.get(shortcut.id)
+    return defaults ? { ...defaults, ...shortcut, icon: shortcut.icon ?? defaults.icon } : shortcut
+  })
 
   function saveShortcut(shortcut: Shortcut) {
     const exists = shortcuts.value.some((item) => item.id === shortcut.id)
     shortcuts.value = exists
       ? shortcuts.value.map((item) => item.id === shortcut.id ? shortcut : item)
       : [...shortcuts.value, shortcut]
+    if (!exists) launcherOrder.value = [...launcherOrder.value, shortcut.id]
   }
 
   function removeShortcut(id: string) {
     shortcuts.value = shortcuts.value.filter((shortcut) => shortcut.id !== id)
+    launcherOrder.value = launcherOrder.value.filter((itemId) => itemId !== id)
   }
 
-  function reorderShortcuts(sourceId: string, targetId: string) {
-    const next = [...shortcuts.value]
-    const sourceIndex = next.findIndex((shortcut) => shortcut.id === sourceId)
-    const targetIndex = next.findIndex((shortcut) => shortcut.id === targetId)
+  function reorderLauncherItems(sourceId: string, targetId: string, currentIds: string[]) {
+    const next = [...currentIds]
+    const sourceIndex = next.indexOf(sourceId)
+    const targetIndex = next.indexOf(targetId)
     if (sourceIndex < 0 || targetIndex < 0) return
     const [source] = next.splice(sourceIndex, 1)
     if (!source) return
-    next.splice(next.findIndex((shortcut) => shortcut.id === targetId), 0, source)
-    shortcuts.value = next
+    next.splice(next.indexOf(targetId), 0, source)
+    launcherOrder.value = next
   }
 
   function addTodo(title: string) {
@@ -69,12 +78,13 @@ export function useLocalWorkspace() {
   return {
     preferences,
     shortcuts,
+    launcherOrder,
     todos,
     notes,
     activeNoteId,
     saveShortcut,
     removeShortcut,
-    reorderShortcuts,
+    reorderLauncherItems,
     addTodo,
     toggleTodo,
     removeTodo,
