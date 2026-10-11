@@ -11,6 +11,8 @@ afterEach(() => {
   wrapper = undefined
   localStorage.clear()
   document.body.innerHTML = ''
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 describe('new-tab keyboard search', () => {
@@ -130,5 +132,23 @@ describe('new-tab keyboard search', () => {
     const assignedShortcut = wrapper.findAll('.folder-choice').find((choice) => choice.text().includes('京东商城'))
     expect(assignedShortcut?.get('input[type="checkbox"]').element).toHaveProperty('disabled', true)
     expect(assignedShortcut?.text()).toContain('已在其他文件夹')
+  })
+
+  it('keeps remote shortcut icons as image URLs in the extension build', async () => {
+    vi.stubGlobal('location', { protocol: 'chrome-extension:' })
+    const fetch = vi.spyOn(globalThis, 'fetch')
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await wrapper.get('input[placeholder="例如：GitHub"]').setValue('Example')
+    await wrapper.get('input[placeholder="https://example.com"]').setValue('https://example.com')
+    await wrapper.get('.shortcut-dialog input[placeholder="素材文件名、图片网址或 Base64"]').setValue('https://images.example/icon.png')
+    await wrapper.get('.shortcut-dialog').trigger('submit')
+
+    expect(fetch).not.toHaveBeenCalled()
+    expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]')).toContainEqual(expect.objectContaining({
+      title: 'Example',
+      icon: 'https://images.example/icon.png',
+    }))
   })
 })

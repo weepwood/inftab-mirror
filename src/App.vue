@@ -264,7 +264,9 @@ async function saveShortcut() {
   shortcutUrlError.value = ''
   let icon = shortcutIcon.value.trim()
   shortcutIconError.value = ''
-  if (/^https?:\/\//i.test(icon)) {
+  // Extension pages have narrowly scoped host permissions for weather only.
+  // Keep user supplied remote icons as image URLs instead of requesting broad host access.
+  if (/^https?:\/\//i.test(icon) && location.protocol !== 'chrome-extension:') {
     savingShortcut.value = true
     try {
       const response = await fetch(icon)
