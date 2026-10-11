@@ -77,9 +77,11 @@ describe('useLocalWorkspace dock references', () => {
 
     window.dispatchEvent(new StorageEvent('storage', {
       key: 'inftab.shortcuts.v1',
+      oldValue: localStorage.getItem('inftab.shortcuts.v1'),
       newValue: '[]',
     }))
 
+    expect(workspace.shortcuts.value).toEqual([])
     expect(workspace.preferences.value.dockItemIds).toEqual([])
   })
 
@@ -95,9 +97,11 @@ describe('useLocalWorkspace dock references', () => {
 
     window.dispatchEvent(new StorageEvent('storage', {
       key: 'inftab.shortcuts.v1',
+      oldValue: localStorage.getItem('inftab.shortcuts.v1'),
       newValue: '[]',
     }))
 
+    expect(workspace.shortcuts.value).toEqual([])
     expect(workspace.folders.value[0]?.shortcutIds).toEqual([])
     expect(() => parseWorkspaceBackup(workspace.createBackup())).not.toThrow()
   })
@@ -171,6 +175,7 @@ describe('useLocalWorkspace custom search engines', () => {
 
     window.dispatchEvent(new StorageEvent('storage', {
       key: 'inftab.custom-search-engines.v1',
+      oldValue: localStorage.getItem('inftab.custom-search-engines.v1'),
       newValue: '[]',
     }))
 

@@ -172,4 +172,53 @@ describe('useStoredState', () => {
 
     scope.stop()
   })
+
+  it('merges concurrent list additions, deletions, and nested ID lists', async () => {
+    vi.useFakeTimers()
+    const previous = {
+      todos: [{ id: 'keep', title: 'Keep' }, { id: 'remove', title: 'Remove' }],
+      notes: [{ id: 'note', title: 'Before', body: 'Before' }],
+      widgetIds: ['keep-widget'],
+    }
+    const external = {
+      todos: [{ id: 'external', title: 'External' }, { id: 'keep', title: 'Keep updated' }, { id: 'remove', title: 'Remove' }],
+      notes: [{ id: 'note', title: 'Before', body: 'Remote body' }],
+      widgetIds: ['keep-widget', 'external-widget'],
+    }
+    const serializedPrevious = JSON.stringify(previous)
+    const serializedExternal = JSON.stringify(external)
+    const values = new Map([['state.v1', serializedPrevious]])
+    const listeners = new Map<string, (event: StorageEvent) => void>()
+    vi.stubGlobal('window', {
+      addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value) },
+      removeItem: (key: string) => { values.delete(key) },
+    })
+    const scope = effectScope()
+    const state = scope.run(() => useStoredState('state.v1', previous))!
+    state.value.todos = [
+      { id: 'local', title: 'Local' },
+      { id: 'keep', title: 'Keep' },
+    ]
+    state.value.notes = [{ id: 'note', title: 'Local title', body: 'Before' }]
+    state.value.widgetIds = ['keep-widget', 'local-widget']
+    values.set('state.v1', serializedExternal)
+    listeners.get('storage')!({ key: 'state.v1', oldValue: serializedPrevious, newValue: serializedExternal } as StorageEvent)
+
+    expect(state.value.todos).toEqual([
+      { id: 'external', title: 'External' },
+      { id: 'local', title: 'Local' },
+      { id: 'keep', title: 'Keep updated' },
+    ])
+    expect(state.value.notes).toEqual([{ id: 'note', title: 'Local title', body: 'Remote body' }])
+    expect(state.value.widgetIds).toEqual(['keep-widget', 'external-widget', 'local-widget'])
+    await vi.advanceTimersByTimeAsync(180)
+    expect(JSON.parse(values.get('state.v1') ?? '{}')).toEqual(state.value)
+
+    scope.stop()
+  })
 })

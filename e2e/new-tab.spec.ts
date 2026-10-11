@@ -129,6 +129,56 @@ test('simultaneous settings changes in separate tabs do not overwrite each other
   await secondTab.close()
 })
 
+test('simultaneous list additions in separate tabs are both retained', async ({ page }) => {
+  const secondTab = await page.context().newPage()
+  await secondTab.goto('/')
+  await Promise.all([
+    page.getByRole('button', { name: '打开待办事项' }).click(),
+    secondTab.getByRole('button', { name: '打开待办事项' }).click(),
+  ])
+
+  const firstPanel = page.getByRole('dialog', { name: '待办事项' })
+  const secondPanel = secondTab.getByRole('dialog', { name: '待办事项' })
+  await Promise.all([
+    firstPanel.getByRole('textbox', { name: '添加一项待办' }).fill('From first tab'),
+    secondPanel.getByRole('textbox', { name: '添加一项待办' }).fill('From second tab'),
+  ])
+  await Promise.all([
+    firstPanel.getByRole('button', { name: '添加' }).click(),
+    secondPanel.getByRole('button', { name: '添加' }).click(),
+  ])
+
+  await expect(firstPanel).toContainText('From first tab')
+  await expect(firstPanel).toContainText('From second tab')
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.todos.v1') ?? '[]')))
+    .toEqual(expect.arrayContaining([
+      expect.objectContaining({ title: 'From first tab' }),
+      expect.objectContaining({ title: 'From second tab' }),
+    ]))
+  await secondTab.close()
+})
+
+test('simultaneous widget selections in separate tabs are combined', async ({ page }) => {
+  const secondTab = await page.context().newPage()
+  await secondTab.goto('/')
+  await Promise.all([
+    page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click(),
+    secondTab.locator('.home-actions').getByRole('button', { name: '打开设置' }).click(),
+  ])
+
+  await Promise.all([
+    page.getByLabel('显示待办概览').check(),
+    secondTab.getByLabel('显示倒计时').check(),
+  ])
+
+  await expect.poll(() => page.evaluate(() => {
+    const ids = JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').homeWidgetIds as string[]
+    return ids?.slice().sort()
+  })).toEqual(['countdown-summary', 'todo-summary'])
+  await expect(page.locator('.home-widget-shelf')).toBeVisible()
+  await secondTab.close()
+})
+
 test('home widgets open their panel, reorder, and can be removed', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByLabel('显示待办概览').check()
