@@ -67,11 +67,11 @@ export const defaultShortcuts: Shortcut[] = [
 ]
 
 export const launcherItems: LauncherItem[] = [
-  { id: 'weather', title: 'weather', action: 'weather', color: '#36b3ff', mark: '☁', icon: 'weather-default.png' },
+  { id: 'weather', title: '天气', action: 'weather', color: '#36b3ff', mark: '☁', icon: 'weather-default.png' },
   { id: 'countdowns', title: '纪念日', action: 'countdowns', color: '#fff', mark: '🎉' },
   { id: 'todos', title: '待办事项', action: 'todos', color: '#fff', mark: '✓', icon: '6e49210c084629259f22609980c48ecf.png' },
   { id: 'notes', title: '笔记', action: 'notes', color: '#fff', mark: '▮', icon: '006b88c07a2e87d5a61f3c969a70575c.png' },
-  { id: 'settings', title: 'settings', action: 'settings', color: '#fff', mark: '⚙', icon: '9622b98e90dd4f107d23481566095b34.png' },
+  { id: 'settings', title: '设置', action: 'settings', color: '#fff', mark: '⚙', icon: '9622b98e90dd4f107d23481566095b34.png' },
   { id: 'bookmarks', title: '书签', action: 'bookmarks', color: '#fff', mark: '☆' },
   { id: 'calculator', title: '计算器', action: 'calculator', color: '#fff', mark: '＋' },
   { id: 'calendar', title: '日历', action: 'calendar', color: '#fff', mark: '日' },

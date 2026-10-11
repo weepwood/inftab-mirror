@@ -2,7 +2,7 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { defaultPreferences } from './data/defaults'
+import { defaultPreferences, launcherItems } from './data/defaults'
 import WeatherPanel from './components/WeatherPanel.vue'
 import App from './App.vue'
 
@@ -13,8 +13,12 @@ async function flushLocalStorageWrites() {
   window.dispatchEvent(new Event('pagehide'))
 }
 
-async function openLauncher(label: string) {
-  await wrapper!.get(`.shortcut-open[aria-label="打开${label}"]`).trigger('click')
+async function openLauncher(id: string) {
+  const builtin = launcherItems.find((item) => item.id === id || item.title === id)
+  const trigger = builtin
+    ? wrapper!.get(`[data-item-id="${builtin.id}"] .shortcut-open`)
+    : wrapper!.get(`.shortcut-open[aria-label="打开${id}"]`)
+  await trigger.trigger('click')
   await flushPromises()
   await vi.waitFor(() => expect(wrapper!.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
 }
@@ -74,7 +78,7 @@ describe('new-tab keyboard launcher ordering', () => {
 
     const order = JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]') as string[]
     expect(order.indexOf('weather')).toBe(order.indexOf('countdowns') + 1)
-    expect(wrapper.get('[role="status"]').text()).toContain('已将weather移动到第2个位置')
+    expect(wrapper.get('[role="status"]').text()).toContain('已将天气移动到第2个位置')
   })
 })
 
@@ -228,7 +232,7 @@ describe('new-tab keyboard search', () => {
 
   it('traps focus in an open side panel and restores it to the opener', async () => {
     wrapper = mount(App, { attachTo: document.body })
-    const opener = wrapper.get('.shortcut-open[aria-label="打开settings"]').element as HTMLButtonElement
+    const opener = wrapper.get('.shortcut-open[aria-label="打开设置"]').element as HTMLButtonElement
     opener.focus()
     await openLauncher('settings')
     await nextTick()
