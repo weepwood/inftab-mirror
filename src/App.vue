@@ -13,7 +13,7 @@ import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
 import { normalizeWebUrl } from './data/urls'
 import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelId, type PanelPluginContext } from './plugins/registry'
-import type { HomeWidgetId, LauncherItem, Shortcut, ShortcutFolder } from './types'
+import { maxDockItems, type HomeWidgetId, type LauncherItem, type Shortcut, type ShortcutFolder } from './types'
 
 type Panel = PanelId | null
 
@@ -120,9 +120,11 @@ const availableLauncherItems = computed<LauncherItem[]>(() => {
   const order = new Map(launcherOrder.value.map((id, index) => [id, index]))
   return items.sort((left, right) => (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER))
 })
-const allLauncherItems = computed(() => availableLauncherItems.value.filter((item) => !preferences.value.hiddenLauncherIds.includes(item.id)))
+const folderedShortcutIds = computed(() => new Set(folders.value.flatMap((folder) => folder.shortcutIds)))
+const allLauncherItems = computed(() => availableLauncherItems.value.filter((item) => !preferences.value.hiddenLauncherIds.includes(item.id)
+  && (!item.shortcut || !folderedShortcutIds.value.has(item.id))))
 const homeDockItems = computed(() => preferences.value.dockItemIds.flatMap((id) => {
-  const item = availableLauncherItems.value.find((candidate) => candidate.id === id && Boolean(candidate.action))
+  const item = availableLauncherItems.value.find((candidate) => candidate.id === id)
   return item ? [item] : []
 }))
 const unavailableFolderShortcutIds = computed(() => folders.value
@@ -346,6 +348,15 @@ function editLauncherItem(item: LauncherItem) {
 function removeLauncherItem(item: LauncherItem) {
   if (item.folder) removeFolderData(item.folder.id)
   else removeShortcutData(item.shortcut?.id ?? '')
+}
+
+function toggleDockItem(id: string) {
+  const dockItemIds = preferences.value.dockItemIds
+  if (dockItemIds.includes(id)) {
+    updatePreferences({ dockItemIds: dockItemIds.filter((itemId) => itemId !== id) })
+  } else if (dockItemIds.length < maxDockItems) {
+    updatePreferences({ dockItemIds: [...dockItemIds, id] })
+  }
 }
 
 function openFolderShortcut(shortcut: Shortcut) {
@@ -683,6 +694,7 @@ onBeforeUnmount(() => {
       </SearchBar>
       <ShortcutGrid
         :items="allLauncherItems"
+        :dock-item-ids="preferences.dockItemIds"
         :columns="preferences.columns"
         :rows="preferences.rows"
         :icon-size="preferences.iconSize"
@@ -695,6 +707,7 @@ onBeforeUnmount(() => {
         @open="openItem"
         @edit="editLauncherItem"
         @remove="removeLauncherItem"
+        @toggle-dock="toggleDockItem"
         @reorder="reorderItems"
         @move-by-keyboard="moveLauncherItemByKeyboard"
         @swipe="movePage"

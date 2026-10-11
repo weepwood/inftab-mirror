@@ -68,6 +68,7 @@ export function useLocalWorkspace() {
       shortcutIds: folder.shortcutIds.filter((shortcutId) => shortcutId !== id),
     })), shortcuts.value)
     launcherOrder.value = sanitizeLauncherOrder(launcherOrder.value.filter((itemId) => itemId !== id), shortcuts.value, folders.value)
+    preferences.value = sanitizePreferences({ ...preferences.value, dockItemIds: preferences.value.dockItemIds.filter((itemId) => itemId !== id) })
   }
 
   function saveFolder(folder: ShortcutFolder): boolean {
@@ -85,6 +86,7 @@ export function useLocalWorkspace() {
   function removeFolder(id: string) {
     folders.value = folders.value.filter((folder) => folder.id !== id)
     launcherOrder.value = sanitizeLauncherOrder(launcherOrder.value.filter((itemId) => itemId !== id), shortcuts.value, folders.value)
+    preferences.value = sanitizePreferences({ ...preferences.value, dockItemIds: preferences.value.dockItemIds.filter((itemId) => itemId !== id) })
   }
 
   function setVisibleLauncherOrder(visibleOrder: string[]) {

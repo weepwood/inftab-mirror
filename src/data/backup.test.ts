@@ -67,12 +67,16 @@ describe('workspace backups', () => {
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.homeWidgetIds).toEqual([])
   })
 
-  it('backs up dockable built-in launchers and rejects unknown ids', () => {
+  it('backs up built-in, custom, and folder Dock items while rejecting stale ids', () => {
     expect(parseWorkspaceBackup(backup({
-      preferences: { ...defaultPreferences, dockItemIds: ['weather', 'calendar'] },
-    })).preferences.dockItemIds).toEqual(['weather', 'calendar'])
+      preferences: { ...defaultPreferences, dockItemIds: ['weather', 'custom', 'folder-work'] },
+      folders: [{ id: 'folder-work', title: 'Work', shortcutIds: ['custom'], color: '#369', mark: 'W' }],
+    })).preferences.dockItemIds).toEqual(['weather', 'custom', 'folder-work'])
     expect(() => parseWorkspaceBackup(backup({
       preferences: { ...defaultPreferences, dockItemIds: ['custom-shortcut'] },
+    }))).toThrow(/Dock 入口/)
+    expect(() => parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, dockItemIds: Array.from({ length: 25 }, (_, index) => `entry-${index}`) },
     }))).toThrow(/页面设置无法识别/)
   })
 

@@ -102,11 +102,11 @@ test('home widgets open their panel, reorder, and can be removed', async ({ page
   await expect(widgetTitles).toHaveText(['待办概览', '倒计时'])
   await page.getByRole('button', { name: '将待办概览下移' }).click()
   await expect(widgetTitles).toHaveText(['倒计时', '待办概览'])
-  await expect(page.locator('.home-widget-shelf [role="status"]')).toHaveText('待办概览已移到第2个位置。')
+  await expect(page.locator('.home-widget-shelf .visually-hidden[role="status"]')).toHaveText('待办概览已移到第2个位置。')
   await page.locator('[data-widget-id="todo-summary"] .home-widget-header')
     .dragTo(page.locator('[data-widget-id="countdown-summary"]'))
   await expect(widgetTitles).toHaveText(['待办概览', '倒计时'])
-  await expect(page.locator('.home-widget-shelf [role="status"]')).toHaveText('待办概览已移到第1个位置。')
+  await expect(page.locator('.home-widget-shelf .visually-hidden[role="status"]')).toHaveText('待办概览已移到第1个位置。')
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').homeWidgetIds))
     .toEqual(['todo-summary', 'countdown-summary'])
 
@@ -233,4 +233,27 @@ test('pinned dock launchers stay available across pages and reloads', async ({ p
   await expect(restoredDock).toBeVisible()
   await restoredDock.getByRole('button', { name: '打开待办事项' }).click()
   await expect(page.getByRole('dialog', { name: '待办事项' })).toBeVisible()
+})
+
+test('pins a custom shortcut from its context menu and restores it after reload', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByRole('button', { name: /添加快捷入口/ }).click()
+  const dialog = page.locator('.shortcut-dialog')
+  await dialog.getByPlaceholder('例如：GitHub').fill('Dock Example')
+  await dialog.getByPlaceholder('https://example.com').fill('https://example.org/dock')
+  await dialog.getByRole('button', { name: '保存' }).click()
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+
+  const shortcut = page.locator('.shortcut-cell').filter({ has: page.getByRole('button', { name: '打开Dock Example' }) })
+  if (!(await shortcut.isVisible())) await page.getByRole('button', { name: '下一页' }).click()
+  await shortcut.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: '固定到 Dock' }).click()
+
+  const dock = page.getByRole('navigation', { name: '常驻 Dock' })
+  await expect(dock.getByRole('button', { name: '打开Dock Example' })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').dockItemIds))
+    .toEqual([await shortcut.getAttribute('data-item-id')])
+
+  await page.reload()
+  await expect(page.getByRole('navigation', { name: '常驻 Dock' }).getByRole('button', { name: '打开Dock Example' })).toBeVisible()
 })

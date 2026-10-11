@@ -8,6 +8,7 @@ export type WallpaperRotation = 'off' | 'hourly' | 'daily'
 export type ThemeMode = 'light' | 'dark' | 'system'
 export const availableHomeWidgetIds = ['todo-summary', 'countdown-summary', 'notes-summary'] as const
 export type HomeWidgetId = typeof availableHomeWidgetIds[number]
+export const maxDockItems = 24
 
 export interface CustomSearchEngine {
   id: string

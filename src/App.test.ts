@@ -467,6 +467,8 @@ describe('new-tab keyboard search', () => {
     expect(folders[0].shortcutIds).toEqual(['jd', 'tmall'])
     expect(JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]')).toContain(folders[0].id)
     expect(JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]')).not.toContain('jd')
+    expect(wrapper.find('[data-item-id="jd"]').exists()).toBe(false)
+    expect(wrapper.find('[data-item-id="tmall"]').exists()).toBe(false)
 
     await wrapper.get('.panel-close').trigger('click')
     await openLauncher('工作')

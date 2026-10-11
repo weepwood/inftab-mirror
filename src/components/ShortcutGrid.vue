@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Bookmark, CalendarDays, Calculator, CloudSun, Copy, Folder, History, Image, ListTodo, PartyPopper, Pencil, Settings, StickyNote, Trash2 } from '@lucide/vue'
+import { Bookmark, CalendarDays, Calculator, CloudSun, Copy, Folder, History, Image, ListTodo, PartyPopper, Pencil, Pin, Settings, StickyNote, Trash2 } from '@lucide/vue'
 import type { Component } from 'vue'
-import type { LauncherItem, PageTransitionEffect } from '../types'
+import { maxDockItems, type LauncherItem, type PageTransitionEffect } from '../types'
 
 const props = defineProps<{
   items: LauncherItem[]
+  dockItemIds?: string[]
   columns: number
   rows: number
   iconSize: number
@@ -21,6 +22,7 @@ const emit = defineEmits<{
   open: [item: LauncherItem]
   edit: [item: LauncherItem]
   remove: [item: LauncherItem]
+  toggleDock: [id: string]
   reorder: [sourceId: string, targetId: string]
   moveByKeyboard: [itemId: string, direction: -1 | 1]
   swipe: [direction: number]
@@ -531,7 +533,7 @@ function handleShortcutKeydown(event: KeyboardEvent, item: LauncherItem) {
 
 function showContextMenu(item: LauncherItem, x: number, y: number, trigger: HTMLElement) {
   const width = 164
-  const height = item.shortcut ? 130 : 94
+  const height = item.shortcut ? 166 : 130
   contextPosition.value = {
     left: Math.max(8, Math.min(x, window.innerWidth - width - 8)),
     top: Math.max(8, Math.min(y, window.innerHeight - height - 8)),
@@ -593,6 +595,23 @@ function editContextItem(event: MouseEvent) {
 function removeContextItem(event: MouseEvent) {
   event.stopPropagation()
   if (contextItem.value) emit('remove', contextItem.value)
+  closeContextMenu(true)
+}
+
+function toggleDockContextItem(event: MouseEvent) {
+  event.stopPropagation()
+  const item = contextItem.value
+  if (!item) return
+  const dockItemIds = props.dockItemIds ?? []
+  if (dockItemIds.includes(item.id)) {
+    emit('toggleDock', item.id)
+    moveAnnouncement.value = `已将${item.title}从 Dock 移除。`
+  } else if (dockItemIds.length < maxDockItems) {
+    emit('toggleDock', item.id)
+    moveAnnouncement.value = `已将${item.title}固定到 Dock。`
+  } else {
+    moveAnnouncement.value = `Dock 最多固定 ${maxDockItems} 个入口。`
+  }
   closeContextMenu(true)
 }
 
@@ -728,7 +747,8 @@ onBeforeUnmount(() => {
     >
       <button type="button" role="menuitem" :tabindex="contextMenuIndex === 0 ? 0 : -1" @click="editContextItem"><Pencil :size="14" /> 编辑{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
       <button v-if="contextItem.shortcut" type="button" role="menuitem" :tabindex="contextMenuIndex === 1 ? 0 : -1" @click="copyContextItem"><Copy :size="14" /> 复制网址</button>
-      <button type="button" role="menuitem" class="danger" :tabindex="contextMenuIndex === (contextItem.shortcut ? 2 : 1) ? 0 : -1" @click="removeContextItem"><Trash2 :size="14" /> 删除{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
+      <button type="button" role="menuitem" :tabindex="contextMenuIndex === (contextItem.shortcut ? 2 : 1) ? 0 : -1" :disabled="!dockItemIds?.includes(contextItem.id) && (dockItemIds?.length ?? 0) >= maxDockItems" @click="toggleDockContextItem"><Pin :size="14" /> {{ dockItemIds?.includes(contextItem.id) ? '从 Dock 移除' : '固定到 Dock' }}</button>
+      <button type="button" role="menuitem" class="danger" :tabindex="contextMenuIndex === (contextItem.shortcut ? 3 : 2) ? 0 : -1" @click="removeContextItem"><Trash2 :size="14" /> 删除{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
     </div>
   </div>
 </template>

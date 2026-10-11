@@ -1,4 +1,4 @@
-import { availableHomeWidgetIds, type CountdownItem, type CustomSearchEngine, type Note, type Preferences, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
+import { availableHomeWidgetIds, maxDockItems, type CountdownItem, type CustomSearchEngine, type Note, type Preferences, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
 import { launcherItems } from './defaults'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
 import { maxWallpaperDataUrlLength } from './imageLimits'
@@ -70,7 +70,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     wallpaperRotation: (item) => ['off', 'hourly', 'daily'].includes(String(item)),
     wallpaperRotationLastAt: (item) => typeof item === 'number' && Number.isFinite(item) && item >= 0,
     hiddenLauncherIds: (item) => Array.isArray(item) && item.every((id) => typeof id === 'string' && launcherItems.some((launcher) => launcher.id === id && launcher.action && launcher.id !== 'settings')),
-    dockItemIds: (item) => Array.isArray(item) && item.every((id) => typeof id === 'string' && launcherItems.some((launcher) => launcher.id === id && launcher.action && launcher.id !== 'settings')),
+    dockItemIds: (item) => Array.isArray(item) && item.length <= maxDockItems && item.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 128),
     homeWidgetIds: (item) => Array.isArray(item) && item.every((id) => typeof id === 'string' && availableHomeWidgetIds.includes(id as typeof availableHomeWidgetIds[number])),
     visibleSearchModes: (item) => Array.isArray(item) && item.every((mode) => ['html', 'photos', 'news', 'videos', 'map'].includes(String(mode))),
     showSearchBar: (item) => typeof item === 'boolean',
@@ -114,11 +114,21 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     throw new Error('备份中的翻页效果无法识别。')
   }
 
+  const validDockIds = new Set([
+    ...launcherItems.filter((launcher) => launcher.action && launcher.id !== 'settings').map((launcher) => launcher.id),
+    ...shortcuts.map((shortcut) => shortcut.id),
+    ...folders.map((folder) => folder.id),
+  ])
+  if (Array.isArray(rawPreferences.dockItemIds) && rawPreferences.dockItemIds.some((id) => !validDockIds.has(String(id)))) {
+    throw new Error('备份包含无法识别的 Dock 入口。')
+  }
+  const preferences = sanitizePreferences(rawPreferences)
+
   return {
     format: 'inftab-workspace',
     version: 1,
     exportedAt: typeof value.exportedAt === 'string' ? value.exportedAt.slice(0, 100) : '',
-    preferences: sanitizePreferences(value.preferences),
+    preferences,
     shortcuts,
     folders,
     launcherOrder: sanitizeLauncherOrder(value.launcherOrder, shortcuts, folders),

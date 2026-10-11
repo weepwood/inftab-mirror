@@ -51,6 +51,23 @@ describe('useLocalWorkspace launcher ordering', () => {
   })
 })
 
+describe('useLocalWorkspace dock references', () => {
+  it('removes deleted shortcuts and folders from the persistent dock', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const shortcut = { id: 'dock-shortcut', title: 'Link', url: 'https://example.com/', color: '#abc', mark: 'L' }
+    const folder = { id: 'dock-folder', title: 'Folder', shortcutIds: [], color: '#abc', mark: 'F' }
+
+    expect(workspace.saveShortcut(shortcut)).toBe(true)
+    expect(workspace.saveFolder(folder)).toBe(true)
+    workspace.updatePreferences({ dockItemIds: [shortcut.id, folder.id] })
+    workspace.removeShortcut(shortcut.id)
+    expect(workspace.preferences.value.dockItemIds).toEqual([folder.id])
+    workspace.removeFolder(folder.id)
+    expect(workspace.preferences.value.dockItemIds).toEqual([])
+  })
+})
+
 describe('useLocalWorkspace custom search engines', () => {
   it('adds and selects a validated engine, then falls back when it is removed', () => {
     scope = effectScope()

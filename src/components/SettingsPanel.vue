@@ -5,7 +5,7 @@ import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
 import { compressImageBlob } from '../data/images'
 import { maxImageUploadBytes, maxWallpaperDataUrlLength } from '../data/imageLimits'
 import { isValidCustomSearchTemplate } from '../data/search'
-import { availableHomeWidgetIds, type CustomSearchEngine, type HomeWidgetId, type PageTransitionEffect, type Preferences, type SearchMode, type ThemeMode, type WallpaperRotation } from '../types'
+import { availableHomeWidgetIds, maxDockItems, type CustomSearchEngine, type HomeWidgetId, type PageTransitionEffect, type Preferences, type SearchMode, type ThemeMode, type WallpaperRotation } from '../types'
 import { homeWidgetPlugins } from '../plugins/widgetRegistry'
 
 const props = withDefaults(defineProps<{ preferences: Preferences; exportError?: string; customEngines?: CustomSearchEngine[] }>(), { customEngines: () => [] })
@@ -272,7 +272,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       <p class="wallpaper-note">小组件会保存在本机设置中，可在首页拖动排序，也可用上下按钮调整。</p>
       <p class="settings-subheading">常驻 Dock</p>
       <label v-for="item in manageableLauncherItems" :key="`dock-${item.id}`" class="toggle-row">
-        <span>固定{{ item.title }}到 Dock</span><input type="checkbox" :checked="preferences.dockItemIds.includes(item.id)" @change="toggleDockItem(item.id, ($event.target as HTMLInputElement).checked)" />
+        <span>固定{{ item.title }}到 Dock</span><input type="checkbox" :checked="preferences.dockItemIds.includes(item.id)" :disabled="!preferences.dockItemIds.includes(item.id) && preferences.dockItemIds.length >= maxDockItems" @change="toggleDockItem(item.id, ($event.target as HTMLInputElement).checked)" />
       </label>
       <p class="wallpaper-note">Dock 会固定显示在页面底部，翻页后也可直接打开。</p>
       <p class="settings-subheading">内置面板</p>

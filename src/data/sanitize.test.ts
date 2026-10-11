@@ -44,8 +44,10 @@ describe('local state sanitization', () => {
     expect(sanitizePreferences({}).hiddenLauncherIds).toEqual([])
   })
 
-  it('keeps only unique dockable built-in launcher ids', () => {
-    expect(sanitizePreferences({ dockItemIds: ['weather', 'weather', 'settings', 'custom', 7] }).dockItemIds).toEqual(['weather'])
+  it('keeps unique valid dock ids, including custom entries, within the dock limit', () => {
+    expect(sanitizePreferences({ dockItemIds: ['weather', 'shortcut-a', 'folder-a', 'weather', ''] }).dockItemIds)
+      .toEqual(['weather', 'shortcut-a', 'folder-a'])
+    expect(sanitizePreferences({ dockItemIds: Array.from({ length: 30 }, (_, index) => `entry-${index}`) }).dockItemIds).toHaveLength(24)
     expect(sanitizePreferences({}).dockItemIds).toEqual([])
   })
 

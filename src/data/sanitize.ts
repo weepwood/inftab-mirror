@@ -3,7 +3,7 @@ import { maxWallpaperDataUrlLength } from './imageLimits'
 import { isValidCalendarDate } from './countdown'
 import { isValidCustomSearchTemplate } from './search'
 import { normalizeWebUrl } from './urls'
-import { availableHomeWidgetIds, type CountdownItem, type CustomSearchEngine, type HomeWidgetId, type Note, type Preferences, type SearchMode, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
+import { availableHomeWidgetIds, maxDockItems, type CountdownItem, type CustomSearchEngine, type HomeWidgetId, type Note, type Preferences, type SearchMode, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
 
 const engines = new Set(['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yahoo', '360'])
 const searchModes = new Set<SearchMode>(['html', 'photos', 'news', 'videos', 'map'])
@@ -31,7 +31,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     ? [...new Set(raw.hiddenLauncherIds.filter((item): item is string => typeof item === 'string' && manageableLauncherIds.has(item)))]
     : [...defaultPreferences.hiddenLauncherIds]
   const dockItemIds = Array.isArray(raw.dockItemIds)
-    ? [...new Set(raw.dockItemIds.filter((item): item is string => typeof item === 'string' && manageableLauncherIds.has(item)))]
+    ? [...new Set(raw.dockItemIds.filter(validId))].slice(0, maxDockItems)
     : [...defaultPreferences.dockItemIds]
   const homeWidgetIds = Array.isArray(raw.homeWidgetIds)
     ? [...new Set(raw.homeWidgetIds.filter((item): item is HomeWidgetId => typeof item === 'string' && availableHomeWidgetIds.includes(item as HomeWidgetId)))]
