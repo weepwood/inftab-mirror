@@ -126,7 +126,7 @@ function iconParticles(icon: HTMLElement, direction: number, iconIndex: number, 
 function playParticleTransition(pageIndex: number, direction: number, duration: number) {
   const page = gridViewport.value?.querySelector<HTMLElement>(`.shortcut-page:nth-child(${pageIndex + 1})`)
   const icons = [...(page?.querySelectorAll<HTMLElement>('.shortcut-icon') ?? [])]
-  if (!icons.length || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  if (!icons.length) return
   const particles = icons.flatMap((icon, index) => iconParticles(icon, direction, index, icons.length))
   if (!particles.length) return
   if (particleFrame) cancelAnimationFrame(particleFrame)
@@ -143,7 +143,7 @@ function playParticleTransition(pageIndex: number, direction: number, duration: 
   if (!context) { canvas.remove(); return }
   context.scale(pixelRatio, pixelRatio)
   const startedAt = performance.now()
-  const animationDuration = Math.max(320, duration)
+  const animationDuration = Math.max(260, duration)
   const animate = (now: number) => {
     context.clearRect(0, 0, window.innerWidth, window.innerHeight)
     let hasParticles = false
@@ -172,9 +172,11 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
   if (pageIndex === previousPage || props.transitionEffect === 'slide') return
   if (transitionTimer) window.clearTimeout(transitionTimer)
   const direction = pageIndex > previousPage ? 1 : -1
-  outgoingPage.value = { index: previousPage, effect: props.transitionEffect, direction, duration: Math.max(260, props.transitionDuration) }
-  if (props.transitionEffect === 'particles') playParticleTransition(previousPage, direction, props.transitionDuration)
-  transitionTimer = window.setTimeout(() => { outgoingPage.value = undefined }, Math.max(260, props.transitionDuration) + 140)
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const duration = reducedMotion ? Math.min(1200, Math.max(420, props.transitionDuration)) : Math.max(260, props.transitionDuration)
+  outgoingPage.value = { index: previousPage, effect: props.transitionEffect, direction, duration }
+  if (props.transitionEffect === 'particles') playParticleTransition(previousPage, direction, duration)
+  transitionTimer = window.setTimeout(() => { outgoingPage.value = undefined }, duration + 140)
 })
 
 function startDrag() {
@@ -369,7 +371,7 @@ onBeforeUnmount(() => {
       <span v-if="showNames" class="shortcut-name">{{ draggedItem.title }}</span>
     </div>
     <div ref="gridViewport" class="shortcut-grid-viewport">
-      <div class="shortcut-pages" :style="{ transform: `translate3d(-${currentPage * 100}%, 0, 0)` }">
+      <div class="shortcut-pages" :class="{ 'motion-opt-in': transitionEffect !== 'slide' }" :style="{ transform: `translate3d(-${currentPage * 100}%, 0, 0)` }">
           <section
             v-for="(page, pageIndex) in pages"
             :key="pageIndex"
