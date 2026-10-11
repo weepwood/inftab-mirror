@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Bookmark, CloudSun, Folder, Image, ListTodo, PartyPopper, Pencil, Settings, StickyNote, Trash2 } from '@lucide/vue'
+import { Bookmark, Calculator, CloudSun, Folder, Image, ListTodo, PartyPopper, Pencil, Settings, StickyNote, Trash2 } from '@lucide/vue'
 import type { Component } from 'vue'
 import type { LauncherItem, PageTransitionEffect } from '../types'
 
@@ -27,6 +27,7 @@ const emit = defineEmits<{
 
 const itemIcons: Record<string, Component> = {
   bookmarks: Bookmark,
+  calculator: Calculator,
   weather: CloudSun,
   countdowns: PartyPopper,
   todos: ListTodo,

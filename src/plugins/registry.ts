@@ -10,6 +10,7 @@ export const launcherPanelRoutes = {
   settings: 'settings',
   wallpaper: 'settings',
   bookmarks: 'bookmarks',
+  calculator: 'calculator',
 } as const
 
 export type LauncherPanelAction = keyof typeof launcherPanelRoutes
@@ -74,6 +75,13 @@ export const panelPlugins = {
     title: '浏览器书签',
     description: '查看当前浏览器中保存的书签',
     component: lazyPanel(() => import('../components/BookmarksPanel.vue')),
+    props: () => ({}),
+    listeners: () => ({}),
+  },
+  calculator: {
+    title: '计算器',
+    description: '离线进行四则运算',
+    component: lazyPanel(() => import('../components/CalculatorPanel.vue')),
     props: () => ({}),
     listeners: () => ({}),
   },
