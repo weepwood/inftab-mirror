@@ -12,7 +12,6 @@ import { launcherItems } from './data/defaults'
 import { compressImageBlob, maxImageUploadBytes } from './data/images'
 import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
-import { advanceWallpaperRotation, nextWallpaperRotationDelay } from './data/wallpaperRotation'
 import { normalizeWebUrl } from './data/urls'
 import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelId, type PanelPluginContext } from './plugins/registry'
 import type { LauncherItem, Shortcut, ShortcutFolder } from './types'
@@ -91,6 +90,7 @@ const folderLimitReached = computed(() => !activeFolder.value && folders.value.l
 let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
 let homeWheelLocked = false
 let wallpaperRotationTimer: number | undefined
+let wallpaperRotationRequest = 0
 const allLauncherItems = computed<LauncherItem[]>(() => {
   const items = [
     ...launcherItems.map((item) => item.id === 'todos'
@@ -214,7 +214,7 @@ const backgroundStyle = computed(() => {
 })
 
 watch(pageCount, (count) => { currentPage.value = Math.min(currentPage.value, count - 1) })
-watch(() => [preferences.value.wallpaperRotation, preferences.value.wallpaperRotationLastAt, preferences.value.wallpaper, preferences.value.customWallpaper] as const, scheduleWallpaperRotation)
+watch(() => [preferences.value.wallpaperRotation, preferences.value.wallpaperRotationLastAt, preferences.value.wallpaper, preferences.value.customWallpaper] as const, () => { void scheduleWallpaperRotation() })
 watch(activePanel, async (panel, previousPanel) => {
   if (panel && !previousPanel) panelReturnFocusTarget = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
   if (!panel && previousPanel) {
@@ -533,7 +533,8 @@ function updateViewport() {
   viewport.value = { width: window.innerWidth, height: window.innerHeight }
 }
 
-function scheduleWallpaperRotation() {
+async function scheduleWallpaperRotation() {
+  const request = ++wallpaperRotationRequest
   if (wallpaperRotationTimer !== undefined) {
     window.clearTimeout(wallpaperRotationTimer)
     wallpaperRotationTimer = undefined
@@ -541,17 +542,22 @@ function scheduleWallpaperRotation() {
   const current = preferences.value
   if (current.wallpaperRotation === 'off' || current.customWallpaper.trim()) return
 
+  const { advanceWallpaperRotation, nextWallpaperRotationDelay } = await import('./data/wallpaperRotation')
+  if (request !== wallpaperRotationRequest) return
+  const latest = preferences.value
+  if (latest.wallpaperRotation === 'off' || latest.customWallpaper.trim()) return
+
   const now = Date.now()
-  const nextWallpaper = advanceWallpaperRotation(current.wallpaper, current.wallpaperRotation, current.wallpaperRotationLastAt, now)
-  if (nextWallpaper && (nextWallpaper.wallpaper !== current.wallpaper || nextWallpaper.lastAt !== current.wallpaperRotationLastAt)) {
+  const nextWallpaper = advanceWallpaperRotation(latest.wallpaper, latest.wallpaperRotation, latest.wallpaperRotationLastAt, now)
+  if (nextWallpaper && (nextWallpaper.wallpaper !== latest.wallpaper || nextWallpaper.lastAt !== latest.wallpaperRotationLastAt)) {
     updatePreferences({ wallpaper: nextWallpaper.wallpaper, wallpaperRotationLastAt: nextWallpaper.lastAt })
   }
-  const delay = nextWallpaperRotationDelay(current.wallpaperRotation, preferences.value.wallpaperRotationLastAt, now)
-  if (delay !== undefined) wallpaperRotationTimer = window.setTimeout(scheduleWallpaperRotation, delay)
+  const delay = nextWallpaperRotationDelay(latest.wallpaperRotation, preferences.value.wallpaperRotationLastAt, now)
+  if (delay !== undefined) wallpaperRotationTimer = window.setTimeout(() => { void scheduleWallpaperRotation() }, delay)
 }
 
 function handleWallpaperRotationVisibility() {
-  if (document.visibilityState === 'visible') scheduleWallpaperRotation()
+  if (document.visibilityState === 'visible') void scheduleWallpaperRotation()
 }
 
 function handleStorageWriteError() {
@@ -563,7 +569,7 @@ onMounted(() => {
   window.addEventListener('resize', updateViewport)
   window.addEventListener(storageWriteErrorEvent, handleStorageWriteError)
   document.addEventListener('visibilitychange', handleWallpaperRotationVisibility)
-  scheduleWallpaperRotation()
+  void scheduleWallpaperRotation()
   if (typeof window.matchMedia === 'function') {
     systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)')
     updateSystemTheme()
@@ -578,6 +584,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', handleWallpaperRotationVisibility)
   if (wallpaperRotationTimer !== undefined) window.clearTimeout(wallpaperRotationTimer)
   wallpaperRotationTimer = undefined
+  wallpaperRotationRequest += 1
   if (systemThemeQuery?.removeEventListener) systemThemeQuery.removeEventListener('change', updateSystemTheme)
   else systemThemeQuery?.removeListener?.(updateSystemTheme)
   systemThemeQuery = undefined
