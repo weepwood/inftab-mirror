@@ -20,6 +20,18 @@ const emit = defineEmits<{
 const showEngines = ref(false)
 const selectedEngine = computed(() => engines.find((item) => item.id === props.engine) ?? engines[0]!)
 const baseUrl = import.meta.env.BASE_URL
+const searchBox = ref<HTMLElement>()
+const engineMenuPosition = ref({ top: 0, left: 0 })
+
+function toggleEngines() {
+  if (showEngines.value) {
+    showEngines.value = false
+    return
+  }
+  const bounds = searchBox.value?.getBoundingClientRect()
+  if (bounds) engineMenuPosition.value = { top: bounds.bottom + 8, left: bounds.left + 8 }
+  showEngines.value = true
+}
 </script>
 
 <template>
@@ -37,14 +49,14 @@ const baseUrl = import.meta.env.BASE_URL
       </button>
     </nav>
 
-    <form class="search-box" @submit.prevent="emit('search')">
+    <form ref="searchBox" class="search-box" @submit.prevent="emit('search')">
       <button
         class="engine-picker"
         type="button"
         :aria-label="`当前搜索引擎：${selectedEngine.label}`"
         aria-haspopup="listbox"
         :aria-expanded="showEngines"
-        @click="showEngines = !showEngines"
+        @click="toggleEngines"
       >
         <img class="engine-logo" :src="`${baseUrl}search-engines/${selectedEngine.logo}`" :alt="selectedEngine.label" />
         <ChevronDown :size="14" />
@@ -59,7 +71,9 @@ const baseUrl = import.meta.env.BASE_URL
       />
       <button class="submit-search" type="submit" aria-label="搜索"><Search :size="18" /></button>
 
-      <div v-if="showEngines" class="engine-menu" role="listbox" aria-label="选择搜索引擎">
+    </form>
+    <Teleport to="body">
+      <div v-if="showEngines" class="engine-menu" role="listbox" aria-label="选择搜索引擎" :style="{ top: `${engineMenuPosition.top}px`, left: `${engineMenuPosition.left}px` }">
         <button
           v-for="item in engines"
           :key="item.id"
@@ -73,6 +87,6 @@ const baseUrl = import.meta.env.BASE_URL
           <span v-if="engine === item.id" class="engine-check">✓</span>
         </button>
       </div>
-    </form>
+    </Teleport>
   </section>
 </template>
