@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { defaultPreferences } from './defaults'
 import {
   sanitizeActiveNoteId,
+  sanitizeFolders,
   sanitizeLauncherOrder,
   sanitizeNotes,
   sanitizePreferences,
@@ -51,5 +52,31 @@ describe('local state sanitization', () => {
     expect(notes[0]?.updatedAt).toBe(0)
     expect(sanitizeActiveNoteId('stale', notes)).toBe('note-1')
     expect(sanitizeTodos([{ id: 'todo', title: '  task ', done: false }])).toEqual([{ id: 'todo', title: 'task', done: false }])
+  })
+
+  it('keeps folder membership limited to existing shortcuts', () => {
+    const shortcuts = sanitizeShortcuts([{ id: 'shortcut', title: 'Link', url: 'https://example.com', color: '#abc', mark: 'L' }])
+    const folders = sanitizeFolders([
+      { id: 'folder', title: 'Work', shortcutIds: ['shortcut', 'missing', 'shortcut'], color: '#369', mark: '▣' },
+      { id: 'weather', title: 'Collision', shortcutIds: [], color: '#369', mark: '!' },
+    ], shortcuts)
+    const order = sanitizeLauncherOrder([], shortcuts, folders)
+
+    expect(folders).toEqual([{ id: 'folder', title: 'Work', shortcutIds: ['shortcut'], color: '#369', mark: '▣' }])
+    expect(order).toContain('folder')
+    expect(order).not.toContain('shortcut')
+    expect(folders.some((folder) => folder.id === 'weather')).toBe(false)
+  })
+
+  it('assigns a shortcut to only the first folder and restores it when unassigned', () => {
+    const shortcuts = sanitizeShortcuts([{ id: 'shortcut', title: 'Link', url: 'https://example.com', color: '#abc', mark: 'L' }])
+    const folders = sanitizeFolders([
+      { id: 'folder-a', title: 'A', shortcutIds: ['shortcut'], color: '#369', mark: 'A' },
+      { id: 'folder-b', title: 'B', shortcutIds: ['shortcut'], color: '#369', mark: 'B' },
+    ], shortcuts)
+
+    expect(folders.map((folder) => folder.shortcutIds)).toEqual([['shortcut'], []])
+    expect(sanitizeLauncherOrder(['folder-a'], shortcuts, folders)).not.toContain('shortcut')
+    expect(sanitizeLauncherOrder(['folder-a'], shortcuts, [])).toContain('shortcut')
   })
 })

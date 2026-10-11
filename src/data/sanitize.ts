@@ -1,6 +1,6 @@
 import { defaultLauncherOrder, defaultPreferences, launcherItems, wallpaperChoices } from './defaults'
 import { normalizeWebUrl } from './urls'
-import type { Note, Preferences, SearchMode, Shortcut, TodoItem } from '../types'
+import type { Note, Preferences, SearchMode, Shortcut, ShortcutFolder, TodoItem } from '../types'
 
 const engines = new Set(['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yahoo', '360'])
 const searchModes = new Set<SearchMode>(['html', 'photos', 'news', 'videos', 'map'])
@@ -99,6 +99,35 @@ export function sanitizeShortcuts(value: unknown): Shortcut[] {
   })
 }
 
+export function sanitizeFolders(value: unknown, shortcuts: Shortcut[]): ShortcutFolder[] {
+  const shortcutIds = new Set(shortcuts.map((shortcut) => shortcut.id))
+  const reservedIds = new Set(launcherItems.map((item) => item.id))
+  const seenFolderIds = new Set<string>()
+  const claimedShortcutIds = new Set<string>()
+  const result: ShortcutFolder[] = []
+  if (!Array.isArray(value)) return result
+  for (const candidate of value.slice(0, 500)) {
+    if (!record(candidate)) continue
+    const item = candidate
+    if (!validId(item.id) || seenFolderIds.has(item.id) || reservedIds.has(item.id) || shortcutIds.has(item.id)
+      || typeof item.title !== 'string' || !item.title.trim()
+      || typeof item.color !== 'string' || !palette.test(item.color)
+      || typeof item.mark !== 'string' || !Array.isArray(item.shortcutIds) || item.shortcutIds.length > 500
+      || !item.shortcutIds.every((id) => typeof id === 'string' && id.length <= 128)) continue
+    const members = item.shortcutIds.filter((id): id is string => shortcutIds.has(id) && !claimedShortcutIds.has(id))
+    seenFolderIds.add(item.id)
+    members.forEach((id) => claimedShortcutIds.add(id))
+    result.push({
+      id: item.id,
+      title: item.title.trim().slice(0, 80),
+      color: item.color,
+      mark: item.mark.trim().slice(0, 12),
+      shortcutIds: [...new Set(members)],
+    })
+  }
+  return result
+}
+
 export function sanitizeTodos(value: unknown): TodoItem[] {
   return uniqueRecords(value, (item) => {
     if (!validId(item.id) || typeof item.title !== 'string' || typeof item.done !== 'boolean') return undefined
@@ -124,13 +153,16 @@ export function sanitizeActiveNoteId(value: unknown, notes: Note[]): string {
   return typeof value === 'string' && notes.some((note) => note.id === value) ? value : notes[0]?.id ?? ''
 }
 
-export function sanitizeLauncherOrder(value: unknown, shortcuts: Shortcut[]): string[] {
-  const allowed = new Set([...launcherItems.map((item) => item.id), ...shortcuts.map((item) => item.id)])
+export function sanitizeLauncherOrder(value: unknown, shortcuts: Shortcut[], folders: ShortcutFolder[] = []): string[] {
+  const containedShortcuts = new Set(folders.flatMap((folder) => folder.shortcutIds))
+  const visibleShortcuts = shortcuts.filter((shortcut) => !containedShortcuts.has(shortcut.id))
+  const allowed = new Set([...launcherItems.map((item) => item.id), ...visibleShortcuts.map((item) => item.id), ...folders.map((folder) => folder.id)])
   const order = Array.isArray(value)
     ? [...new Set(value.filter((id): id is string => typeof id === 'string' && allowed.has(id))) ]
     : []
   for (const id of defaultLauncherOrder) if (allowed.has(id) && !order.includes(id)) order.push(id)
-  for (const item of shortcuts) if (!order.includes(item.id)) order.push(item.id)
+  for (const item of visibleShortcuts) if (!order.includes(item.id)) order.push(item.id)
+  for (const folder of folders) if (!order.includes(folder.id)) order.push(folder.id)
   return order
 }
 

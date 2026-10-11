@@ -11,6 +11,14 @@ export interface Shortcut {
   icon?: string
 }
 
+export interface ShortcutFolder {
+  id: string
+  title: string
+  shortcutIds: string[]
+  color: string
+  mark: string
+}
+
 export interface TodoItem {
   id: string
   title: string
@@ -54,6 +62,7 @@ export interface LauncherItem {
   title: string
   action?: LauncherAction
   shortcut?: Shortcut
+  folder?: ShortcutFolder
   color: string
   mark: string
   icon?: string

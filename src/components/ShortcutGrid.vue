@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { CloudSun, Image, ListTodo, Pencil, Settings, StickyNote, Trash2 } from '@lucide/vue'
+import { CloudSun, Folder, Image, ListTodo, Pencil, Settings, StickyNote, Trash2 } from '@lucide/vue'
 import type { Component } from 'vue'
 import type { LauncherItem, PageTransitionEffect } from '../types'
 
@@ -454,7 +454,7 @@ function cancelPointer() {
 }
 
 function openContextMenu(event: MouseEvent, item: LauncherItem) {
-  if (!item.shortcut) {
+  if (!item.shortcut && !item.folder) {
     closeContextMenu()
     return
   }
@@ -463,7 +463,7 @@ function openContextMenu(event: MouseEvent, item: LauncherItem) {
 }
 
 function openContextMenuKeyboard(event: KeyboardEvent, item: LauncherItem) {
-  if ((event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) || !item.shortcut) return
+  if ((event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) || (!item.shortcut && !item.folder)) return
   event.preventDefault()
   const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
   showContextMenu(item, bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
@@ -537,6 +537,7 @@ onBeforeUnmount(() => {
       <span class="shortcut-icon" :class="{ builtin: draggedItem.action }" :style="{ backgroundColor: draggedItem.color }">
         <img v-if="draggedItem.icon" class="shortcut-picture" :src="draggedItem.icon" alt="" draggable="false" />
         <component v-else-if="draggedItem.action" :is="itemIcons[draggedItem.action]" :size="35" :stroke-width="2.6" />
+        <Folder v-else-if="draggedItem.folder" :size="35" :stroke-width="2.2" />
         <span v-else class="shortcut-mark">{{ draggedItem.mark }}</span>
         <span v-if="draggedItem.badge" class="shortcut-badge">{{ draggedItem.badge }}</span>
       </span>
@@ -587,10 +588,11 @@ onBeforeUnmount(() => {
             @pointerdown="onPointerDown($event, item)"
             @contextmenu="openContextMenu($event, item)"
           >
-            <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" :aria-haspopup="item.shortcut ? 'menu' : undefined" @click="openItem($event, item)" @keydown="openContextMenuKeyboard($event, item)">
+            <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" :aria-haspopup="item.folder ? 'dialog' : item.shortcut ? 'menu' : undefined" @click="openItem($event, item)" @keydown="openContextMenuKeyboard($event, item)">
               <span class="shortcut-icon" :class="{ builtin: item.action }" :style="{ backgroundColor: item.color }">
                 <img v-if="item.icon" class="shortcut-picture" :src="item.icon" alt="" draggable="false" />
                 <component v-else-if="item.action" :is="itemIcons[item.action]" :size="35" :stroke-width="2.6" />
+                <Folder v-else-if="item.folder" :size="35" :stroke-width="2.2" />
                 <span v-else class="shortcut-mark">{{ item.mark }}</span>
                 <span v-if="item.badge" class="shortcut-badge">{{ item.badge }}</span>
               </span>
@@ -608,8 +610,8 @@ onBeforeUnmount(() => {
       :style="{ left: `${contextPosition.left}px`, top: `${contextPosition.top}px` }"
       @click.stop
     >
-      <button type="button" role="menuitem" @click="editContextItem"><Pencil :size="14" /> 编辑快捷入口</button>
-      <button type="button" role="menuitem" class="danger" @click="removeContextItem"><Trash2 :size="14" /> 删除快捷入口</button>
+      <button type="button" role="menuitem" @click="editContextItem"><Pencil :size="14" /> 编辑{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
+      <button type="button" role="menuitem" class="danger" @click="removeContextItem"><Trash2 :size="14" /> 删除{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
     </div>
   </div>
 </template>

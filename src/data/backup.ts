@@ -1,5 +1,5 @@
-import type { Note, Preferences, Shortcut, TodoItem } from '../types'
-import { sanitizeActiveNoteId, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
+import type { Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import { sanitizeActiveNoteId, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
 
 export interface WorkspaceBackup {
   format: 'inftab-workspace'
@@ -7,6 +7,7 @@ export interface WorkspaceBackup {
   exportedAt: string
   preferences: Preferences
   shortcuts: Shortcut[]
+  folders: ShortcutFolder[]
   launcherOrder: string[]
   todos: TodoItem[]
   notes: Note[]
@@ -32,6 +33,8 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   }
   if (!isRecord(value.preferences)) throw new Error('备份文件缺少有效的页面设置。')
   validateArray(value.shortcuts, '快捷入口')
+  const rawFolders = value.folders ?? []
+  validateArray(rawFolders, '文件夹')
   validateArray(value.launcherOrder, '入口排序')
   validateArray(value.todos, '待办事项')
   validateArray(value.notes, '笔记')
@@ -71,9 +74,10 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   }
 
   const shortcuts = sanitizeShortcuts(value.shortcuts)
+  const folders = sanitizeFolders(rawFolders, shortcuts)
   const todos = sanitizeTodos(value.todos)
   const notes = sanitizeNotes(value.notes)
-  if (shortcuts.length !== value.shortcuts.length || todos.length !== value.todos.length || notes.length !== value.notes.length) {
+  if (shortcuts.length !== value.shortcuts.length || folders.length !== rawFolders.length || todos.length !== value.todos.length || notes.length !== value.notes.length) {
     throw new Error('备份中包含重复或无法识别的数据，请检查文件后重试。')
   }
   if (!['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yahoo', '360'].includes(String(value.preferences.engine))) {
@@ -92,7 +96,8 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     exportedAt: typeof value.exportedAt === 'string' ? value.exportedAt.slice(0, 100) : '',
     preferences: sanitizePreferences(value.preferences),
     shortcuts,
-    launcherOrder: sanitizeLauncherOrder(value.launcherOrder, shortcuts),
+    folders,
+    launcherOrder: sanitizeLauncherOrder(value.launcherOrder, shortcuts, folders),
     todos,
     notes,
     activeNoteId: sanitizeActiveNoteId(typeof value.activeNoteId === 'string' ? value.activeNoteId.slice(0, 128) : '', notes),

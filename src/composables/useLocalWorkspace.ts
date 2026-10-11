@@ -2,13 +2,14 @@ import { useStoredState } from './useStoredState'
 import { toRaw } from 'vue'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts } from '../data/defaults'
 import { mergeById, type WorkspaceBackup } from '../data/backup'
-import { sanitizeActiveNoteId, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
-import type { Note, Preferences, Shortcut, TodoItem } from '../types'
+import { sanitizeActiveNoteId, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
+import type { Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
 
 export function useLocalWorkspace() {
   const preferences = useStoredState<Preferences>('inftab.preferences.v1', defaultPreferences, sanitizePreferences)
   const shortcuts = useStoredState<Shortcut[]>('inftab.shortcuts.v1', defaultShortcuts, sanitizeShortcuts)
-  const launcherOrder = useStoredState<string[]>('inftab.launcher-order.v1', defaultLauncherOrder, (value) => sanitizeLauncherOrder(value, shortcuts.value))
+  const folders = useStoredState<ShortcutFolder[]>('inftab.folders.v1', [], (value) => sanitizeFolders(value, shortcuts.value))
+  const launcherOrder = useStoredState<string[]>('inftab.launcher-order.v1', defaultLauncherOrder, (value) => sanitizeLauncherOrder(value, shortcuts.value, folders.value))
   const todos = useStoredState<TodoItem[]>('inftab.todos.v1', [], sanitizeTodos)
   const notes = useStoredState<Note[]>('inftab.notes.v1', [], sanitizeNotes)
   const activeNoteId = useStoredState<string>('inftab.active-note.v1', '', (value) => sanitizeActiveNoteId(value, notes.value))
@@ -36,7 +37,26 @@ export function useLocalWorkspace() {
 
   function removeShortcut(id: string) {
     shortcuts.value = shortcuts.value.filter((shortcut) => shortcut.id !== id)
-    launcherOrder.value = launcherOrder.value.filter((itemId) => itemId !== id)
+    folders.value = sanitizeFolders(folders.value.map((folder) => ({
+      ...folder,
+      shortcutIds: folder.shortcutIds.filter((shortcutId) => shortcutId !== id),
+    })), shortcuts.value)
+    launcherOrder.value = sanitizeLauncherOrder(launcherOrder.value.filter((itemId) => itemId !== id), shortcuts.value, folders.value)
+  }
+
+  function saveFolder(folder: ShortcutFolder) {
+    const exists = folders.value.some((item) => item.id === folder.id)
+    const next = exists
+      ? folders.value.map((item) => item.id === folder.id ? folder : item)
+      : [...folders.value, folder]
+    folders.value = sanitizeFolders(next, shortcuts.value)
+    if (!folders.value.some((item) => item.id === folder.id)) return
+    launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...(exists ? [] : [folder.id])], shortcuts.value, folders.value)
+  }
+
+  function removeFolder(id: string) {
+    folders.value = folders.value.filter((folder) => folder.id !== id)
+    launcherOrder.value = sanitizeLauncherOrder(launcherOrder.value.filter((itemId) => itemId !== id), shortcuts.value, folders.value)
   }
 
   function reorderLauncherItems(sourceId: string, targetId: string, currentIds: string[]) {
@@ -102,6 +122,7 @@ export function useLocalWorkspace() {
       exportedAt: new Date().toISOString(),
       preferences: structuredClone(toRaw(preferences.value)),
       shortcuts: structuredClone(toRaw(shortcuts.value)),
+      folders: structuredClone(toRaw(folders.value)),
       launcherOrder: [...launcherOrder.value],
       todos: structuredClone(toRaw(todos.value)),
       notes: structuredClone(toRaw(notes.value)),
@@ -112,12 +133,14 @@ export function useLocalWorkspace() {
 
   function restoreBackup(backup: WorkspaceBackup, mode: 'merge' | 'replace') {
     const importedShortcuts = sanitizeShortcuts(backup.shortcuts)
+    const importedFolders = sanitizeFolders(backup.folders, importedShortcuts)
     const importedTodos = sanitizeTodos(backup.todos)
     const importedNotes = sanitizeNotes(backup.notes)
     if (mode === 'replace') {
       preferences.value = sanitizePreferences(backup.preferences)
       shortcuts.value = importedShortcuts
-      launcherOrder.value = sanitizeLauncherOrder(backup.launcherOrder, importedShortcuts)
+      folders.value = importedFolders
+      launcherOrder.value = sanitizeLauncherOrder(backup.launcherOrder, importedShortcuts, importedFolders)
       todos.value = importedTodos
       notes.value = importedNotes
       activeNoteId.value = sanitizeActiveNoteId(backup.activeNoteId, importedNotes)
@@ -126,7 +149,8 @@ export function useLocalWorkspace() {
     }
     preferences.value = sanitizePreferences({ ...preferences.value, ...backup.preferences })
     shortcuts.value = sanitizeShortcuts(mergeById(shortcuts.value, importedShortcuts))
-    launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...backup.launcherOrder], shortcuts.value)
+    folders.value = sanitizeFolders(mergeById(folders.value, importedFolders), shortcuts.value)
+    launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...backup.launcherOrder], shortcuts.value, folders.value)
     todos.value = sanitizeTodos(mergeById(todos.value, importedTodos))
     notes.value = sanitizeNotes(mergeById(notes.value, importedNotes))
     const preferredNoteId = backup.notes.some((note) => note.id === backup.activeNoteId) ? backup.activeNoteId : activeNoteId.value
@@ -137,6 +161,7 @@ export function useLocalWorkspace() {
   return {
     preferences,
     shortcuts,
+    folders,
     launcherOrder,
     todos,
     notes,
@@ -144,6 +169,8 @@ export function useLocalWorkspace() {
     weatherCity,
     saveShortcut,
     removeShortcut,
+    saveFolder,
+    removeFolder,
     reorderLauncherItems,
     addTodo,
     toggleTodo,

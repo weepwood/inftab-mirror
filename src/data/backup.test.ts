@@ -43,6 +43,16 @@ describe('workspace backups', () => {
     expect(() => parseWorkspaceBackup(unsafe)).toThrow(/重复或无法识别/)
   })
 
+  it('imports version-one backups without folders and filters stale folder members', () => {
+    expect(parseWorkspaceBackup(backup()).folders).toEqual([])
+    const parsed = parseWorkspaceBackup(backup({
+      folders: [{ id: 'folder-work', title: '工作', shortcutIds: ['custom', 'missing'], color: '#369', mark: '工' }],
+      launcherOrder: ['folder-work', 'custom'],
+    }))
+    expect(parsed.folders[0]?.shortcutIds).toEqual(['custom'])
+    expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'todos', 'notes', 'settings'])
+  })
+
   it('rejects oversized sections and unsupported enums', () => {
     expect(() => parseWorkspaceBackup(backup({ notes: Array.from({ length: 501 }, (_, index) => ({ id: String(index), title: '', body: '', updatedAt: 1 })) }))).toThrow(/最多 500/)
     expect(() => parseWorkspaceBackup(backup({ preferences: { ...defaultPreferences, engine: 'other' } }))).toThrow(/搜索引擎/)

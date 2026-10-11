@@ -14,6 +14,7 @@ const emit = defineEmits<{
   update: [value: Partial<Preferences>]
   reset: []
   addShortcut: []
+  addFolder: []
   exportBackup: []
   importBackup: [backup: WorkspaceBackup, mode: 'merge' | 'replace']
 }>()
@@ -100,6 +101,7 @@ function applyImport(mode: 'merge' | 'replace') {
     <section class="settings-section">
       <div class="section-heading"><div><h3>快捷入口</h3><p>调整图标网格外观</p></div></div>
       <button class="settings-add-shortcut" type="button" @click="emit('addShortcut')"><span>＋</span> 添加快捷入口</button>
+      <button class="settings-add-shortcut folder-add-button" type="button" @click="emit('addFolder')"><span>▣</span> 新建文件夹</button>
       <label class="range-label"><span>每行图标</span><strong>{{ preferences.columns }}</strong><input type="range" min="2" max="12" step="1" :value="preferences.columns" @input="update('columns', Number(($event.target as HTMLInputElement).value))" /></label>
       <label class="range-label"><span>每页行数</span><strong>{{ preferences.rows }}</strong><input type="range" min="1" max="8" step="1" :value="preferences.rows" @input="update('rows', Number(($event.target as HTMLInputElement).value))" /></label>
       <label class="range-label"><span>图标大小</span><strong>{{ preferences.iconSize }} px</strong><input type="range" min="32" max="160" step="2" :value="preferences.iconSize" @input="update('iconSize', Number(($event.target as HTMLInputElement).value))" /></label>
@@ -139,6 +141,7 @@ function applyImport(mode: 'merge' | 'replace') {
         <p class="backup-preview">备份时间：{{ pendingBackup.exportedAt ? new Date(pendingBackup.exportedAt).toLocaleString() : '未知' }}</p>
         <ul class="backup-counts">
           <li>{{ pendingBackup.shortcuts.length }} 个快捷入口</li>
+          <li>{{ pendingBackup.folders.length }} 个文件夹</li>
           <li>{{ pendingBackup.todos.length }} 条待办</li>
           <li>{{ pendingBackup.notes.length }} 条笔记</li>
         </ul>

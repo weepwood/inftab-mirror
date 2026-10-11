@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowLeft, House, Menu, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
 import ShortcutGrid from './components/ShortcutGrid.vue'
+import FolderDialog from './components/FolderDialog.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import TodoPanel from './components/TodoPanel.vue'
 import NotesPanel from './components/NotesPanel.vue'
@@ -11,7 +12,7 @@ import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { launcherItems } from './data/defaults'
 import { buildSearchUrl } from './data/search'
 import { normalizeWebUrl } from './data/urls'
-import type { LauncherItem, Shortcut } from './types'
+import type { LauncherItem, Shortcut, ShortcutFolder } from './types'
 
 type Panel = 'settings' | 'todos' | 'notes' | 'weather' | null
 
@@ -19,6 +20,7 @@ const baseUrl = import.meta.env.BASE_URL
 const {
   preferences,
   shortcuts,
+  folders,
   launcherOrder,
   todos,
   notes,
@@ -26,6 +28,8 @@ const {
   weatherCity,
   saveShortcut: saveShortcutData,
   removeShortcut: removeShortcutData,
+  saveFolder: saveFolderData,
+  removeFolder: removeFolderData,
   reorderLauncherItems: reorderLauncherOrder,
   addTodo,
   toggleTodo,
@@ -47,6 +51,8 @@ const pageDirection = ref(1)
 const activePanel = ref<Panel>(null)
 const backupExportError = ref('')
 const searchBar = ref<{ focusSearch: () => void }>()
+const folderDialogOpen = ref(false)
+const activeFolder = ref<ShortcutFolder>()
 const shortcutDialog = ref(false)
 const editingId = ref('')
 const shortcutTitle = ref('')
@@ -76,6 +82,13 @@ const allLauncherItems = computed<LauncherItem[]>(() => {
         ? (/^(https?:|data:|\/)/i.test(shortcut.icon) ? shortcut.icon : `${baseUrl}inftab-icons/${shortcut.icon}`)
         : undefined,
       shortcut,
+    })),
+    ...folders.value.map((folder) => ({
+      id: folder.id,
+      title: folder.title,
+      color: folder.color,
+      mark: folder.mark,
+      folder,
     })),
   ]
   const order = new Map(launcherOrder.value.map((id, index) => [id, index]))
@@ -135,10 +148,46 @@ function submitSearch() {
 }
 
 function openItem(item: LauncherItem) {
-  if (item.action === 'settings' || item.action === 'wallpaper') activePanel.value = 'settings'
+  if (item.folder) openFolder(item.folder)
+  else if (item.action === 'settings' || item.action === 'wallpaper') activePanel.value = 'settings'
   else if (item.action) activePanel.value = item.action
   else if (item.shortcut?.id === 'wallpapers') activePanel.value = 'settings'
   else if (item.shortcut) window.open(item.shortcut.url, '_blank', 'noopener,noreferrer')
+}
+
+function openFolder(folder: ShortcutFolder) {
+  activeFolder.value = folder
+  folderDialogOpen.value = true
+}
+
+function openFolderEditor(folder?: ShortcutFolder) {
+  activeFolder.value = folder
+  folderDialogOpen.value = true
+}
+
+function closeFolderDialog() {
+  folderDialogOpen.value = false
+  activeFolder.value = undefined
+}
+
+function saveFolder(folder: ShortcutFolder) {
+  saveFolderData(folder)
+  activeFolder.value = folder
+  folderDialogOpen.value = false
+}
+
+function editLauncherItem(item: LauncherItem) {
+  if (item.folder) openFolderEditor(item.folder)
+  else if (item.shortcut) openShortcutDialog(item)
+}
+
+function removeLauncherItem(item: LauncherItem) {
+  if (item.folder) removeFolderData(item.folder.id)
+  else removeShortcutData(item.shortcut?.id ?? '')
+}
+
+function openFolderShortcut(shortcut: Shortcut) {
+  window.open(shortcut.url, '_blank', 'noopener,noreferrer')
 }
 
 function openShortcutDialog(item?: LauncherItem) {
@@ -239,11 +288,6 @@ async function saveShortcut() {
   }
   saveShortcutData(next)
   shortcutDialog.value = false
-}
-
-function removeShortcut(item: LauncherItem) {
-  if (!item.shortcut) return
-  removeShortcutData(item.shortcut.id)
 }
 
 function movePage(direction: number) {
@@ -366,8 +410,8 @@ onBeforeUnmount(() => {
         :transition-effect="preferences.pageTransitionEffect"
         :transition-duration="preferences.pageTransitionMs"
         @open="openItem"
-        @edit="openShortcutDialog"
-        @remove="removeShortcut"
+        @edit="editLauncherItem"
+        @remove="removeLauncherItem"
         @reorder="reorderItems"
         @swipe="movePage"
       />
@@ -388,12 +432,22 @@ onBeforeUnmount(() => {
           <div><h2>{{ panelTitle }}</h2><p>{{ activePanel === 'settings' ? '按自己的习惯调整新标签页' : '内容会自动保存在本地' }}</p></div>
           <button class="panel-close" type="button" aria-label="关闭" @click="activePanel = null"><X :size="19" /></button>
         </header>
-        <SettingsPanel v-if="activePanel === 'settings'" :preferences="preferences" :export-error="backupExportError" @update="updatePreferences" @reset="resetPreferences" @add-shortcut="openShortcutDialog()" @export-backup="downloadBackup" @import-backup="restoreBackup" />
+        <SettingsPanel v-if="activePanel === 'settings'" :preferences="preferences" :export-error="backupExportError" @update="updatePreferences" @reset="resetPreferences" @add-shortcut="openShortcutDialog()" @add-folder="openFolderEditor()" @export-backup="downloadBackup" @import-backup="restoreBackup" />
         <TodoPanel v-else-if="activePanel === 'todos'" :items="todos" @add="addTodo" @toggle="toggleTodo" @update="updateTodo" @remove="removeTodo" @clear-completed="clearCompletedTodos" />
         <NotesPanel v-else-if="activePanel === 'notes'" :notes="notes" :active-id="activeNoteId" @add="addNote" @select="activeNoteId = $event" @update="updateNote" @remove="removeNote" />
         <WeatherPanel v-else-if="activePanel === 'weather'" :city="weatherCity" @update:city="weatherCity = $event" />
       </aside>
     </div>
+
+    <FolderDialog
+      v-if="folderDialogOpen"
+      :folder="activeFolder"
+      :shortcuts="shortcuts"
+      @close="closeFolderDialog"
+      @save="saveFolder"
+      @remove="removeFolderData($event); closeFolderDialog()"
+      @open-shortcut="openFolderShortcut"
+    />
 
     <div v-if="shortcutDialog" class="modal-backdrop" @click.self="shortcutDialog = false">
       <form class="shortcut-dialog" @submit.prevent="saveShortcut">
