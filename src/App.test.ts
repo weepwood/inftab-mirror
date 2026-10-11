@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { defaultPreferences } from './data/defaults'
 import App from './App.vue'
 
 let wrapper: VueWrapper | undefined
@@ -9,6 +10,32 @@ let wrapper: VueWrapper | undefined
 async function flushLocalStorageWrites() {
   await nextTick()
   window.dispatchEvent(new Event('pagehide'))
+}
+
+async function selectBackupFile(contents: unknown) {
+  const file = new File(['backup'], 'inftab-backup.json', { type: 'application/json' })
+  Object.defineProperty(file, 'text', { value: async () => typeof contents === 'string' ? contents : JSON.stringify(contents) })
+  const input = wrapper!.get('input[accept="application/json,.json"]')
+  Object.defineProperty(input.element, 'files', { configurable: true, value: [file] })
+  await input.trigger('change')
+  await flushPromises()
+}
+
+function validBackup(overrides: Record<string, unknown> = {}) {
+  return {
+    format: 'inftab-workspace',
+    version: 1,
+    exportedAt: '2026-10-12T00:00:00.000Z',
+    preferences: { ...defaultPreferences },
+    shortcuts: [],
+    folders: [],
+    launcherOrder: [],
+    todos: [],
+    notes: [],
+    activeNoteId: '',
+    weatherCity: '上海',
+    ...overrides,
+  }
 }
 
 afterEach(() => {
@@ -259,5 +286,63 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.storage-error-toast').text()).toContain('本地数据未能保存')
     await wrapper.get('.storage-error-toast button').trigger('click')
     expect(wrapper.find('.storage-error-toast').exists()).toBe(false)
+  })
+
+  it('previews and merges a selected backup without removing existing shortcuts', async () => {
+    localStorage.setItem('inftab.shortcuts.v1', JSON.stringify([
+      { id: 'existing', title: 'Existing', url: 'https://existing.example/', color: '#369', mark: 'E' },
+    ]))
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+    await selectBackupFile(validBackup({
+      shortcuts: [{ id: 'imported', title: 'Imported', url: 'https://imported.example/', color: '#936', mark: 'I' }],
+      todos: [{ id: 'backup-todo', title: 'From backup', done: false }],
+    }))
+
+    expect(wrapper.get('.backup-dialog').text()).toContain('1 个快捷入口')
+    expect(wrapper.get('.backup-dialog').text()).toContain('1 条待办')
+    await wrapper.findAll('.backup-dialog button').find((button) => button.text().trim() === '合并导入')!.trigger('click')
+    await flushLocalStorageWrites()
+
+    const shortcuts = JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]')
+    const todos = JSON.parse(localStorage.getItem('inftab.todos.v1') ?? '[]')
+    expect(shortcuts.map((shortcut: { id: string }) => shortcut.id)).toEqual(expect.arrayContaining(['existing', 'imported']))
+    expect(todos).toContainEqual(expect.objectContaining({ id: 'backup-todo', title: 'From backup' }))
+    expect(wrapper.find('.backup-dialog').exists()).toBe(false)
+  })
+
+  it('replaces existing data only after backup confirmation and reports malformed files', async () => {
+    localStorage.setItem('inftab.todos.v1', JSON.stringify([{ id: 'old-todo', title: 'Keep me?', done: false }]))
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+    await selectBackupFile(validBackup({ todos: [{ id: 'new-todo', title: 'Restored', done: false }] }))
+    expect(JSON.parse(localStorage.getItem('inftab.todos.v1') ?? '[]')).toContainEqual(expect.objectContaining({ id: 'old-todo' }))
+    await wrapper.findAll('.backup-dialog button').find((button) => button.text().trim() === '覆盖导入')!.trigger('click')
+    await flushLocalStorageWrites()
+
+    expect(JSON.parse(localStorage.getItem('inftab.todos.v1') ?? '[]')).toEqual([
+      { id: 'new-todo', title: 'Restored', done: false },
+    ])
+
+    await selectBackupFile('{malformed json')
+    expect(wrapper.get('.backup-error[role="alert"]').text().trim()).not.toBe('')
+    expect(wrapper.find('.backup-dialog').exists()).toBe(false)
+  })
+
+  it('keeps keyboard focus inside the backup prompt and closes only that prompt on Escape', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+    await selectBackupFile(validBackup())
+
+    expect(document.activeElement).toBe(wrapper.get('.backup-dialog [aria-label="取消导入"]').element)
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    document.activeElement!.dispatchEvent(escape)
+    await nextTick()
+    await flushPromises()
+
+    expect(escape.defaultPrevented).toBe(true)
+    expect(wrapper.find('.backup-dialog').exists()).toBe(false)
+    expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('设置')
+    expect(document.activeElement).toBe(wrapper.get('.import-backup-button').element)
   })
 })

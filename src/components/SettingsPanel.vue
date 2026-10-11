@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
 import type { PageTransitionEffect, Preferences, SearchMode } from '../types'
@@ -19,8 +19,20 @@ const emit = defineEmits<{
   importBackup: [backup: WorkspaceBackup, mode: 'merge' | 'replace']
 }>()
 const fileInput = ref<HTMLInputElement>()
+const importButton = ref<HTMLButtonElement>()
+const backupDialog = ref<HTMLElement>()
 const pendingBackup = ref<WorkspaceBackup>()
 const importError = ref('')
+
+watch(pendingBackup, async (backup, previous) => {
+  if (backup) {
+    await nextTick()
+    backupDialog.value?.querySelector<HTMLElement>('button:not([disabled])')?.focus()
+  } else if (previous) {
+    await nextTick()
+    importButton.value?.focus()
+  }
+})
 
 function update<K extends keyof Preferences>(key: K, value: Preferences[K]) {
   emit('update', { [key]: value } as Pick<Preferences, K>)
@@ -63,6 +75,30 @@ function applyImport(mode: 'merge' | 'replace') {
   if (!pendingBackup.value) return
   emit('importBackup', pendingBackup.value, mode)
   pendingBackup.value = undefined
+}
+
+function handleBackupDialogKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    pendingBackup.value = undefined
+    return
+  }
+  if (event.key !== 'Tab' || !backupDialog.value) return
+  const focusable = [...backupDialog.value.querySelectorAll<HTMLElement>('button:not([disabled])')]
+  const first = focusable[0]
+  const last = focusable.at(-1)
+  if (!first || !last) {
+    event.preventDefault()
+    return
+  }
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
 }
 </script>
 
@@ -134,7 +170,7 @@ function applyImport(mode: 'merge' | 'replace') {
       <div class="section-heading"><div><h3>备份与迁移</h3><p>导出或恢复本机数据</p></div></div>
       <div class="backup-actions">
         <button class="button-secondary" type="button" @click="emit('exportBackup')">导出 JSON 备份</button>
-        <button class="button-secondary" type="button" @click="fileInput?.click()">导入备份</button>
+        <button ref="importButton" class="button-secondary import-backup-button" type="button" @click="fileInput?.click()">导入备份</button>
         <input ref="fileInput" class="visually-hidden" type="file" accept="application/json,.json" @change="readBackup" />
       </div>
       <p v-if="importError" class="backup-error" role="alert">{{ importError }}</p>
@@ -144,7 +180,7 @@ function applyImport(mode: 'merge' | 'replace') {
     <p class="local-hint">设置保存在这台设备的浏览器中。</p>
 
     <div v-if="pendingBackup" class="modal-backdrop backup-backdrop" @click.self="pendingBackup = undefined">
-      <section class="shortcut-dialog backup-dialog" role="dialog" aria-modal="true" aria-labelledby="backup-title">
+      <section ref="backupDialog" class="shortcut-dialog backup-dialog" role="dialog" aria-modal="true" aria-labelledby="backup-title" @keydown="handleBackupDialogKeydown">
         <header><div><h2 id="backup-title">恢复本地备份</h2><p>请先确认导入的数据</p></div><button type="button" aria-label="取消导入" @click="pendingBackup = undefined">×</button></header>
         <p class="backup-preview">备份时间：{{ pendingBackup.exportedAt ? new Date(pendingBackup.exportedAt).toLocaleString() : '未知' }}</p>
         <ul class="backup-counts">
