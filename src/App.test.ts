@@ -144,9 +144,24 @@ describe('new-tab built-in launcher visibility', () => {
     const weatherRow = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('显示天气'))!
     const weatherToggle = weatherRow.get('input')
     expect((weatherToggle.element as HTMLInputElement).checked).toBe(false)
-    await weatherToggle.setValue(true)
+    await wrapper.get('.panel-close').trigger('click')
     await nextTick()
+    const settingsButton = wrapper.get('[data-item-id="settings"] .shortcut-open')
+    await settingsButton.trigger('keydown', { key: 'ArrowLeft', shiftKey: true })
+    await flushLocalStorageWrites()
+    const reordered = JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]') as string[]
+    expect(reordered.indexOf('weather')).toBe(0)
+
+    await wrapper.get('[aria-label="打开设置"]').trigger('click')
+    await flushPromises()
+    await vi.waitFor(() => expect(wrapper!.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
+    const restoredWeatherRow = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('显示天气'))!
+    await restoredWeatherRow.get('input').setValue(true)
+    await nextTick()
+    await flushLocalStorageWrites()
     expect(wrapper.find('[data-item-id="weather"]').exists()).toBe(true)
+    const restoredOrder = JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]') as string[]
+    expect(restoredOrder.indexOf('weather')).toBe(0)
   })
 })
 

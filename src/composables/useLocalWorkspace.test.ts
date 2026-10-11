@@ -30,6 +30,27 @@ describe('useLocalWorkspace default shortcut migration', () => {
   })
 })
 
+describe('useLocalWorkspace launcher ordering', () => {
+  it('preserves hidden launcher positions while reordering visible items', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const originalOrder = [...workspace.launcherOrder.value]
+    const hiddenIds = new Set(['weather', 'calendar'])
+    const visibleIds = originalOrder.filter((id) => !hiddenIds.has(id))
+
+    workspace.reorderLauncherItems('todos', 'settings', visibleIds)
+
+    const nextVisibleIds = workspace.launcherOrder.value.filter((id) => !hiddenIds.has(id))
+    const expectedVisibleIds = [...visibleIds]
+    const todosIndex = expectedVisibleIds.indexOf('todos')
+    expectedVisibleIds.splice(todosIndex, 1)
+    expectedVisibleIds.splice(expectedVisibleIds.indexOf('settings'), 0, 'todos')
+    expect(nextVisibleIds).toEqual(expectedVisibleIds)
+    expect(workspace.launcherOrder.value.indexOf('weather')).toBe(originalOrder.indexOf('weather'))
+    expect(workspace.launcherOrder.value.indexOf('calendar')).toBe(originalOrder.indexOf('calendar'))
+  })
+})
+
 describe('useLocalWorkspace custom search engines', () => {
   it('adds and selects a validated engine, then falls back when it is removed', () => {
     scope = effectScope()

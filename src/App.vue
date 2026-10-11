@@ -35,6 +35,7 @@ const {
   saveFolder: saveFolderData,
   removeFolder: removeFolderData,
   reorderLauncherItems: reorderLauncherOrder,
+  setVisibleLauncherOrder,
   addTodo,
   toggleTodo,
   updateTodo,
@@ -456,7 +457,7 @@ function moveLauncherItemByKeyboard(itemId: string, direction: -1 | 1) {
   const [item] = nextOrder.splice(currentIndex, 1)
   if (item === undefined) return
   nextOrder.splice(nextIndex, 0, item)
-  launcherOrder.value = nextOrder
+  setVisibleLauncherOrder(nextOrder)
 }
 
 function downloadBackup() {

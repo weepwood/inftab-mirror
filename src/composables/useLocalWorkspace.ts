@@ -87,15 +87,35 @@ export function useLocalWorkspace() {
     launcherOrder.value = sanitizeLauncherOrder(launcherOrder.value.filter((itemId) => itemId !== id), shortcuts.value, folders.value)
   }
 
-  function reorderLauncherItems(sourceId: string, targetId: string, currentIds: string[]) {
-    const next = [...currentIds]
-    const sourceIndex = next.indexOf(sourceId)
-    const targetIndex = next.indexOf(targetId)
-    if (sourceIndex < 0 || targetIndex < 0) return
-    const [source] = next.splice(sourceIndex, 1)
-    if (!source) return
-    next.splice(next.indexOf(targetId), 0, source)
+  function setVisibleLauncherOrder(visibleOrder: string[]) {
+    const visibleIds = new Set(visibleOrder)
+    const next = [...launcherOrder.value]
+    const existingIds = new Set(next)
+    for (const id of visibleOrder) {
+      if (!existingIds.has(id)) {
+        next.push(id)
+        existingIds.add(id)
+      }
+    }
+    let visibleIndex = 0
+    for (let index = 0; index < next.length; index += 1) {
+      if (visibleIds.has(next[index]!)) {
+        next[index] = visibleOrder[visibleIndex++]!
+      }
+    }
     launcherOrder.value = next
+  }
+
+  function reorderLauncherItems(sourceId: string, targetId: string, currentIds: string[]) {
+    const visibleOrder = [...currentIds]
+    const sourceIndex = visibleOrder.indexOf(sourceId)
+    const targetIndex = visibleOrder.indexOf(targetId)
+    if (sourceIndex < 0 || targetIndex < 0) return
+    const [source] = visibleOrder.splice(sourceIndex, 1)
+    if (!source) return
+    visibleOrder.splice(visibleOrder.indexOf(targetId), 0, source)
+
+    setVisibleLauncherOrder(visibleOrder)
   }
 
   function addTodo(title: string) {
@@ -275,6 +295,7 @@ export function useLocalWorkspace() {
     saveFolder,
     removeFolder,
     reorderLauncherItems,
+    setVisibleLauncherOrder,
     addTodo,
     toggleTodo,
     updateTodo,
