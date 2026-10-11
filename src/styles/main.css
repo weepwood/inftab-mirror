@@ -30,6 +30,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   background-position: center;
   background-size: cover;
 }
+.home.home-scrollable { overflow-y: auto; overscroll-behavior-y: contain; }
+.home-scrollable .home-content { padding-bottom: 72px; }
 .background-shade { position: absolute; inset: 0; z-index: 0; background: rgba(0, 0, 0, var(--page-shade, .2)); }
 .home-actions { position: absolute; z-index: 2; top: 20px; right: 20px; display: flex; gap: 18px; }
 .home-clock { position: absolute; z-index: 2; top: 16px; left: 24px; display: flex; flex-direction: column; gap: 1px; pointer-events: none; color: rgba(255, 255, 255, .96); text-shadow: 0 1px 5px rgba(0, 0, 0, .28); }
@@ -427,7 +429,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 
 @media (max-height: 560px) {
   .home-clock { display: none; }
-  .home-widget-shelf { display: none; }
   .home-content { padding-top: 38px; }
   .search-tabs { height: 26px; }
   .search-box { height: min(var(--search-height, 54px), 44px); }

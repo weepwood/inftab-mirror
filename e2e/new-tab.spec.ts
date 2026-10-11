@@ -108,3 +108,20 @@ test('home widgets open their panel, reorder, and can be removed', async ({ page
   await page.getByRole('button', { name: '移除倒计时' }).click()
   await expect(page.locator('.home-widget-card')).toHaveCount(1)
 })
+
+test('enabled home widgets remain visible and scrollable in a short viewport', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByLabel('显示待办概览').check()
+  await page.getByRole('button', { name: '关闭' }).click()
+  await page.setViewportSize({ width: 390, height: 480 })
+
+  const shelf = page.getByRole('region', { name: '首页小组件' })
+  await expect(shelf).toBeVisible()
+  const home = page.locator('.home')
+  await expect(home).toHaveClass(/home-scrollable/)
+  const activePage = await page.locator('.page-dot[aria-current="page"]').getAttribute('aria-label')
+  await page.mouse.move(195, 400)
+  await page.mouse.wheel(0, 120)
+  await expect.poll(() => home.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', activePage ?? '')
+})

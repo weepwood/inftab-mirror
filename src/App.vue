@@ -178,7 +178,8 @@ const activePanelComponent = computed<Component | undefined>(() => activePanelPl
 const activePanelProps = computed<Record<string, unknown>>(() => activePanelPlugin.value?.props(panelContext.value) ?? {})
 const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanelPlugin.value?.listeners(panelContext.value) ?? {})
 const homeWidgetContext = computed(() => ({ todos: todos.value, countdowns: countdowns.value }))
-const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0 && viewport.value.height > 560)
+const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0)
+const shortHomeScrollEnabled = computed(() => showHomeWidgets.value && viewport.value.height <= 560)
 const compactRows = computed(() => Math.min(preferences.value.rows, Math.max(1, Math.ceil(allLauncherItems.value.length / preferences.value.columns))))
 const fitMetrics = computed(() => {
   const { width, height } = viewport.value
@@ -196,7 +197,7 @@ const fitMetrics = computed(() => {
   const paginationHeight = pageCount.value > 1 ? (veryShortHeight ? 31 : compactHeight ? 37 : mobile ? 43 : 48) : 0
   const nameHeight = preferences.value.showNames ? (smallMobile ? 13 : 17) + 7 : 0
   const footerClearance = veryShortHeight ? 24 : 38
-  const widgetClearance = showHomeWidgets.value ? 156 : 0
+  const widgetClearance = showHomeWidgets.value && !shortHomeScrollEnabled.value ? 156 : 0
   const available = height - topPadding - widgetClearance - tabHeight - searchHeight - gridTopGap - paginationHeight - footerClearance - rows * nameHeight
   const requestedGap = Math.min(preferences.value.gridGapY, smallMobile ? 20 : mobile ? 24 : preferences.value.gridGapY)
   const fittedGap = rows > 1 ? Math.min(requestedGap, Math.max(4, (available - rows * 32) / (rows - 1))) : requestedGap
@@ -450,6 +451,7 @@ function finishHomeSwipe(event: PointerEvent) {
 }
 
 function handleHomeWheel(event: WheelEvent) {
+  if (shortHomeScrollEnabled.value) return
   if (activePanel.value || shortcutDialog.value || homeWheelLocked
     || (event.target instanceof Element && event.target.closest('.home-widget-shelf'))) return
   const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY)
@@ -617,7 +619,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark' }" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
+  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': shortHomeScrollEnabled }" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
     <a class="skip-link" href="#main-content">跳到快捷入口</a>
     <h1 class="visually-hidden">Infinity 新标签页</h1>
     <div class="background-shade"></div>
