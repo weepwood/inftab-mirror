@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Droplets, RefreshCw, Search, Snowflake, Sun, Wind } from '@lucide/vue'
+import { isValidCalendarDate } from '../data/countdown'
 
 interface LocationResult {
   id: number
@@ -143,8 +144,14 @@ function isLocationResult(value: unknown): value is LocationResult {
   return isRecord(value)
     && typeof value.id === 'number'
     && typeof value.name === 'string'
+    && typeof value.latitude === 'number'
     && Number.isFinite(value.latitude)
+    && value.latitude >= -90
+    && value.latitude <= 90
+    && typeof value.longitude === 'number'
     && Number.isFinite(value.longitude)
+    && value.longitude >= -180
+    && value.longitude <= 180
     && (value.admin1 === undefined || typeof value.admin1 === 'string')
     && (value.country === undefined || typeof value.country === 'string')
 }
@@ -166,7 +173,7 @@ function isWeatherResponse(value: unknown): value is WeatherResponse {
     && Array.isArray(temperatureMin)
     && times.length > 0
     && times.length <= 7
-    && times.every((item) => typeof item === 'string')
+    && times.every(isValidCalendarDate)
     && [weatherCodes, temperatureMax, temperatureMin].every((series) =>
       series.length === times.length
       && series.every((item) => typeof item === 'number' && Number.isFinite(item)))

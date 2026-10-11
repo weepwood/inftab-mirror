@@ -82,4 +82,31 @@ describe('WeatherPanel request ordering', () => {
     expect(wrapper.find('.weather-current strong').text()).toBe('27°')
     wrapper.unmount()
   })
+
+  it('shows a recoverable error for an invalid forecast date instead of rendering a broken weekday', async () => {
+    const invalidForecast = forecast(20)
+    invalidForecast.daily.time = ['not-a-date']
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(response({ results: [locations[0]] }))
+      .mockResolvedValueOnce(response(invalidForecast)))
+    const wrapper = mount(WeatherPanel, { props: { city: '新加坡' } })
+    await flushPromises()
+
+    expect(wrapper.find('.weather-error').text()).toContain('数据格式无法识别')
+    expect(wrapper.find('.weather-days').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('does not request a forecast for out-of-range coordinates returned by geocoding', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response({
+      results: [{ ...locations[0], latitude: 95 }],
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    const wrapper = mount(WeatherPanel, { props: { city: '新加坡' } })
+    await flushPromises()
+
+    expect(wrapper.find('.weather-error').text()).toContain('没有找到这个城市')
+    expect(fetchMock).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
 })
