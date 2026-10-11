@@ -1,12 +1,14 @@
 import { defaultLauncherOrder, defaultPreferences, launcherItems, wallpaperChoices } from './defaults'
 import { maxWallpaperDataUrlLength } from './images'
 import { isValidCalendarDate } from './countdown'
+import { isValidCustomSearchTemplate } from './search'
 import { normalizeWebUrl } from './urls'
-import type { CountdownItem, Note, Preferences, SearchMode, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import type { CountdownItem, CustomSearchEngine, Note, Preferences, SearchMode, Shortcut, ShortcutFolder, TodoItem } from '../types'
 
 const engines = new Set(['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yahoo', '360'])
 const searchModes = new Set<SearchMode>(['html', 'photos', 'news', 'videos', 'map'])
 const transitionEffects = new Set(['slide', 'particles', 'trails'])
+const customEngineId = /^[\w-]{1,128}$/
 const palette = /^#[\da-f]{3,8}$/i
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -39,7 +41,9 @@ export function sanitizePreferences(value: unknown): Preferences {
     : ''
 
   return {
-    engine: typeof merged.engine === 'string' && engines.has(merged.engine) ? merged.engine as Preferences['engine'] : defaultPreferences.engine,
+    engine: typeof merged.engine === 'string' && (engines.has(merged.engine) || /^custom:[\w-]{1,128}$/.test(merged.engine))
+      ? merged.engine as Preferences['engine']
+      : defaultPreferences.engine,
     mode: typeof merged.mode === 'string' && searchModes.has(merged.mode as SearchMode) ? merged.mode as SearchMode : defaultPreferences.mode,
     visibleSearchModes,
     showSearchBar: typeof merged.showSearchBar === 'boolean' ? merged.showSearchBar : defaultPreferences.showSearchBar,
@@ -63,6 +67,20 @@ export function sanitizePreferences(value: unknown): Preferences {
     showNames: typeof merged.showNames === 'boolean' ? merged.showNames : defaultPreferences.showNames,
     iconRadius: boundedNumber(raw.iconRadius, defaultPreferences.iconRadius, 0, 100),
   }
+}
+
+export function sanitizeCustomSearchEngines(value: unknown): CustomSearchEngine[] {
+  if (!Array.isArray(value)) return []
+  const result = new Map<string, CustomSearchEngine>()
+  for (const candidate of value.slice(0, 20)) {
+    if (!record(candidate) || typeof candidate.id !== 'string' || !customEngineId.test(candidate.id)
+      || typeof candidate.name !== 'string' || typeof candidate.template !== 'string') continue
+    const name = candidate.name.trim().slice(0, 40)
+    const template = candidate.template.trim()
+    if (!name || !isValidCustomSearchTemplate(template) || result.has(candidate.id)) continue
+    result.set(candidate.id, { id: candidate.id, name, template })
+  }
+  return [...result.values()]
 }
 
 function uniqueRecords<T extends { id: string }>(values: unknown, parse: (value: Record<string, unknown>) => T | undefined): T[] {

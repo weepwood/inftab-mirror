@@ -2,7 +2,14 @@ import type { LauncherPanelAction } from './plugins/registry'
 
 export type SearchMode = 'html' | 'photos' | 'news' | 'videos' | 'map'
 export type EngineId = 'google' | 'baidu' | 'bing' | 'duckduckgo' | 'sogou' | 'yahoo' | '360'
+export type SearchEngineSelection = EngineId | `custom:${string}`
 export type PageTransitionEffect = 'slide' | 'particles' | 'trails'
+
+export interface CustomSearchEngine {
+  id: string
+  name: string
+  template: string
+}
 
 export interface Shortcut {
   id: string
@@ -44,7 +51,7 @@ export interface Note {
 }
 
 export interface Preferences {
-  engine: EngineId
+  engine: SearchEngineSelection
   mode: SearchMode
   visibleSearchModes: SearchMode[]
   showSearchBar: boolean

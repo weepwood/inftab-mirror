@@ -1,5 +1,5 @@
-import type { CountdownItem, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
-import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
+import type { CountdownItem, CustomSearchEngine, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
 import { maxWallpaperDataUrlLength } from './images'
 
 export interface WorkspaceBackup {
@@ -15,6 +15,7 @@ export interface WorkspaceBackup {
   notes: Note[]
   activeNoteId: string
   weatherCity: string
+  customSearchEngines?: CustomSearchEngine[]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -40,7 +41,9 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   validateArray(value.launcherOrder, '入口排序')
   validateArray(value.todos, '待办事项')
   const rawCountdowns = value.countdowns ?? []
+  const rawCustomSearchEngines = value.customSearchEngines ?? []
   validateArray(rawCountdowns, '纪念日')
+  validateArray(rawCustomSearchEngines, '自定义搜索引擎')
   validateArray(value.notes, '笔记')
   const rawPreferences = value.preferences
   const requiredPreferenceTypes: Record<string, (item: unknown) => boolean> = {
@@ -85,12 +88,16 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   const folders = sanitizeFolders(rawFolders, shortcuts)
   const todos = sanitizeTodos(value.todos)
   const countdowns = sanitizeCountdowns(rawCountdowns)
+  const customSearchEngines = sanitizeCustomSearchEngines(rawCustomSearchEngines)
   const notes = sanitizeNotes(value.notes)
-  if (shortcuts.length !== value.shortcuts.length || folders.length !== rawFolders.length || todos.length !== value.todos.length || countdowns.length !== rawCountdowns.length || notes.length !== value.notes.length) {
+  if (shortcuts.length !== value.shortcuts.length || folders.length !== rawFolders.length || todos.length !== value.todos.length || countdowns.length !== rawCountdowns.length || notes.length !== value.notes.length || customSearchEngines.length !== rawCustomSearchEngines.length) {
     throw new Error('备份中包含重复或无法识别的数据，请检查文件后重试。')
   }
   if (!['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yahoo', '360'].includes(String(value.preferences.engine))) {
-    throw new Error('备份中的搜索引擎无法识别。')
+    const selectedCustomEngineId = typeof value.preferences.engine === 'string' && value.preferences.engine.startsWith('custom:')
+      ? value.preferences.engine.slice('custom:'.length)
+      : ''
+    if (!customSearchEngines.some((engine) => engine.id === selectedCustomEngineId)) throw new Error('备份中的搜索引擎无法识别。')
   }
   if (!['html', 'photos', 'news', 'videos', 'map'].includes(String(value.preferences.mode))) {
     throw new Error('备份中的搜索类型无法识别。')
@@ -112,6 +119,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     notes,
     activeNoteId: sanitizeActiveNoteId(typeof value.activeNoteId === 'string' ? value.activeNoteId.slice(0, 128) : '', notes),
     weatherCity: sanitizeWeatherCity(value.weatherCity),
+    customSearchEngines,
   }
 }
 

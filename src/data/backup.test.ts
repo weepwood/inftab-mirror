@@ -62,6 +62,22 @@ describe('workspace backups', () => {
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.showClock).toBe(true)
   })
 
+  it('preserves custom engines and requires a selected custom engine to be included', () => {
+    const customSearchEngines = [{ id: 'wiki', name: 'Wiki', template: 'https://example.com/?q={query}' }]
+    const parsed = parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, engine: 'custom:wiki' },
+      customSearchEngines,
+    }))
+    expect(parsed.customSearchEngines).toEqual(customSearchEngines)
+    expect(() => parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, engine: 'custom:missing' },
+      customSearchEngines,
+    }))).toThrow(/搜索引擎/)
+    expect(() => parseWorkspaceBackup(backup({
+      customSearchEngines: [{ id: 'bad', name: 'Unsafe', template: 'javascript:{query}' }],
+    }))).toThrow(/重复或无法识别/)
+  })
+
   it('preserves a compressed local wallpaper when restoring a backup', () => {
     const localWallpaper = 'data:image/webp;base64,YWJj'
     expect(parseWorkspaceBackup(backup({

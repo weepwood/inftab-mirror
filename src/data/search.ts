@@ -1,4 +1,4 @@
-import type { EngineId, SearchMode } from '../types'
+import type { CustomSearchEngine, EngineId, SearchEngineSelection, SearchMode } from '../types'
 
 const templates: Record<EngineId, Record<SearchMode, string>> = {
   baidu: {
@@ -52,8 +52,30 @@ const templates: Record<EngineId, Record<SearchMode, string>> = {
   },
 }
 
-export function buildSearchUrl(engine: EngineId, mode: SearchMode, value: string): string {
+export function isValidCustomSearchTemplate(template: string) {
+  if (typeof template !== 'string' || template.length > 500 || !template.includes('{query}')) return false
+  try {
+    const destination = new URL(template.replaceAll('{query}', 'search-test'))
+    const templateOrigin = new URL(template.replaceAll('{query}', ''))
+    return destination.protocol === 'https:'
+      && templateOrigin.protocol === 'https:'
+      && destination.origin === templateOrigin.origin
+      && !destination.username && !destination.password
+      && !templateOrigin.username && !templateOrigin.password
+  } catch {
+    return false
+  }
+}
+
+export function buildSearchUrl(engine: SearchEngineSelection, mode: SearchMode, value: string, customEngines: CustomSearchEngine[] = []): string {
   const query = value.trim()
   if (!query) return ''
-  return templates[engine][mode].replace('{query}', encodeURIComponent(query))
+  const encodedQuery = encodeURIComponent(query)
+  if (engine.startsWith('custom:')) {
+    const customEngine = customEngines.find((item) => `custom:${item.id}` === engine)
+    return customEngine && isValidCustomSearchTemplate(customEngine.template)
+      ? customEngine.template.replaceAll('{query}', encodedQuery)
+      : ''
+  }
+  return templates[engine as EngineId][mode].replace('{query}', encodedQuery)
 }

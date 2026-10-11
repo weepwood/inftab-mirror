@@ -5,7 +5,7 @@ import SettingsPanel from '../components/SettingsPanel.vue'
 import TodoPanel from '../components/TodoPanel.vue'
 import WeatherPanel from '../components/WeatherPanel.vue'
 import type { WorkspaceBackup } from '../data/backup'
-import type { CountdownItem, Note, Preferences, TodoItem } from '../types'
+import type { CountdownItem, CustomSearchEngine, Note, Preferences, TodoItem } from '../types'
 
 export const launcherPanelRoutes = {
   weather: 'weather',
@@ -30,6 +30,7 @@ export interface PanelPluginContext {
   notes: Note[]
   activeNoteId: string
   weatherCity: string
+  customSearchEngines: CustomSearchEngine[]
   updatePreferences: (update: Partial<Preferences>) => void
   resetPreferences: () => void
   openShortcut: () => void
@@ -49,6 +50,8 @@ export interface PanelPluginContext {
   updateNote: (id: string, field: 'title' | 'body', value: string) => void
   removeNote: (id: string) => void
   updateWeatherCity: (city: string) => void
+  addCustomSearchEngine: (name: string, template: string) => void
+  removeCustomSearchEngine: (id: string) => void
 }
 
 export interface PanelPlugin {
@@ -64,7 +67,7 @@ export const panelPlugins = {
     title: '设置',
     description: '按自己的习惯调整新标签页',
     component: SettingsPanel,
-    props: (context) => ({ preferences: context.preferences, exportError: context.backupExportError }),
+    props: (context) => ({ preferences: context.preferences, exportError: context.backupExportError, customEngines: context.customSearchEngines }),
     listeners: (context) => ({
       update: context.updatePreferences,
       reset: context.resetPreferences,
@@ -72,6 +75,8 @@ export const panelPlugins = {
       addFolder: context.openFolder,
       exportBackup: context.exportBackup,
       importBackup: context.importBackup,
+      addSearchEngine: context.addCustomSearchEngine,
+      removeSearchEngine: context.removeCustomSearchEngine,
     }),
   },
   todos: {

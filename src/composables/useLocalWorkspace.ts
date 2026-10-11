@@ -3,8 +3,9 @@ import { toRaw } from 'vue'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts } from '../data/defaults'
 import { mergeById, type WorkspaceBackup } from '../data/backup'
 import { isValidCalendarDate } from '../data/countdown'
-import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
-import type { CountdownItem, CountdownRecurrence, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
+import { isValidCustomSearchTemplate } from '../data/search'
+import type { CountdownItem, CountdownRecurrence, CustomSearchEngine, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
 
 export function useLocalWorkspace() {
   const preferences = useStoredState<Preferences>('inftab.preferences.v1', defaultPreferences, sanitizePreferences)
@@ -14,6 +15,7 @@ export function useLocalWorkspace() {
   const todos = useStoredState<TodoItem[]>('inftab.todos.v1', [], sanitizeTodos)
   const countdowns = useStoredState<CountdownItem[]>('inftab.countdowns.v1', [], sanitizeCountdowns)
   const notes = useStoredState<Note[]>('inftab.notes.v1', [], sanitizeNotes)
+  const customSearchEngines = useStoredState<CustomSearchEngine[]>('inftab.custom-search-engines.v1', [], sanitizeCustomSearchEngines)
   const activeNoteId = useStoredState<string>('inftab.active-note.v1', '', (value) => sanitizeActiveNoteId(value, notes.value))
   let previousWeatherCity = '上海'
   try {
@@ -22,6 +24,11 @@ export function useLocalWorkspace() {
     // Fall back to the default city when browser storage is unavailable.
   }
   const weatherCity = useStoredState<string>('inftab.weather-city.v1', previousWeatherCity, sanitizeWeatherCity)
+
+  if (preferences.value.engine.startsWith('custom:')
+    && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
+    preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
+  }
 
   const defaultShortcutById = new Map(defaultShortcuts.map((shortcut) => [shortcut.id, shortcut]))
   const outdatedDefaultIcons: Record<string, string> = {
@@ -139,6 +146,22 @@ export function useLocalWorkspace() {
     preferences.value = sanitizePreferences({ ...preferences.value, ...update })
   }
 
+  function addCustomSearchEngine(name: string, template: string) {
+    const cleanName = name.trim().slice(0, 40)
+    const cleanTemplate = template.trim()
+    if (!cleanName || !isValidCustomSearchTemplate(cleanTemplate) || customSearchEngines.value.length >= 20) return
+    const engine: CustomSearchEngine = { id: crypto.randomUUID(), name: cleanName, template: cleanTemplate }
+    customSearchEngines.value = [...customSearchEngines.value, engine]
+    preferences.value = sanitizePreferences({ ...preferences.value, engine: 'custom:' + engine.id })
+  }
+
+  function removeCustomSearchEngine(id: string) {
+    customSearchEngines.value = customSearchEngines.value.filter((engine) => engine.id !== id)
+    if (preferences.value.engine === 'custom:' + id) {
+      preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
+    }
+  }
+
   function resetPreferences() {
     preferences.value = sanitizePreferences(defaultPreferences)
   }
@@ -155,6 +178,7 @@ export function useLocalWorkspace() {
       todos: structuredClone(toRaw(todos.value)),
       countdowns: structuredClone(toRaw(countdowns.value)),
       notes: structuredClone(toRaw(notes.value)),
+      customSearchEngines: structuredClone(toRaw(customSearchEngines.value)),
       activeNoteId: activeNoteId.value,
       weatherCity: weatherCity.value,
     }
@@ -166,8 +190,14 @@ export function useLocalWorkspace() {
     const importedTodos = sanitizeTodos(backup.todos)
     const importedCountdowns = sanitizeCountdowns(backup.countdowns)
     const importedNotes = sanitizeNotes(backup.notes)
+    const importedCustomSearchEngines = sanitizeCustomSearchEngines(backup.customSearchEngines ?? [])
     if (mode === 'replace') {
+      customSearchEngines.value = importedCustomSearchEngines
       preferences.value = sanitizePreferences(backup.preferences)
+      if (preferences.value.engine.startsWith('custom:')
+        && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
+        preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
+      }
       shortcuts.value = importedShortcuts
       folders.value = importedFolders
       launcherOrder.value = sanitizeLauncherOrder(backup.launcherOrder, importedShortcuts, importedFolders)
@@ -178,7 +208,12 @@ export function useLocalWorkspace() {
       weatherCity.value = sanitizeWeatherCity(backup.weatherCity)
       return
     }
+    customSearchEngines.value = sanitizeCustomSearchEngines(mergeById(customSearchEngines.value, importedCustomSearchEngines))
     preferences.value = sanitizePreferences({ ...preferences.value, ...backup.preferences })
+    if (preferences.value.engine.startsWith('custom:')
+      && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
+      preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
+    }
     shortcuts.value = sanitizeShortcuts(mergeById(shortcuts.value, importedShortcuts))
     folders.value = sanitizeFolders(mergeById(folders.value, importedFolders), shortcuts.value)
     launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...backup.launcherOrder], shortcuts.value, folders.value)
@@ -198,6 +233,7 @@ export function useLocalWorkspace() {
     todos,
     countdowns,
     notes,
+    customSearchEngines,
     activeNoteId,
     weatherCity,
     saveShortcut,
@@ -217,6 +253,8 @@ export function useLocalWorkspace() {
     updateNote,
     removeNote,
     updatePreferences,
+    addCustomSearchEngine,
+    removeCustomSearchEngine,
     resetPreferences,
     createBackup,
     restoreBackup,

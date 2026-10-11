@@ -3,9 +3,10 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
 import { compressImageBlob, maxImageUploadBytes, maxWallpaperDataUrlLength } from '../data/images'
-import type { PageTransitionEffect, Preferences, SearchMode } from '../types'
+import { isValidCustomSearchTemplate } from '../data/search'
+import type { CustomSearchEngine, PageTransitionEffect, Preferences, SearchMode } from '../types'
 
-const props = defineProps<{ preferences: Preferences; exportError?: string }>()
+const props = withDefaults(defineProps<{ preferences: Preferences; exportError?: string; customEngines?: CustomSearchEngine[] }>(), { customEngines: () => [] })
 const transitionEffects: { id: PageTransitionEffect; label: string }[] = [
   { id: 'particles', label: '微粒消散' },
   { id: 'trails', label: '光迹拖尾' },
@@ -18,6 +19,8 @@ const emit = defineEmits<{
   addFolder: []
   exportBackup: []
   importBackup: [backup: WorkspaceBackup, mode: 'merge' | 'replace']
+  addSearchEngine: [name: string, template: string]
+  removeSearchEngine: [id: string]
 }>()
 const fileInput = ref<HTMLInputElement>()
 const wallpaperFileInput = ref<HTMLInputElement>()
@@ -27,6 +30,9 @@ const backupDialog = ref<HTMLElement>()
 const pendingBackup = ref<WorkspaceBackup>()
 const importError = ref('')
 const hasLocalWallpaper = computed(() => props.preferences.customWallpaper.startsWith('data:image/'))
+const searchEngineName = ref('')
+const searchEngineTemplate = ref('')
+const searchEngineError = ref('')
 
 watch(pendingBackup, async (backup, previous) => {
   if (backup) {
@@ -54,6 +60,27 @@ function toggleSearchMode(mode: SearchMode, enabled: boolean) {
 
 function setTransitionEffect(effect: PageTransitionEffect) {
   update('pageTransitionEffect', effect)
+}
+
+function addSearchEngine() {
+  const name = searchEngineName.value.trim()
+  const template = searchEngineTemplate.value.trim()
+  if (!name) {
+    searchEngineError.value = '请填写搜索引擎名称。'
+    return
+  }
+  if (!isValidCustomSearchTemplate(template)) {
+    searchEngineError.value = '请输入 HTTPS 搜索网址，并在查询位置使用 {query}。'
+    return
+  }
+  if (props.customEngines.length >= 20) {
+    searchEngineError.value = '最多可以添加 20 个自定义搜索引擎。'
+    return
+  }
+  emit('addSearchEngine', name, template)
+  searchEngineName.value = ''
+  searchEngineTemplate.value = ''
+  searchEngineError.value = ''
 }
 
 async function loadWallpaperFile(event: Event) {
@@ -170,6 +197,17 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       <label class="range-label"><span>搜索框高度</span><strong>{{ preferences.searchHeight }} px</strong><input type="range" min="36" max="100" step="2" :value="preferences.searchHeight" @input="update('searchHeight', Number(($event.target as HTMLInputElement).value))" /></label>
       <p class="settings-subheading">显示搜索类型</p>
       <label v-for="item in searchModes" :key="item.id" class="toggle-row"><span>{{ item.id }}</span><input type="checkbox" :checked="preferences.visibleSearchModes.includes(item.id)" @change="toggleSearchMode(item.id, ($event.target as HTMLInputElement).checked)" /></label>
+      <p class="settings-subheading">自定义搜索引擎（最多 20 个）</p>
+      <form class="custom-engine-form" @submit.prevent="addSearchEngine">
+        <label class="field-label">名称<input v-model="searchEngineName" maxlength="40" placeholder="例如：维基百科" @input="searchEngineError = ''" /></label>
+        <label class="field-label">搜索网址模板<input v-model="searchEngineTemplate" maxlength="500" placeholder="https://example.com/search?q={query}" @input="searchEngineError = ''" /></label>
+        <p class="wallpaper-note">必须使用 HTTPS，并用 {query} 标记搜索词的位置。</p>
+        <p v-if="searchEngineError" class="backup-error" role="alert">{{ searchEngineError }}</p>
+        <button class="button-secondary" type="submit" :disabled="customEngines.length >= 20">添加搜索引擎</button>
+      </form>
+      <ul v-if="customEngines.length" class="custom-engine-list" aria-label="自定义搜索引擎">
+        <li v-for="engine in customEngines" :key="engine.id"><span>{{ engine.name }}</span><button class="text-button" type="button" :aria-label="'删除搜索引擎' + engine.name" @click="emit('removeSearchEngine', engine.id)">删除</button></li>
+      </ul>
     </section>
 
     <section class="settings-section">
@@ -205,7 +243,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       </div>
       <p v-if="importError" class="backup-error" role="alert">{{ importError }}</p>
       <p v-if="exportError" class="backup-error" role="alert">{{ exportError }}</p>
-      <p class="backup-description">备份包含快捷入口、待办、笔记、天气城市和页面设置。</p>
+      <p class="backup-description">备份包含快捷入口、自定义搜索引擎、待办、笔记、天气城市和页面设置。</p>
     </section>
     <p class="local-hint">设置保存在这台设备的浏览器中。</p>
 
@@ -219,6 +257,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
           <li>{{ pendingBackup.todos.length }} 条待办</li>
           <li>{{ pendingBackup.countdowns.length }} 个纪念日</li>
           <li>{{ pendingBackup.notes.length }} 条笔记</li>
+          <li>{{ pendingBackup.customSearchEngines?.length ?? 0 }} 个自定义搜索引擎</li>
         </ul>
         <p class="backup-warning">覆盖会替换当前浏览器中的数据；合并会保留现有项目并按 ID 更新重合内容。</p>
         <footer>

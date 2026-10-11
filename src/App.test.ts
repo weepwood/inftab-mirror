@@ -272,6 +272,28 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.find('.search-tabs').exists()).toBe(false)
   })
 
+  it('adds, selects, persists, and removes a custom search engine from settings', async () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, visibleSearchModes: ['html', 'news'] }))
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+    await wrapper.get('input[placeholder="例如：维基百科"]').setValue('Wiki')
+    await wrapper.get('input[placeholder="https://example.com/search?q={query}"]').setValue('https://example.com/search?q={query}')
+    await wrapper.get('.custom-engine-form').trigger('submit')
+    await flushLocalStorageWrites()
+
+    const savedEngines = JSON.parse(localStorage.getItem('inftab.custom-search-engines.v1') ?? '[]')
+    expect(savedEngines).toHaveLength(1)
+    expect(JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').engine).toBe('custom:' + savedEngines[0].id)
+    expect(wrapper.get('.engine-initial').text()).toBe('W')
+    expect(wrapper.find('.search-tabs').exists()).toBe(false)
+
+    await wrapper.get('[aria-label="删除搜索引擎Wiki"]').trigger('click')
+    await flushLocalStorageWrites()
+    expect(JSON.parse(localStorage.getItem('inftab.custom-search-engines.v1') ?? '[]')).toEqual([])
+    expect(JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').engine).toBe('baidu')
+    expect(wrapper.get('.engine-picker').attributes('aria-label')).toContain('Baidu')
+  })
+
   it('allows the homepage clock widget to be hidden from settings', async () => {
     wrapper = mount(App, { attachTo: document.body })
     expect(wrapper.find('.home-clock').exists()).toBe(true)

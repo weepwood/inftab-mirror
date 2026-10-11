@@ -2,25 +2,30 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ChevronDown, Search } from '@lucide/vue'
 import { engines, searchModes } from '../data/defaults'
-import type { EngineId, SearchMode } from '../types'
+import type { CustomSearchEngine, SearchEngineSelection, SearchMode } from '../types'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: string
-  engine: EngineId
+  engine: SearchEngineSelection
   mode: SearchMode
   visibleModes: SearchMode[]
-}>()
+  customEngines?: CustomSearchEngine[]
+}>(), { customEngines: () => [] })
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
-  'update:engine': [value: EngineId]
+  'update:engine': [value: SearchEngineSelection]
   'update:mode': [value: SearchMode]
   search: []
 }>()
 
 const showEngines = ref(false)
-const selectedEngine = computed(() => engines.find((item) => item.id === props.engine) ?? engines[0]!)
-const activeModes = computed(() => searchModes.filter((item) => props.visibleModes.includes(item.id)))
+const availableEngines = computed(() => [
+  ...engines,
+  ...props.customEngines.map((item) => ({ id: `custom:${item.id}` as const, label: item.name, mark: item.name.slice(0, 1) })),
+])
+const selectedEngine = computed(() => availableEngines.value.find((item) => item.id === props.engine) ?? availableEngines.value[0]!)
+const activeModes = computed(() => props.engine.startsWith('custom:') ? [] : searchModes.filter((item) => props.visibleModes.includes(item.id)))
 const baseUrl = import.meta.env.BASE_URL
 const searchBox = ref<HTMLElement>()
 const engineMenu = ref<HTMLElement>()
@@ -48,7 +53,7 @@ function engineOptions() {
 }
 
 function focusSelectedEngine() {
-  const index = engines.findIndex((item) => item.id === props.engine)
+  const index = availableEngines.value.findIndex((item) => item.id === props.engine)
   engineOptions()[Math.max(0, index)]?.focus()
 }
 
@@ -141,7 +146,8 @@ defineExpose({ focusSearch })
         :aria-expanded="showEngines"
         @click="toggleEngines"
       >
-        <img class="engine-logo" :src="`${baseUrl}search-engines/${selectedEngine.logo}`" :alt="selectedEngine.label" />
+        <img v-if="'logo' in selectedEngine" class="engine-logo" :src="`${baseUrl}search-engines/${selectedEngine.logo}`" :alt="selectedEngine.label" />
+        <span v-else class="engine-initial" aria-hidden="true">{{ selectedEngine.mark }}</span>
         <ChevronDown :size="14" />
       </button>
       <input
@@ -159,7 +165,7 @@ defineExpose({ focusSearch })
       <Transition name="engine-menu">
         <div v-if="showEngines" ref="engineMenu" class="engine-menu" role="listbox" aria-label="选择搜索引擎" :style="{ top: `${engineMenuPosition.top}px`, left: `${engineMenuPosition.left}px` }">
           <button
-            v-for="item in engines"
+            v-for="item in availableEngines"
             :key="item.id"
             type="button"
             role="option"
@@ -167,7 +173,8 @@ defineExpose({ focusSearch })
             @click="emit('update:engine', item.id); closeEngineMenu(true)"
             @keydown="handleEngineOptionKeydown"
           >
-            <img class="engine-logo" :src="`${baseUrl}search-engines/${item.logo}`" alt="" />
+            <img v-if="'logo' in item" class="engine-logo" :src="`${baseUrl}search-engines/${item.logo}`" alt="" />
+            <span v-else class="engine-initial" aria-hidden="true">{{ item.mark }}</span>
             {{ item.label }}
             <span v-if="engine === item.id" class="engine-check">✓</span>
           </button>

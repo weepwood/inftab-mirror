@@ -45,3 +45,29 @@ describe('SettingsPanel local wallpaper upload', () => {
     expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({ customWallpaper: '' })
   })
 })
+
+describe('SettingsPanel custom search engines', () => {
+  it('validates an HTTPS query template and emits a custom search engine', async () => {
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences }, customEngines: [] } })
+    await wrapper.get('input[placeholder=\"例如：维基百科\"]').setValue('Wiki')
+    await wrapper.get('input[placeholder=\"https://example.com/search?q={query}\"]').setValue('javascript:{query}')
+    await wrapper.get('button[type=\"submit\"]').trigger('submit')
+    expect(wrapper.get('[role=\"alert\"]').text()).toContain('HTTPS')
+    expect(wrapper.emitted('addSearchEngine')).toBeUndefined()
+
+    await wrapper.get('input[placeholder=\"https://example.com/search?q={query}\"]').setValue('https://example.com/search?q={query}')
+    await wrapper.get('button[type=\"submit\"]').trigger('submit')
+    expect(wrapper.emitted('addSearchEngine')?.at(-1)).toEqual(['Wiki', 'https://example.com/search?q={query}'])
+  })
+
+  it('emits removal for a listed custom search engine', async () => {
+    wrapper = mount(SettingsPanel, {
+      props: {
+        preferences: { ...defaultPreferences },
+        customEngines: [{ id: 'wiki', name: 'Wiki', template: 'https://example.com/?q={query}' }],
+      },
+    })
+    await wrapper.get('[aria-label=\"删除搜索引擎Wiki\"]').trigger('click')
+    expect(wrapper.emitted('removeSearchEngine')?.at(-1)).toEqual(['wiki'])
+  })
+})

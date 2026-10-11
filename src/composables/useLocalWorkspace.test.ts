@@ -28,3 +28,47 @@ describe('useLocalWorkspace default shortcut migration', () => {
     expect(workspace.shortcuts.value.find((item) => item.id === 'jd')?.icon).toBe('data:image/png;base64,custom')
   })
 })
+
+describe('useLocalWorkspace custom search engines', () => {
+  it('adds and selects a validated engine, then falls back when it is removed', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+
+    workspace.addCustomSearchEngine('Wiki', 'https://example.com/?q={query}')
+    expect(workspace.customSearchEngines.value).toHaveLength(1)
+    const engine = workspace.customSearchEngines.value[0]!
+    expect(workspace.preferences.value.engine).toBe('custom:' + engine.id)
+    expect(engine.template).toBe('https://example.com/?q={query}')
+
+    workspace.removeCustomSearchEngine(engine.id)
+    expect(workspace.customSearchEngines.value).toEqual([])
+    expect(workspace.preferences.value.engine).toBe('baidu')
+  })
+
+  it('includes custom engines in backups and merges or replaces them with preferences', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    workspace.addCustomSearchEngine('Existing', 'https://existing.example/?q={query}')
+    const existing = workspace.customSearchEngines.value[0]!
+    const backup = workspace.createBackup()
+    backup.customSearchEngines = [
+      { id: 'imported', name: 'Imported', template: 'https://imported.example/?q={query}' },
+    ]
+    backup.preferences.engine = 'custom:imported'
+
+    workspace.restoreBackup(backup, 'merge')
+    expect(workspace.customSearchEngines.value.map((engine) => engine.id)).toEqual([existing.id, 'imported'])
+    expect(workspace.preferences.value.engine).toBe('custom:imported')
+
+    workspace.restoreBackup(backup, 'replace')
+    expect(workspace.customSearchEngines.value.map((engine) => engine.id)).toEqual(['imported'])
+    expect(workspace.preferences.value.engine).toBe('custom:imported')
+  })
+
+  it('repairs a stored preference that points to a missing custom engine', () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ engine: 'custom:missing' }))
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    expect(workspace.preferences.value.engine).toBe('baidu')
+  })
+})

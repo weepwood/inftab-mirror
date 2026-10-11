@@ -3,6 +3,7 @@ import { defaultPreferences } from './defaults'
 import {
   sanitizeActiveNoteId,
   sanitizeCountdowns,
+  sanitizeCustomSearchEngines,
   sanitizeFolders,
   sanitizeLauncherOrder,
   sanitizeNotes,
@@ -110,5 +111,14 @@ describe('local state sanitization', () => {
       { id: 'birthday', title: 'Duplicate', date: '2025-05-01', recurrence: 'once' },
       { id: 'unsupported', title: 'Unsupported', date: '2025-05-01', recurrence: 'monthly' },
     ])).toEqual([{ id: 'birthday', title: 'Birthday', date: '2000-02-29', recurrence: 'yearly' }])
+  })
+
+  it('keeps custom search engines safe, bounded, and uniquely identified', () => {
+    expect(sanitizeCustomSearchEngines([
+      { id: 'wiki', name: ' Wiki ', template: 'https://example.com/?q={query}' },
+      { id: 'wiki', name: 'Duplicate', template: 'https://duplicate.example/?q={query}' },
+      { id: 'unsafe', name: 'Unsafe', template: 'javascript:{query}' },
+      { id: '../bad', name: 'Bad ID', template: 'https://example.com/?q={query}' },
+    ])).toEqual([{ id: 'wiki', name: 'Wiki', template: 'https://example.com/?q={query}' }])
   })
 })

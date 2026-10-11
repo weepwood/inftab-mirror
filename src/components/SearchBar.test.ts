@@ -56,4 +56,26 @@ describe('SearchBar keyboard navigation', () => {
     expect(document.querySelector('.engine-menu')).toBeNull()
     expect(document.activeElement).toBe(picker.element)
   })
+
+  it('offers custom engines and hides unsupported category tabs for them', async () => {
+    wrapper = mount(SearchBar, {
+      attachTo: document.body,
+      props: {
+        modelValue: '',
+        engine: 'custom:wiki',
+        mode: 'html',
+        visibleModes: ['html', 'news'],
+        customEngines: [{ id: 'wiki', name: 'Wiki', template: 'https://example.com/?q={query}' }],
+      },
+    })
+    expect(wrapper.findAll('.search-tab')).toHaveLength(0)
+    expect(wrapper.find('.engine-initial').text()).toBe('W')
+
+    await wrapper.get('.engine-picker').trigger('click')
+    const options = [...document.body.querySelectorAll<HTMLButtonElement>('.engine-menu [role=\"option\"]')]
+    expect(options.at(-1)?.textContent).toContain('Wiki')
+    options.at(-1)?.click()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('update:engine')?.at(-1)).toEqual(['custom:wiki'])
+  })
 })

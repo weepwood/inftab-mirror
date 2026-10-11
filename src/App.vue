@@ -28,6 +28,7 @@ const {
   notes,
   activeNoteId,
   weatherCity,
+  customSearchEngines,
   saveShortcut: saveShortcutData,
   removeShortcut: removeShortcutData,
   saveFolder: saveFolderData,
@@ -45,6 +46,8 @@ const {
   updateNote,
   removeNote,
   updatePreferences,
+  addCustomSearchEngine,
+  removeCustomSearchEngine,
   resetPreferences,
   createBackup,
   restoreBackup,
@@ -115,6 +118,7 @@ const panelContext = computed<PanelPluginContext>(() => ({
   notes: notes.value,
   activeNoteId: activeNoteId.value,
   weatherCity: weatherCity.value,
+  customSearchEngines: customSearchEngines.value,
   updatePreferences,
   resetPreferences,
   openShortcut: () => openShortcutDialog(),
@@ -134,6 +138,8 @@ const panelContext = computed<PanelPluginContext>(() => ({
   updateNote,
   removeNote,
   updateWeatherCity: (city) => { weatherCity.value = city },
+  addCustomSearchEngine,
+  removeCustomSearchEngine,
 }))
 const activePanelPlugin = computed(() => activePanel.value ? panelPlugins[activePanel.value] : undefined)
 const activePanelComponent = computed<Component | undefined>(() => activePanelPlugin.value?.component)
@@ -216,7 +222,7 @@ function handlePanelKeydown(event: KeyboardEvent) {
 }
 
 function submitSearch() {
-  const destination = buildSearchUrl(preferences.value.engine, preferences.value.mode, query.value)
+  const destination = buildSearchUrl(preferences.value.engine, preferences.value.mode, query.value, customSearchEngines.value)
   if (destination) window.location.assign(destination)
 }
 
@@ -467,6 +473,7 @@ onBeforeUnmount(() => {
         v-model:engine="preferences.engine"
         v-model:mode="preferences.mode"
         :visible-modes="preferences.visibleSearchModes"
+        :custom-engines="customSearchEngines"
         @search="submitSearch"
       />
       <ShortcutGrid

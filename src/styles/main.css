@@ -45,6 +45,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .search-box { position: relative; display: flex; align-items: center; height: min(var(--search-height, 54px), 100px); border: 1px solid rgba(255, 255, 255, .8); border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(15, 22, 26, .12); color: #333; }
 .engine-picker { flex: 0 0 58px; height: 100%; display: flex; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 11px 0 0 11px; background: #fff; color: #b5b5b5; cursor: pointer; }
 .engine-logo { width: 25px; height: 25px; flex: 0 0 auto; object-fit: contain; }
+.engine-initial { display: grid; width: 25px; height: 25px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #eef1f5; color: #536273; font-size: 13px; font-weight: 700; }
 .engine-mark { min-width: 21px; font-weight: 700; font-size: 19px; text-align: center; }
 .search-box input[type='search'] { width: 100%; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: #272727; font-size: 16px; }
 .search-box input::placeholder { color: #a4a4a4; }
@@ -138,6 +139,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .section-heading h3 { margin: 0; color: #272b30; font-size: 14px; font-weight: 650; }
 .section-heading p { margin: 4px 0 0; color: #969ba2; font-size: 12px; }
 .settings-subheading { margin: 17px 0 5px; color: #8b9199; font-size: 11px; }
+.custom-engine-form { display: grid; gap: 9px; margin-top: 8px; }
+.custom-engine-form .wallpaper-note { margin: 0; }
+.custom-engine-list { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
+.custom-engine-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; color: #555d66; font-size: 13px; }
 .text-button { border: 0; padding: 4px 0; background: transparent; color: #6b86bc; font-size: 12px; cursor: pointer; }
 .wallpaper-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-bottom: 16px; }
 .wallpaper-note { margin: -8px 0 13px; color: #a0a5ac; font-size: 10px; }
