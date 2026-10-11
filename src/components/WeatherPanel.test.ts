@@ -109,4 +109,29 @@ describe('WeatherPanel request ordering', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
     wrapper.unmount()
   })
+
+  it('refreshes when the saved city changes externally without repeating its own selection', async () => {
+    const tokyo = { id: 3, name: '东京', admin1: '东京', country: '日本', latitude: 35.7, longitude: 139.7 }
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response({ results: locations }))
+      .mockResolvedValueOnce(response(forecast(8)))
+      .mockResolvedValueOnce(response({ results: [tokyo] }))
+      .mockResolvedValueOnce(response(forecast(17)))
+    vi.stubGlobal('fetch', fetchMock)
+    const wrapper = mount(WeatherPanel, { props: { city: '新加坡' } })
+    await flushPromises()
+
+    await wrapper.get('.weather-locations button').trigger('click')
+    await flushPromises()
+    await wrapper.setProps({ city: '新加坡东' })
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    await wrapper.setProps({ city: '东京' })
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(wrapper.find('.weather-place h3').text()).toBe('东京')
+    expect(wrapper.find('.weather-current strong').text()).toBe('17°')
+    wrapper.unmount()
+  })
 })

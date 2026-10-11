@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Droplets, RefreshCw, Search, Snowflake, Sun, Wind } from '@lucide/vue'
 import { isValidCalendarDate } from '../data/countdown'
 
@@ -39,6 +39,7 @@ const loading = ref(false)
 const error = ref('')
 let requestVersion = 0
 let activeRequest: AbortController | undefined
+let internallySelectedCity = ''
 
 const today = computed(() => forecast.value?.daily.time[0])
 
@@ -71,6 +72,7 @@ function WeatherIcon({ code }: { code: number }) {
 async function loadForecast(location: LocationResult) {
   const version = beginRequest()
   loading.value = true
+  query.value = location.name
   selectedLocation.value = location
   try {
     const params = new URLSearchParams({
@@ -88,7 +90,10 @@ async function loadForecast(location: LocationResult) {
     if (version !== requestVersion) return
     forecast.value = data
     locations.value = []
-    emit('update:city', location.name)
+    if (props.city !== location.name) {
+      internallySelectedCity = location.name
+      emit('update:city', location.name)
+    }
   } catch (cause) {
     if (version === requestVersion && !isAbortError(cause)) {
       forecast.value = undefined
@@ -98,6 +103,16 @@ async function loadForecast(location: LocationResult) {
     if (version === requestVersion) loading.value = false
   }
 }
+
+watch(() => props.city, (city) => {
+  if (city === internallySelectedCity) {
+    internallySelectedCity = ''
+    return
+  }
+  internallySelectedCity = ''
+  query.value = city || '上海'
+  void searchCity()
+})
 
 async function searchCity() {
   const name = query.value.trim()
