@@ -20,6 +20,11 @@ describe('normalizeWebUrl', () => {
     expect(normalizeWebUrl('https://[broken')).toBeUndefined()
   })
 
+  it('rejects URLs that embed usernames or passwords', () => {
+    expect(normalizeWebUrl('https://alice:secret@example.com/path')).toBeUndefined()
+    expect(normalizeWebUrl('http://alice@example.com/')).toBeUndefined()
+  })
+
   it('rejects empty and overlong values', () => {
     expect(normalizeWebUrl('  ')).toBeUndefined()
     expect(normalizeWebUrl(`https://example.com/${'a'.repeat(2048)}`)).toBeUndefined()

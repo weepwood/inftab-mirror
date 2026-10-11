@@ -41,6 +41,7 @@ describe('local state sanitization', () => {
     const shortcuts = sanitizeShortcuts([
       { id: 'safe', title: ' Safe ', url: 'https://example.com', color: '#abc', mark: 'S' },
       { id: 'unsafe', title: 'Run', url: 'javascript:alert(1)', color: '#abc', mark: '!' },
+      { id: 'credentialed', title: 'Trusted', url: 'https://trusted.example@evil.example/', color: '#abc', mark: 'T' },
       { id: 'safe', title: 'Duplicate', url: 'https://other.example', color: '#abc', mark: 'D' },
       null,
     ])

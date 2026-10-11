@@ -8,7 +8,7 @@ export function normalizeWebUrl(value: unknown): string | undefined {
   const candidate = /^https?:\/\//i.test(input) ? input : `https://${input}`
   try {
     const url = new URL(candidate)
-    if ((url.protocol !== 'https:' && url.protocol !== 'http:') || !url.hostname) return undefined
+    if ((url.protocol !== 'https:' && url.protocol !== 'http:') || !url.hostname || url.username || url.password) return undefined
     return url.href
   } catch {
     return undefined

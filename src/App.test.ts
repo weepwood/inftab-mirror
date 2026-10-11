@@ -301,6 +301,11 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.shortcut-dialog [role="alert"]').text()).toContain('HTTP 或 HTTPS')
     expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]').some((item: { title: string }) => item.title === 'Example')).toBe(false)
 
+    await wrapper.get('input[placeholder="https://example.com"]').setValue('https://example.com@evil.example/')
+    await wrapper.get('.shortcut-dialog').trigger('submit')
+    expect(wrapper.get('.shortcut-dialog [role="alert"]').text()).toContain('有效的 HTTP 或 HTTPS 网址')
+    expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]').some((item: { title: string }) => item.title === 'Example')).toBe(false)
+
     await wrapper.get('input[placeholder="https://example.com"]').setValue('example.com')
     await wrapper.get('.shortcut-dialog').trigger('submit')
     await flushLocalStorageWrites()

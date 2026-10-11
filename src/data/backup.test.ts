@@ -41,6 +41,8 @@ describe('workspace backups', () => {
 
     const unsafe = backup({ shortcuts: [{ id: 'bad', title: 'Bad', url: 'javascript:alert(1)', color: '#abc', mark: '!' }] })
     expect(() => parseWorkspaceBackup(unsafe)).toThrow(/重复或无法识别/)
+    const credentialed = backup({ shortcuts: [{ id: 'bad-auth', title: 'Trusted', url: 'https://trusted.example@evil.example/', color: '#abc', mark: '!' }] })
+    expect(() => parseWorkspaceBackup(credentialed)).toThrow(/重复或无法识别/)
   })
 
   it('imports version-one backups without folders and filters stale folder members', () => {
