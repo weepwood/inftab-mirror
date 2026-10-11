@@ -38,8 +38,8 @@ function saveEdit() {
 <template>
   <div class="todo-content">
     <form class="inline-add" @submit.prevent="submit">
-      <input v-model="draft" maxlength="500" placeholder="添加一项待办" aria-label="添加一项待办" />
-      <button type="submit" aria-label="添加"><Plus :size="19" /></button>
+      <input v-model="draft" maxlength="500" :disabled="items.length >= 500" :placeholder="items.length >= 500 ? '已达到 500 项上限' : '添加一项待办'" aria-label="添加一项待办" />
+      <button type="submit" aria-label="添加" :disabled="items.length >= 500"><Plus :size="19" /></button>
     </form>
     <ul v-if="items.length" class="todo-list">
       <li v-for="item in items" :key="item.id" :class="{ done: item.done }">
@@ -56,6 +56,7 @@ function saveEdit() {
     <div v-else class="empty-state"><span>☀</span><p>还没有待办事项</p><small>把接下来要做的事记在这里</small></div>
     <div v-if="items.length" class="todo-footer">
       <p class="panel-footnote">{{ items.length - completedCount }} 项待完成</p>
+      <p v-if="items.length >= 500" class="panel-footnote" role="status">已达到 500 项上限</p>
       <button v-if="completedCount" class="text-button" type="button" @click="emit('clearCompleted')">清除已完成（{{ completedCount }}）</button>
     </div>
   </div>

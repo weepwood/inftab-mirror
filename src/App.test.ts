@@ -329,6 +329,30 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.find('.empty-state').exists()).toBe(true)
   })
 
+  it('prevents new todos and notes when their backup-safe item limit is reached', async () => {
+    localStorage.setItem('inftab.todos.v1', JSON.stringify(Array.from({ length: 500 }, (_, index) => ({
+      id: 'todo-' + index,
+      title: 'Task ' + index,
+      done: false,
+    }))))
+    localStorage.setItem('inftab.notes.v1', JSON.stringify(Array.from({ length: 500 }, (_, index) => ({
+      id: 'note-' + index,
+      title: 'Note ' + index,
+      body: '',
+      updatedAt: 1,
+    }))))
+    wrapper = mount(App, { attachTo: document.body })
+
+    await wrapper.get('.shortcut-open[aria-label="打开待办事项"]').trigger('click')
+    expect(wrapper.get('.inline-add input').element).toHaveProperty('disabled', true)
+    expect(wrapper.get('.todo-footer').text()).toContain('500 项上限')
+    await wrapper.get('.panel-close').trigger('click')
+
+    await wrapper.get('.shortcut-open[aria-label="打开笔记"]').trigger('click')
+    expect(wrapper.get('.note-add').element).toHaveProperty('disabled', true)
+    expect(wrapper.get('.notes-empty[role="status"]').text()).toContain('500 条笔记上限')
+  })
+
   it('keeps the selected note stable while creating and deleting notes', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await wrapper.get('.shortcut-open[aria-label=\"打开笔记\"]').trigger('click')

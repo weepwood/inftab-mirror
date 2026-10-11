@@ -212,6 +212,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .inline-add input:focus { border-color: #8aaff8; outline: 0; }
 .inline-add button { width: 42px; height: 42px; display: grid; flex: 0 0 auto; place-items: center; border: 0; border-radius: 9px; background: #427cf2; color: #fff; cursor: pointer; }
 .inline-add button:hover { background: #2f68d9; }
+.inline-add button:disabled, .note-add:disabled { cursor: not-allowed; opacity: .55; }
 .todo-list { display: grid; gap: 5px; margin: 16px 0 0; padding: 0; list-style: none; }
 .todo-list li { min-height: 47px; display: flex; align-items: center; gap: 11px; padding: 6px 4px; border-bottom: 1px solid #eff0f2; color: #41464d; font-size: 13px; }
 .todo-list li.done span { color: #a6a9ae; text-decoration: line-through; }

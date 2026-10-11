@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { effectScope } from 'vue'
 import { afterEach, describe, expect, it } from 'vitest'
+import { parseWorkspaceBackup } from '../data/backup'
 import { useLocalWorkspace } from './useLocalWorkspace'
 
 let scope: ReturnType<typeof effectScope> | undefined
@@ -86,5 +87,30 @@ describe('useLocalWorkspace custom search engines', () => {
 
     expect(workspace.customSearchEngines.value).toEqual([])
     expect(workspace.preferences.value.engine).toBe('baidu')
+  })
+
+  it('keeps todo and note mutations valid for a version-one backup', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    workspace.addTodo('   ')
+    expect(workspace.todos.value).toEqual([])
+    workspace.addTodo('  Review release  ')
+    const todoId = workspace.todos.value[0]!.id
+    workspace.updateTodo(todoId, ' x '.repeat(200))
+    expect(workspace.todos.value[0]?.title).toHaveLength(500)
+
+    workspace.todos.value = Array.from({ length: 500 }, (_, index) => ({ id: 'todo-' + index, title: 'Task ' + index, done: false }))
+    workspace.addTodo('Overflow')
+    expect(workspace.todos.value).toHaveLength(500)
+
+    workspace.notes.value = Array.from({ length: 500 }, (_, index) => ({ id: 'note-' + index, title: 'Note ' + index, body: '', updatedAt: 1 }))
+    workspace.activeNoteId.value = 'note-0'
+    workspace.addNote()
+    expect(workspace.notes.value).toHaveLength(500)
+    workspace.updateNote('note-0', 'title', 'T'.repeat(600))
+    workspace.updateNote('note-0', 'body', 'B'.repeat(500_001))
+    expect(workspace.notes.value[0]?.title).toHaveLength(500)
+    expect(workspace.notes.value[0]?.body).toHaveLength(500_000)
+    expect(() => parseWorkspaceBackup(workspace.createBackup())).not.toThrow()
   })
 })

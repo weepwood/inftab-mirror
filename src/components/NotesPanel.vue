@@ -16,7 +16,7 @@ const activeNote = computed(() => props.notes.find((note) => note.id === props.a
 <template>
   <div class="notes-layout">
     <aside class="notes-list">
-      <button class="note-add" type="button" @click="emit('add')"><Plus :size="16" /> 新建笔记</button>
+      <button class="note-add" type="button" :disabled="notes.length >= 500" @click="emit('add')"><Plus :size="16" /> 新建笔记</button>
       <button
         v-for="note in notes"
         :key="note.id"
@@ -29,6 +29,7 @@ const activeNote = computed(() => props.notes.find((note) => note.id === props.a
         <span>{{ note.body || '空白笔记' }}</span>
       </button>
       <div v-if="!notes.length" class="notes-empty">新建一条笔记开始记录</div>
+      <div v-if="notes.length >= 500" class="notes-empty" role="status">已达到 500 条笔记上限</div>
     </aside>
     <section v-if="activeNote" class="note-editor">
       <input :value="activeNote.title" class="note-title" aria-label="笔记标题" maxlength="500" placeholder="笔记标题" @input="emit('update', activeNote.id, 'title', ($event.target as HTMLInputElement).value)" />

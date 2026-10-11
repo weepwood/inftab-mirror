@@ -1,5 +1,5 @@
 import { useStoredState } from './useStoredState'
-import { toRaw, watch } from 'vue'
+import { watch } from 'vue'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts } from '../data/defaults'
 import { mergeById, type WorkspaceBackup } from '../data/backup'
 import { isValidCalendarDate } from '../data/countdown'
@@ -93,7 +93,9 @@ export function useLocalWorkspace() {
   }
 
   function addTodo(title: string) {
-    todos.value = [{ id: crypto.randomUUID(), title, done: false }, ...todos.value]
+    const cleanTitle = title.trim().slice(0, 500)
+    if (!cleanTitle || todos.value.length >= 500) return
+    todos.value = [{ id: crypto.randomUUID(), title: cleanTitle, done: false }, ...todos.value]
   }
 
   function toggleTodo(id: string) {
@@ -101,7 +103,7 @@ export function useLocalWorkspace() {
   }
 
   function updateTodo(id: string, title: string) {
-    const nextTitle = title.trim()
+    const nextTitle = title.trim().slice(0, 500)
     if (!nextTitle) return
     todos.value = todos.value.map((item) => item.id === id ? { ...item, title: nextTitle } : item)
   }
@@ -134,13 +136,15 @@ export function useLocalWorkspace() {
   }
 
   function addNote() {
+    if (notes.value.length >= 500) return
     const note: Note = { id: crypto.randomUUID(), title: '', body: '', updatedAt: Date.now() }
     notes.value = [note, ...notes.value]
     activeNoteId.value = note.id
   }
 
   function updateNote(id: string, field: 'title' | 'body', value: string) {
-    notes.value = notes.value.map((note) => note.id === id ? { ...note, [field]: value, updatedAt: Date.now() } : note)
+    const boundedValue = value.slice(0, field === 'title' ? 500 : 500_000)
+    notes.value = notes.value.map((note) => note.id === id ? { ...note, [field]: boundedValue, updatedAt: Date.now() } : note)
   }
 
   function removeNote(id: string) {
@@ -173,21 +177,22 @@ export function useLocalWorkspace() {
   }
 
   function createBackup(): WorkspaceBackup {
-    return {
+    const snapshot: WorkspaceBackup = {
       format: 'inftab-workspace',
       version: 1,
       exportedAt: new Date().toISOString(),
-      preferences: structuredClone(toRaw(preferences.value)),
-      shortcuts: structuredClone(toRaw(shortcuts.value)),
-      folders: structuredClone(toRaw(folders.value)),
+      preferences: preferences.value,
+      shortcuts: shortcuts.value,
+      folders: folders.value,
       launcherOrder: [...launcherOrder.value],
-      todos: structuredClone(toRaw(todos.value)),
-      countdowns: structuredClone(toRaw(countdowns.value)),
-      notes: structuredClone(toRaw(notes.value)),
-      customSearchEngines: structuredClone(toRaw(customSearchEngines.value)),
+      todos: todos.value,
+      countdowns: countdowns.value,
+      notes: notes.value,
+      customSearchEngines: customSearchEngines.value,
       activeNoteId: activeNoteId.value,
       weatherCity: weatherCity.value,
     }
+    return JSON.parse(JSON.stringify(snapshot)) as WorkspaceBackup
   }
 
   function restoreBackup(backup: WorkspaceBackup, mode: 'merge' | 'replace') {
