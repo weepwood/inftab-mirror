@@ -23,7 +23,6 @@ const emit = defineEmits<{
   remove: [item: LauncherItem]
   reorder: [sourceId: string, targetId: string]
   swipe: [direction: number]
-  settled: []
 }>()
 
 const itemIcons: Record<string, Component> = {
@@ -35,6 +34,8 @@ const itemIcons: Record<string, Component> = {
 }
 
 const pageSize = computed(() => props.columns * props.rows)
+const cycleCount = 5
+const centerCycle = Math.floor(cycleCount / 2)
 const pages = computed(() => {
   const result: LauncherItem[][] = []
   for (let index = 0; index < props.items.length; index += pageSize.value) {
@@ -42,15 +43,18 @@ const pages = computed(() => {
   }
   return result
 })
+function centeredPhysicalPage(pageIndex = props.currentPage) {
+  return pages.value.length > 1 ? pages.value.length * centerCycle + pageIndex : pageIndex
+}
 const displayPages = computed(() => {
   if (props.transitionEffect === 'particles' || pages.value.length < 2) {
     return pages.value.map((items, pageIndex) => ({ items, pageIndex, clone: false }))
   }
-  return [
-    { items: pages.value.at(-1)!, pageIndex: pages.value.length - 1, clone: true },
-    ...pages.value.map((items, pageIndex) => ({ items, pageIndex, clone: false })),
-    { items: pages.value[0], pageIndex: 0, clone: true },
-  ]
+  return Array.from({ length: cycleCount }, (_, cycleIndex) => pages.value.map((items, pageIndex) => ({
+    items,
+    pageIndex,
+    clone: cycleIndex !== centerCycle,
+  }))).flat()
 })
 const contextItem = ref<LauncherItem>()
 const contextPosition = ref({ left: 0, top: 0 })
@@ -60,7 +64,7 @@ const draggedItem = computed(() => props.items.find((item) => item.id === draggi
 const gridViewport = ref<HTMLElement>()
 const outgoingPage = ref<{ index: number; effect: PageTransitionEffect; direction: number; duration: number }>()
 const incomingPage = ref<number>()
-const physicalPage = ref(props.transitionEffect === 'particles' ? props.currentPage : props.currentPage + 1)
+const physicalPage = ref(props.transitionEffect === 'particles' ? props.currentPage : centeredPhysicalPage())
 const resettingTrack = ref(false)
 let pointer: { id: number; type: string; x: number; y: number; clientX: number; clientY: number; sourceId: string; targetId: string; dragging: boolean; hold?: number } | undefined
 let suppressClick = false
@@ -71,6 +75,7 @@ let particleFrame = 0
 let transitionTimer = 0
 let trackSettleTimer = 0
 let trackTransitionPending = false
+let settleFrame = 0
 let resetFrame = 0
 
 interface IconParticle {
@@ -189,7 +194,10 @@ function playParticleTransition(pageIndex: number, direction: number, duration: 
 function cancelTransitionTimers() {
   if (transitionTimer) window.clearTimeout(transitionTimer)
   if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
+  if (settleFrame) cancelAnimationFrame(settleFrame)
   if (resetFrame) cancelAnimationFrame(resetFrame)
+  settleFrame = 0
+  resetFrame = 0
 }
 
 function completeTrackTransition() {
@@ -197,7 +205,6 @@ function completeTrackTransition() {
   trackTransitionPending = false
   if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
   trackSettleTimer = 0
-  emit('settled')
 }
 
 function finishTrackReset() {
@@ -205,13 +212,13 @@ function finishTrackReset() {
     completeTrackTransition()
     return
   }
-  const lastPhysicalPage = pages.value.length
-  if (physicalPage.value !== 0 && physicalPage.value !== lastPhysicalPage + 1) {
+  const centeredPage = centeredPhysicalPage()
+  if (physicalPage.value === centeredPage) {
     completeTrackTransition()
     return
   }
   resettingTrack.value = true
-  physicalPage.value = physicalPage.value === 0 ? lastPhysicalPage : 1
+  physicalPage.value = centeredPage
   if (resetFrame) cancelAnimationFrame(resetFrame)
   resetFrame = requestAnimationFrame(() => {
     resetFrame = requestAnimationFrame(() => {
@@ -230,7 +237,10 @@ function settleTrackTransition() {
 }
 
 function scheduleTrackSettleFallback() {
-  requestAnimationFrame(() => {
+  if (settleFrame) cancelAnimationFrame(settleFrame)
+  settleFrame = requestAnimationFrame(() => {
+    settleFrame = 0
+    if (!trackTransitionPending) return
     const track = gridViewport.value?.querySelector<HTMLElement>('.shortcut-pages')
     const duration = getComputedStyle(track ?? document.documentElement).transitionDuration.split(',')[0].trim()
     const durationMs = duration.endsWith('ms')
@@ -249,12 +259,18 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
   if (pageIndex === previousPage) return
   cancelTransitionTimers()
   trackTransitionPending = true
+  resettingTrack.value = false
   const direction = props.transitionDirection < 0 ? -1 : 1
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const duration = reducedMotion ? Math.min(1200, Math.max(420, props.transitionDuration)) : Math.max(260, props.transitionDuration)
   incomingPage.value = props.transitionEffect === 'particles' ? pageIndex : undefined
   if (props.transitionEffect !== 'slide') {
-    outgoingPage.value = { index: previousPage, effect: props.transitionEffect, direction, duration }
+    outgoingPage.value = {
+      index: props.transitionEffect === 'particles' ? previousPage : physicalPage.value,
+      effect: props.transitionEffect,
+      direction,
+      duration,
+    }
     if (props.transitionEffect === 'particles') playParticleTransition(previousPage, direction, duration)
     if (props.transitionEffect === 'trails') transitionTimer = window.setTimeout(() => {
       outgoingPage.value = undefined
@@ -273,22 +289,18 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
     }, particleDuration)
     return
   }
-  if (pageIndex === 0 && previousPage === pages.value.length - 1 && direction > 0) physicalPage.value = pages.value.length + 1
-  else if (pageIndex === pages.value.length - 1 && previousPage === 0 && direction < 0) physicalPage.value = 0
-  else physicalPage.value = pageIndex + 1
+  physicalPage.value += direction
   scheduleTrackSettleFallback()
 })
 
 watch(() => [pages.value.length, props.transitionEffect] as const, () => {
   cancelTransitionTimers()
-  const wasTransitioning = trackTransitionPending
   trackTransitionPending = false
   outgoingPage.value = undefined
   incomingPage.value = undefined
   resettingTrack.value = true
-  physicalPage.value = props.transitionEffect === 'particles' ? props.currentPage : props.currentPage + (pages.value.length > 1 ? 1 : 0)
+  physicalPage.value = props.transitionEffect === 'particles' ? props.currentPage : centeredPhysicalPage()
   requestAnimationFrame(() => { resettingTrack.value = false })
-  if (wasTransitioning) emit('settled')
 }, { flush: 'post' })
 
 function startDrag() {
@@ -497,14 +509,14 @@ onBeforeUnmount(() => {
       >
           <section
             v-for="(renderPage, renderIndex) in displayPages"
-            :key="`${renderPage.pageIndex}-${renderPage.clone ? 'clone' : 'page'}`"
+            :key="renderIndex"
             class="shortcut-page"
           :class="{
             'particles-out': !renderPage.clone && outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'particles',
             'particles-in': incomingPage === renderPage.pageIndex && transitionEffect === 'particles',
-            'trails-out': !renderPage.clone && outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'trails',
-            'trails-to-next': !renderPage.clone && outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'trails' && outgoingPage.direction > 0,
-            'trails-to-previous': !renderPage.clone && outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'trails' && outgoingPage.direction < 0,
+            'trails-out': outgoingPage?.index === renderIndex && outgoingPage.effect === 'trails',
+            'trails-to-next': outgoingPage?.index === renderIndex && outgoingPage.effect === 'trails' && outgoingPage.direction > 0,
+            'trails-to-previous': outgoingPage?.index === renderIndex && outgoingPage.effect === 'trails' && outgoingPage.direction < 0,
           }"
             :data-page-index="renderPage.pageIndex"
             :data-render-index="renderIndex"
