@@ -59,8 +59,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .shortcut-grid-wrap { position: relative; z-index: 2; width: 100%; margin: var(--grid-top-gap, 50px) auto 0; }
 .shortcut-grid-viewport { width: 100%; clip-path: inset(-30px 0 -30px); }
 .shortcut-pages { display: flex; align-items: flex-start; transition: transform var(--page-transition-duration, 620ms) cubic-bezier(.22, .72, .22, 1); will-change: transform; }
+.shortcut-pages.is-resetting { transition: none !important; }
+.shortcut-pages.particles-mode { display: grid; transform: none !important; transition: none; will-change: opacity; }
 .shortcut-page { flex: 0 0 100%; min-width: 0; display: grid; grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr)); justify-items: center; align-items: start; gap: var(--shortcut-gap-y, clamp(18px, 3.5vh, 30px)) var(--shortcut-gap-x, 18px); }
+.particles-mode .shortcut-page { grid-area: 1 / 1; opacity: 0; pointer-events: none; }
+.particles-mode .shortcut-page[aria-hidden='false'], .particles-mode .shortcut-page.particles-out { opacity: 1; pointer-events: auto; }
 .shortcut-page.particles-out .shortcut-cell { visibility: hidden; }
+.particles-mode .shortcut-page.particles-in .shortcut-cell { animation: particle-fade-in 780ms cubic-bezier(.18, .72, .2, 1) both; animation-delay: calc(min(var(--entry-index, 0), 18) * 24ms); }
+@keyframes particle-fade-in {
+  0% { opacity: 0; transform: translateY(7px) scale(.985); filter: blur(2px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
 .shortcut-open { position: relative; }
 .shortcut-open::before { position: absolute; z-index: 1; top: 30%; left: 50%; width: 220%; height: 46px; border-radius: 50%; content: ''; pointer-events: none; opacity: 0; filter: blur(10px); }
 .shortcut-icon, .shortcut-name { z-index: 2; }
@@ -293,4 +302,5 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .shortcut-pages { transition-duration: var(--page-transition-duration, 620ms) !important; }
   .shortcut-pages.motion-opt-in { transition-duration: min(var(--page-transition-duration, 620ms), 1200ms) !important; }
   .trails-out .shortcut-open::before, .trails-out .shortcut-icon { animation-duration: min(var(--outgoing-duration, 620ms), 1200ms) !important; animation-iteration-count: 1 !important; }
+  .particles-mode .shortcut-page.particles-in .shortcut-cell { animation-duration: 780ms !important; animation-iteration-count: 1 !important; }
 }

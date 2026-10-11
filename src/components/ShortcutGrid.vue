@@ -12,6 +12,7 @@ const props = defineProps<{
   iconRadius: number
   showNames: boolean
   currentPage: number
+  transitionDirection: number
   transitionEffect: PageTransitionEffect
   transitionDuration: number
 }>()
@@ -40,6 +41,16 @@ const pages = computed(() => {
   }
   return result
 })
+const displayPages = computed(() => {
+  if (props.transitionEffect === 'particles' || pages.value.length < 2) {
+    return pages.value.map((items, pageIndex) => ({ items, pageIndex, clone: false }))
+  }
+  return [
+    { items: pages.value.at(-1)!, pageIndex: pages.value.length - 1, clone: true },
+    ...pages.value.map((items, pageIndex) => ({ items, pageIndex, clone: false })),
+    { items: pages.value[0], pageIndex: 0, clone: true },
+  ]
+})
 const contextItem = ref<LauncherItem>()
 const contextPosition = ref({ left: 0, top: 0 })
 const draggingId = ref('')
@@ -47,6 +58,9 @@ const dragPosition = ref({ x: 0, y: 0 })
 const draggedItem = computed(() => props.items.find((item) => item.id === draggingId.value))
 const gridViewport = ref<HTMLElement>()
 const outgoingPage = ref<{ index: number; effect: PageTransitionEffect; direction: number; duration: number }>()
+const incomingPage = ref<number>()
+const physicalPage = ref(props.transitionEffect === 'particles' ? props.currentPage : props.currentPage + 1)
+const resettingTrack = ref(false)
 let pointer: { id: number; type: string; x: number; y: number; clientX: number; clientY: number; sourceId: string; targetId: string; dragging: boolean; hold?: number } | undefined
 let suppressClick = false
 let edgeTimer: number | undefined
@@ -54,6 +68,8 @@ let edgeDirection = 0
 let lastEdgeDirection = 0
 let particleFrame = 0
 let transitionTimer = 0
+let resetFrame = 0
+let resetFallbackTimer = 0
 
 interface IconParticle {
   x: number
@@ -124,7 +140,7 @@ function iconParticles(icon: HTMLElement, direction: number, iconIndex: number, 
 }
 
 function playParticleTransition(pageIndex: number, direction: number, duration: number) {
-  const page = gridViewport.value?.querySelector<HTMLElement>(`.shortcut-page:nth-child(${pageIndex + 1})`)
+  const page = gridViewport.value?.querySelector<HTMLElement>(`.shortcut-page[data-page-index="${pageIndex}"]:not([data-clone="true"])`)
   const icons = [...(page?.querySelectorAll<HTMLElement>('.shortcut-icon') ?? [])]
   if (!icons.length) return
   const particles = icons.flatMap((icon, index) => iconParticles(icon, direction, index, icons.length))
@@ -168,16 +184,70 @@ function playParticleTransition(pageIndex: number, direction: number, duration: 
   particleFrame = requestAnimationFrame(animate)
 }
 
-watch(() => props.currentPage, (pageIndex, previousPage) => {
-  if (pageIndex === previousPage || props.transitionEffect === 'slide') return
+function cancelTransitionTimers() {
   if (transitionTimer) window.clearTimeout(transitionTimer)
-  const direction = pageIndex > previousPage ? 1 : -1
+  if (resetFallbackTimer) window.clearTimeout(resetFallbackTimer)
+  if (resetFrame) cancelAnimationFrame(resetFrame)
+}
+
+function finishTrackReset() {
+  if (props.transitionEffect === 'particles' || pages.value.length < 2) return
+  const lastPhysicalPage = pages.value.length
+  if (physicalPage.value !== 0 && physicalPage.value !== lastPhysicalPage + 1) return
+  resettingTrack.value = true
+  physicalPage.value = physicalPage.value === 0 ? lastPhysicalPage : 1
+  if (resetFrame) cancelAnimationFrame(resetFrame)
+  resetFrame = requestAnimationFrame(() => {
+    resetFrame = requestAnimationFrame(() => {
+      resettingTrack.value = false
+      resetFrame = 0
+    })
+  })
+}
+
+function handleTrackTransitionEnd(event: TransitionEvent) {
+  if (event.target !== event.currentTarget || event.propertyName !== 'transform') return
+  finishTrackReset()
+}
+
+watch(() => props.currentPage, (pageIndex, previousPage) => {
+  if (pageIndex === previousPage) return
+  cancelTransitionTimers()
+  const direction = props.transitionDirection < 0 ? -1 : 1
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const duration = reducedMotion ? Math.min(1200, Math.max(420, props.transitionDuration)) : Math.max(260, props.transitionDuration)
-  outgoingPage.value = { index: previousPage, effect: props.transitionEffect, direction, duration }
-  if (props.transitionEffect === 'particles') playParticleTransition(previousPage, direction, duration)
-  transitionTimer = window.setTimeout(() => { outgoingPage.value = undefined }, duration + 140)
+  incomingPage.value = props.transitionEffect === 'particles' ? pageIndex : undefined
+  if (props.transitionEffect !== 'slide') {
+    outgoingPage.value = { index: previousPage, effect: props.transitionEffect, direction, duration }
+    if (props.transitionEffect === 'particles') playParticleTransition(previousPage, direction, duration)
+    transitionTimer = window.setTimeout(() => {
+      outgoingPage.value = undefined
+      incomingPage.value = undefined
+      transitionTimer = 0
+    }, duration + 160)
+  }
+
+  if (props.transitionEffect === 'particles') {
+    physicalPage.value = pageIndex
+    return
+  }
+  if (pageIndex === 0 && previousPage === pages.value.length - 1 && direction > 0) physicalPage.value = pages.value.length + 1
+  else if (pageIndex === pages.value.length - 1 && previousPage === 0 && direction < 0) physicalPage.value = 0
+  else physicalPage.value = pageIndex + 1
+  if (pageIndex === 0 && previousPage === pages.value.length - 1 && direction > 0
+    || pageIndex === pages.value.length - 1 && previousPage === 0 && direction < 0) {
+    resetFallbackTimer = window.setTimeout(finishTrackReset, Math.max(260, duration) + 80)
+  }
 })
+
+watch(() => [pages.value.length, props.transitionEffect] as const, () => {
+  cancelTransitionTimers()
+  outgoingPage.value = undefined
+  incomingPage.value = undefined
+  resettingTrack.value = true
+  physicalPage.value = props.transitionEffect === 'particles' ? props.currentPage : props.currentPage + (pages.value.length > 1 ? 1 : 0)
+  requestAnimationFrame(() => { resettingTrack.value = false })
+}, { flush: 'post' })
 
 function startDrag() {
   if (!pointer || pointer.dragging) return
@@ -228,9 +298,9 @@ function onPointerMove(event: PointerEvent) {
 function scheduleEdgePageTurn(clientX: number) {
   const bounds = gridViewport.value?.getBoundingClientRect()
   if (!bounds) return
-  const direction = clientX < bounds.left + 26 && props.currentPage > 0
+  const direction = clientX < bounds.left + 26 && pages.value.length > 1
     ? -1
-    : clientX > bounds.right - 26 && props.currentPage < pages.value.length - 1 ? 1 : 0
+    : clientX > bounds.right - 26 && pages.value.length > 1 ? 1 : 0
   if (direction !== edgeDirection) {
     if (edgeTimer) window.clearTimeout(edgeTimer)
     edgeTimer = undefined
@@ -348,6 +418,8 @@ onBeforeUnmount(() => {
   cleanPointer()
   if (particleFrame) cancelAnimationFrame(particleFrame)
   if (transitionTimer) window.clearTimeout(transitionTimer)
+  if (resetFallbackTimer) window.clearTimeout(resetFallbackTimer)
+  if (resetFrame) cancelAnimationFrame(resetFrame)
   document.getElementById('shortcut-particle-canvas')?.remove()
   window.removeEventListener('click', closeContextMenu)
   window.removeEventListener('keydown', closeContextOnEscape)
@@ -371,32 +443,47 @@ onBeforeUnmount(() => {
       <span v-if="showNames" class="shortcut-name">{{ draggedItem.title }}</span>
     </div>
     <div ref="gridViewport" class="shortcut-grid-viewport">
-      <div class="shortcut-pages" :class="{ 'motion-opt-in': transitionEffect !== 'slide' }" :style="{ transform: `translate3d(-${currentPage * 100}%, 0, 0)` }">
+      <div
+        class="shortcut-pages"
+        :class="{
+          'motion-opt-in': transitionEffect !== 'slide',
+          'particles-mode': transitionEffect === 'particles',
+          'is-resetting': resettingTrack,
+        }"
+        :style="{ transform: transitionEffect === 'particles' ? 'none' : `translate3d(-${physicalPage * 100}%, 0, 0)` }"
+        @transitionend="handleTrackTransitionEnd"
+      >
           <section
-            v-for="(page, pageIndex) in pages"
-            :key="pageIndex"
+            v-for="(renderPage, renderIndex) in displayPages"
+            :key="`${renderPage.pageIndex}-${renderPage.clone ? 'clone' : 'page'}`"
             class="shortcut-page"
           :class="{
-            'particles-out': outgoingPage?.index === pageIndex && outgoingPage.effect === 'particles',
-            'trails-out': outgoingPage?.index === pageIndex && outgoingPage.effect === 'trails',
-            'trails-to-next': outgoingPage?.index === pageIndex && outgoingPage.effect === 'trails' && outgoingPage.direction > 0,
-            'trails-to-previous': outgoingPage?.index === pageIndex && outgoingPage.effect === 'trails' && outgoingPage.direction < 0,
+            'particles-out': !renderPage.clone && outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'particles',
+            'particles-in': incomingPage === renderPage.pageIndex && transitionEffect === 'particles',
+            'trails-out': !renderPage.clone && outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'trails',
+            'trails-to-next': !renderPage.clone && outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'trails' && outgoingPage.direction > 0,
+            'trails-to-previous': !renderPage.clone && outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'trails' && outgoingPage.direction < 0,
           }"
-            :aria-hidden="pageIndex !== currentPage"
-            :inert="pageIndex !== currentPage"
+            :data-page-index="renderPage.pageIndex"
+            :data-render-index="renderIndex"
+            :data-clone="String(renderPage.clone)"
+            :aria-hidden="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderIndex !== physicalPage"
+            :inert="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderIndex !== physicalPage"
           :style="{
             '--grid-columns': columns,
             '--shortcut-size': `${iconSize}px`,
             '--shortcut-radius': `${iconRadius}px`,
             '--outgoing-duration': `${outgoingPage?.duration ?? 0}ms`,
+            '--incoming-duration': `${outgoingPage?.duration ?? transitionDuration}ms`,
           }"
           >
           <article
-            v-for="item in page"
+            v-for="(item, itemIndex) in renderPage.items"
             :key="item.id"
             class="shortcut-cell"
             :class="{ dragging: draggingId === item.id }"
             :data-item-id="item.id"
+            :style="{ '--entry-index': itemIndex }"
             @pointerdown="onPointerDown($event, item)"
             @contextmenu="openContextMenu($event, item)"
           >

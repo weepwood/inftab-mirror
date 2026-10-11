@@ -42,6 +42,7 @@ const {
 
 const query = ref('')
 const currentPage = ref(0)
+const pageDirection = ref(1)
 const activePanel = ref<Panel>(null)
 const backupExportError = ref('')
 const shortcutDialog = ref(false)
@@ -230,7 +231,15 @@ function removeShortcut(item: LauncherItem) {
 }
 
 function movePage(direction: number) {
+  if (pageCount.value < 2) return
+  pageDirection.value = direction < 0 ? -1 : 1
   currentPage.value = (currentPage.value + direction + pageCount.value) % pageCount.value
+}
+
+function goToPage(page: number) {
+  if (page === currentPage.value) return
+  pageDirection.value = page > currentPage.value ? 1 : -1
+  currentPage.value = page
 }
 
 function startHomeSwipe(event: PointerEvent) {
@@ -308,7 +317,7 @@ onBeforeUnmount(() => {
   <main class="home" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
     <div class="background-shade"></div>
     <header class="home-actions">
-      <button type="button" class="round-action" aria-label="回到首页" @click="currentPage = 0"><House :size="19" /></button>
+      <button type="button" class="round-action" aria-label="回到首页" @click="goToPage(0)"><House :size="19" /></button>
       <button type="button" class="round-action" aria-label="打开设置" @click="activePanel = 'settings'"><Menu :size="21" /></button>
     </header>
 
@@ -329,6 +338,7 @@ onBeforeUnmount(() => {
         :icon-radius="preferences.iconRadius"
         :show-names="preferences.showNames"
         :current-page="currentPage"
+        :transition-direction="pageDirection"
         :transition-effect="preferences.pageTransitionEffect"
         :transition-duration="preferences.pageTransitionMs"
         @open="openItem"
@@ -339,7 +349,7 @@ onBeforeUnmount(() => {
       />
       <nav v-if="pageCount > 1" class="page-dots" aria-label="快捷入口页码">
         <button type="button" aria-label="上一页" class="page-arrow" @click="movePage(-1)"><ArrowLeft :size="15" /></button>
-        <button v-for="page in pageDots" :key="page" type="button" :aria-label="`第${page + 1}页`" class="page-dot" :class="{ active: page === currentPage }" @click="currentPage = page"></button>
+        <button v-for="page in pageDots" :key="page" type="button" :aria-label="`第${page + 1}页`" class="page-dot" :class="{ active: page === currentPage }" @click="goToPage(page)"></button>
         <button type="button" aria-label="下一页" class="page-arrow next" @click="movePage(1)"><ArrowLeft :size="15" /></button>
       </nav>
     </section>
