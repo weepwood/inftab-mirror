@@ -422,6 +422,31 @@ test('weather home widget shows the current city reading and opens its panel', a
   await expect(page.getByRole('dialog', { name: '天气' })).toBeVisible()
 })
 
+test('focus timer widget stays in sync with the panel and survives a reload', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settingsPanel = page.getByRole('dialog', { name: '设置' })
+  await settingsPanel.getByLabel('显示专注计时小组件').check()
+  await settingsPanel.getByRole('button', { name: '关闭' }).click()
+
+  const widget = page.locator('[data-widget-id="focus-timer-summary"]')
+  await expect(widget).toContainText('专注时间')
+  await expect(widget.locator('[role="timer"]')).toHaveText('25:00')
+  await widget.getByRole('button', { name: '打开专注计时' }).click()
+  const panel = page.getByRole('dialog', { name: '专注计时' })
+  await panel.getByLabel('专注时长').selectOption('50')
+  await panel.getByRole('button', { name: '开始计时' }).click()
+  await expect(panel.locator('[role="timer"]')).toHaveText('50:00')
+  await panel.getByRole('button', { name: '关闭' }).click()
+  await expect(widget.locator('[role="timer"]')).toHaveText('50:00')
+
+  await page.reload()
+  const restoredWidget = page.locator('[data-widget-id="focus-timer-summary"]')
+  await expect(restoredWidget.locator('[role="timer"]')).toHaveText(/49:5[0-9]/)
+  await restoredWidget.getByRole('button', { name: '打开专注计时' }).click()
+  const restoredPanel = page.getByRole('dialog', { name: '专注计时' })
+  await expect(restoredPanel.locator('[role="timer"]')).toHaveText(/49:5[0-9]/)
+})
+
 test('countdowns can be created, edited, deleted, and persist across reloads', async ({ page }) => {
   await page.getByRole('button', { name: '打开纪念日' }).click()
   const panel = page.getByRole('dialog', { name: '纪念日与倒计时' })

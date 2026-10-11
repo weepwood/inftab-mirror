@@ -2,6 +2,7 @@ import { availableHomeWidgetIds, maxDockItems, type CountdownItem, type CustomSe
 import { launcherItems } from './defaults'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
 import { maxWallpaperDataUrlLength } from './imageLimits'
+import { sanitizeFocusTimerState, type FocusTimerState } from './focusTimerState'
 
 export interface WorkspaceBackup {
   format: 'inftab-workspace'
@@ -17,6 +18,7 @@ export interface WorkspaceBackup {
   activeNoteId: string
   weatherCity: string
   customSearchEngines?: CustomSearchEngine[]
+  focusTimer?: FocusTimerState
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -73,8 +75,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     dockItemIds: (item) => Array.isArray(item) && item.length <= maxDockItems && item.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 128),
     homeWidgetIds: (item) => Array.isArray(item) && item.every((id) => typeof id === 'string' && availableHomeWidgetIds.includes(id as typeof availableHomeWidgetIds[number])),
     homeWidgetSizes: (item) => isRecord(item)
-      && Object.keys(item).length === availableHomeWidgetIds.length
-      && availableHomeWidgetIds.every((id) => item[id] === 'standard' || item[id] === 'wide'),
+      && Object.entries(item).every(([id, size]) => availableHomeWidgetIds.includes(id as typeof availableHomeWidgetIds[number]) && (size === 'standard' || size === 'wide')),
     visibleSearchModes: (item) => Array.isArray(item) && item.every((mode) => ['html', 'photos', 'news', 'videos', 'map'].includes(String(mode))),
     showSearchBar: (item) => typeof item === 'boolean',
     showClock: (item) => typeof item === 'boolean',
@@ -141,6 +142,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     activeNoteId: sanitizeActiveNoteId(typeof value.activeNoteId === 'string' ? value.activeNoteId.slice(0, 128) : '', notes),
     weatherCity: sanitizeWeatherCity(value.weatherCity),
     customSearchEngines,
+    ...(value.focusTimer === undefined ? {} : { focusTimer: sanitizeFocusTimerState(value.focusTimer) }),
   }
 }
 

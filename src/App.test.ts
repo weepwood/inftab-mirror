@@ -225,6 +225,29 @@ describe('new-tab wallpaper rotation', () => {
   })
 })
 
+describe('focus timer lifecycle', () => {
+  it('advances a finished session while its panel is closed', async () => {
+    await import('./data/focusTimer')
+    vi.useFakeTimers()
+    const now = 1_800_000_000_000
+    vi.setSystemTime(now)
+    localStorage.setItem('inftab.focus-timer.v1', JSON.stringify({
+      phase: 'focus', focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15,
+      completedSessions: 0, remainingMs: 1_000, endsAt: now + 1_000,
+    }))
+    wrapper = mount(App, { attachTo: document.body })
+
+    await vi.advanceTimersByTimeAsync(1_000)
+    await flushPromises()
+    await flushLocalStorageWrites()
+
+    expect(JSON.parse(localStorage.getItem('inftab.focus-timer.v1') ?? '{}')).toMatchObject({
+      phase: 'short-break', completedSessions: 1, endsAt: null, remainingMs: 5 * 60_000,
+    })
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+  })
+})
+
 describe('new-tab keyboard search', () => {
   it('filters launcher shortcuts with Ctrl/Command+F and opens a selected result', async () => {
     wrapper = mount(App, { attachTo: document.body })

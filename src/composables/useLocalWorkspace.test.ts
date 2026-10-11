@@ -2,6 +2,7 @@
 import { effectScope } from 'vue'
 import { afterEach, describe, expect, it } from 'vitest'
 import { parseWorkspaceBackup } from '../data/backup'
+import { defaultFocusTimerState, startFocusTimer } from '../data/focusTimer'
 import { useLocalWorkspace } from './useLocalWorkspace'
 
 let scope: ReturnType<typeof effectScope> | undefined
@@ -48,6 +49,35 @@ describe('useLocalWorkspace launcher ordering', () => {
     expect(nextVisibleIds).toEqual(expectedVisibleIds)
     expect(workspace.launcherOrder.value.indexOf('weather')).toBe(originalOrder.indexOf('weather'))
     expect(workspace.launcherOrder.value.indexOf('calendar')).toBe(originalOrder.indexOf('calendar'))
+  })
+})
+
+describe('useLocalWorkspace focus timer', () => {
+  it('shares timer actions with panels and includes the state in backups', async () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const now = Date.now()
+    await workspace.setFocusDuration(50)
+    await workspace.startFocusTimer()
+    expect(workspace.focusTimer.value.endsAt).toBeGreaterThan(now)
+    expect(workspace.focusTimer.value.focusMinutes).toBe(50)
+
+    const backup = parseWorkspaceBackup(workspace.createBackup())
+    expect(backup.focusTimer).toMatchObject({ focusMinutes: 50, endsAt: workspace.focusTimer.value.endsAt })
+
+    await workspace.resetFocusTimer()
+    workspace.restoreBackup(backup, 'replace')
+    expect(workspace.focusTimer.value).toEqual(backup.focusTimer)
+  })
+
+  it('defaults the timer when replacing from an older backup without timer data', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    workspace.focusTimer.value = startFocusTimer(defaultFocusTimerState, Date.now())
+    const backup = workspace.createBackup()
+    delete backup.focusTimer
+    workspace.restoreBackup(backup, 'replace')
+    expect(workspace.focusTimer.value).toEqual(defaultFocusTimerState)
   })
 })
 

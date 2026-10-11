@@ -73,6 +73,16 @@ describe('workspace backups', () => {
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.homeWidgetIds).toEqual([])
   })
 
+  it('keeps backups without the newer focus timer widget size compatible', () => {
+    const homeWidgetSizes = Object.fromEntries(Object.entries(defaultPreferences.homeWidgetSizes)
+      .filter(([id]) => id !== 'focus-timer-summary'))
+    const preferences = { ...defaultPreferences, homeWidgetSizes }
+    const parsed = parseWorkspaceBackup(backup({ preferences, focusTimer: undefined }))
+
+    expect(parsed.preferences.homeWidgetSizes['focus-timer-summary']).toBe('standard')
+    expect(parsed.focusTimer).toBeUndefined()
+  })
+
   it('backs up built-in, custom, and folder Dock items while rejecting stale ids', () => {
     expect(parseWorkspaceBackup(backup({
       preferences: { ...defaultPreferences, dockItemIds: ['weather', 'custom', 'folder-work'] },

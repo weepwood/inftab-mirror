@@ -4,6 +4,7 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { HomeWidgetContext } from '../plugins/widgetRegistry'
 import { homeWidgetPlugins } from '../plugins/widgetRegistry'
+import { defaultFocusTimerState } from '../data/focusTimer'
 import HomeWidgetShelf from './HomeWidgetShelf.vue'
 
 let wrapper: VueWrapper | undefined
@@ -24,11 +25,11 @@ describe('home widget shelf plugin activation', () => {
         props: () => ({}),
       },
     }
-    const context: HomeWidgetContext = { todos: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海' }
+    const context: HomeWidgetContext = { todos: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海', focusTimer: defaultFocusTimerState }
     wrapper = mount(HomeWidgetShelf, {
       props: {
         widgetIds: ['todo-summary'],
-        widgetSizes: { 'todo-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard', 'weather-summary': 'standard' },
+        widgetSizes: { 'todo-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard', 'weather-summary': 'standard', 'focus-timer-summary': 'standard' },
         context,
         plugins,
       },

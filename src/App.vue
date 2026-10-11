@@ -33,6 +33,7 @@ const {
   notes,
   activeNoteId,
   weatherCity,
+  focusTimer,
   customSearchEngines,
   saveShortcut: saveShortcutData,
   removeShortcut: removeShortcutData,
@@ -57,6 +58,11 @@ const {
   resetPreferences,
   createBackup,
   restoreBackup,
+  startFocusTimer,
+  pauseFocusTimer,
+  resetFocusTimer,
+  setFocusDuration,
+  tickFocusTimer,
 } = useLocalWorkspace()
 
 const query = ref('')
@@ -97,6 +103,7 @@ let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
 let homeWheelLocked = false
 let wallpaperRotationTimer: number | undefined
 let wallpaperRotationRequest = 0
+let focusTimerInterval: number | undefined
 const availableLauncherItems = computed<LauncherItem[]>(() => {
   const items = [
     ...launcherItems.map((item) => item.id === 'todos'
@@ -155,6 +162,7 @@ const panelContext = computed<PanelPluginContext>(() => ({
   activeNoteId: activeNoteId.value,
   weatherCity: weatherCity.value,
   customSearchEngines: customSearchEngines.value,
+  focusTimer: focusTimer.value,
   updatePreferences,
   resetPreferences: () => requestDestructiveAction('恢复默认设置？', '当前外观、组件和布局设置将恢复默认值。', resetPreferences, '恢复默认设置'),
   openShortcut: () => openShortcutDialog(),
@@ -181,12 +189,16 @@ const panelContext = computed<PanelPluginContext>(() => ({
   updateWeatherCity: (city) => { weatherCity.value = city },
   addCustomSearchEngine,
   removeCustomSearchEngine: (id) => requestDestructiveAction('删除自定义搜索引擎？', '删除后，将无法再用此搜索引擎搜索。', () => removeCustomSearchEngine(id)),
+  startFocusTimer,
+  pauseFocusTimer,
+  resetFocusTimer,
+  setFocusDuration,
 }))
 const activePanelPlugin = computed(() => activePanel.value ? panelPlugins[activePanel.value] : undefined)
 const activePanelComponent = computed<Component | undefined>(() => activePanelPlugin.value?.component)
 const activePanelProps = computed<Record<string, unknown>>(() => activePanelPlugin.value?.props(panelContext.value) ?? {})
 const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanelPlugin.value?.listeners(panelContext.value) ?? {})
-const homeWidgetContext = computed(() => ({ todos: todos.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value }))
+const homeWidgetContext = computed(() => ({ todos: todos.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
 const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0)
 const shortHomeScrollEnabled = computed(() => (showHomeWidgets.value || homeDockItems.value.length > 0) && viewport.value.height <= 560)
 const homeWidgetRows = computed(() => {
@@ -674,6 +686,21 @@ function handleWallpaperRotationVisibility() {
   if (document.visibilityState === 'visible') void scheduleWallpaperRotation()
 }
 
+function syncFocusTimerInterval() {
+  if (focusTimer.value.endsAt === null) {
+    if (focusTimerInterval !== undefined) window.clearInterval(focusTimerInterval)
+    focusTimerInterval = undefined
+  } else if (focusTimerInterval === undefined) {
+    focusTimerInterval = window.setInterval(tickFocusTimer, 1000)
+  }
+}
+
+function handleFocusTimerVisibility() {
+  if (document.visibilityState === 'visible') tickFocusTimer()
+}
+
+watch(() => focusTimer.value.endsAt, syncFocusTimerInterval, { flush: 'sync' })
+
 function handleStorageWriteError() {
   storageError.value = '本地数据未能保存。请检查浏览器存储空间，并先导出备份。'
 }
@@ -683,6 +710,8 @@ onMounted(() => {
   window.addEventListener('resize', updateViewport)
   window.addEventListener(storageWriteErrorEvent, handleStorageWriteError)
   document.addEventListener('visibilitychange', handleWallpaperRotationVisibility)
+  document.addEventListener('visibilitychange', handleFocusTimerVisibility)
+  syncFocusTimerInterval()
   void scheduleWallpaperRotation()
   if (typeof window.matchMedia === 'function') {
     systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)')
@@ -696,6 +725,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', updateViewport)
   window.removeEventListener(storageWriteErrorEvent, handleStorageWriteError)
   document.removeEventListener('visibilitychange', handleWallpaperRotationVisibility)
+  document.removeEventListener('visibilitychange', handleFocusTimerVisibility)
+  if (focusTimerInterval !== undefined) window.clearInterval(focusTimerInterval)
+  focusTimerInterval = undefined
   if (wallpaperRotationTimer !== undefined) window.clearTimeout(wallpaperRotationTimer)
   wallpaperRotationTimer = undefined
   wallpaperRotationRequest += 1

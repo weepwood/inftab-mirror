@@ -1,6 +1,7 @@
 import { defineAsyncComponent, h, type Component } from 'vue'
 import type { WorkspaceBackup } from '../data/backup'
 import type { CountdownItem, CustomSearchEngine, Note, Preferences, TodoItem } from '../types'
+import type { FocusTimerState } from '../data/focusTimer'
 import type { PanelId } from './ids'
 
 export type { PanelId } from './ids'
@@ -34,6 +35,7 @@ export interface PanelPluginContext {
   activeNoteId: string
   weatherCity: string
   customSearchEngines: CustomSearchEngine[]
+  focusTimer: FocusTimerState
   updatePreferences: (update: Partial<Preferences>) => void
   resetPreferences: () => void
   openShortcut: () => void
@@ -56,6 +58,10 @@ export interface PanelPluginContext {
   updateWeatherCity: (city: string) => void
   addCustomSearchEngine: (name: string, template: string) => void
   removeCustomSearchEngine: (id: string) => void
+  startFocusTimer: () => void
+  pauseFocusTimer: () => void
+  resetFocusTimer: () => void
+  setFocusDuration: (minutes: number) => void
 }
 
 export interface PanelPlugin {
@@ -153,8 +159,13 @@ export const panelPlugins = {
     title: '专注计时',
     description: '专注一段时间，再给自己片刻休息',
     component: lazyPanel(() => import('../components/FocusTimerPanel.vue')),
-    props: () => ({}),
-    listeners: () => ({}),
+    props: (context) => ({ state: context.focusTimer }),
+    listeners: (context) => ({
+      start: context.startFocusTimer,
+      pause: context.pauseFocusTimer,
+      reset: context.resetFocusTimer,
+      setDuration: context.setFocusDuration,
+    }),
   },
   notes: {
     title: '笔记',

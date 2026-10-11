@@ -13,6 +13,7 @@ export const defaultPreferences: Preferences = {
     'notes-summary': 'standard',
     'calendar-summary': 'standard',
     'weather-summary': 'standard',
+    'focus-timer-summary': 'standard',
   },
   engine: 'baidu',
   mode: 'html',

@@ -3,6 +3,7 @@ import { launcherItems } from '../data/defaults'
 import { launcherPanelRoutes, panelPlugins, retryPanelLoad, shortcutPanelRoutes } from './registry'
 import { availableHomeWidgetIds, availablePanelIds } from './ids'
 import { homeWidgetPlugins } from './widgetRegistry'
+import { defaultFocusTimerState } from '../data/focusTimer'
 
 afterEach(() => vi.useRealTimers())
 
@@ -41,6 +42,13 @@ describe('built-in panel plugin registry', () => {
   it('passes the selected weather city to its homepage widget plugin', () => {
     expect(homeWidgetPlugins['weather-summary'].panel).toBe('weather')
     expect(homeWidgetPlugins['weather-summary'].props({ weatherCity: '杭州' } as never)).toEqual({ city: '杭州' })
+  })
+
+  it('passes shared focus timer state to its panel and homepage widget', () => {
+    const state = { ...defaultFocusTimerState, completedSessions: 2 }
+    expect(panelPlugins['focus-timer'].props({ focusTimer: state } as never)).toEqual({ state })
+    expect(homeWidgetPlugins['focus-timer-summary'].props({ focusTimer: state } as never)).toEqual({ state })
+    expect(homeWidgetPlugins['focus-timer-summary'].panel).toBe('focus-timer')
   })
 
   it('routes the legacy wallpaper shortcut to settings', () => {

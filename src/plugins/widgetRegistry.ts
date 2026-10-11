@@ -1,5 +1,6 @@
 import { defineAsyncComponent, h, type Component } from 'vue'
 import type { CountdownItem, Note, TodoItem } from '../types'
+import type { FocusTimerState } from '../data/focusTimer'
 import type { PanelId } from './ids'
 import type { HomeWidgetId } from './ids'
 
@@ -9,6 +10,7 @@ export interface HomeWidgetContext {
   notes: Note[]
   activeNoteId: string
   weatherCity: string
+  focusTimer: FocusTimerState
 }
 
 export interface HomeWidgetPlugin {
@@ -76,5 +78,12 @@ export const homeWidgetPlugins = {
     panel: 'weather',
     component: lazyWidget(() => import('../components/WeatherSummaryWidget.vue')),
     props: (context) => ({ city: context.weatherCity }),
+  },
+  'focus-timer-summary': {
+    title: '专注计时',
+    description: '在首页查看专注或休息计时状态',
+    panel: 'focus-timer',
+    component: lazyWidget(() => import('../components/FocusTimerSummaryWidget.vue')),
+    props: (context) => ({ state: context.focusTimer }),
   },
 } satisfies HomeWidgetPluginRegistry

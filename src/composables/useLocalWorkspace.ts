@@ -5,6 +5,7 @@ import { mergeById, type WorkspaceBackup } from '../data/backup'
 import { isValidCalendarDate } from '../data/countdown'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
 import { isValidCustomSearchTemplate } from '../data/search'
+import { defaultFocusTimerState, sanitizeFocusTimerState } from '../data/focusTimerState'
 import type { CountdownItem, CountdownRecurrence, CustomSearchEngine, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
 
 export function useLocalWorkspace() {
@@ -28,6 +29,32 @@ export function useLocalWorkspace() {
     // Fall back to the default city when browser storage is unavailable.
   }
   const weatherCity = useStoredState<string>('inftab.weather-city.v1', previousWeatherCity, sanitizeWeatherCity)
+  const focusTimer = useStoredState('inftab.focus-timer.v1', defaultFocusTimerState, sanitizeFocusTimerState, { mergeConcurrentChanges: false })
+
+  async function startFocusTimer() {
+    const { startFocusTimer: start } = await import('../data/focusTimer')
+    focusTimer.value = start(focusTimer.value, Date.now())
+  }
+
+  async function pauseFocusTimer() {
+    const { pauseFocusTimer: pause } = await import('../data/focusTimer')
+    focusTimer.value = pause(focusTimer.value, Date.now())
+  }
+
+  async function resetFocusTimer() {
+    const { resetFocusTimer: reset } = await import('../data/focusTimer')
+    focusTimer.value = reset(focusTimer.value)
+  }
+
+  async function setFocusDuration(minutes: number) {
+    const { setFocusDuration } = await import('../data/focusTimer')
+    focusTimer.value = setFocusDuration(focusTimer.value, minutes)
+  }
+
+  async function tickFocusTimer(now = Date.now()) {
+    const { advanceFocusTimer } = await import('../data/focusTimer')
+    focusTimer.value = advanceFocusTimer(focusTimer.value, now)
+  }
 
   watch([shortcuts, folders], () => {
     const cleanFolders = sanitizeFolders(folders.value, shortcuts.value)
@@ -236,6 +263,7 @@ export function useLocalWorkspace() {
       countdowns: countdowns.value,
       notes: notes.value,
       customSearchEngines: customSearchEngines.value,
+      focusTimer: focusTimer.value,
       activeNoteId: activeNoteId.value,
       weatherCity: weatherCity.value,
     }
@@ -259,6 +287,7 @@ export function useLocalWorkspace() {
       notes.value = importedNotes
       activeNoteId.value = sanitizeActiveNoteId(backup.activeNoteId, importedNotes)
       weatherCity.value = sanitizeWeatherCity(backup.weatherCity)
+      focusTimer.value = backup.focusTimer ? sanitizeFocusTimerState(backup.focusTimer) : structuredClone(defaultFocusTimerState)
       preferences.value = sanitizePreferences(backup.preferences)
       if (preferences.value.engine.startsWith('custom:')
         && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
@@ -304,6 +333,7 @@ export function useLocalWorkspace() {
     const preferredNoteId = backup.notes.some((note) => note.id === backup.activeNoteId) ? backup.activeNoteId : activeNoteId.value
     activeNoteId.value = sanitizeActiveNoteId(preferredNoteId, notes.value)
     weatherCity.value = sanitizeWeatherCity(backup.weatherCity || weatherCity.value)
+    if (backup.focusTimer) focusTimer.value = sanitizeFocusTimerState(backup.focusTimer)
     return undefined
   }
 
@@ -318,6 +348,7 @@ export function useLocalWorkspace() {
     customSearchEngines,
     activeNoteId,
     weatherCity,
+    focusTimer,
     saveShortcut,
     removeShortcut,
     saveFolder,
@@ -341,5 +372,10 @@ export function useLocalWorkspace() {
     resetPreferences,
     createBackup,
     restoreBackup,
+    startFocusTimer,
+    pauseFocusTimer,
+    resetFocusTimer,
+    setFocusDuration,
+    tickFocusTimer,
   }
 }
