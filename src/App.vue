@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowLeft, House, Menu, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
 import ClockWidget from './components/ClockWidget.vue'
@@ -59,6 +59,7 @@ const activePanel = ref<Panel>(null)
 const backupExportError = ref('')
 const storageError = ref('')
 const searchBar = ref<{ focusSearch: () => void }>()
+const sidePanel = ref<HTMLElement>()
 const folderDialogOpen = ref(false)
 const activeFolder = ref<ShortcutFolder>()
 const shortcutDialog = ref(false)
@@ -107,6 +108,7 @@ const unavailableFolderShortcutIds = computed(() => folders.value
   .flatMap((folder) => folder.shortcutIds))
 const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
 const pageDots = computed(() => Array.from({ length: pageCount.value }, (_, index) => index))
+let panelReturnFocusTarget: HTMLElement | undefined
 const compactRows = computed(() => Math.min(preferences.value.rows, Math.max(1, Math.ceil(allLauncherItems.value.length / preferences.value.columns))))
 const fitMetrics = computed(() => {
   const { width, height } = viewport.value
@@ -152,6 +154,37 @@ const backgroundStyle = computed(() => {
 })
 
 watch(pageCount, (count) => { currentPage.value = Math.min(currentPage.value, count - 1) })
+watch(activePanel, async (panel, previousPanel) => {
+  if (panel && !previousPanel) panelReturnFocusTarget = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
+  if (!panel && previousPanel) {
+    if (panelReturnFocusTarget?.isConnected) panelReturnFocusTarget.focus()
+    panelReturnFocusTarget = undefined
+    return
+  }
+  if (!panel) return
+  await nextTick()
+  sidePanel.value?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')?.focus()
+})
+
+function handlePanelKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Tab' || !sidePanel.value) return
+  const focusable = [...sidePanel.value.querySelectorAll<HTMLElement>(
+    'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+  )]
+  if (!focusable.length) {
+    event.preventDefault()
+    return
+  }
+  const first = focusable[0]!
+  const last = focusable.at(-1)!
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
 
 function submitSearch() {
   const destination = buildSearchUrl(preferences.value.engine, preferences.value.mode, query.value)
@@ -464,7 +497,7 @@ onBeforeUnmount(() => {
     <footer class="home-footer">渝ICP备15002199号-1</footer>
 
     <div v-if="activePanel" class="panel-backdrop" @click.self="activePanel = null">
-      <aside class="side-panel" :class="{ 'notes-panel': activePanel === 'notes' }" aria-modal="true" role="dialog" :aria-label="panelTitle">
+      <aside ref="sidePanel" class="side-panel" :class="{ 'notes-panel': activePanel === 'notes' }" aria-modal="true" role="dialog" :aria-label="panelTitle" @keydown="handlePanelKeydown">
         <header class="panel-header">
           <button v-if="activePanel !== 'settings'" class="back-button" type="button" aria-label="返回设置" @click="activePanel = 'settings'"><ArrowLeft :size="19" /></button>
           <div><h2>{{ panelTitle }}</h2><p>{{ activePanel === 'settings' ? '按自己的习惯调整新标签页' : '内容会自动保存在本地' }}</p></div>

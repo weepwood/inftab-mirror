@@ -88,6 +88,35 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('设置')
   })
 
+  it('traps focus in an open side panel and restores it to the opener', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    const opener = wrapper.get('.shortcut-open[aria-label="打开settings"]').element as HTMLButtonElement
+    opener.focus()
+    await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+    await nextTick()
+
+    const panel = wrapper.get('.side-panel[role="dialog"]')
+    const focusable = panel.findAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')
+    const first = focusable[0]!.element as HTMLElement
+    const last = focusable.at(-1)!.element as HTMLElement
+    expect(panel.element.contains(document.activeElement)).toBe(true)
+
+    last.focus()
+    const tabForward = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    last.dispatchEvent(tabForward)
+    expect(tabForward.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(first)
+
+    const tabBackward = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true })
+    first.dispatchEvent(tabBackward)
+    expect(tabBackward.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(last)
+
+    await wrapper.get('.panel-close').trigger('click')
+    await nextTick()
+    expect(document.activeElement).toBe(opener)
+  })
+
   it('rejects unsafe shortcut URLs and restores a valid shortcut after remount', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
