@@ -82,6 +82,7 @@ const trackOffsetPx = ref(0)
 const resettingTrack = ref(false)
 let pointer: { id: number; type: string; x: number; y: number; clientX: number; clientY: number; sourceId: string; targetId: string; dragging: boolean; hold?: number } | undefined
 let suppressClick = false
+let suppressClickTimer = 0
 let edgeTimer: number | undefined
 let edgeDirection = 0
 let lastEdgeDirection = 0
@@ -166,8 +167,7 @@ function playParticleTransition(pageIndex: number, direction: number, duration: 
   if (!icons.length) return
   const particles = icons.flatMap((icon, index) => iconParticles(icon, direction, index, icons.length))
   if (!particles.length) return
-  if (particleFrame) cancelAnimationFrame(particleFrame)
-  document.getElementById('shortcut-particle-canvas')?.remove()
+  cancelParticleTransition()
   const canvas = document.createElement('canvas')
   canvas.id = 'shortcut-particle-canvas'
   canvas.setAttribute('aria-hidden', 'true')
@@ -205,11 +205,18 @@ function playParticleTransition(pageIndex: number, direction: number, duration: 
   particleFrame = requestAnimationFrame(animate)
 }
 
+function cancelParticleTransition() {
+  if (particleFrame) cancelAnimationFrame(particleFrame)
+  particleFrame = 0
+  document.getElementById('shortcut-particle-canvas')?.remove()
+}
+
 function cancelTransitionTimers() {
   if (transitionTimer) window.clearTimeout(transitionTimer)
   if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
   if (resetFrame) cancelAnimationFrame(resetFrame)
   resetFrame = 0
+  cancelParticleTransition()
 }
 
 function completeTrackTransition() {
@@ -358,7 +365,11 @@ watch(() => [pages.value.length, props.transitionEffect] as const, () => {
   resettingTrack.value = true
   trackOffsetPx.value = 0
   physicalPage.value = props.transitionEffect === 'particles' ? props.currentPage : centeredPhysicalPage()
-  requestAnimationFrame(() => { resettingTrack.value = false })
+  if (resetFrame) cancelAnimationFrame(resetFrame)
+  resetFrame = requestAnimationFrame(() => {
+    resettingTrack.value = false
+    resetFrame = 0
+  })
 }, { flush: 'post' })
 
 function startDrag() {
@@ -448,16 +459,23 @@ function onPointerUp(event: PointerEvent) {
   const deltaY = event.clientY - pointer.y
   if (pointer.dragging && pointer.sourceId !== pointer.targetId) {
     emit('reorder', pointer.sourceId, pointer.targetId)
-    suppressClick = true
-    window.setTimeout(() => { suppressClick = false }, 100)
+    suppressNextClick()
   } else if (pointer.type === 'touch' && !pointer.dragging && Math.abs(deltaX) > 52 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
     emit('swipe', deltaX < 0 ? 1 : -1)
-    suppressClick = true
-    window.setTimeout(() => { suppressClick = false }, 100)
+    suppressNextClick()
   }
   draggingId.value = ''
   pointer = undefined
   cleanPointer()
+}
+
+function suppressNextClick() {
+  suppressClick = true
+  if (suppressClickTimer) window.clearTimeout(suppressClickTimer)
+  suppressClickTimer = window.setTimeout(() => {
+    suppressClick = false
+    suppressClickTimer = 0
+  }, 100)
 }
 
 function cancelPointer() {
@@ -501,6 +519,8 @@ function openItem(event: MouseEvent, item: LauncherItem) {
     event.preventDefault()
     event.stopPropagation()
     suppressClick = false
+    if (suppressClickTimer) window.clearTimeout(suppressClickTimer)
+    suppressClickTimer = 0
     return
   }
   emit('open', item)
@@ -528,12 +548,9 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   cleanPointer()
-  if (particleFrame) cancelAnimationFrame(particleFrame)
-  if (transitionTimer) window.clearTimeout(transitionTimer)
-  if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
-  if (resetFrame) cancelAnimationFrame(resetFrame)
+  cancelTransitionTimers()
   if (rebaseFrame) cancelAnimationFrame(rebaseFrame)
-  document.getElementById('shortcut-particle-canvas')?.remove()
+  if (suppressClickTimer) window.clearTimeout(suppressClickTimer)
   window.removeEventListener('click', closeContextMenu)
   window.removeEventListener('keydown', closeContextOnEscape)
 })

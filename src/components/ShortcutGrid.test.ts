@@ -17,7 +17,11 @@ function installAnimationEnvironment() {
   vi.stubGlobal('matchMedia', () => ({ matches: false, addListener: () => {}, removeListener: () => {} }))
 }
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
 describe('ShortcutGrid page cycling', () => {
   it('keeps the correct page interactive when rapid turns reach the loop rebase', async () => {
@@ -117,6 +121,72 @@ describe('ShortcutGrid page cycling', () => {
 
     expect(wrapper.findAll('.shortcut-cell')).toHaveLength(2)
     expect(wrapper.findAll('.shortcut-page')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('cancels pending page reset frames when the grid unmounts', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()), 16))
+    vi.stubGlobal('cancelAnimationFrame', (handle: number) => window.clearTimeout(handle))
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addListener: () => {}, removeListener: () => {} }))
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items,
+        columns: 2,
+        rows: 1,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 0,
+        transitionDirection: 1,
+        transitionEffect: 'slide',
+        transitionDuration: 0,
+      },
+    })
+
+    await wrapper.setProps({ items: items.slice(0, 2) })
+    expect(vi.getTimerCount()).toBe(1)
+    wrapper.unmount()
+
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('cancels a running particle canvas when the transition effect changes', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()), 16))
+    const cancelFrame = vi.fn((handle: number) => window.clearTimeout(handle))
+    vi.stubGlobal('cancelAnimationFrame', cancelFrame)
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addListener: () => {}, removeListener: () => {} }))
+    const pixels = new Uint8ClampedArray(48 * 48 * 4)
+    for (let index = 3; index < pixels.length; index += 4) pixels[index] = 255
+    const context = {
+      scale: vi.fn(), clearRect: vi.fn(), fillRect: vi.fn(), beginPath: vi.fn(), roundRect: vi.fn(), fill: vi.fn(),
+      save: vi.fn(), clip: vi.fn(), drawImage: vi.fn(), restore: vi.fn(), fillText: vi.fn(),
+      getImageData: () => ({ data: pixels }),
+    }
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as unknown as CanvasRenderingContext2D)
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items,
+        columns: 2,
+        rows: 1,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 0,
+        transitionDirection: 1,
+        transitionEffect: 'particles',
+        transitionDuration: 0,
+      },
+    })
+
+    await wrapper.setProps({ currentPage: 1 })
+    expect(document.getElementById('shortcut-particle-canvas')).not.toBeNull()
+    await wrapper.setProps({ transitionEffect: 'slide' })
+
+    expect(cancelFrame).toHaveBeenCalled()
+    expect(document.getElementById('shortcut-particle-canvas')).toBeNull()
     wrapper.unmount()
   })
 })
