@@ -30,6 +30,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     && typeof preferences.mode === 'string'
     && ['html', 'photos', 'news', 'videos', 'map'].includes(preferences.mode)
     && (preferences.visibleSearchModes === undefined || (Array.isArray(preferences.visibleSearchModes) && preferences.visibleSearchModes.every((mode) => typeof mode === 'string' && ['html', 'photos', 'news', 'videos', 'map'].includes(mode))))
+    && (preferences.showSearchBar === undefined || typeof preferences.showSearchBar === 'boolean')
     && typeof preferences.wallpaper === 'string'
     && typeof preferences.customWallpaper === 'string'
     && typeof preferences.shade === 'number'
@@ -41,6 +42,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     && (preferences.gridGapX === undefined || typeof preferences.gridGapX === 'number')
     && (preferences.gridGapY === undefined || typeof preferences.gridGapY === 'number')
     && (preferences.searchWidth === undefined || typeof preferences.searchWidth === 'number')
+    && (preferences.searchHeight === undefined || typeof preferences.searchHeight === 'number')
     && (preferences.gridTopGap === undefined || typeof preferences.gridTopGap === 'number')
     && (preferences.pageTransitionMs === undefined || typeof preferences.pageTransitionMs === 'number')
     && (preferences.hoverGlow === undefined || typeof preferences.hoverGlow === 'number')

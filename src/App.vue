@@ -88,9 +88,10 @@ const fitMetrics = computed(() => {
   const veryShortHeight = height <= 560
   const rows = compactRows.value
   const topPadding = veryShortHeight ? 38 : compactHeight ? Math.min(64, Math.max(48, height * 0.09)) : smallMobile ? height * 0.18 : mobile ? height * 0.17 : Math.min(112, Math.max(72, height * 0.09))
-  const tabHeight = preferences.value.visibleSearchModes.length ? (veryShortHeight ? 26 : smallMobile ? 28 : 33) : 0
-  const searchHeight = veryShortHeight ? 44 : mobile ? 48 : 54
-  const configuredTopGap = preferences.value.gridTopGap * (mobile && !compactHeight ? 0.68 : 1)
+  const searchVisible = preferences.value.showSearchBar
+  const tabHeight = searchVisible && preferences.value.visibleSearchModes.length ? (veryShortHeight ? 26 : smallMobile ? 28 : 33) : 0
+  const searchHeight = searchVisible ? Math.min(preferences.value.searchHeight, veryShortHeight ? 44 : mobile ? 48 : 100) : 0
+  const configuredTopGap = searchVisible ? preferences.value.gridTopGap * (mobile && !compactHeight ? 0.68 : 1) : 0
   const gridTopGap = veryShortHeight ? Math.min(configuredTopGap, 16) : compactHeight ? Math.min(configuredTopGap, 28) : configuredTopGap
   const paginationHeight = pageCount.value > 1 ? (veryShortHeight ? 31 : compactHeight ? 37 : mobile ? 43 : 48) : 0
   const nameHeight = preferences.value.showNames ? (smallMobile ? 13 : 17) + 7 : 0
@@ -112,6 +113,7 @@ const backgroundStyle = computed(() => {
     '--shortcut-size': `${preferences.value.iconSize}px`,
     '--shortcut-radius': `${preferences.value.iconRadius}px`,
     '--search-width': `${preferences.value.searchWidth}px`,
+    '--search-height': `${preferences.value.searchHeight}px`,
     '--grid-top-gap': `${preferences.value.gridTopGap}px`,
     '--shortcut-gap-x': `${preferences.value.gridGapX}px`,
     '--shortcut-gap-y': `${fitMetrics.value.fittedGap}px`,
@@ -312,6 +314,7 @@ onBeforeUnmount(() => {
 
     <section class="home-content">
       <SearchBar
+        v-if="preferences.showSearchBar"
         v-model="query"
         v-model:engine="preferences.engine"
         v-model:mode="preferences.mode"

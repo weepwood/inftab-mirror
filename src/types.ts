@@ -27,6 +27,7 @@ export interface Preferences {
   engine: EngineId
   mode: SearchMode
   visibleSearchModes: SearchMode[]
+  showSearchBar: boolean
   wallpaper: string
   customWallpaper: string
   shade: number
@@ -36,6 +37,7 @@ export interface Preferences {
   gridGapX: number
   gridGapY: number
   searchWidth: number
+  searchHeight: number
   gridTopGap: number
   pageTransitionMs: number
   hoverGlow: number

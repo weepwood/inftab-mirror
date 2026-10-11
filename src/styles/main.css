@@ -39,7 +39,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .search-tab { border: 0; padding: 0 0 8px; background: transparent; color: rgba(255, 255, 255, .58); font-size: 14px; cursor: pointer; transition: color .15s; }
 .search-tab:hover, .search-tab.active { color: #fff; }
 .search-tab.active { text-shadow: 0 1px 8px rgba(0, 0, 0, .3); }
-.search-box { position: relative; display: flex; align-items: center; height: 54px; border: 1px solid rgba(255, 255, 255, .8); border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(15, 22, 26, .12); color: #333; }
+.search-box { position: relative; display: flex; align-items: center; height: min(var(--search-height, 54px), 100px); border: 1px solid rgba(255, 255, 255, .8); border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(15, 22, 26, .12); color: #333; }
 .engine-picker { flex: 0 0 58px; height: 100%; display: flex; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 11px 0 0 11px; background: #fff; color: #b5b5b5; cursor: pointer; }
 .engine-logo { width: 25px; height: 25px; flex: 0 0 auto; object-fit: contain; }
 .engine-mark { min-width: 21px; font-weight: 700; font-size: 19px; text-align: center; }
@@ -231,7 +231,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .round-action { width: 36px; height: 36px; }
   .search-tabs { gap: clamp(14px, 6vw, 30px); }
   .search-tab { font-size: 12px; }
-  .search-box { height: 48px; }
+  .search-box { height: min(var(--search-height, 54px), 48px); }
   .shortcut-page { column-gap: min(var(--shortcut-gap-x, 8px), 8px); row-gap: min(var(--shortcut-gap-y, 24px), 24px); }
   .shortcut-icon { width: min(var(--shortcut-size), var(--fit-icon-size, var(--shortcut-size)), 84%, 60px); }
   .shortcut-name { font-size: 11px; }
@@ -263,7 +263,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 @media (max-height: 560px) {
   .home-content { padding-top: 38px; }
   .search-tabs { height: 26px; }
-  .search-box { height: 44px; }
+  .search-box { height: min(var(--search-height, 54px), 44px); }
   .shortcut-grid-wrap { margin-top: min(var(--grid-top-gap, 50px), 16px); }
   .page-dots { margin-top: 8px; }
   .home-footer { bottom: 6px; }
