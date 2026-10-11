@@ -44,4 +44,28 @@ describe('CalendarPanel', () => {
     expect(wrapper.get('.calendar-month-nav h3').text()).toContain('2026年10月')
     expect(wrapper.get('.calendar-day[aria-current="date"]').attributes('aria-pressed')).toBe('true')
   })
+
+  it('advances the followed date at local midnight', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 9, 31, 23, 59, 59))
+    wrapper = mount(CalendarPanel)
+
+    expect(wrapper.get('.calendar-month-nav h3').text()).toContain('2026年10月')
+    expect(wrapper.get('.calendar-day[aria-current="date"]').text()).toBe('31')
+    await vi.advanceTimersByTimeAsync(1_100)
+
+    expect(wrapper.get('.calendar-month-nav h3').text()).toContain('2026年11月')
+    expect(wrapper.get('.calendar-day[aria-current="date"]').text()).toBe('1')
+    expect(wrapper.get('.calendar-day[aria-current="date"]').attributes('aria-pressed')).toBe('true')
+  })
+
+  it('keeps a manually browsed month when the local date changes', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 9, 31, 23, 59, 59))
+    wrapper = mount(CalendarPanel)
+    await wrapper.get('[aria-label="上个月"]').trigger('click')
+    await vi.advanceTimersByTimeAsync(1_100)
+
+    expect(wrapper.get('.calendar-month-nav h3').text()).toContain('2026年9月')
+  })
 })

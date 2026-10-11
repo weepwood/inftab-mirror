@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ArrowLeft, CalendarDays } from '@lucide/vue'
 import { getCalendarDays, toLocalDateKey, type CalendarDay } from '../data/calendar'
 
-const today = new Date()
-const todayKey = toLocalDateKey(today)
+const today = ref(new Date())
+const todayKey = computed(() => toLocalDateKey(today.value))
 const dayFormatter = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
-const currentMonth = ref(new Date(today.getFullYear(), today.getMonth(), 1))
-const selectedDate = ref(todayKey)
+const currentMonth = ref(new Date(today.value.getFullYear(), today.value.getMonth(), 1))
+const selectedDate = ref(todayKey.value)
+const followsToday = ref(true)
 const weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 const monthLabel = computed(() => new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long' }).format(currentMonth.value))
 const days = computed(() => getCalendarDays(currentMonth.value.getFullYear(), currentMonth.value.getMonth()))
@@ -23,17 +24,48 @@ function changeMonth(offset: number) {
   const next = new Date(currentMonth.value)
   next.setMonth(next.getMonth() + offset)
   currentMonth.value = new Date(next.getFullYear(), next.getMonth(), 1)
+  followsToday.value = false
 }
 
 function selectDay(day: CalendarDay) {
   selectedDate.value = day.dateKey
+  followsToday.value = false
   if (!day.inCurrentMonth) currentMonth.value = new Date(day.date.getFullYear(), day.date.getMonth(), 1)
 }
 
 function goToToday() {
-  currentMonth.value = new Date(today.getFullYear(), today.getMonth(), 1)
-  selectedDate.value = todayKey
+  currentMonth.value = new Date(today.value.getFullYear(), today.value.getMonth(), 1)
+  selectedDate.value = todayKey.value
+  followsToday.value = true
 }
+
+let midnightTimer: ReturnType<typeof setTimeout> | undefined
+function refreshToday() {
+  const previousKey = todayKey.value
+  today.value = new Date()
+  if (followsToday.value && todayKey.value !== previousKey) goToToday()
+}
+
+function scheduleMidnightRefresh() {
+  if (midnightTimer !== undefined) clearTimeout(midnightTimer)
+  const now = new Date()
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  midnightTimer = setTimeout(() => {
+    refreshToday()
+    scheduleMidnightRefresh()
+  }, Math.max(1, nextMidnight.getTime() - now.getTime() + 50))
+}
+
+onMounted(() => {
+  window.addEventListener('focus', refreshToday)
+  document.addEventListener('visibilitychange', refreshToday)
+  scheduleMidnightRefresh()
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('focus', refreshToday)
+  document.removeEventListener('visibilitychange', refreshToday)
+  if (midnightTimer !== undefined) clearTimeout(midnightTimer)
+})
 </script>
 
 <template>
