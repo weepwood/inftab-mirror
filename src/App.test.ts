@@ -29,6 +29,13 @@ async function openFolderDialog() {
   await vi.waitFor(() => expect(wrapper!.find('.folder-dialog').exists()).toBe(true), { timeout: 5_000 })
 }
 
+async function confirmPendingAction() {
+  await flushPromises()
+  await vi.waitFor(() => expect(wrapper!.find('.confirm-dialog').exists()).toBe(true), { timeout: 5_000 })
+  await wrapper!.get('.confirm-dialog .confirm-danger').trigger('click')
+  await flushPromises()
+}
+
 async function selectBackupFile(contents: unknown) {
   const file = new File(['backup'], 'inftab-backup.json', { type: 'application/json' })
   Object.defineProperty(file, 'text', { value: async () => typeof contents === 'string' ? contents : JSON.stringify(contents) })
@@ -482,6 +489,9 @@ describe('new-tab keyboard search', () => {
     expect(open).toHaveBeenNthCalledWith(3, 'https://www.tmall.com/', '_blank', 'noopener,noreferrer')
     const folderId = folders[0].id
     await wrapper.get('.folder-dialog .danger-action').trigger('click')
+    await vi.waitFor(() => expect(wrapper!.find('[role="alertdialog"]').exists()).toBe(true), { timeout: 5_000 })
+    expect(wrapper.find('[role="alertdialog"]').text()).toContain('其中的快捷入口会保留')
+    await confirmPendingAction()
     await flushLocalStorageWrites()
     expect(JSON.parse(localStorage.getItem('inftab.folders.v1') ?? '[]')).toHaveLength(0)
     expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]').some((item: { id: string }) => item.id === 'jd')).toBe(true)
@@ -571,6 +581,7 @@ describe('new-tab keyboard search', () => {
     const columns = wrapper.findAll('.settings-content .range-label').find((label) => label.text().includes('每行图标'))!
     await columns.get('input').setValue('10')
     await wrapper.get('.text-button').trigger('click')
+    await confirmPendingAction()
 
     expect(columns.get('input').element).toHaveProperty('value', '6')
   })
@@ -603,6 +614,7 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.find('.search-tabs').exists()).toBe(false)
 
     await wrapper.get('[aria-label="删除搜索引擎Wiki"]').trigger('click')
+    await confirmPendingAction()
     await flushLocalStorageWrites()
     expect(JSON.parse(localStorage.getItem('inftab.custom-search-engines.v1') ?? '[]')).toEqual([])
     expect(JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').engine).toBe('baidu')
@@ -634,6 +646,9 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.todo-list').text()).toContain('Ship release')
 
     await wrapper.get('.todo-footer .text-button').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(true)
+    await confirmPendingAction()
     expect(wrapper.find('.todo-list').exists()).toBe(false)
     expect(wrapper.find('.empty-state').exists()).toBe(true)
   })
@@ -715,6 +730,13 @@ describe('new-tab keyboard search', () => {
 
     expect(wrapper.findAll('.note-list-item')).toHaveLength(2)
     await wrapper.get('.note-delete').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('.note-list-item')).toHaveLength(2)
+    await wrapper.get('.confirm-dialog').trigger('keydown', { key: 'Escape' })
+    expect(wrapper.find('.confirm-dialog').exists()).toBe(false)
+    expect(wrapper.findAll('.note-list-item')).toHaveLength(2)
+    await wrapper.get('.note-delete').trigger('click')
+    await confirmPendingAction()
     expect(wrapper.get('input[aria-label=\"笔记标题\"]').element).toHaveProperty('value', 'First note')
     expect(wrapper.get('textarea[aria-label=\"笔记内容\"]').element).toHaveProperty('value', 'Saved text')
     expect(wrapper.findAll('.note-list-item')).toHaveLength(1)
@@ -748,6 +770,7 @@ describe('new-tab keyboard search', () => {
 
     await wrapper.get('[aria-label="编辑周年旅行"]').trigger('click')
     await wrapper.get('[aria-label="删除周年旅行"]').trigger('click')
+    await confirmPendingAction()
     expect(wrapper.get('.countdown-form button[type="submit"]').text()).toContain('添加纪念日')
     await flushLocalStorageWrites()
     expect(JSON.parse(localStorage.getItem('inftab.countdowns.v1') ?? '[]')).toEqual([])

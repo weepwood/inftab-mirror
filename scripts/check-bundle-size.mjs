@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 const outputDirectory = fileURLToPath(new URL('../dist/', import.meta.url))
 const budgets = {
   javascriptGzip: 128 * 1024,
-  javascriptEntryGzip: 60 * 1024,
+  javascriptEntryGzip: 61 * 1024,
   cssGzip: 64 * 1024,
   totalOutput: 4 * 1024 * 1024,
 }

@@ -20,6 +20,7 @@ type Panel = PanelId | null
 const HomeWidgetShelf = defineAsyncComponent(() => import('./components/HomeWidgetShelf.vue'))
 const HomeDock = defineAsyncComponent(() => import('./components/HomeDock.vue'))
 const FolderDialog = defineAsyncComponent(() => import('./components/FolderDialog.vue'))
+const ConfirmDialog = defineAsyncComponent(() => import('./components/ConfirmDialog.vue'))
 
 const baseUrl = import.meta.env.BASE_URL
 const {
@@ -69,6 +70,8 @@ const pageDirection = ref(1)
 const activePanel = ref<Panel>(null)
 const backupExportError = ref('')
 const storageError = ref('')
+const pendingDestructiveAction = ref<{ title: string; description: string; confirmLabel?: string; run: () => void }>()
+let destructiveActionFocusTarget: HTMLElement | undefined
 const searchBar = ref<{ focusSearch: () => void }>()
 const sidePanel = ref<HTMLElement>()
 const folderDialogOpen = ref(false)
@@ -153,7 +156,7 @@ const panelContext = computed<PanelPluginContext>(() => ({
   weatherCity: weatherCity.value,
   customSearchEngines: customSearchEngines.value,
   updatePreferences,
-  resetPreferences,
+  resetPreferences: () => requestDestructiveAction('恢复默认设置？', '当前外观、组件和布局设置将恢复默认值。', resetPreferences, '恢复默认设置'),
   openShortcut: () => openShortcutDialog(),
   openShortcutFromBookmark: (title, url) => {
     openShortcutDialog()
@@ -166,18 +169,18 @@ const panelContext = computed<PanelPluginContext>(() => ({
   addTodo,
   toggleTodo,
   updateTodo,
-  removeTodo,
-  clearCompletedTodos,
+  removeTodo: (id) => requestDestructiveAction('删除待办？', '此待办将从本机移除。', () => removeTodo(id)),
+  clearCompletedTodos: () => requestDestructiveAction('清除已完成待办？', '所有已完成的待办都将从本机移除。', clearCompletedTodos),
   addCountdown,
   updateCountdown,
-  removeCountdown,
+  removeCountdown: (id) => requestDestructiveAction('删除纪念日？', '此纪念日将从本机移除。', () => removeCountdown(id)),
   addNote,
   selectNote: (id) => { activeNoteId.value = id },
   updateNote,
-  removeNote,
+  removeNote: (id) => requestDestructiveAction('删除笔记？', '此笔记及其内容将从本机移除。', () => removeNote(id)),
   updateWeatherCity: (city) => { weatherCity.value = city },
   addCustomSearchEngine,
-  removeCustomSearchEngine,
+  removeCustomSearchEngine: (id) => requestDestructiveAction('删除自定义搜索引擎？', '删除后，将无法再用此搜索引擎搜索。', () => removeCustomSearchEngine(id)),
 }))
 const activePanelPlugin = computed(() => activePanel.value ? panelPlugins[activePanel.value] : undefined)
 const activePanelComponent = computed<Component | undefined>(() => activePanelPlugin.value?.component)
@@ -340,6 +343,26 @@ function closeFolderDialog() {
   folderSaveError.value = ''
 }
 
+function requestDestructiveAction(title: string, description: string, run: () => void, confirmLabel?: string) {
+  if (pendingDestructiveAction.value) return
+  destructiveActionFocusTarget = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
+  pendingDestructiveAction.value = { title, description, run, confirmLabel }
+}
+
+async function cancelDestructiveAction() {
+  pendingDestructiveAction.value = undefined
+  await nextTick()
+  destructiveActionFocusTarget?.focus()
+  destructiveActionFocusTarget = undefined
+}
+
+function confirmDestructiveAction() {
+  const action = pendingDestructiveAction.value
+  pendingDestructiveAction.value = undefined
+  destructiveActionFocusTarget = undefined
+  action?.run()
+}
+
 function saveFolder(folder: ShortcutFolder) {
   if (!saveFolderData(folder)) {
     folderSaveError.value = '最多只能保存 500 个文件夹。'
@@ -356,8 +379,21 @@ function editLauncherItem(item: LauncherItem) {
 }
 
 function removeLauncherItem(item: LauncherItem) {
-  if (item.folder) removeFolderData(item.folder.id)
-  else removeShortcutData(item.shortcut?.id ?? '')
+  if (!item.folder && !item.shortcut) return
+  requestDestructiveAction(
+    item.folder ? '删除文件夹？' : '删除快捷入口？',
+    item.folder ? `“${item.title}”文件夹将被移除，其中的快捷入口会保留。` : `“${item.title}”快捷入口将从本机移除。`,
+    () => item.folder ? removeFolderData(item.folder.id) : removeShortcutData(item.shortcut!.id),
+  )
+}
+
+function requestFolderRemoval(id: string) {
+  const folder = folders.value.find((candidate) => candidate.id === id)
+  if (!folder) return
+  requestDestructiveAction('删除文件夹？', `“${folder.title}”文件夹将被移除，其中的快捷入口会保留。`, () => {
+    removeFolderData(id)
+    closeFolderDialog()
+  })
 }
 
 function toggleDockItem(id: string) {
@@ -564,7 +600,7 @@ function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode:
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  if (event.defaultPrevented) return
+  if (event.defaultPrevented || pendingDestructiveAction.value) return
   if (event.key === 'Escape') {
     if (localSearchMode.value) {
       localSearchMode.value = false
@@ -781,7 +817,7 @@ onBeforeUnmount(() => {
       :limit-reached="folderLimitReached"
       @close="closeFolderDialog"
       @save="saveFolder"
-      @remove="removeFolderData($event); closeFolderDialog()"
+      @remove="requestFolderRemoval"
       @open-shortcut="openFolderShortcut"
       @open-all-shortcuts="openFolderShortcuts"
     />
@@ -808,5 +844,14 @@ onBeforeUnmount(() => {
         <footer><button class="button-secondary" type="button" @click="shortcutDialog = false">取消</button><button class="button-primary" type="submit" :disabled="savingShortcut || shortcutLimitReached">{{ savingShortcut ? '正在转存图标…' : '保存' }}</button></footer>
       </form>
     </div>
+
+    <ConfirmDialog
+      v-if="pendingDestructiveAction"
+      :title="pendingDestructiveAction.title"
+      :description="pendingDestructiveAction.description"
+      :confirm-label="pendingDestructiveAction.confirmLabel"
+      @cancel="cancelDestructiveAction"
+      @confirm="confirmDestructiveAction"
+    />
   </main>
 </template>

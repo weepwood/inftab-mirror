@@ -40,6 +40,36 @@ test('creates a shortcut and keeps it after reloading the new tab', async ({ pag
   await expect(page.getByRole('button', { name: '打开E2E Example' })).toBeVisible()
 })
 
+test('shortcut deletion can be cancelled and requires confirmation', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByRole('button', { name: /添加快捷入口/ }).click()
+  const dialog = page.locator('.shortcut-dialog')
+  await dialog.getByPlaceholder('例如：GitHub').fill('Keep Until Confirmed')
+  await dialog.getByPlaceholder('https://example.com').fill('https://example.org/keep')
+  await dialog.getByRole('button', { name: '保存' }).click()
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('inftab.shortcuts.v1'))).toContain('Keep Until Confirmed')
+  const savedShortcutsBeforeCancel = await page.evaluate(() => localStorage.getItem('inftab.shortcuts.v1'))
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+
+  const cell = page.locator('.shortcut-cell').filter({ has: page.getByRole('button', { name: '打开Keep Until Confirmed' }) })
+  if (!(await cell.isVisible())) await page.getByRole('button', { name: '下一页' }).click()
+  await cell.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: '删除快捷入口' }).click()
+  const confirmation = page.getByRole('alertdialog')
+  await expect(confirmation).toContainText('Keep Until Confirmed')
+  await page.keyboard.press('Escape')
+  await expect(confirmation).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]')))
+    .toEqual(JSON.parse(savedShortcutsBeforeCancel ?? '[]'))
+
+  await cell.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: '删除快捷入口' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '确认删除' }).click()
+  await expect(cell).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => (JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]') as { title: string }[])
+    .filter((shortcut) => shortcut.title === 'Keep Until Confirmed'))).toEqual([])
+})
+
 test('pointer dragging a built-in shortcut reorders and persists the launcher', async ({ page }) => {
   const source = page.locator('.shortcut-cell[data-item-id="weather"] .shortcut-open')
   const target = page.locator('.shortcut-cell[data-item-id="calendar"] .shortcut-open')
@@ -161,6 +191,7 @@ test('selects a surviving note when its active note is deleted in another tab', 
   const secondNotesPanel = secondTab.getByRole('dialog', { name: '笔记' })
   await expect(secondNotesPanel.getByLabel('笔记标题')).toHaveValue('Active note')
   await secondNotesPanel.getByRole('button', { name: '删除笔记' }).click()
+  await secondTab.getByRole('alertdialog').getByRole('button', { name: '确认删除' }).click()
 
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.active-note.v1') ?? '""'))).toBe('note-first')
   await expect(page.getByRole('dialog', { name: '笔记' }).getByLabel('笔记标题')).toHaveValue('First note')
@@ -332,6 +363,7 @@ test('countdowns can be created, edited, deleted, and persist across reloads', a
   await page.getByRole('button', { name: '打开纪念日' }).click()
   await expect(reloadedPanel.getByText('春季旅行')).toBeVisible()
   await reloadedPanel.getByRole('button', { name: '删除春季旅行' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '确认删除' }).click()
   await expect(reloadedPanel.getByText('春季旅行')).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.countdowns.v1') ?? '[]'))).toEqual([])
 })
