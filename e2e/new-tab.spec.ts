@@ -257,3 +257,18 @@ test('pins a custom shortcut from its context menu and restores it after reload'
   await page.reload()
   await expect(page.getByRole('navigation', { name: '常驻 Dock' }).getByRole('button', { name: '打开Dock Example' })).toBeVisible()
 })
+
+test('drags a launcher into the dock and places it before the drop target', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByLabel('固定天气到 Dock').check()
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+
+  const dock = page.getByRole('navigation', { name: '常驻 Dock' })
+  const target = dock.getByRole('button', { name: '打开天气' })
+  const shortcut = page.locator('.shortcut-page[aria-hidden="false"] [data-item-id="jd"] .shortcut-open')
+  await shortcut.dragTo(target)
+
+  await expect(dock.getByRole('button', { name: '打开京东商城' })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').dockItemIds))
+    .toEqual(['jd', 'weather'])
+})

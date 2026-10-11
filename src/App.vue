@@ -359,6 +359,19 @@ function toggleDockItem(id: string) {
   }
 }
 
+function dockLauncherItem(id: string, targetId?: string) {
+  const dockItemIds = preferences.value.dockItemIds
+  const alreadyDocked = dockItemIds.includes(id)
+  if (id === targetId || (!alreadyDocked && dockItemIds.length >= maxDockItems)) return
+  const next = dockItemIds.filter((itemId) => itemId !== id)
+  const targetIndex = targetId ? next.indexOf(targetId) : -1
+  if (targetIndex >= 0) next.splice(targetIndex, 0, id)
+  else if (!alreadyDocked || targetId) next.push(id)
+  if (next.length !== dockItemIds.length || next.some((itemId, index) => itemId !== dockItemIds[index])) {
+    updatePreferences({ dockItemIds: next })
+  }
+}
+
 function openFolderShortcut(shortcut: Shortcut) {
   window.open(shortcut.url, '_blank', 'noopener,noreferrer')
 }
@@ -708,6 +721,7 @@ onBeforeUnmount(() => {
         @edit="editLauncherItem"
         @remove="removeLauncherItem"
         @toggle-dock="toggleDockItem"
+        @dock="dockLauncherItem"
         @reorder="reorderItems"
         @move-by-keyboard="moveLauncherItemByKeyboard"
         @swipe="movePage"

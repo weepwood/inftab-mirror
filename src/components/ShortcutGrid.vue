@@ -23,6 +23,7 @@ const emit = defineEmits<{
   edit: [item: LauncherItem]
   remove: [item: LauncherItem]
   toggleDock: [id: string]
+  dock: [sourceId: string, targetId?: string]
   reorder: [sourceId: string, targetId: string]
   moveByKeyboard: [itemId: string, direction: -1 | 1]
   swipe: [direction: number]
@@ -92,7 +93,7 @@ const incomingPage = ref<number>()
 const physicalPage = ref(props.transitionEffect === 'particles' ? props.currentPage : centeredPhysicalPage())
 const trackOffsetPx = ref(0)
 const resettingTrack = ref(false)
-let pointer: { id: number; type: string; x: number; y: number; clientX: number; clientY: number; sourceId: string; targetId: string; dragging: boolean; hold?: number } | undefined
+let pointer: { id: number; type: string; x: number; y: number; clientX: number; clientY: number; sourceId: string; targetId: string; dockTargetId?: string; dragging: boolean; hold?: number } | undefined
 let suppressClick = false
 let suppressClickTimer = 0
 let edgeTimer: number | undefined
@@ -425,9 +426,12 @@ function onPointerMove(event: PointerEvent) {
   if (!pointer.dragging) return
   event.preventDefault()
   dragPosition.value = { x: event.clientX, y: event.clientY }
-  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-item-id]')
+  const hit = document.elementFromPoint(event.clientX, event.clientY)
+  const inDock = hit?.closest('.home-dock')
+  pointer.dockTargetId = hit?.closest<HTMLElement>('[data-dock-item-id]')?.dataset.dockItemId
+  const target = inDock ? undefined : hit?.closest<HTMLElement>('[data-item-id]')
   if (target?.dataset.itemId) pointer.targetId = target.dataset.itemId
-  scheduleEdgePageTurn(event.clientX)
+  if (!inDock) scheduleEdgePageTurn(event.clientX)
 }
 
 function scheduleEdgePageTurn(clientX: number) {
@@ -469,7 +473,16 @@ function onPointerUp(event: PointerEvent) {
   if (!pointer || event.pointerId !== pointer.id) return
   const deltaX = event.clientX - pointer.x
   const deltaY = event.clientY - pointer.y
-  if (pointer.dragging && pointer.sourceId !== pointer.targetId) {
+  if (pointer.dragging && document.elementFromPoint(event.clientX, event.clientY)?.closest('.home-dock')) {
+    const sourceId = pointer.sourceId
+    const title = props.items.find((item) => item.id === sourceId)?.title ?? '入口'
+    const alreadyDocked = props.dockItemIds?.includes(sourceId) ?? false
+    if (sourceId !== pointer.dockTargetId) emit('dock', sourceId, pointer.dockTargetId)
+    moveAnnouncement.value = alreadyDocked
+      ? `已调整${title}在 Dock 中的位置。`
+      : `已将${title}固定到 Dock。`
+    suppressNextClick()
+  } else if (pointer.dragging && pointer.sourceId !== pointer.targetId) {
     emit('reorder', pointer.sourceId, pointer.targetId)
     suppressNextClick()
   } else if (pointer.type === 'touch' && !pointer.dragging && Math.abs(deltaX) > 52 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {

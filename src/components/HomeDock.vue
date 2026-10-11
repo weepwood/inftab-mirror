@@ -12,6 +12,7 @@ const emit = defineEmits<{ open: [item: LauncherItem] }>()
       :key="item.id"
       type="button"
       class="home-dock-item"
+      :data-dock-item-id="item.id"
       :aria-label="`打开${item.title}`"
       :title="item.title"
       @click="emit('open', item)"
