@@ -314,6 +314,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .folder-selection-label { margin: 10px 0 6px; color: #5d646c; font-size: 12px; }
 .folder-choice-list, .folder-link-list { min-height: 0; overflow: auto; border: 1px solid #e6e9ee; border-radius: 10px; }
 .folder-choice { display: flex !important; align-items: center; gap: 10px; min-height: 43px; margin: 0 !important; padding: 5px 10px; color: #41474e !important; cursor: pointer; }
+.folder-choice.unavailable { color: #9299a1 !important; cursor: not-allowed; }
+.folder-choice.unavailable small { display: block; margin-top: 2px; color: #9aa0a7; font-size: 10px; }
+.folder-choice.unavailable input { cursor: not-allowed; }
 .folder-choice + .folder-choice, .folder-link + .folder-link { border-top: 1px solid #eef0f3; }
 .folder-dialog .folder-choice input { width: 16px !important; height: 16px !important; flex: 0 0 auto; margin: 0 !important; }
 .folder-choice-mark { width: 28px; height: 28px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 8px; color: #fff; font-size: 10px; font-weight: 650; }

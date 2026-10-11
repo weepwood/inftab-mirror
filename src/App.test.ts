@@ -116,4 +116,19 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.folder-link').text()).toContain('京东商城')
     expect(JSON.parse(localStorage.getItem('inftab.folders.v1') ?? '[]')[0].title).toBe('工作')
   })
+
+  it('prevents adding a shortcut to multiple folders', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+    await wrapper.get('.folder-add-button').trigger('click')
+    await wrapper.get('.folder-dialog input[placeholder="例如：工作"]').setValue('工作')
+    await wrapper.get('.folder-choice input[type="checkbox"]').setValue(true)
+    await wrapper.get('.folder-dialog button.button-primary').trigger('click')
+    await wrapper.get('.folder-add-button').trigger('click')
+    await wrapper.get('.folder-dialog input[placeholder="例如：工作"]').setValue('生活')
+
+    const assignedShortcut = wrapper.findAll('.folder-choice').find((choice) => choice.text().includes('京东商城'))
+    expect(assignedShortcut?.get('input[type="checkbox"]').element).toHaveProperty('disabled', true)
+    expect(assignedShortcut?.text()).toContain('已在其他文件夹')
+  })
 })

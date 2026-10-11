@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import { FolderOpen, Pencil, Trash2, X } from '@lucide/vue'
 import type { Shortcut, ShortcutFolder } from '../types'
 
-const props = defineProps<{ folder?: ShortcutFolder; shortcuts: Shortcut[] }>()
+const props = defineProps<{ folder?: ShortcutFolder; shortcuts: Shortcut[]; unavailableShortcutIds?: string[] }>()
 const emit = defineEmits<{
   close: []
   save: [folder: ShortcutFolder]
@@ -78,10 +78,10 @@ function save() {
         <label class="color-field">文件夹颜色<input v-model="color" type="color" /></label>
         <p class="folder-selection-label">选择要收纳的快捷入口</p>
         <div class="folder-choice-list">
-          <label v-for="shortcut in shortcuts" :key="shortcut.id" class="folder-choice">
-            <input type="checkbox" :checked="selectedIds.includes(shortcut.id)" @change="toggleShortcut(shortcut.id, ($event.target as HTMLInputElement).checked)" />
+          <label v-for="shortcut in shortcuts" :key="shortcut.id" class="folder-choice" :class="{ unavailable: unavailableShortcutIds?.includes(shortcut.id) }">
+            <input type="checkbox" :checked="selectedIds.includes(shortcut.id)" :disabled="unavailableShortcutIds?.includes(shortcut.id)" @change="toggleShortcut(shortcut.id, ($event.target as HTMLInputElement).checked)" />
             <span class="folder-choice-mark" :style="{ backgroundColor: shortcut.color }">{{ shortcut.mark }}</span>
-            <span>{{ shortcut.title }}</span>
+            <span>{{ shortcut.title }}<small v-if="unavailableShortcutIds?.includes(shortcut.id)">已在其他文件夹</small></span>
           </label>
           <p v-if="!shortcuts.length" class="folder-empty">先添加快捷入口，再将它们放入文件夹。</p>
         </div>

@@ -94,6 +94,9 @@ const allLauncherItems = computed<LauncherItem[]>(() => {
   const order = new Map(launcherOrder.value.map((id, index) => [id, index]))
   return items.sort((left, right) => (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER))
 })
+const unavailableFolderShortcutIds = computed(() => folders.value
+  .filter((folder) => folder.id !== activeFolder.value?.id)
+  .flatMap((folder) => folder.shortcutIds))
 const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
 const pageDots = computed(() => Array.from({ length: pageCount.value }, (_, index) => index))
 const compactRows = computed(() => Math.min(preferences.value.rows, Math.max(1, Math.ceil(allLauncherItems.value.length / preferences.value.columns))))
@@ -443,6 +446,7 @@ onBeforeUnmount(() => {
       v-if="folderDialogOpen"
       :folder="activeFolder"
       :shortcuts="shortcuts"
+      :unavailable-shortcut-ids="unavailableFolderShortcutIds"
       @close="closeFolderDialog"
       @save="saveFolder"
       @remove="removeFolderData($event); closeFolderDialog()"
