@@ -65,6 +65,19 @@ describe('new-tab landmarks', () => {
   })
 })
 
+describe('new-tab keyboard launcher ordering', () => {
+  it('moves a focused launcher and persists the new order', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    const weather = wrapper.get('[data-item-id="weather"] .shortcut-open')
+    await weather.trigger('keydown', { key: 'ArrowRight', shiftKey: true })
+    await flushLocalStorageWrites()
+
+    const order = JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]') as string[]
+    expect(order.indexOf('weather')).toBe(order.indexOf('countdowns') + 1)
+    expect(wrapper.get('[role="status"]').text()).toContain('已将weather移动到第2个位置')
+  })
+})
+
 describe('new-tab keyboard search', () => {
   it('focuses search with slash or Ctrl/Command+K', () => {
     wrapper = mount(App, { attachTo: document.body })

@@ -407,6 +407,17 @@ function reorderItems(sourceId: string, targetId: string) {
   reorderLauncherOrder(sourceId, targetId, allLauncherItems.value.map((item) => item.id))
 }
 
+function moveLauncherItemByKeyboard(itemId: string, direction: -1 | 1) {
+  const nextOrder = allLauncherItems.value.map((item) => item.id)
+  const currentIndex = nextOrder.indexOf(itemId)
+  const nextIndex = currentIndex + direction
+  if (currentIndex < 0 || nextIndex < 0 || nextIndex >= nextOrder.length) return
+  const [item] = nextOrder.splice(currentIndex, 1)
+  if (item === undefined) return
+  nextOrder.splice(nextIndex, 0, item)
+  launcherOrder.value = nextOrder
+}
+
 function downloadBackup() {
   try {
     const contents = JSON.stringify(createBackup(), null, 2)
@@ -430,6 +441,7 @@ function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode:
 }
 
 function handleKeydown(event: KeyboardEvent) {
+  if (event.defaultPrevented) return
   if (event.key === 'Escape') {
     if (shortcutDialog.value) {
       shortcutDialog.value = false
@@ -514,6 +526,7 @@ onBeforeUnmount(() => {
         @edit="editLauncherItem"
         @remove="removeLauncherItem"
         @reorder="reorderItems"
+        @move-by-keyboard="moveLauncherItemByKeyboard"
         @swipe="movePage"
       />
       <nav v-if="pageCount > 1" class="page-dots" aria-label="快捷入口页码">

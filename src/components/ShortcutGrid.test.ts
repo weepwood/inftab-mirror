@@ -258,3 +258,34 @@ describe('ShortcutGrid page cycling', () => {
     wrapper.unmount()
   })
 })
+
+describe('ShortcutGrid keyboard reordering', () => {
+  it('offers a keyboard alternative and emits bounded adjacent moves', async () => {
+    installAnimationEnvironment()
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items,
+        columns: 2,
+        rows: 1,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 0,
+        transitionDirection: 1,
+        transitionEffect: 'slide',
+        transitionDuration: 0,
+      },
+    })
+    const secondButton = wrapper.get('[data-item-id="item-1"] .shortcut-open')
+    expect(secondButton.attributes('aria-keyshortcuts')).toContain('Shift+ArrowLeft')
+
+    await secondButton.trigger('keydown', { key: 'ArrowLeft', shiftKey: true })
+    expect(wrapper.emitted('moveByKeyboard')).toEqual([['item-1', -1]])
+    expect(wrapper.get('[role="status"]').text()).toContain('移动到第1个位置')
+
+    await wrapper.get('[data-item-id="item-0"] .shortcut-open').trigger('keydown', { key: 'ArrowLeft', shiftKey: true })
+    expect(wrapper.emitted('moveByKeyboard')).toHaveLength(1)
+    expect(wrapper.get('[role="status"]').text()).toContain('已经是第一个入口')
+    wrapper.unmount()
+  })
+})

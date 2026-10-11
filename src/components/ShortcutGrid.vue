@@ -22,6 +22,7 @@ const emit = defineEmits<{
   edit: [item: LauncherItem]
   remove: [item: LauncherItem]
   reorder: [sourceId: string, targetId: string]
+  moveByKeyboard: [itemId: string, direction: -1 | 1]
   swipe: [direction: number]
 }>()
 
@@ -76,6 +77,7 @@ const contextItem = ref<LauncherItem>()
 const contextMenu = ref<HTMLElement>()
 const contextMenuIndex = ref(0)
 const contextPosition = ref({ left: 0, top: 0 })
+const moveAnnouncement = ref('')
 let contextMenuTrigger: HTMLElement | undefined
 const draggingId = ref('')
 const dragPosition = ref({ x: 0, y: 0 })
@@ -506,6 +508,25 @@ function openContextMenuKeyboard(event: KeyboardEvent, item: LauncherItem) {
   showContextMenu(item, bounds.left + bounds.width / 2, bounds.top + bounds.height / 2, event.currentTarget as HTMLElement)
 }
 
+function handleShortcutKeydown(event: KeyboardEvent, item: LauncherItem) {
+  if (event.shiftKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+    event.preventDefault()
+    event.stopPropagation()
+    const direction = event.key === 'ArrowLeft' ? -1 : 1
+    const currentIndex = props.items.findIndex((candidate) => candidate.id === item.id)
+    const nextIndex = currentIndex + direction
+    if (currentIndex < 0) return
+    if (nextIndex < 0 || nextIndex >= props.items.length) {
+      moveAnnouncement.value = direction < 0 ? '已经是第一个入口。' : '已经是最后一个入口。'
+      return
+    }
+    emit('moveByKeyboard', item.id, direction)
+    moveAnnouncement.value = `已将${item.title}移动到第${nextIndex + 1}个位置。`
+    return
+  }
+  openContextMenuKeyboard(event, item)
+}
+
 function showContextMenu(item: LauncherItem, x: number, y: number, trigger: HTMLElement) {
   const width = 164
   const height = 94
@@ -596,6 +617,8 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="shortcut-grid-wrap" @click="closeContextMenu()">
+    <span id="launcher-reorder-hint" class="visually-hidden">按 Shift 加左右方向键可调整此入口的位置。</span>
+    <span class="visually-hidden" role="status" aria-live="polite">{{ moveAnnouncement }}</span>
     <div
       v-if="draggedItem"
       class="shortcut-drag-ghost"
@@ -656,7 +679,7 @@ onBeforeUnmount(() => {
             @pointerdown="onPointerDown($event, item)"
             @contextmenu="openContextMenu($event, item)"
           >
-            <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" :aria-haspopup="item.folder ? 'dialog' : item.shortcut ? 'menu' : undefined" @click="openItem($event, item)" @keydown="openContextMenuKeyboard($event, item)">
+            <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" aria-describedby="launcher-reorder-hint" aria-keyshortcuts="Shift+ArrowLeft Shift+ArrowRight" :aria-haspopup="item.folder ? 'dialog' : item.shortcut ? 'menu' : undefined" @click="openItem($event, item)" @keydown="handleShortcutKeydown($event, item)">
               <span class="shortcut-icon" :class="{ builtin: item.action }" :style="{ backgroundColor: item.color }">
                 <img v-if="item.icon" class="shortcut-picture" :src="item.icon" alt="" draggable="false" />
                 <component v-else-if="item.action" :is="itemIcons[item.action]" :size="35" :stroke-width="2.6" />
