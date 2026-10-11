@@ -1,5 +1,5 @@
 import { useStoredState } from './useStoredState'
-import { toRaw } from 'vue'
+import { toRaw, watch } from 'vue'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts } from '../data/defaults'
 import { mergeById, type WorkspaceBackup } from '../data/backup'
 import { isValidCalendarDate } from '../data/countdown'
@@ -29,6 +29,12 @@ export function useLocalWorkspace() {
     && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
     preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
   }
+  watch(customSearchEngines, () => {
+    if (preferences.value.engine.startsWith('custom:')
+      && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
+      preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
+    }
+  }, { flush: 'sync' })
 
   const defaultShortcutById = new Map(defaultShortcuts.map((shortcut) => [shortcut.id, shortcut]))
   const outdatedDefaultIcons: Record<string, string> = {

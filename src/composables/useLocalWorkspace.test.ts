@@ -71,4 +71,20 @@ describe('useLocalWorkspace custom search engines', () => {
     const workspace = scope.run(() => useLocalWorkspace())!
     expect(workspace.preferences.value.engine).toBe('baidu')
   })
+
+  it('repairs the selected engine when another tab removes it', () => {
+    const engine = { id: 'wiki', name: 'Wiki', template: 'https://example.com/?q={query}' }
+    localStorage.setItem('inftab.custom-search-engines.v1', JSON.stringify([engine]))
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ engine: 'custom:wiki' }))
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'inftab.custom-search-engines.v1',
+      newValue: '[]',
+    }))
+
+    expect(workspace.customSearchEngines.value).toEqual([])
+    expect(workspace.preferences.value.engine).toBe('baidu')
+  })
 })
