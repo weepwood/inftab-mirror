@@ -262,6 +262,13 @@ export function useLocalWorkspace() {
       }
       return undefined
     }
+    const existingFolderIds = new Set(folders.value.map((folder) => folder.id))
+    const existingShortcutIds = new Set(shortcuts.value.map((shortcut) => shortcut.id))
+    const hasCrossTypeIdConflict = importedShortcuts.some((shortcut) => existingFolderIds.has(shortcut.id))
+      || importedFolders.some((folder) => existingShortcutIds.has(folder.id))
+    if (hasCrossTypeIdConflict) {
+      return '合并失败：导入内容与现有文件夹或快捷入口使用了相同的入口 ID，未导入任何数据。请修改备份中的冲突 ID 后重试。'
+    }
     const mergeLimits = [
       { label: '快捷入口', current: shortcuts.value, incoming: importedShortcuts, limit: 500 },
       { label: '文件夹', current: folders.value, incoming: importedFolders, limit: 500 },

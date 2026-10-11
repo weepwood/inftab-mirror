@@ -239,4 +239,42 @@ describe('useLocalWorkspace custom search engines', () => {
     expect(workspace.shortcuts.value).toHaveLength(500)
     expect(workspace.preferences.value.showClock).not.toBe(incoming.preferences.showClock)
   })
+
+  it('rejects cross-type launcher ID conflicts without dropping existing folders', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const existingFolder = { id: 'shared-launcher-id', title: 'Existing folder', shortcutIds: [], color: '#abc', mark: 'F' }
+    expect(workspace.saveFolder(existingFolder)).toBe(true)
+
+    const incoming = workspace.createBackup()
+    incoming.folders = []
+    incoming.shortcuts = [{ id: existingFolder.id, title: 'Imported shortcut', url: 'https://imported.example/', color: '#abc', mark: 'I' }]
+    incoming.launcherOrder = [existingFolder.id]
+    const validatedIncoming = parseWorkspaceBackup(incoming)
+
+    const result = workspace.restoreBackup(validatedIncoming, 'merge')
+
+    expect(result).toContain('相同的入口 ID')
+    expect(workspace.folders.value).toEqual([existingFolder])
+    expect(workspace.shortcuts.value.some((item) => item.id === existingFolder.id)).toBe(false)
+  })
+
+  it('rejects incoming folders that reuse existing shortcut IDs', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const existingShortcut = { id: 'shared-launcher-id', title: 'Existing shortcut', url: 'https://existing.example/', color: '#abc', mark: 'S' }
+    expect(workspace.saveShortcut(existingShortcut)).toBe(true)
+
+    const incoming = workspace.createBackup()
+    incoming.shortcuts = incoming.shortcuts.filter((item) => item.id !== existingShortcut.id)
+    incoming.folders = [{ id: existingShortcut.id, title: 'Imported folder', shortcutIds: [], color: '#369', mark: 'F' }]
+    incoming.launcherOrder = [existingShortcut.id]
+    const validatedIncoming = parseWorkspaceBackup(incoming)
+
+    const result = workspace.restoreBackup(validatedIncoming, 'merge')
+
+    expect(result).toContain('相同的入口 ID')
+    expect(workspace.shortcuts.value).toContainEqual(existingShortcut)
+    expect(workspace.folders.value.some((item) => item.id === existingShortcut.id)).toBe(false)
+  })
 })
