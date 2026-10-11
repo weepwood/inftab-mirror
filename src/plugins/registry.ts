@@ -69,7 +69,21 @@ const panelErrorComponent: Component = {
 }
 
 function lazyPanel(loader: () => Promise<{ default: Component }>) {
-  return defineAsyncComponent({ loader, loadingComponent: panelLoadingComponent, errorComponent: panelErrorComponent, delay: 0 })
+  return defineAsyncComponent({
+    loader,
+    loadingComponent: panelLoadingComponent,
+    errorComponent: panelErrorComponent,
+    delay: 0,
+    onError: retryPanelLoad,
+  })
+}
+
+export function retryPanelLoad(_error: Error, retry: () => void, fail: () => void, attempts: number) {
+  if (attempts >= 3) {
+    fail()
+    return
+  }
+  setTimeout(retry, attempts * 250)
 }
 
 export const panelPlugins = {

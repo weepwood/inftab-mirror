@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { launcherItems } from '../data/defaults'
-import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes } from './registry'
+import { launcherPanelRoutes, panelPlugins, retryPanelLoad, shortcutPanelRoutes } from './registry'
+
+afterEach(() => vi.useRealTimers())
 
 describe('built-in panel plugin registry', () => {
   it('routes every launcher action to a registered panel', () => {
@@ -24,5 +26,26 @@ describe('built-in panel plugin registry', () => {
 
   it('routes the legacy wallpaper shortcut to settings', () => {
     expect(shortcutPanelRoutes.wallpapers).toBe('settings')
+  })
+
+  it('retries a failed panel chunk twice before showing the error state', () => {
+    vi.useFakeTimers()
+    const retry = vi.fn()
+    const fail = vi.fn()
+    const error = new Error('Failed to fetch dynamically imported module')
+
+    retryPanelLoad(error, retry, fail, 1)
+    vi.advanceTimersByTime(249)
+    expect(retry).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(retry).toHaveBeenCalledOnce()
+    expect(fail).not.toHaveBeenCalled()
+
+    retryPanelLoad(error, retry, fail, 2)
+    vi.advanceTimersByTime(500)
+    expect(retry).toHaveBeenCalledTimes(2)
+
+    retryPanelLoad(error, retry, fail, 3)
+    expect(fail).toHaveBeenCalledOnce()
   })
 })
