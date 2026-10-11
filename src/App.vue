@@ -147,6 +147,11 @@ const panelContext = computed<PanelPluginContext>(() => ({
   updatePreferences,
   resetPreferences,
   openShortcut: () => openShortcutDialog(),
+  openShortcutFromBookmark: (title, url) => {
+    openShortcutDialog()
+    shortcutTitle.value = title
+    shortcutUrl.value = url
+  },
   openFolder: () => openFolderEditor(),
   exportBackup: downloadBackup,
   importBackup: applyWorkspaceBackup,

@@ -162,7 +162,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .bookmark-permission small { max-width: 290px; font-size: 12px; line-height: 1.6; }
 .browser-bookmark-list { display: grid; align-content: start; gap: 3px; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
 .browser-bookmark-list li { min-width: 0; }
+.browser-bookmark-entry { display: flex; align-items: center; gap: 4px; min-width: 0; border-radius: 8px; }
 .browser-bookmark-folder, .browser-bookmark-link { width: 100%; min-height: 39px; display: flex; align-items: center; gap: 9px; padding: 7px 9px; border: 0; border-radius: 8px; background: transparent; color: #3f4852; font: inherit; text-align: left; text-decoration: none; }
+.browser-bookmark-entry .browser-bookmark-link { width: auto; min-width: 0; flex: 1; }
+.browser-bookmark-add { width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; border: 0; border-radius: 7px; background: transparent; color: #71839b; cursor: pointer; }
+.browser-bookmark-add:hover { background: #e5ebf3; color: #355d91; }
 .browser-bookmark-folder { cursor: pointer; }
 .browser-bookmark-folder:hover, .browser-bookmark-link:hover { background: #eef2f7; }
 .browser-bookmark-folder span, .browser-bookmark-link span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -486,6 +490,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .theme-dark .custom-engine-list li,
 .theme-dark .browser-bookmark-folder,
 .theme-dark .browser-bookmark-link,
+.theme-dark .browser-bookmark-add,
 .theme-dark .browser-history-list a,
 .theme-dark .countdown-form label,
 .theme-dark .countdown-copy strong,
@@ -587,7 +592,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .theme-dark .back-button:hover,
 .theme-dark .shortcut-dialog header button:hover { background: #303744; color: #fff; }
 .theme-dark .browser-bookmark-folder:hover,
-.theme-dark .browser-bookmark-link:hover { background: #2a303a; }
+.theme-dark .browser-bookmark-link:hover,
+.theme-dark .browser-bookmark-add:hover { background: #2a303a; }
 .theme-dark .history-search > span { border-color: #3a414d; background: #252a34; color: #9ca6b4; }
 .theme-dark .history-search > span input { color: #dce2e9; }
 .theme-dark .history-retry { color: #9fc0ff; }

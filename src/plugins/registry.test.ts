@@ -28,6 +28,14 @@ describe('built-in panel plugin registry', () => {
     expect(shortcutPanelRoutes.wallpapers).toBe('settings')
   })
 
+  it('adapts bookmark actions through the plugin context', () => {
+    const addShortcut = vi.fn()
+    const listeners = panelPlugins.bookmarks.listeners({ openShortcutFromBookmark: addShortcut } as never)
+
+    listeners.addShortcut?.('Vue Docs', 'https://vuejs.org/')
+    expect(addShortcut).toHaveBeenCalledWith('Vue Docs', 'https://vuejs.org/')
+  })
+
   it('retries a failed panel chunk twice before showing the error state', () => {
     vi.useFakeTimers()
     const retry = vi.fn()

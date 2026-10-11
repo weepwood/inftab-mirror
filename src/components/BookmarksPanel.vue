@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Bookmark, ChevronDown, ChevronRight, ExternalLink, Folder } from '@lucide/vue'
+import { Bookmark, ChevronDown, ChevronRight, ExternalLink, Folder, Plus } from '@lucide/vue'
 import {
   canAccessBrowserBookmarks,
   getBrowserBookmarkTree,
@@ -22,6 +22,7 @@ interface BookmarkRow {
   expanded: boolean
 }
 
+const emit = defineEmits<{ addShortcut: [title: string, url: string] }>()
 const supported = canAccessBrowserBookmarks()
 const permissionGranted = ref(false)
 const loading = ref(false)
@@ -179,11 +180,16 @@ onBeforeUnmount(() => {
           <span>{{ row.title }}</span>
         </button>
         <div v-else-if="row.isFolder" class="browser-bookmark-folder empty-folder"><Folder :size="16" /><span>{{ row.title }}</span></div>
-        <a v-else class="browser-bookmark-link" :href="row.url" target="_blank" rel="noopener noreferrer">
-          <Bookmark :size="15" />
-          <span>{{ row.title }}</span>
-          <ExternalLink :size="13" />
-        </a>
+        <div v-else class="browser-bookmark-entry">
+          <a class="browser-bookmark-link" :href="row.url" target="_blank" rel="noopener noreferrer">
+            <Bookmark :size="15" />
+            <span>{{ row.title }}</span>
+            <ExternalLink :size="13" />
+          </a>
+          <button class="browser-bookmark-add" type="button" :aria-label="`添加${row.title}到快捷入口`" @click="emit('addShortcut', row.title, row.url ?? '')">
+            <Plus :size="16" />
+          </button>
+        </div>
       </li>
     </ul>
   </div>

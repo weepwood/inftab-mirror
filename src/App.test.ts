@@ -356,6 +356,39 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('此功能需要浏览器扩展')
   })
 
+  it('prepopulates a new shortcut from a browser bookmark', async () => {
+    const bookmarkChange = { addListener: vi.fn(), removeListener: vi.fn() }
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains: vi.fn().mockResolvedValue(true), request: vi.fn().mockResolvedValue(true) },
+      bookmarks: {
+        getTree: vi.fn().mockResolvedValue([{
+          id: '0', title: '', children: [{
+            id: '1', title: 'Bookmarks Bar', children: [{ id: '2', title: 'Vue Docs', url: 'https://vuejs.org/' }],
+          }],
+        }]),
+        onCreated: bookmarkChange,
+        onChanged: bookmarkChange,
+        onMoved: bookmarkChange,
+        onRemoved: bookmarkChange,
+        onChildrenReordered: bookmarkChange,
+        onImportEnded: bookmarkChange,
+      },
+    })
+    wrapper = mount(App, { attachTo: document.body })
+    await openLauncher('书签')
+    await wrapper.get('[aria-label="添加Vue Docs到快捷入口"]').trigger('click')
+
+    expect((wrapper.get('input[placeholder="例如：GitHub"]').element as HTMLInputElement).value).toBe('Vue Docs')
+    expect((wrapper.get('input[placeholder="https://example.com"]').element as HTMLInputElement).value).toBe('https://vuejs.org/')
+    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await flushLocalStorageWrites()
+
+    expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]')).toContainEqual(expect.objectContaining({
+      title: 'Vue Docs', url: 'https://vuejs.org/',
+    }))
+  })
+
   it('routes the browser history launcher to its permission-aware panel', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await openLauncher('history')

@@ -69,6 +69,8 @@ describe('BookmarksPanel', () => {
 
     await wrapper.get('input[aria-label="筛选浏览器书签"]').setValue('vuejs')
     expect(wrapper.findAll('.browser-bookmark-link').map((link) => link.text())).toEqual(['Vue Docs'])
+    await wrapper.get('[aria-label="添加Vue Docs到快捷入口"]').trigger('click')
+    expect(wrapper.emitted('addShortcut')).toEqual([['Vue Docs', 'https://vuejs.org/']])
   })
 
   it('clears the visible bookmark data when permission is revoked while open', async () => {

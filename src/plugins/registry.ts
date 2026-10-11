@@ -33,6 +33,7 @@ export interface PanelPluginContext {
   updatePreferences: (update: Partial<Preferences>) => void
   resetPreferences: () => void
   openShortcut: () => void
+  openShortcutFromBookmark: (title: string, url: string) => void
   openFolder: () => void
   exportBackup: () => void
   importBackup: (backup: WorkspaceBackup, mode: 'merge' | 'replace') => void
@@ -92,7 +93,7 @@ export const panelPlugins = {
     description: '查看当前浏览器中保存的书签',
     component: lazyPanel(() => import('../components/BookmarksPanel.vue')),
     props: () => ({}),
-    listeners: () => ({}),
+    listeners: (context) => ({ addShortcut: context.openShortcutFromBookmark }),
   },
   history: {
     title: '浏览历史',
