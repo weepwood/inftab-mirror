@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { FolderOpen, Pencil, Trash2, X } from '@lucide/vue'
 import type { Shortcut, ShortcutFolder } from '../types'
 
@@ -16,6 +16,9 @@ const title = ref(props.folder?.title ?? '')
 const color = ref(props.folder?.color ?? '#4176e8')
 const selectedIds = ref([...(props.folder?.shortcutIds ?? [])])
 const error = ref('')
+const dialog = ref<HTMLElement>()
+const titleInput = ref<HTMLInputElement>()
+let returnFocusTarget: HTMLElement | undefined
 
 watch(() => props.folder, (folder) => {
   editing.value = !folder
@@ -23,6 +26,25 @@ watch(() => props.folder, (folder) => {
   color.value = folder?.color ?? '#4176e8'
   selectedIds.value = [...(folder?.shortcutIds ?? [])]
   error.value = ''
+})
+
+function focusInitialElement() {
+  if (editing.value) titleInput.value?.focus()
+  else dialog.value?.querySelector<HTMLElement>('.folder-link, header button')?.focus()
+}
+
+watch(editing, async () => {
+  await nextTick()
+  focusInitialElement()
+})
+
+onMounted(async () => {
+  returnFocusTarget = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
+  await nextTick()
+  focusInitialElement()
+})
+onBeforeUnmount(() => {
+  if (returnFocusTarget?.isConnected) returnFocusTarget.focus()
 })
 
 const folderShortcuts = () => selectedIds.value.flatMap((id) => {
@@ -48,6 +70,30 @@ function cancelEditing() {
   editing.value = false
 }
 
+function handleDialogKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    emit('close')
+    return
+  }
+  if (event.key !== 'Tab' || !dialog.value) return
+  const focusable = [...dialog.value.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+  if (!focusable.length) {
+    event.preventDefault()
+    return
+  }
+  const first = focusable[0]!
+  const last = focusable.at(-1)!
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
 function save() {
   const cleanTitle = title.value.trim()
   if (!cleanTitle) {
@@ -66,7 +112,7 @@ function save() {
 
 <template>
   <div class="modal-backdrop folder-backdrop" @click.self="emit('close')">
-    <section class="shortcut-dialog folder-dialog" role="dialog" aria-modal="true" :aria-labelledby="editing ? 'folder-edit-title' : 'folder-view-title'">
+    <section ref="dialog" class="shortcut-dialog folder-dialog" role="dialog" aria-modal="true" :aria-labelledby="editing ? 'folder-edit-title' : 'folder-view-title'" @keydown="handleDialogKeydown">
       <header>
         <div v-if="editing"><h2 id="folder-edit-title">{{ folder ? '编辑文件夹' : '新建文件夹' }}</h2><p>把常用网站整理到一个入口中</p></div>
         <div v-else class="folder-dialog-heading"><FolderOpen :size="21" :style="{ color: folder?.color }" /><div><h2 id="folder-view-title">{{ folder?.title }}</h2><p>{{ folderShortcuts().length }} 个快捷入口</p></div></div>
@@ -74,7 +120,7 @@ function save() {
       </header>
 
       <template v-if="editing">
-        <label>文件夹名称<input v-model="title" autofocus maxlength="80" placeholder="例如：工作" @input="error = ''" /></label>
+        <label>文件夹名称<input ref="titleInput" v-model="title" maxlength="80" placeholder="例如：工作" @input="error = ''" /></label>
         <label class="color-field">文件夹颜色<input v-model="color" type="color" /></label>
         <p class="folder-selection-label">选择要收纳的快捷入口</p>
         <div class="folder-choice-list">

@@ -357,6 +357,7 @@ function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
     activePanel.value = null
     shortcutDialog.value = false
+    closeFolderDialog()
   }
   const target = event.target instanceof HTMLElement ? event.target : null
   const editingText = target?.matches('input, textarea, [contenteditable="true"]') ?? false
