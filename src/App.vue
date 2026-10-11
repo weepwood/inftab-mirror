@@ -50,7 +50,7 @@ const shortcutUrl = ref('https://')
 const shortcutColor = ref('#3d82f6')
 const shortcutMark = ref('')
 const shortcutIcon = ref('')
-const pageSize = computed(() => preferences.value.columns * 3)
+const pageSize = computed(() => preferences.value.columns * preferences.value.rows)
 let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
 let homeWheelLocked = false
 const allLauncherItems = computed<LauncherItem[]>(() => {
@@ -84,6 +84,12 @@ const backgroundStyle = computed(() => {
     '--grid-columns': String(preferences.value.columns),
     '--shortcut-size': `${preferences.value.iconSize}px`,
     '--shortcut-radius': `${preferences.value.iconRadius}px`,
+    '--search-width': `${preferences.value.searchWidth}px`,
+    '--grid-top-gap': `${preferences.value.gridTopGap}px`,
+    '--shortcut-gap-x': `${preferences.value.gridGapX}px`,
+    '--shortcut-gap-y': `${preferences.value.gridGapY}px`,
+    '--page-transition-duration': `${preferences.value.pageTransitionMs}ms`,
+    '--hover-glow-strength': String(preferences.value.hoverGlow / 100),
   }
 })
 
@@ -208,6 +214,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       <ShortcutGrid
         :items="allLauncherItems"
         :columns="preferences.columns"
+        :rows="preferences.rows"
         :icon-size="preferences.iconSize"
         :icon-radius="preferences.iconRadius"
         :show-names="preferences.showNames"

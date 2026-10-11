@@ -7,6 +7,7 @@ import type { LauncherItem } from '../types'
 const props = defineProps<{
   items: LauncherItem[]
   columns: number
+  rows: number
   iconSize: number
   iconRadius: number
   showNames: boolean
@@ -29,7 +30,7 @@ const itemIcons: Record<string, Component> = {
   wallpaper: Image,
 }
 
-const pageSize = computed(() => props.columns * 3)
+const pageSize = computed(() => props.columns * props.rows)
 const pages = computed(() => {
   const result: LauncherItem[][] = []
   for (let index = 0; index < props.items.length; index += pageSize.value) {

@@ -36,6 +36,13 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     && typeof preferences.columns === 'number'
     && typeof preferences.showNames === 'boolean'
     && typeof preferences.iconRadius === 'number'
+    && (preferences.rows === undefined || typeof preferences.rows === 'number')
+    && (preferences.gridGapX === undefined || typeof preferences.gridGapX === 'number')
+    && (preferences.gridGapY === undefined || typeof preferences.gridGapY === 'number')
+    && (preferences.searchWidth === undefined || typeof preferences.searchWidth === 'number')
+    && (preferences.gridTopGap === undefined || typeof preferences.gridTopGap === 'number')
+    && (preferences.pageTransitionMs === undefined || typeof preferences.pageTransitionMs === 'number')
+    && (preferences.hoverGlow === undefined || typeof preferences.hoverGlow === 'number')
   if (!validPreferences
     || !shortcuts.every((item) => isRecord(item) && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.url === 'string' && typeof item.color === 'string' && typeof item.mark === 'string' && (item.icon === undefined || typeof item.icon === 'string'))
     || !todos.every((item) => isRecord(item) && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.done === 'boolean')

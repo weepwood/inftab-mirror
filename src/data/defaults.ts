@@ -10,6 +10,13 @@ export const defaultPreferences: Preferences = {
   shade: 0.2,
   iconSize: 96,
   columns: 6,
+  rows: 3,
+  gridGapX: 18,
+  gridGapY: 30,
+  searchWidth: 548,
+  gridTopGap: 50,
+  pageTransitionMs: 620,
+  hoverGlow: 100,
   showNames: true,
   iconRadius: 50,
 }

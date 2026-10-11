@@ -31,6 +31,13 @@ export interface Preferences {
   shade: number
   iconSize: number
   columns: number
+  rows: number
+  gridGapX: number
+  gridGapY: number
+  searchWidth: number
+  gridTopGap: number
+  pageTransitionMs: number
+  hoverGlow: number
   showNames: boolean
   iconRadius: number
 }
