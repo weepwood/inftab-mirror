@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ArrowDown, ArrowUp, GripVertical, X } from '@lucide/vue'
-import { homeWidgetPlugins, type HomeWidgetContext } from '../plugins/widgetRegistry'
+import { homeWidgetPlugins, type HomeWidgetContext, type HomeWidgetPluginRegistry } from '../plugins/widgetRegistry'
 import type { PanelId } from '../plugins/registry'
 import type { HomeWidgetId, HomeWidgetSize } from '../types'
 
-const props = defineProps<{ widgetIds: HomeWidgetId[]; widgetSizes: Record<HomeWidgetId, HomeWidgetSize>; context: HomeWidgetContext }>()
+const props = withDefaults(defineProps<{
+  widgetIds: HomeWidgetId[]
+  widgetSizes: Record<HomeWidgetId, HomeWidgetSize>
+  context: HomeWidgetContext
+  plugins?: HomeWidgetPluginRegistry
+}>(), { plugins: () => homeWidgetPlugins })
 const emit = defineEmits<{
   open: [panel: PanelId]
   remove: [id: HomeWidgetId]
@@ -19,7 +24,12 @@ function reorderWidget(from: number, to: number) {
   const id = props.widgetIds[from]
   if (!id || to < 0 || to >= props.widgetIds.length || from === to) return
   emit('reorder', from, to)
-  moveAnnouncement.value = `${homeWidgetPlugins[id].title}已移到第${to + 1}个位置。`
+  moveAnnouncement.value = `${props.plugins[id].title}已移到第${to + 1}个位置。`
+}
+
+function openWidget(id: HomeWidgetId) {
+  const panel = props.plugins[id].panel
+  if (panel) emit('open', panel)
 }
 
 function startDrag(event: DragEvent, index: number) {
@@ -59,15 +69,16 @@ function moveWidget(index: number, direction: -1 | 1) {
     >
       <header class="home-widget-header" draggable="true" @dragstart="startDrag($event, index)">
         <GripVertical :size="15" aria-hidden="true" class="home-widget-grip" />
-        <button class="home-widget-title" type="button" :aria-label="`打开${homeWidgetPlugins[id].title}`" @click="emit('open', homeWidgetPlugins[id].panel)">
-          {{ homeWidgetPlugins[id].title }}
+        <button v-if="props.plugins[id].panel" class="home-widget-title" type="button" :aria-label="`打开${props.plugins[id].title}`" @click="openWidget(id)">
+          {{ props.plugins[id].title }}
         </button>
-        <button class="home-widget-order" type="button" :disabled="index === 0" :aria-label="`将${homeWidgetPlugins[id].title}上移`" @click="moveWidget(index, -1)"><ArrowUp :size="14" /></button>
-        <button class="home-widget-order" type="button" :disabled="index === widgetIds.length - 1" :aria-label="`将${homeWidgetPlugins[id].title}下移`" @click="moveWidget(index, 1)"><ArrowDown :size="14" /></button>
-        <button class="home-widget-size" type="button" :aria-label="widgetSizes[id] === 'wide' ? `将${homeWidgetPlugins[id].title}恢复标准宽度` : `将${homeWidgetPlugins[id].title}加宽`" @click="emit('resize', id, widgetSizes[id] === 'wide' ? 'standard' : 'wide')">{{ widgetSizes[id] === 'wide' ? '标准' : '加宽' }}</button>
-        <button class="home-widget-remove" type="button" :aria-label="`移除${homeWidgetPlugins[id].title}`" @click="emit('remove', id)"><X :size="15" /></button>
+        <span v-else class="home-widget-title home-widget-title-static">{{ props.plugins[id].title }}</span>
+        <button class="home-widget-order" type="button" :disabled="index === 0" :aria-label="`将${props.plugins[id].title}上移`" @click="moveWidget(index, -1)"><ArrowUp :size="14" /></button>
+        <button class="home-widget-order" type="button" :disabled="index === widgetIds.length - 1" :aria-label="`将${props.plugins[id].title}下移`" @click="moveWidget(index, 1)"><ArrowDown :size="14" /></button>
+        <button class="home-widget-size" type="button" :aria-label="widgetSizes[id] === 'wide' ? `将${props.plugins[id].title}恢复标准宽度` : `将${props.plugins[id].title}加宽`" @click="emit('resize', id, widgetSizes[id] === 'wide' ? 'standard' : 'wide')">{{ widgetSizes[id] === 'wide' ? '标准' : '加宽' }}</button>
+        <button class="home-widget-remove" type="button" :aria-label="`移除${props.plugins[id].title}`" @click="emit('remove', id)"><X :size="15" /></button>
       </header>
-      <component :is="homeWidgetPlugins[id].component" v-bind="homeWidgetPlugins[id].props(context)" />
+      <component :is="props.plugins[id].component" v-bind="props.plugins[id].props(context)" />
     </article>
   </section>
 </template>

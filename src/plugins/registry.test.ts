@@ -32,7 +32,7 @@ describe('built-in panel plugin registry', () => {
     for (const [id, widget] of Object.entries(homeWidgetPlugins)) {
       expect(widget.title, `${id} title`).toBeTruthy()
       expect(widget.description, `${id} description`).toBeTruthy()
-      expect(panelPlugins[widget.panel], `${id} panel`).toBeTruthy()
+      if (widget.panel) expect(panelPlugins[widget.panel], `${id} panel`).toBeTruthy()
       expect(widget.component, `${id} component`).toBeTruthy()
       expect(typeof widget.props, `${id} props adapter`).toBe('function')
     }

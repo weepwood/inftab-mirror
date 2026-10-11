@@ -47,6 +47,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .home-widget-header:active { cursor: grabbing; }
 .home-widget-grip { flex: 0 0 auto; color: #89919c; }
 .home-widget-title { min-width: 0; flex: 1; overflow: hidden; border: 0; padding: 3px 4px; background: transparent; color: inherit; font-size: 12px; font-weight: 700; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.home-widget-title-static { cursor: inherit; }
 .home-widget-order, .home-widget-remove { width: 25px; height: 25px; flex: 0 0 auto; display: grid; place-items: center; border: 0; border-radius: 6px; padding: 0; background: transparent; color: #69727e; cursor: pointer; }
 .home-widget-size { min-height: 25px; flex: 0 0 auto; border: 0; border-radius: 6px; padding: 0 5px; background: transparent; color: #69727e; font-size: 10px; cursor: pointer; }
 .home-widget-size:hover { background: rgba(76, 93, 116, .12); color: #26313e; }

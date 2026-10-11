@@ -13,10 +13,12 @@ export interface HomeWidgetContext {
 export interface HomeWidgetPlugin {
   title: string
   description: string
-  panel: PanelId
+  panel?: PanelId
   component: Component
   props: (context: HomeWidgetContext) => Record<string, unknown>
 }
+
+export type HomeWidgetPluginRegistry = Record<HomeWidgetId, HomeWidgetPlugin>
 
 const widgetLoadingComponent: Component = {
   render: () => h('p', { class: 'panel-loading', role: 'status' }, '正在加载小组件…'),
@@ -67,4 +69,4 @@ export const homeWidgetPlugins = {
     component: lazyWidget(() => import('../components/CalendarSummaryWidget.vue')),
     props: () => ({}),
   },
-} satisfies Record<HomeWidgetId, HomeWidgetPlugin>
+} satisfies HomeWidgetPluginRegistry

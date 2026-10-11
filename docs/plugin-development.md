@@ -13,8 +13,8 @@
 ## 新增首页小组件
 
 1. 在 `src/plugins/ids.ts` 的 `availableHomeWidgetIds` 中加入稳定、唯一的 ID。
-2. 在 `src/plugins/widgetRegistry.ts` 用同 ID 注册标题、说明、关联面板、异步组件和上下文属性适配器。
-3. 在 `src/components/` 新建小组件。点击小组件标题应打开所关联的面板；首页排序和移除由组件架统一处理。
+2. 在 `src/plugins/widgetRegistry.ts` 用同 ID 注册标题、说明、可选的关联面板、异步组件和上下文属性适配器。
+3. 在 `src/components/` 新建小组件。若需要详情视图，在注册信息中填写关联面板，标题会打开它；独立小组件省略 `panel`，标题显示为非操作文本。首页排序和移除由组件架统一处理。
 4. 调整 `src/data/sanitize.ts` 与 `src/data/backup.ts` 的兼容逻辑（若 ID 由清单自动接受则仍需验证备份行为），确认旧备份缺少此项时仍能正常导入。
 5. 为小组件显示、打开面板、排序、移除、窄视口布局和备份往返添加覆盖。
 6. 小组件默认使用标准宽度；若新增宽度变体，需更新 `Preferences.homeWidgetSizes` 的默认值和清理逻辑，并覆盖桌面网格行数及移动端横向滚动布局。
