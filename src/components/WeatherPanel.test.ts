@@ -13,6 +13,12 @@ function response(body: unknown) {
   return { ok: true, json: async () => body } as Response
 }
 
+function waitForAbort(_input: RequestInfo | URL, init?: RequestInit) {
+  return new Promise<Response>((_resolve, reject) => {
+    init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+  })
+}
+
 const locations = [
   { id: 1, name: '新加坡东', admin1: '新加坡', country: '新加坡', latitude: 1.3, longitude: 103.9 },
   { id: 2, name: '新加坡西', admin1: '新加坡', country: '新加坡', latitude: 1.35, longitude: 103.7 },
@@ -37,7 +43,10 @@ function forecast(temperature: number) {
   }
 }
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
 
 describe('WeatherPanel request ordering', () => {
   it('ignores a slow city search after a newer search has completed', async () => {
@@ -126,6 +135,39 @@ describe('WeatherPanel request ordering', () => {
 
     expect(wrapper.find('.weather-error').text()).toContain('没有找到这个城市')
     expect(fetchMock).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it('ends a city search that never responds and shows a retryable timeout', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn(waitForAbort))
+    const wrapper = mount(WeatherPanel, { props: { city: '上海' } })
+    await flushPromises()
+
+    expect(wrapper.find('.weather-status[role="status"]').text()).toContain('正在获取')
+    await vi.advanceTimersByTimeAsync(15_000)
+    await flushPromises()
+
+    expect(wrapper.find('.weather-status[role="alert"]').text()).toContain('请求超时')
+    expect(wrapper.find('.weather-search button').element).not.toHaveProperty('disabled', true)
+    wrapper.unmount()
+  })
+
+  it('also times out when the forecast request stalls after city selection', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(response({ results: locations }))
+      .mockImplementationOnce(waitForAbort))
+    const wrapper = mount(WeatherPanel, { props: { city: '新加坡' } })
+    await flushPromises()
+    await wrapper.get('.weather-locations button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.weather-status[role="status"]').text()).toContain('正在获取')
+    await vi.advanceTimersByTimeAsync(15_000)
+    await flushPromises()
+
+    expect(wrapper.find('.weather-status[role="alert"]').text()).toContain('请求超时')
     wrapper.unmount()
   })
 

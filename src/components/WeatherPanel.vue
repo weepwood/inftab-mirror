@@ -40,6 +40,7 @@ const error = ref('')
 let requestVersion = 0
 let activeRequest: AbortController | undefined
 let internallySelectedCity = ''
+const requestTimeoutMs = 15_000
 
 const today = computed(() => forecast.value?.daily.time[0])
 
@@ -83,9 +84,7 @@ async function loadForecast(location: LocationResult) {
       forecast_days: '3',
       timezone: 'auto',
     })
-    const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { signal: activeRequest?.signal })
-    if (!response.ok) throw new Error('天气服务暂时不可用，请稍后重试。')
-    const data: unknown = await response.json()
+    const data = await requestJson(`https://api.open-meteo.com/v1/forecast?${params}`, '天气服务暂时不可用，请稍后重试。')
     if (!isWeatherResponse(data)) throw new Error('天气服务返回的数据格式无法识别。')
     if (version !== requestVersion) return
     forecast.value = data
@@ -132,9 +131,7 @@ async function searchCity() {
   selectedLocation.value = undefined
   try {
     const params = new URLSearchParams({ name, count: '6', language: 'zh', format: 'json' })
-    const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`, { signal: activeRequest?.signal })
-    if (!response.ok) throw new Error('城市搜索暂时不可用，请稍后重试。')
-    const data: unknown = await response.json()
+    const data = await requestJson(`https://geocoding-api.open-meteo.com/v1/search?${params}`, '城市搜索暂时不可用，请稍后重试。')
     if (!isRecord(data) || (data.results !== undefined && !Array.isArray(data.results))) throw new Error('城市搜索返回的数据格式无法识别。')
     if (version !== requestVersion) return
     locations.value = (data.results ?? []).filter(isLocationResult)
@@ -153,6 +150,26 @@ function beginRequest() {
   requestVersion += 1
   error.value = ''
   return requestVersion
+}
+
+async function requestJson(url: string, unavailableMessage: string): Promise<unknown> {
+  const controller = activeRequest
+  if (!controller) throw new Error(unavailableMessage)
+  let timedOut = false
+  const timeout = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, requestTimeoutMs)
+  try {
+    const response = await fetch(url, { signal: controller.signal })
+    if (!response.ok) throw new Error(unavailableMessage)
+    return await response.json()
+  } catch (cause) {
+    if (timedOut) throw new Error('请求超时，请检查网络后重试。')
+    throw cause
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 function isAbortError(cause: unknown) {
