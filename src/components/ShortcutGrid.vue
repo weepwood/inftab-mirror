@@ -23,6 +23,7 @@ const emit = defineEmits<{
   remove: [item: LauncherItem]
   reorder: [sourceId: string, targetId: string]
   swipe: [direction: number]
+  settled: []
 }>()
 
 const itemIcons: Record<string, Component> = {
@@ -68,8 +69,9 @@ let edgeDirection = 0
 let lastEdgeDirection = 0
 let particleFrame = 0
 let transitionTimer = 0
+let trackSettleTimer = 0
+let trackTransitionPending = false
 let resetFrame = 0
-let resetFallbackTimer = 0
 
 interface IconParticle {
   x: number
@@ -186,14 +188,28 @@ function playParticleTransition(pageIndex: number, direction: number, duration: 
 
 function cancelTransitionTimers() {
   if (transitionTimer) window.clearTimeout(transitionTimer)
-  if (resetFallbackTimer) window.clearTimeout(resetFallbackTimer)
+  if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
   if (resetFrame) cancelAnimationFrame(resetFrame)
 }
 
+function completeTrackTransition() {
+  if (!trackTransitionPending) return
+  trackTransitionPending = false
+  if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
+  trackSettleTimer = 0
+  emit('settled')
+}
+
 function finishTrackReset() {
-  if (props.transitionEffect === 'particles' || pages.value.length < 2) return
+  if (props.transitionEffect === 'particles' || pages.value.length < 2) {
+    completeTrackTransition()
+    return
+  }
   const lastPhysicalPage = pages.value.length
-  if (physicalPage.value !== 0 && physicalPage.value !== lastPhysicalPage + 1) return
+  if (physicalPage.value !== 0 && physicalPage.value !== lastPhysicalPage + 1) {
+    completeTrackTransition()
+    return
+  }
   resettingTrack.value = true
   physicalPage.value = physicalPage.value === 0 ? lastPhysicalPage : 1
   if (resetFrame) cancelAnimationFrame(resetFrame)
@@ -201,18 +217,38 @@ function finishTrackReset() {
     resetFrame = requestAnimationFrame(() => {
       resettingTrack.value = false
       resetFrame = 0
+      completeTrackTransition()
     })
+  })
+}
+
+function settleTrackTransition() {
+  if (!trackTransitionPending) return
+  if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
+  trackSettleTimer = 0
+  finishTrackReset()
+}
+
+function scheduleTrackSettleFallback() {
+  requestAnimationFrame(() => {
+    const track = gridViewport.value?.querySelector<HTMLElement>('.shortcut-pages')
+    const duration = getComputedStyle(track ?? document.documentElement).transitionDuration.split(',')[0].trim()
+    const durationMs = duration.endsWith('ms')
+      ? Number.parseFloat(duration)
+      : Number.parseFloat(duration) * 1000
+    trackSettleTimer = window.setTimeout(settleTrackTransition, (Number.isFinite(durationMs) ? durationMs : 0) + 180)
   })
 }
 
 function handleTrackTransitionEnd(event: TransitionEvent) {
   if (event.target !== event.currentTarget || event.propertyName !== 'transform') return
-  finishTrackReset()
+  settleTrackTransition()
 }
 
 watch(() => props.currentPage, (pageIndex, previousPage) => {
   if (pageIndex === previousPage) return
   cancelTransitionTimers()
+  trackTransitionPending = true
   const direction = props.transitionDirection < 0 ? -1 : 1
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const duration = reducedMotion ? Math.min(1200, Math.max(420, props.transitionDuration)) : Math.max(260, props.transitionDuration)
@@ -220,33 +256,39 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
   if (props.transitionEffect !== 'slide') {
     outgoingPage.value = { index: previousPage, effect: props.transitionEffect, direction, duration }
     if (props.transitionEffect === 'particles') playParticleTransition(previousPage, direction, duration)
-    transitionTimer = window.setTimeout(() => {
+    if (props.transitionEffect === 'trails') transitionTimer = window.setTimeout(() => {
       outgoingPage.value = undefined
-      incomingPage.value = undefined
       transitionTimer = 0
     }, duration + 160)
   }
 
   if (props.transitionEffect === 'particles') {
     physicalPage.value = pageIndex
+    const particleDuration = Math.max(duration + 140, 1220)
+    transitionTimer = window.setTimeout(() => {
+      outgoingPage.value = undefined
+      incomingPage.value = undefined
+      transitionTimer = 0
+      completeTrackTransition()
+    }, particleDuration)
     return
   }
   if (pageIndex === 0 && previousPage === pages.value.length - 1 && direction > 0) physicalPage.value = pages.value.length + 1
   else if (pageIndex === pages.value.length - 1 && previousPage === 0 && direction < 0) physicalPage.value = 0
   else physicalPage.value = pageIndex + 1
-  if (pageIndex === 0 && previousPage === pages.value.length - 1 && direction > 0
-    || pageIndex === pages.value.length - 1 && previousPage === 0 && direction < 0) {
-    resetFallbackTimer = window.setTimeout(finishTrackReset, Math.max(260, duration) + 80)
-  }
+  scheduleTrackSettleFallback()
 })
 
 watch(() => [pages.value.length, props.transitionEffect] as const, () => {
   cancelTransitionTimers()
+  const wasTransitioning = trackTransitionPending
+  trackTransitionPending = false
   outgoingPage.value = undefined
   incomingPage.value = undefined
   resettingTrack.value = true
   physicalPage.value = props.transitionEffect === 'particles' ? props.currentPage : props.currentPage + (pages.value.length > 1 ? 1 : 0)
   requestAnimationFrame(() => { resettingTrack.value = false })
+  if (wasTransitioning) emit('settled')
 }, { flush: 'post' })
 
 function startDrag() {
@@ -418,7 +460,7 @@ onBeforeUnmount(() => {
   cleanPointer()
   if (particleFrame) cancelAnimationFrame(particleFrame)
   if (transitionTimer) window.clearTimeout(transitionTimer)
-  if (resetFallbackTimer) window.clearTimeout(resetFallbackTimer)
+  if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
   if (resetFrame) cancelAnimationFrame(resetFrame)
   document.getElementById('shortcut-particle-canvas')?.remove()
   window.removeEventListener('click', closeContextMenu)

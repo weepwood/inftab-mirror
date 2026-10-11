@@ -43,6 +43,7 @@ const {
 const query = ref('')
 const currentPage = ref(0)
 const pageDirection = ref(1)
+const pageTransitionActive = ref(false)
 const activePanel = ref<Panel>(null)
 const backupExportError = ref('')
 const shortcutDialog = ref(false)
@@ -59,6 +60,8 @@ const viewport = ref({ width: window.innerWidth, height: window.innerHeight })
 const pageSize = computed(() => preferences.value.columns * preferences.value.rows)
 let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
 let homeWheelLocked = false
+let queuedPageTurns: number[] = []
+let queuedPageTarget: number | undefined
 const allLauncherItems = computed<LauncherItem[]>(() => {
   const items = [
     ...launcherItems.map((item) => item.id === 'todos'
@@ -232,14 +235,46 @@ function removeShortcut(item: LauncherItem) {
 
 function movePage(direction: number) {
   if (pageCount.value < 2) return
-  pageDirection.value = direction < 0 ? -1 : 1
-  currentPage.value = (currentPage.value + direction + pageCount.value) % pageCount.value
+  const step = direction < 0 ? -1 : 1
+  if (pageTransitionActive.value) {
+    if (queuedPageTurns.length < 8) queuedPageTurns.push(step)
+    queuedPageTarget = undefined
+    return
+  }
+  beginPageTransition((currentPage.value + step + pageCount.value) % pageCount.value, step)
 }
 
 function goToPage(page: number) {
   if (page === currentPage.value) return
-  pageDirection.value = page > currentPage.value ? 1 : -1
+  const direction = page > currentPage.value ? 1 : -1
+  if (pageTransitionActive.value) {
+    queuedPageTarget = page
+    queuedPageTurns = []
+    return
+  }
+  beginPageTransition(page, direction)
+}
+
+function beginPageTransition(page: number, direction: number) {
+  pageTransitionActive.value = true
+  pageDirection.value = direction
   currentPage.value = page
+}
+
+function finishPageTransition() {
+  if (!pageTransitionActive.value) return
+  pageTransitionActive.value = false
+  if (queuedPageTarget !== undefined) {
+    const target = queuedPageTarget
+    queuedPageTarget = undefined
+    if (target !== currentPage.value) beginPageTransition(target, target > currentPage.value ? 1 : -1)
+    return
+  }
+  const nextDirection = queuedPageTurns.shift()
+  if (nextDirection !== undefined) {
+    const nextPage = (currentPage.value + nextDirection + pageCount.value) % pageCount.value
+    beginPageTransition(nextPage, nextDirection)
+  }
 }
 
 function startHomeSwipe(event: PointerEvent) {
@@ -341,6 +376,7 @@ onBeforeUnmount(() => {
         :transition-direction="pageDirection"
         :transition-effect="preferences.pageTransitionEffect"
         :transition-duration="preferences.pageTransitionMs"
+        @settled="finishPageTransition"
         @open="openItem"
         @edit="openShortcutDialog"
         @remove="removeShortcut"
