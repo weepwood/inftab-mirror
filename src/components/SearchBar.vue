@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ChevronDown, Search } from '@lucide/vue'
 import { engines, searchModes } from '../data/defaults'
 import type { EngineId, SearchMode } from '../types'
@@ -24,6 +24,7 @@ const activeModes = computed(() => searchModes.filter((item) => props.visibleMod
 const baseUrl = import.meta.env.BASE_URL
 const searchBox = ref<HTMLElement>()
 const engineMenu = ref<HTMLElement>()
+const enginePicker = ref<HTMLButtonElement>()
 const engineMenuPosition = ref({ top: 0, left: 0 })
 const searchInput = ref<HTMLInputElement>()
 
@@ -39,6 +40,56 @@ function toggleEngines() {
   const bounds = searchBox.value?.getBoundingClientRect()
   if (bounds) engineMenuPosition.value = { top: bounds.bottom + 8, left: bounds.left + 8 }
   showEngines.value = true
+  void nextTick(() => focusSelectedEngine())
+}
+
+function engineOptions() {
+  return [...(engineMenu.value?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])]
+}
+
+function focusSelectedEngine() {
+  const index = engines.findIndex((item) => item.id === props.engine)
+  engineOptions()[Math.max(0, index)]?.focus()
+}
+
+function closeEngineMenu(restoreFocus = false) {
+  showEngines.value = false
+  if (restoreFocus) void nextTick(() => enginePicker.value?.focus())
+}
+
+function handleEngineOptionKeydown(event: KeyboardEvent) {
+  const options = engineOptions()
+  const index = options.indexOf(event.currentTarget as HTMLButtonElement)
+  let nextIndex: number | undefined
+  if (event.key === 'ArrowDown') nextIndex = (index + 1) % options.length
+  else if (event.key === 'ArrowUp') nextIndex = (index - 1 + options.length) % options.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = options.length - 1
+  else if (event.key === 'Escape') {
+    event.preventDefault()
+    closeEngineMenu(true)
+    return
+  }
+  if (nextIndex === undefined) return
+  event.preventDefault()
+  options[nextIndex]?.focus()
+}
+
+function handleModeKeydown(event: KeyboardEvent, index: number) {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !activeModes.value.length) return
+  event.preventDefault()
+  const nextIndex = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? activeModes.value.length - 1
+      : (index + (event.key === 'ArrowRight' ? 1 : -1) + activeModes.value.length) % activeModes.value.length
+  const mode = activeModes.value[nextIndex]
+  if (!mode) return
+  emit('update:mode', mode.id)
+  void nextTick(() => {
+    const tabs = searchBox.value?.previousElementSibling?.querySelectorAll<HTMLButtonElement>('.search-tab')
+    tabs?.[nextIndex]?.focus()
+  })
 }
 
 function closeOnOutsidePointer(event: PointerEvent) {
@@ -48,7 +99,7 @@ function closeOnOutsidePointer(event: PointerEvent) {
 }
 
 function closeOnEscape(event: KeyboardEvent) {
-  if (event.key === 'Escape') showEngines.value = false
+  if (event.key === 'Escape' && showEngines.value) closeEngineMenu(true)
 }
 
 onMounted(() => {
@@ -65,14 +116,16 @@ defineExpose({ focusSearch })
 
 <template>
   <section class="search-area" aria-label="站内搜索">
-    <nav v-if="activeModes.length" class="search-tabs" aria-label="搜索类型">
+    <nav v-if="activeModes.length" class="search-tabs" role="group" aria-label="搜索类型">
       <button
         v-for="item in activeModes"
         :key="item.id"
         type="button"
         class="search-tab"
         :class="{ active: mode === item.id }"
+        :aria-pressed="mode === item.id"
         @click="emit('update:mode', item.id)"
+        @keydown="handleModeKeydown($event, activeModes.indexOf(item))"
       >
         {{ item.label }}
       </button>
@@ -80,6 +133,7 @@ defineExpose({ focusSearch })
 
     <form ref="searchBox" class="search-box" @submit.prevent="emit('search')">
       <button
+        ref="enginePicker"
         class="engine-picker"
         type="button"
         :aria-label="`当前搜索引擎：${selectedEngine.label}`"
@@ -110,7 +164,8 @@ defineExpose({ focusSearch })
             type="button"
             role="option"
             :aria-selected="engine === item.id"
-            @click="emit('update:engine', item.id); showEngines = false"
+            @click="emit('update:engine', item.id); closeEngineMenu(true)"
+            @keydown="handleEngineOptionKeydown"
           >
             <img class="engine-logo" :src="`${baseUrl}search-engines/${item.logo}`" alt="" />
             {{ item.label }}

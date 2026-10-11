@@ -31,6 +31,9 @@ function toggleSearchMode(mode: SearchMode, enabled: boolean) {
   if (enabled) visibleModes.add(mode)
   else visibleModes.delete(mode)
   update('visibleSearchModes', [...visibleModes])
+  if (!visibleModes.has(props.preferences.mode)) {
+    update('mode', [...visibleModes][0] ?? 'html')
+  }
 }
 
 function setTransitionEffect(effect: PageTransitionEffect) {

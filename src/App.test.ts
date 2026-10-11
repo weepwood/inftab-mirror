@@ -172,4 +172,16 @@ describe('new-tab keyboard search', () => {
 
     expect(columns.get('input').element).toHaveProperty('value', '6')
   })
+
+  it('keeps the selected search mode visible when its tab visibility changes', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+    let newsToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().trim() === 'news')!
+    await newsToggle.get('input').setValue(true)
+    expect(wrapper.get('.search-tab[aria-pressed="true"]').text()).toBe('news')
+
+    newsToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().trim() === 'news')!
+    await newsToggle.get('input').setValue(false)
+    expect(wrapper.find('.search-tabs').exists()).toBe(false)
+  })
 })
