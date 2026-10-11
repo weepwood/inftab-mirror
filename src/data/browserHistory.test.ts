@@ -49,6 +49,7 @@ describe('optional browser history access', () => {
     const search = vi.fn().mockResolvedValue([
       { id: 'web', url: 'https://example.com/path', title: 'Example', lastVisitTime: 1_700_000_000_000, visitCount: 3 },
       { id: 'settings', url: 'chrome://settings/', title: 'Settings', lastVisitTime: 1_700_000_000_000, visitCount: 1 },
+      { id: 'credentialed', url: 'https://user:secret@example.com/', title: 'Example login', lastVisitTime: 1_700_000_000_000, visitCount: 1 },
       { id: 'missing-time', url: 'https://invalid.example/', title: 'Invalid', lastVisitTime: Number.NaN, visitCount: 1 },
       { id: 'out-of-range-time', url: 'https://invalid-time.example/', title: 'Invalid', lastVisitTime: 1e300, visitCount: 1 },
     ])

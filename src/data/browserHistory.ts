@@ -40,7 +40,10 @@ function isWebUrl(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 2048) return false
   try {
     const url = new URL(value)
-    return (url.protocol === 'https:' || url.protocol === 'http:') && Boolean(url.hostname)
+    return (url.protocol === 'https:' || url.protocol === 'http:')
+      && Boolean(url.hostname)
+      && !url.username
+      && !url.password
   } catch {
     return false
   }
