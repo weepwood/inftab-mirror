@@ -128,7 +128,7 @@ const panelContext = computed<PanelPluginContext>(() => ({
   openShortcut: () => openShortcutDialog(),
   openFolder: () => openFolderEditor(),
   exportBackup: downloadBackup,
-  importBackup: restoreBackup,
+  importBackup: applyWorkspaceBackup,
   addTodo,
   toggleTodo,
   updateTodo,
@@ -422,6 +422,10 @@ function downloadBackup() {
   } catch (error) {
     backupExportError.value = error instanceof Error ? `导出失败：${error.message}` : '导出失败，请稍后重试。'
   }
+}
+
+function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode: 'merge' | 'replace') {
+  backupExportError.value = restoreBackup(backup, mode) ?? ''
 }
 
 function handleKeydown(event: KeyboardEvent) {

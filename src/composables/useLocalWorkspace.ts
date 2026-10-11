@@ -201,7 +201,7 @@ export function useLocalWorkspace() {
     return JSON.parse(JSON.stringify(snapshot)) as WorkspaceBackup
   }
 
-  function restoreBackup(backup: WorkspaceBackup, mode: 'merge' | 'replace') {
+  function restoreBackup(backup: WorkspaceBackup, mode: 'merge' | 'replace'): string | undefined {
     const importedShortcuts = sanitizeShortcuts(backup.shortcuts)
     const importedFolders = sanitizeFolders(backup.folders, importedShortcuts)
     const importedTodos = sanitizeTodos(backup.todos)
@@ -223,7 +223,23 @@ export function useLocalWorkspace() {
       notes.value = importedNotes
       activeNoteId.value = sanitizeActiveNoteId(backup.activeNoteId, importedNotes)
       weatherCity.value = sanitizeWeatherCity(backup.weatherCity)
-      return
+      return undefined
+    }
+    const mergeLimits = [
+      { label: '快捷入口', current: shortcuts.value, incoming: importedShortcuts, limit: 500 },
+      { label: '文件夹', current: folders.value, incoming: importedFolders, limit: 500 },
+      { label: '待办事项', current: todos.value, incoming: importedTodos, limit: 500 },
+      { label: '纪念日', current: countdowns.value, incoming: importedCountdowns, limit: 500 },
+      { label: '笔记', current: notes.value, incoming: importedNotes, limit: 500 },
+      { label: '自定义搜索引擎', current: customSearchEngines.value, incoming: importedCustomSearchEngines, limit: 20 },
+    ]
+    const overLimitSections = mergeLimits.flatMap(({ label, current, incoming, limit }) => {
+      const currentIds = new Set(current.map((item) => item.id))
+      const newIds = new Set(incoming.map((item) => item.id).filter((id) => !currentIds.has(id)))
+      return current.length + newIds.size > limit ? [label] : []
+    })
+    if (overLimitSections.length) {
+      return `合并失败：${overLimitSections.join('、')}将超过数量上限，未导入任何数据。请先整理现有内容，或选择覆盖导入。`
     }
     customSearchEngines.value = sanitizeCustomSearchEngines(mergeById(customSearchEngines.value, importedCustomSearchEngines))
     preferences.value = sanitizePreferences({ ...preferences.value, ...backup.preferences })
@@ -240,6 +256,7 @@ export function useLocalWorkspace() {
     const preferredNoteId = backup.notes.some((note) => note.id === backup.activeNoteId) ? backup.activeNoteId : activeNoteId.value
     activeNoteId.value = sanitizeActiveNoteId(preferredNoteId, notes.value)
     weatherCity.value = sanitizeWeatherCity(backup.weatherCity || weatherCity.value)
+    return undefined
   }
 
   return {

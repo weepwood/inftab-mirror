@@ -133,4 +133,21 @@ describe('useLocalWorkspace custom search engines', () => {
     expect(workspace.saveFolder({ ...originalFolder, color: 'invalid' })).toBe(false)
     expect(workspace.folders.value[0]).toEqual(originalFolder)
   })
+
+  it('rejects a merge that exceeds a section limit without applying partial changes', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    workspace.shortcuts.value = Array.from({ length: 500 }, (_, index) => ({
+      id: `shortcut-${index}`, title: `Shortcut ${index}`, url: `https://example-${index}.com/`, color: '#abc', mark: 'S',
+    }))
+    const incoming = workspace.createBackup()
+    incoming.shortcuts = [{ id: 'imported', title: 'Imported', url: 'https://imported.example/', color: '#abc', mark: 'I' }]
+    incoming.preferences.showClock = !workspace.preferences.value.showClock
+
+    const result = workspace.restoreBackup(incoming, 'merge')
+
+    expect(result).toContain('快捷入口将超过数量上限')
+    expect(workspace.shortcuts.value).toHaveLength(500)
+    expect(workspace.preferences.value.showClock).not.toBe(incoming.preferences.showClock)
+  })
 })

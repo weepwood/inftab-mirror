@@ -472,6 +472,30 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.find('.backup-dialog').exists()).toBe(false)
   })
 
+  it('rejects an over-capacity backup merge without partially importing it', async () => {
+    localStorage.setItem('inftab.shortcuts.v1', JSON.stringify(Array.from({ length: 500 }, (_, index) => ({
+      id: 'shortcut-' + index,
+      title: 'Shortcut ' + index,
+      url: `https://shortcut-${index}.example/`,
+      color: '#abc',
+      mark: 'S',
+    }))))
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, showClock: true }))
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+    await selectBackupFile(validBackup({
+      shortcuts: [{ id: 'imported', title: 'Imported', url: 'https://imported.example/', color: '#936', mark: 'I' }],
+      preferences: { ...defaultPreferences, showClock: false },
+    }))
+    await wrapper.findAll('.backup-dialog button').find((button) => button.text().trim() === '合并导入')!.trigger('click')
+    await flushLocalStorageWrites()
+
+    expect(wrapper.find('.backup-dialog').exists()).toBe(false)
+    expect(wrapper.get('.settings-content [role="alert"]').text()).toContain('快捷入口将超过数量上限')
+    expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]')).toHaveLength(500)
+    expect(JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').showClock).toBe(true)
+  })
+
   it('replaces existing data only after backup confirmation and reports malformed files', async () => {
     localStorage.setItem('inftab.todos.v1', JSON.stringify([{ id: 'old-todo', title: 'Keep me?', done: false }]))
     wrapper = mount(App, { attachTo: document.body })
