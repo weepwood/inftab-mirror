@@ -1,21 +1,37 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Check, Plus, Trash2 } from '@lucide/vue'
+import { computed, ref } from 'vue'
+import { Check, Pencil, Plus, Trash2 } from '@lucide/vue'
 import type { TodoItem } from '../types'
 
-defineProps<{ items: TodoItem[] }>()
+const props = defineProps<{ items: TodoItem[] }>()
 const emit = defineEmits<{
   add: [title: string]
   toggle: [id: string]
+  update: [id: string, title: string]
   remove: [id: string]
+  clearCompleted: []
 }>()
 const draft = ref('')
+const editingId = ref('')
+const editingTitle = ref('')
+const completedCount = computed(() => props.items.filter((item) => item.done).length)
 
 function submit() {
   const title = draft.value.trim()
   if (!title) return
   emit('add', title)
   draft.value = ''
+}
+
+function beginEdit(item: TodoItem) {
+  editingId.value = item.id
+  editingTitle.value = item.title
+}
+
+function saveEdit() {
+  const title = editingTitle.value.trim()
+  if (title) emit('update', editingId.value, title)
+  editingId.value = ''
 }
 </script>
 
@@ -28,11 +44,19 @@ function submit() {
     <ul v-if="items.length" class="todo-list">
       <li v-for="item in items" :key="item.id" :class="{ done: item.done }">
         <button class="todo-check" type="button" :aria-label="item.done ? '标记为未完成' : '标记为完成'" @click="emit('toggle', item.id)"><Check :size="14" /></button>
-        <span>{{ item.title }}</span>
+        <form v-if="editingId === item.id" class="todo-edit-form" @submit.prevent="saveEdit">
+          <input v-model="editingTitle" aria-label="编辑待办" autofocus @keydown.esc="editingId = ''" />
+          <button type="submit" aria-label="保存待办"><Check :size="14" /></button>
+        </form>
+        <span v-else>{{ item.title }}</span>
+        <button v-if="editingId !== item.id" class="icon-action" type="button" aria-label="编辑待办" @click="beginEdit(item)"><Pencil :size="14" /></button>
         <button class="icon-action" type="button" aria-label="删除待办" @click="emit('remove', item.id)"><Trash2 :size="15" /></button>
       </li>
     </ul>
     <div v-else class="empty-state"><span>☀</span><p>还没有待办事项</p><small>把接下来要做的事记在这里</small></div>
-    <p v-if="items.length" class="panel-footnote">{{ items.filter((item) => !item.done).length }} 项待完成</p>
+    <div v-if="items.length" class="todo-footer">
+      <p class="panel-footnote">{{ items.length - completedCount }} 项待完成</p>
+      <button v-if="completedCount" class="text-button" type="button" @click="emit('clearCompleted')">清除已完成（{{ completedCount }}）</button>
+    </div>
   </div>
 </template>

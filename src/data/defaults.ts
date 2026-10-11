@@ -41,7 +41,7 @@ export const defaultShortcuts: Shortcut[] = [
   { id: 'baidu', title: '百度', url: 'https://www.baidu.com/', color: '#2676ed', mark: '爪', icon: 'c9f7546ad597dd7fb53e8129b6c07877.png' },
   { id: 'lunwenmao', title: '论文猫', url: 'https://www.lunwenmao.com/', color: '#f6f7f8', mark: '猫', icon: 'ebd5cc9193de437e76de2ca1abd2121.png' },
   { id: 'ctrip', title: '携程网', url: 'https://www.ctrip.com/', color: '#2478e8', mark: '海豚', icon: '1502895222082.png' },
-  { id: 'deep-sider', title: 'DeepSider', url: 'https://www.deepsider.ai/', color: '#f4f8f5', mark: '◈' },
+  { id: 'deep-sider', title: 'DeepSider', url: 'https://www.deepsider.ai/', color: '#f4f8f5', mark: '◈', icon: 'dbd6895d645eceb05cbcc5926952c505.png' },
   { id: 'iqiyi', title: '爱奇艺', url: 'https://www.iqiyi.com/', color: '#54a90c', mark: 'iQIYI', icon: '226c6aff617dbc253ce26d23be07c446.png' },
   { id: 'fox', title: '狐猴', url: 'https://www.google.com/', color: '#06b8df', mark: '狐', icon: '24f02a8178e623d22dc563857bf32f8.png' },
   { id: 'games', title: 'Infinity Games', url: 'https://inftab.com/', color: '#f7f7f7', mark: '🎮', icon: '5001b4d70b1c62f14859b51a6e8abd6f.png' },

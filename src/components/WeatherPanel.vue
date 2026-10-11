@@ -1,24 +1,162 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { CloudSun, ExternalLink } from '@lucide/vue'
+import { computed, onMounted, ref } from 'vue'
+import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Droplets, RefreshCw, Search, Snowflake, Sun, Wind } from '@lucide/vue'
 
-const city = ref(localStorage.getItem('inftab.weather-city') || '上海')
-function openForecast() {
-  localStorage.setItem('inftab.weather-city', city.value)
-  const query = encodeURIComponent(`${city.value.trim() || '上海'} 天气`)
-  window.open(`https://www.google.com/search?q=${query}`, '_blank', 'noopener,noreferrer')
+interface LocationResult {
+  id: number
+  name: string
+  admin1?: string
+  country?: string
+  latitude: number
+  longitude: number
 }
+
+interface WeatherResponse {
+  current: {
+    temperature_2m: number
+    apparent_temperature: number
+    relative_humidity_2m: number
+    weather_code: number
+    wind_speed_10m: number
+    time: string
+  }
+  daily: {
+    time: string[]
+    weather_code: number[]
+    temperature_2m_max: number[]
+    temperature_2m_min: number[]
+  }
+}
+
+const props = defineProps<{ city: string }>()
+const emit = defineEmits<{ 'update:city': [city: string] }>()
+const query = ref(props.city || '上海')
+const locations = ref<LocationResult[]>([])
+const selectedLocation = ref<LocationResult>()
+const forecast = ref<WeatherResponse>()
+const loading = ref(false)
+const error = ref('')
+
+const today = computed(() => forecast.value?.daily.time[0])
+
+function weatherLabel(code: number) {
+  if (code === 0) return '晴朗'
+  if (code === 1) return '大致晴朗'
+  if (code === 2) return '局部多云'
+  if (code === 3) return '阴天'
+  if (code === 45 || code === 48) return '有雾'
+  if (code >= 51 && code <= 57) return '毛毛雨'
+  if (code >= 61 && code <= 67) return '下雨'
+  if (code >= 71 && code <= 77) return '下雪'
+  if (code >= 80 && code <= 82) return '阵雨'
+  if (code === 85 || code === 86) return '阵雪'
+  if (code >= 95) return '雷雨'
+  return '天气状况'
+}
+
+function WeatherIcon({ code }: { code: number }) {
+  if (code === 0) return Sun
+  if (code === 1 || code === 2) return CloudSun
+  if (code === 3) return Cloud
+  if (code === 45 || code === 48) return CloudFog
+  if (code >= 51 && code <= 67) return CloudRain
+  if (code >= 71 && code <= 86) return Snowflake
+  if (code >= 95) return CloudLightning
+  return CloudSun
+}
+
+async function loadForecast(location: LocationResult) {
+  loading.value = true
+  error.value = ''
+  selectedLocation.value = location
+  try {
+    const params = new URLSearchParams({
+      latitude: String(location.latitude),
+      longitude: String(location.longitude),
+      current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m',
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min',
+      forecast_days: '3',
+      timezone: 'auto',
+    })
+    const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`)
+    if (!response.ok) throw new Error('天气服务暂时不可用，请稍后重试。')
+    forecast.value = await response.json() as WeatherResponse
+    emit('update:city', location.name)
+  } catch (cause) {
+    forecast.value = undefined
+    error.value = cause instanceof Error ? cause.message : '天气数据加载失败，请检查网络后重试。'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function searchCity() {
+  const name = query.value.trim()
+  if (!name) return
+  loading.value = true
+  error.value = ''
+  forecast.value = undefined
+  try {
+    const params = new URLSearchParams({ name, count: '6', language: 'zh', format: 'json' })
+    const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`)
+    if (!response.ok) throw new Error('城市搜索暂时不可用，请稍后重试。')
+    const data = await response.json() as { results?: LocationResult[] }
+    locations.value = data.results ?? []
+    if (!locations.value.length) error.value = '没有找到这个城市，请换个名称试试。'
+    else if (locations.value.length === 1) await loadForecast(locations.value[0]!)
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : '城市搜索失败，请检查网络后重试。'
+  } finally {
+    loading.value = false
+  }
+}
+
+function formatWeekday(date: string) {
+  return new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(new Date(`${date}T12:00:00`))
+}
+
+onMounted(searchCity)
 </script>
 
 <template>
   <div class="weather-content">
-    <div class="weather-icon"><CloudSun :size="54" :stroke-width="1.6" /></div>
-    <p class="weather-title">查看本地天气</p>
-    <p class="weather-copy">输入城市后，在新标签页中打开天气预报。</p>
-    <form class="inline-add" @submit.prevent="openForecast">
-      <input v-model="city" aria-label="城市名称" placeholder="输入城市" />
-      <button type="submit" aria-label="打开天气预报"><ExternalLink :size="17" /></button>
+    <form class="weather-search" @submit.prevent="searchCity">
+      <input v-model="query" aria-label="搜索城市天气" placeholder="输入城市名称" />
+      <button type="submit" aria-label="搜索城市" :disabled="loading"><Search :size="17" /></button>
     </form>
-    <small>天气数据由搜索引擎提供，本页面不会请求位置权限。</small>
+
+    <p v-if="loading && !forecast" class="weather-status" role="status">正在获取天气…</p>
+    <p v-else-if="error" class="weather-status weather-error" role="alert">{{ error }}</p>
+
+    <div v-if="locations.length > 1 && !forecast" class="weather-locations" aria-label="选择城市">
+      <button v-for="location in locations" :key="location.id" type="button" @click="loadForecast(location)">
+        <span>{{ location.name }}</span><small>{{ [location.admin1, location.country].filter(Boolean).join(' · ') }}</small>
+      </button>
+    </div>
+
+    <template v-if="forecast && selectedLocation">
+      <header class="weather-place">
+        <div><p>{{ [selectedLocation.admin1, selectedLocation.country].filter(Boolean).join(' · ') }}</p><h3>{{ selectedLocation.name }}</h3></div>
+        <button type="button" aria-label="刷新天气" :disabled="loading" @click="loadForecast(selectedLocation)"><RefreshCw :size="16" /></button>
+      </header>
+      <div class="weather-current">
+        <component :is="WeatherIcon({ code: forecast.current.weather_code })" :size="54" :stroke-width="1.6" />
+        <div><strong>{{ Math.round(forecast.current.temperature_2m) }}°</strong><span>{{ weatherLabel(forecast.current.weather_code) }}</span></div>
+        <p>体感 {{ Math.round(forecast.current.apparent_temperature) }}°</p>
+      </div>
+      <div class="weather-details">
+        <span><Droplets :size="15" /> 湿度 {{ forecast.current.relative_humidity_2m }}%</span>
+        <span><Wind :size="15" /> 风速 {{ Math.round(forecast.current.wind_speed_10m) }} km/h</span>
+      </div>
+      <section class="weather-days" aria-label="未来天气">
+        <div v-for="(date, index) in forecast.daily.time" :key="date" class="weather-day">
+          <span>{{ date === today ? '今天' : formatWeekday(date) }}</span>
+          <component :is="WeatherIcon({ code: forecast.daily.weather_code[index] ?? 0 })" :size="19" />
+          <span>{{ weatherLabel(forecast.daily.weather_code[index] ?? 0) }}</span>
+          <strong>{{ Math.round(forecast.daily.temperature_2m_max[index] ?? 0) }}° / {{ Math.round(forecast.daily.temperature_2m_min[index] ?? 0) }}°</strong>
+        </div>
+      </section>
+    </template>
+    <p class="weather-attribution">天气数据来自 Open-Meteo · 无需账号或设备定位</p>
   </div>
 </template>
