@@ -11,6 +11,7 @@ export const launcherPanelRoutes = {
   wallpaper: 'settings',
   bookmarks: 'bookmarks',
   calculator: 'calculator',
+  calendar: 'calendar',
 } as const
 
 export type LauncherPanelAction = keyof typeof launcherPanelRoutes
@@ -82,6 +83,13 @@ export const panelPlugins = {
     title: '计算器',
     description: '离线进行四则运算',
     component: lazyPanel(() => import('../components/CalculatorPanel.vue')),
+    props: () => ({}),
+    listeners: () => ({}),
+  },
+  calendar: {
+    title: '日历',
+    description: '查看日期和星期',
+    component: lazyPanel(() => import('../components/CalendarPanel.vue')),
     props: () => ({}),
     listeners: () => ({}),
   },

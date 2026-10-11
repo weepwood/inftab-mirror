@@ -210,6 +210,23 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .countdown-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .countdown-form-actions button { display: inline-flex; align-items: center; gap: 6px; }
 .countdown-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.calendar-content { padding: 21px 22px; }
+.calendar-toolbar { display: grid; grid-template-columns: auto 1fr 24px; align-items: center; gap: 8px; margin-bottom: 17px; }
+.calendar-today { min-height: 32px; padding: 0 10px; font-size: 12px; }
+.calendar-month-nav { display: flex; align-items: center; justify-content: center; gap: 11px; }
+.calendar-month-nav h3 { min-width: 105px; margin: 0; color: #303740; font-size: 15px; font-weight: 650; text-align: center; }
+.calendar-nav-button { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: #6b7480; cursor: pointer; }
+.calendar-nav-button:hover { background: #eef2f7; }
+.calendar-nav-button.next svg { transform: rotate(180deg); }
+.calendar-heading-icon { color: #8792a0; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.calendar-weekday { display: grid; height: 28px; place-items: center; color: #8c949e; font-size: 11px; }
+.calendar-day { min-width: 0; aspect-ratio: 1; display: grid; place-items: center; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #353b43; font-size: 13px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.calendar-day:hover { background: #f0f3f8; }
+.calendar-day.outside-month { color: #b8bec6; }
+.calendar-day.today { border-color: #7fa3e8; color: #3266bd; font-weight: 700; }
+.calendar-day[aria-pressed='true'] { border-color: #477ff0; background: #477ff0; color: #fff; }
+.calendar-selected { margin: 17px 0 0; padding: 12px; border-radius: 9px; background: #f4f6f9; color: #66707c; font-size: 12px; text-align: center; }
 .countdown-item { min-width: 0; display: flex; align-items: center; gap: 9px; padding: 10px 2px; border-bottom: 1px solid #eff0f2; }
 .countdown-icon { width: 32px; height: 32px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 10px; background: #fff1e9; color: #db7547; }
 .countdown-copy { min-width: 0; flex: 1; display: grid; gap: 3px; }
@@ -450,6 +467,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .theme-dark .browser-bookmark-link,
 .theme-dark .countdown-form label,
 .theme-dark .countdown-copy strong,
+.theme-dark .calendar-month-nav h3,
+.theme-dark .calendar-day,
 .theme-dark .countdown-item,
 .theme-dark .todo-list li,
 .theme-dark .notes-list,
@@ -471,6 +490,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .theme-dark .backup-preview,
 .theme-dark .wallpaper-note,
 .theme-dark .countdown-copy small,
+.theme-dark .calendar-weekday,
+.theme-dark .calendar-heading-icon,
+.theme-dark .calendar-nav-button,
 .theme-dark .note-list-item span,
 .theme-dark .notes-empty,
 .theme-dark .weather-status,
@@ -488,6 +510,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .theme-dark .folder-empty,
 .theme-dark .icon-file-actions span { color: #a4adba; }
 .theme-dark .settings-section,
+.theme-dark .calendar-selected,
 .theme-dark .countdown-item,
 .theme-dark .notes-list,
 .theme-dark .weather-day,
@@ -515,6 +538,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   color: #e2e6ed;
 }
 .theme-dark .button-secondary:hover,
+.theme-dark .calendar-nav-button:hover,
 .theme-dark .settings-add-shortcut:hover,
 .theme-dark .folder-link:hover,
 .theme-dark .folder-choice:hover,
@@ -530,6 +554,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .theme-dark .calculator-keys .calculator-key-utility { color: #b4bdc9; }
 .theme-dark .calculator-keys .calculator-key-operator { border-color: #3a4a67; background: #293750; color: #a9c6ff; }
 .theme-dark .calculator-keys .calculator-key-equals { border-color: #427cf2; background: #427cf2; color: #fff; }
+.theme-dark .calendar-selected { border-color: #333944; background: #252a34; color: #a4adba; }
 .theme-dark .folder-choice.unavailable { color: #9ca6b4 !important; }
 .theme-dark .folder-choice.unavailable small { color: #8e98a6; }
 .theme-dark .backup-counts li { background: #292f39; }
@@ -543,3 +568,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .theme-dark .browser-bookmark-link:hover { background: #2a303a; }
 .theme-dark .weather-place button { background: #293750; color: #a9c6ff; }
 .theme-dark .todo-check { border-color: #515b69; background: #252a34; }
+.theme-dark .calendar-day:hover { background: #303744; }
+.theme-dark .calendar-day.outside-month { color: #77818f; }
+.theme-dark .calendar-day.today { border-color: #7296d8; color: #9fc0ff; }
+.theme-dark .calendar-day[aria-pressed='true'] { border-color: #477ff0; background: #477ff0; color: #fff; }

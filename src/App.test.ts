@@ -272,6 +272,14 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('此功能需要浏览器扩展')
   })
 
+  it('loads the calendar as a built-in on-demand panel', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await openLauncher('日历')
+
+    expect(wrapper.get('.side-panel[role="dialog"] h2').text()).toBe('日历')
+    expect(wrapper.findAll('.calendar-day')).toHaveLength(42)
+  })
+
   it('rejects unsafe shortcut URLs and restores a valid shortcut after remount', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await openLauncher('settings')

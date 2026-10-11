@@ -74,6 +74,7 @@ export const launcherItems: LauncherItem[] = [
   { id: 'settings', title: 'settings', action: 'settings', color: '#fff', mark: '⚙', icon: '9622b98e90dd4f107d23481566095b34.png' },
   { id: 'bookmarks', title: '书签', action: 'bookmarks', color: '#fff', mark: '☆' },
   { id: 'calculator', title: '计算器', action: 'calculator', color: '#fff', mark: '＋' },
+  { id: 'calendar', title: '日历', action: 'calendar', color: '#fff', mark: '日' },
 ]
 
 export const defaultLauncherOrder = [

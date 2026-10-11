@@ -53,7 +53,7 @@ describe('workspace backups', () => {
     }))
     expect(parsed.countdowns).toEqual([{ id: 'anniversary', title: 'Anniversary', date: '2020-02-29', recurrence: 'yearly' }])
     expect(parsed.folders[0]?.shortcutIds).toEqual(['custom'])
-    expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'countdowns', 'todos', 'notes', 'settings', 'bookmarks', 'calculator'])
+    expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'countdowns', 'todos', 'notes', 'settings', 'bookmarks', 'calculator', 'calendar'])
   })
 
   it('keeps older backups compatible with the new clock preference', () => {
@@ -102,9 +102,9 @@ describe('workspace backups', () => {
   })
 
   it('accepts the maximum launcher order allowed by the shortcut and folder limits', () => {
-    const maximumLauncherOrder = Array.from({ length: 1_007 }, (_, index) => `item-${index}`)
+    const maximumLauncherOrder = Array.from({ length: 1_008 }, (_, index) => `item-${index}`)
     expect(() => parseWorkspaceBackup(backup({ launcherOrder: maximumLauncherOrder }))).not.toThrow()
-    expect(() => parseWorkspaceBackup(backup({ launcherOrder: [...maximumLauncherOrder, 'overflow'] }))).toThrow(/最多 1007 项/)
+    expect(() => parseWorkspaceBackup(backup({ launcherOrder: [...maximumLauncherOrder, 'overflow'] }))).toThrow(/最多 1008 项/)
   })
 
   it('rejects backups with oversized embedded wallpapers', () => {
