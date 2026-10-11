@@ -77,6 +77,13 @@ describe('local state sanitization', () => {
     expect(sanitizeShortcuts([{ id: 'bundled', title: 'Bundled', url: 'https://example.com', color: '#abc', mark: 'B', icon: 'site-icon.png' }])[0]?.icon).toBe('site-icon.png')
   })
 
+  it('reserves built-in launcher ids for built-in entries', () => {
+    expect(sanitizeShortcuts([
+      { id: 'weather', title: 'Replacement', url: 'https://example.com', color: '#abc', mark: 'R' },
+      { id: 'custom', title: 'Custom', url: 'https://custom.example', color: '#abc', mark: 'C' },
+    ])).toEqual([{ id: 'custom', title: 'Custom', url: 'https://custom.example/', color: '#abc', mark: 'C', icon: undefined }])
+  })
+
   it('repairs launcher order and stale active note references', () => {
     const shortcuts = sanitizeShortcuts([{ id: 'custom', title: 'Custom', url: 'https://example.com', color: '#abc', mark: 'C' }])
     const order = sanitizeLauncherOrder(['ghost', 'custom', 'custom', 'weather'], shortcuts)

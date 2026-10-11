@@ -45,6 +45,12 @@ describe('workspace backups', () => {
     expect(() => parseWorkspaceBackup(credentialed)).toThrow(/重复或无法识别/)
   })
 
+  it('rejects shortcuts that collide with built-in launcher ids', () => {
+    expect(() => parseWorkspaceBackup(backup({
+      shortcuts: [{ id: 'weather', title: 'Replacement', url: 'https://example.com', color: '#abc', mark: 'R' }],
+    }))).toThrow(/重复或无法识别/)
+  })
+
   it('imports version-one backups without folders and filters stale folder members', () => {
     expect(parseWorkspaceBackup(backup()).folders).toEqual([])
     expect(parseWorkspaceBackup(backup()).countdowns).toEqual([])

@@ -51,6 +51,17 @@ describe('useLocalWorkspace launcher ordering', () => {
   })
 })
 
+describe('useLocalWorkspace shortcut id validation', () => {
+  it('does not let a custom shortcut replace a built-in launcher entry', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const existingShortcuts = [...workspace.shortcuts.value]
+
+    expect(workspace.saveShortcut({ id: 'weather', title: 'Replacement', url: 'https://example.com/', color: '#abc', mark: 'R' })).toBe(false)
+    expect(workspace.shortcuts.value).toEqual(existingShortcuts)
+  })
+})
+
 describe('useLocalWorkspace dock references', () => {
   it('removes deleted shortcuts and folders from the persistent dock', () => {
     scope = effectScope()

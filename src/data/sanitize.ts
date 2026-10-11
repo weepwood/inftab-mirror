@@ -10,6 +10,7 @@ const searchModes = new Set<SearchMode>(['html', 'photos', 'news', 'videos', 'ma
 const transitionEffects = new Set(['slide', 'particles', 'trails'])
 const customEngineId = /^[\w-]{1,128}$/
 const palette = /^#[\da-f]{3,8}$/i
+const reservedLauncherIds = new Set(launcherItems.map((item) => item.id))
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -136,7 +137,7 @@ function validIcon(value: unknown): value is string | undefined {
 export function sanitizeShortcuts(value: unknown): Shortcut[] {
   return uniqueRecords(value, (item) => {
     const url = normalizeWebUrl(item.url)
-    if (!validId(item.id) || typeof item.title !== 'string' || typeof item.color !== 'string' || !palette.test(item.color)
+    if (!validId(item.id) || reservedLauncherIds.has(item.id) || typeof item.title !== 'string' || typeof item.color !== 'string' || !palette.test(item.color)
       || typeof item.mark !== 'string' || !url || !validIcon(item.icon)) return undefined
     const title = item.title.trim().slice(0, 80)
     if (!title) return undefined
@@ -153,7 +154,6 @@ export function sanitizeShortcuts(value: unknown): Shortcut[] {
 
 export function sanitizeFolders(value: unknown, shortcuts: Shortcut[]): ShortcutFolder[] {
   const shortcutIds = new Set(shortcuts.map((shortcut) => shortcut.id))
-  const reservedIds = new Set(launcherItems.map((item) => item.id))
   const seenFolderIds = new Set<string>()
   const claimedShortcutIds = new Set<string>()
   const result: ShortcutFolder[] = []
@@ -161,7 +161,7 @@ export function sanitizeFolders(value: unknown, shortcuts: Shortcut[]): Shortcut
   for (const candidate of value.slice(0, 500)) {
     if (!record(candidate)) continue
     const item = candidate
-    if (!validId(item.id) || seenFolderIds.has(item.id) || reservedIds.has(item.id) || shortcutIds.has(item.id)
+    if (!validId(item.id) || seenFolderIds.has(item.id) || reservedLauncherIds.has(item.id) || shortcutIds.has(item.id)
       || typeof item.title !== 'string' || !item.title.trim()
       || typeof item.color !== 'string' || !palette.test(item.color)
       || typeof item.mark !== 'string' || !Array.isArray(item.shortcutIds) || item.shortcutIds.length > 500
