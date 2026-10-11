@@ -1,3 +1,5 @@
+import type { LauncherPanelAction } from './plugins/registry'
+
 export type SearchMode = 'html' | 'photos' | 'news' | 'videos' | 'map'
 export type EngineId = 'google' | 'baidu' | 'bing' | 'duckduckgo' | 'sogou' | 'yahoo' | '360'
 export type PageTransitionEffect = 'slide' | 'particles' | 'trails'
@@ -65,7 +67,7 @@ export interface Preferences {
   iconRadius: number
 }
 
-export type LauncherAction = 'weather' | 'todos' | 'notes' | 'countdowns' | 'settings' | 'wallpaper'
+export type LauncherAction = LauncherPanelAction
 
 export interface LauncherItem {
   id: string

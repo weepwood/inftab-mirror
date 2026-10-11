@@ -1,23 +1,20 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { Component } from 'vue'
 import { ArrowLeft, House, Menu, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
 import ClockWidget from './components/ClockWidget.vue'
 import ShortcutGrid from './components/ShortcutGrid.vue'
 import FolderDialog from './components/FolderDialog.vue'
-import SettingsPanel from './components/SettingsPanel.vue'
-import TodoPanel from './components/TodoPanel.vue'
-import CountdownPanel from './components/CountdownPanel.vue'
-import NotesPanel from './components/NotesPanel.vue'
-import WeatherPanel from './components/WeatherPanel.vue'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent } from './composables/useStoredState'
 import { launcherItems } from './data/defaults'
 import { buildSearchUrl } from './data/search'
 import { normalizeWebUrl } from './data/urls'
+import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelId, type PanelPluginContext } from './plugins/registry'
 import type { LauncherItem, Shortcut, ShortcutFolder } from './types'
 
-type Panel = 'settings' | 'todos' | 'notes' | 'countdowns' | 'weather' | null
+type Panel = PanelId | null
 
 const baseUrl = import.meta.env.BASE_URL
 const {
@@ -109,6 +106,38 @@ const unavailableFolderShortcutIds = computed(() => folders.value
 const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
 const pageDots = computed(() => Array.from({ length: pageCount.value }, (_, index) => index))
 let panelReturnFocusTarget: HTMLElement | undefined
+const panelContext = computed<PanelPluginContext>(() => ({
+  preferences: preferences.value,
+  backupExportError: backupExportError.value,
+  todos: todos.value,
+  countdowns: countdowns.value,
+  notes: notes.value,
+  activeNoteId: activeNoteId.value,
+  weatherCity: weatherCity.value,
+  updatePreferences,
+  resetPreferences,
+  openShortcut: () => openShortcutDialog(),
+  openFolder: () => openFolderEditor(),
+  exportBackup: downloadBackup,
+  importBackup: restoreBackup,
+  addTodo,
+  toggleTodo,
+  updateTodo,
+  removeTodo,
+  clearCompletedTodos,
+  addCountdown,
+  updateCountdown,
+  removeCountdown,
+  addNote,
+  selectNote: (id) => { activeNoteId.value = id },
+  updateNote,
+  removeNote,
+  updateWeatherCity: (city) => { weatherCity.value = city },
+}))
+const activePanelPlugin = computed(() => activePanel.value ? panelPlugins[activePanel.value] : undefined)
+const activePanelComponent = computed<Component | undefined>(() => activePanelPlugin.value?.component)
+const activePanelProps = computed<Record<string, unknown>>(() => activePanelPlugin.value?.props(panelContext.value) ?? {})
+const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanelPlugin.value?.listeners(panelContext.value) ?? {})
 const compactRows = computed(() => Math.min(preferences.value.rows, Math.max(1, Math.ceil(allLauncherItems.value.length / preferences.value.columns))))
 const fitMetrics = computed(() => {
   const { width, height } = viewport.value
@@ -132,7 +161,6 @@ const fitMetrics = computed(() => {
   const fittedIcon = Math.max(28, Math.min(preferences.value.iconSize, (available - (rows - 1) * fittedGap) / rows))
   return { fittedGap, fittedIcon }
 })
-const panelTitle = computed(() => ({ settings: '设置', todos: '待办事项', notes: '笔记', countdowns: '纪念日与倒计时', weather: '天气' }[activePanel.value ?? 'settings']))
 const backgroundStyle = computed(() => {
   const value = preferences.value.customWallpaper.trim() || preferences.value.wallpaper
   const backgroundImage = value.startsWith('linear-gradient') ? value : `url("${value.replaceAll('"', '%22')}")`
@@ -193,10 +221,12 @@ function submitSearch() {
 
 function openItem(item: LauncherItem) {
   if (item.folder) openFolder(item.folder)
-  else if (item.action === 'settings' || item.action === 'wallpaper') activePanel.value = 'settings'
-  else if (item.action) activePanel.value = item.action
-  else if (item.shortcut?.id === 'wallpapers') activePanel.value = 'settings'
-  else if (item.shortcut) window.open(item.shortcut.url, '_blank', 'noopener,noreferrer')
+  else if (item.action) activePanel.value = launcherPanelRoutes[item.action]
+  else if (item.shortcut) {
+    const panel = shortcutPanelRoutes[item.shortcut.id]
+    if (panel) activePanel.value = panel
+    else window.open(item.shortcut.url, '_blank', 'noopener,noreferrer')
+  }
 }
 
 function openFolder(folder: ShortcutFolder) {
@@ -497,17 +527,13 @@ onBeforeUnmount(() => {
     <footer class="home-footer">渝ICP备15002199号-1</footer>
 
     <div v-if="activePanel" class="panel-backdrop" @click.self="activePanel = null">
-      <aside ref="sidePanel" class="side-panel" :class="{ 'notes-panel': activePanel === 'notes' }" aria-modal="true" role="dialog" :aria-label="panelTitle" @keydown="handlePanelKeydown">
+      <aside ref="sidePanel" class="side-panel" :class="{ 'notes-panel': activePanel === 'notes' }" aria-modal="true" role="dialog" :aria-label="activePanelPlugin?.title" @keydown="handlePanelKeydown">
         <header class="panel-header">
           <button v-if="activePanel !== 'settings'" class="back-button" type="button" aria-label="返回设置" @click="activePanel = 'settings'"><ArrowLeft :size="19" /></button>
-          <div><h2>{{ panelTitle }}</h2><p>{{ activePanel === 'settings' ? '按自己的习惯调整新标签页' : '内容会自动保存在本地' }}</p></div>
+          <div><h2>{{ activePanelPlugin?.title }}</h2><p>{{ activePanelPlugin?.description }}</p></div>
           <button class="panel-close" type="button" aria-label="关闭" @click="activePanel = null"><X :size="19" /></button>
         </header>
-        <SettingsPanel v-if="activePanel === 'settings'" :preferences="preferences" :export-error="backupExportError" @update="updatePreferences" @reset="resetPreferences" @add-shortcut="openShortcutDialog()" @add-folder="openFolderEditor()" @export-backup="downloadBackup" @import-backup="restoreBackup" />
-        <TodoPanel v-else-if="activePanel === 'todos'" :items="todos" @add="addTodo" @toggle="toggleTodo" @update="updateTodo" @remove="removeTodo" @clear-completed="clearCompletedTodos" />
-        <CountdownPanel v-else-if="activePanel === 'countdowns'" :items="countdowns" @add="addCountdown" @update="updateCountdown" @remove="removeCountdown" />
-        <NotesPanel v-else-if="activePanel === 'notes'" :notes="notes" :active-id="activeNoteId" @add="addNote" @select="activeNoteId = $event" @update="updateNote" @remove="removeNote" />
-        <WeatherPanel v-else-if="activePanel === 'weather'" :city="weatherCity" @update:city="weatherCity = $event" />
+        <component :is="activePanelComponent" v-bind="activePanelProps" v-on="activePanelListeners" />
       </aside>
     </div>
 
