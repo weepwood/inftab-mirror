@@ -203,7 +203,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       <label class="range-label"><span>搜索框宽度</span><strong>{{ preferences.searchWidth }} px</strong><input type="range" min="280" max="1000" step="10" :value="preferences.searchWidth" @input="update('searchWidth', Number(($event.target as HTMLInputElement).value))" /></label>
       <label class="range-label"><span>搜索框高度</span><strong>{{ preferences.searchHeight }} px</strong><input type="range" min="36" max="100" step="2" :value="preferences.searchHeight" @input="update('searchHeight', Number(($event.target as HTMLInputElement).value))" /></label>
       <p class="settings-subheading">显示搜索类型</p>
-      <label v-for="item in searchModes" :key="item.id" class="toggle-row"><span>{{ item.id }}</span><input type="checkbox" :checked="preferences.visibleSearchModes.includes(item.id)" @change="toggleSearchMode(item.id, ($event.target as HTMLInputElement).checked)" /></label>
+      <label v-for="item in searchModes" :key="item.id" class="toggle-row"><span>{{ item.label }}</span><input type="checkbox" :checked="preferences.visibleSearchModes.includes(item.id)" @change="toggleSearchMode(item.id, ($event.target as HTMLInputElement).checked)" /></label>
       <p class="settings-subheading">自定义搜索引擎（最多 20 个）</p>
       <form class="custom-engine-form" @submit.prevent="addSearchEngine">
         <label class="field-label">名称<input v-model="searchEngineName" maxlength="40" placeholder="例如：维基百科" @input="searchEngineError = ''" /></label>

@@ -12,6 +12,16 @@ afterEach(() => {
 })
 
 describe('SearchBar keyboard navigation', () => {
+  it('shows localized search categories while retaining stable mode IDs', async () => {
+    wrapper = mount(SearchBar, {
+      props: { modelValue: '', engine: 'baidu', mode: 'html', visibleModes: ['html', 'photos', 'news', 'videos', 'map'] },
+    })
+    expect(wrapper.findAll('.search-tab').map((tab) => tab.text())).toEqual(['网页', '图片', '新闻', '视频', '地图'])
+
+    await wrapper.get('.search-tab:nth-child(3)').trigger('click')
+    expect(wrapper.emitted('update:mode')?.at(-1)).toEqual(['news'])
+  })
+
   it('moves between search mode tabs with arrow keys', async () => {
     wrapper = mount(SearchBar, {
       attachTo: document.body,

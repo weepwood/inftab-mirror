@@ -38,11 +38,11 @@ export const engines: { id: EngineId; label: string; mark: string; color: string
 ]
 
 export const searchModes: { id: SearchMode; label: string }[] = [
-  { id: 'html', label: 'html' },
-  { id: 'photos', label: 'photos' },
-  { id: 'news', label: 'news' },
-  { id: 'videos', label: 'videos' },
-  { id: 'map', label: 'map' },
+  { id: 'html', label: '网页' },
+  { id: 'photos', label: '图片' },
+  { id: 'news', label: '新闻' },
+  { id: 'videos', label: '视频' },
+  { id: 'map', label: '地图' },
 ]
 
 export const defaultShortcuts: Shortcut[] = [

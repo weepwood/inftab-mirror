@@ -429,11 +429,11 @@ describe('new-tab keyboard search', () => {
   it('keeps the selected search mode visible when its tab visibility changes', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await openLauncher('settings')
-    let newsToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().trim() === 'news')!
+    let newsToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().trim() === '新闻')!
     await newsToggle.get('input').setValue(true)
-    expect(wrapper.get('.search-tab[aria-pressed="true"]').text()).toBe('news')
+    expect(wrapper.get('.search-tab[aria-pressed="true"]').text()).toBe('新闻')
 
-    newsToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().trim() === 'news')!
+    newsToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().trim() === '新闻')!
     await newsToggle.get('input').setValue(false)
     expect(wrapper.find('.search-tabs').exists()).toBe(false)
   })
