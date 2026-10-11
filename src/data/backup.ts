@@ -67,6 +67,8 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   }
   const optionalPreferenceTypes: Record<string, (item: unknown) => boolean> = {
     themeMode: (item) => ['light', 'dark', 'system'].includes(String(item)),
+    wallpaperRotation: (item) => ['off', 'hourly', 'daily'].includes(String(item)),
+    wallpaperRotationLastAt: (item) => typeof item === 'number' && Number.isFinite(item) && item >= 0,
     hiddenLauncherIds: (item) => Array.isArray(item) && item.every((id) => typeof id === 'string' && launcherItems.some((launcher) => launcher.id === id && launcher.action && launcher.id !== 'settings')),
     visibleSearchModes: (item) => Array.isArray(item) && item.every((mode) => ['html', 'photos', 'news', 'videos', 'map'].includes(String(mode))),
     showSearchBar: (item) => typeof item === 'boolean',

@@ -4,7 +4,7 @@ import { launcherItems, searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
 import { compressImageBlob, maxImageUploadBytes, maxWallpaperDataUrlLength } from '../data/images'
 import { isValidCustomSearchTemplate } from '../data/search'
-import type { CustomSearchEngine, PageTransitionEffect, Preferences, SearchMode, ThemeMode } from '../types'
+import type { CustomSearchEngine, PageTransitionEffect, Preferences, SearchMode, ThemeMode, WallpaperRotation } from '../types'
 
 const props = withDefaults(defineProps<{ preferences: Preferences; exportError?: string; customEngines?: CustomSearchEngine[] }>(), { customEngines: () => [] })
 const transitionEffects: { id: PageTransitionEffect; label: string }[] = [
@@ -70,6 +70,22 @@ function setTransitionEffect(effect: PageTransitionEffect) {
   update('pageTransitionEffect', effect)
 }
 
+function setWallpaper(choice: string) {
+  update('wallpaper', choice)
+  update('customWallpaper', '')
+  update('wallpaperRotationLastAt', Date.now())
+}
+
+function setWallpaperRotation(mode: WallpaperRotation) {
+  update('wallpaperRotation', mode)
+  update('wallpaperRotationLastAt', Date.now())
+}
+
+function setCustomWallpaper(value: string) {
+  update('customWallpaper', value)
+  update('wallpaperRotationLastAt', Date.now())
+}
+
 function addSearchEngine() {
   const name = searchEngineName.value.trim()
   const template = searchEngineTemplate.value.trim()
@@ -104,7 +120,7 @@ async function loadWallpaperFile(event: Event) {
   try {
     const dataUrl = await compressImageBlob(file, 1920, 1_400_000)
     if (dataUrl.length > maxWallpaperDataUrlLength) throw new Error('压缩后的图片仍然过大，请换一张内容更简单的图片。')
-    update('customWallpaper', dataUrl)
+    setCustomWallpaper(dataUrl)
   } catch (error) {
     wallpaperError.value = error instanceof Error ? error.message : '无法处理这张图片。'
   }
@@ -188,17 +204,25 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
           :style="{ background: choice.preview }"
           type="button"
           :aria-label="choice.label"
-          @click="update('wallpaper', choice.value); update('customWallpaper', '')"
+          @click="setWallpaper(choice.value)"
         ><span>{{ choice.label }}</span></button>
       </div>
       <p class="wallpaper-note">图库图片保存在项目中，无需依赖外站加载。</p>
+      <label class="toggle-row">定时轮换内置壁纸
+        <select aria-label="壁纸轮换" :value="preferences.wallpaperRotation" @change="setWallpaperRotation(($event.target as HTMLSelectElement).value as WallpaperRotation)">
+          <option value="off">关闭</option>
+          <option value="hourly">每小时</option>
+          <option value="daily">每天</option>
+        </select>
+      </label>
+      <p class="wallpaper-note">轮换顺序与图库一致；使用自定义背景期间会暂停，移除后重新计时。</p>
       <label class="field-label">自定义背景图片网址
-        <input :value="hasLocalWallpaper ? '' : preferences.customWallpaper" placeholder="https://example.com/wallpaper.jpg" @input="update('customWallpaper', ($event.target as HTMLInputElement).value)" />
+        <input :value="hasLocalWallpaper ? '' : preferences.customWallpaper" placeholder="https://example.com/wallpaper.jpg" @input="setCustomWallpaper(($event.target as HTMLInputElement).value)" />
       </label>
       <div class="backup-actions wallpaper-upload-actions">
         <input ref="wallpaperFileInput" class="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="loadWallpaperFile" />
         <button class="button-secondary" type="button" @click="wallpaperFileInput?.click()">上传本地壁纸</button>
-        <button v-if="hasLocalWallpaper" class="button-secondary" type="button" @click="update('customWallpaper', '')">移除本地壁纸</button>
+        <button v-if="hasLocalWallpaper" class="button-secondary" type="button" @click="setCustomWallpaper('')">移除本地壁纸</button>
       </div>
       <p v-if="hasLocalWallpaper" class="wallpaper-note">本地壁纸已压缩并离线保存在此浏览器中。</p>
       <p v-if="wallpaperError" class="backup-error" role="alert">{{ wallpaperError }}</p>

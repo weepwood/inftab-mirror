@@ -55,8 +55,8 @@ describe('SettingsPanel local wallpaper upload', () => {
 
     expect(inputElement.files?.[0]?.name).toBe('wallpaper.png')
     expect(vi.mocked(createImageBitmap)).toHaveBeenCalledOnce()
-    const update = wrapper.emitted('update')?.at(-1)?.[0] as { customWallpaper?: string }
-    expect(update.customWallpaper).toMatch(/^data:image\/webp;base64,/)
+    const update = wrapper.emitted('update')?.map(([value]) => value as { customWallpaper?: string }).find((value) => value.customWallpaper)
+    expect(update?.customWallpaper).toMatch(/^data:image\/webp;base64,/)
     expect(bitmap.close).toHaveBeenCalledOnce()
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })
@@ -66,7 +66,25 @@ describe('SettingsPanel local wallpaper upload', () => {
       props: { preferences: { ...defaultPreferences, customWallpaper: 'data:image/webp;base64,YWJj' } },
     })
     await wrapper.findAll('button').find((button) => button.text().trim() === '移除本地壁纸')!.trigger('click')
-    expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({ customWallpaper: '' })
+    expect(wrapper.emitted('update')).toContainEqual([{ customWallpaper: '' }])
+  })
+})
+
+describe('SettingsPanel wallpaper rotation', () => {
+  it('starts rotation from the current time and resets its schedule on manual selection', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000)
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+
+    await wrapper.get('select[aria-label="壁纸轮换"]').setValue('daily')
+    expect(wrapper.emitted('update')).toContainEqual([{ wallpaperRotation: 'daily' }])
+    expect(wrapper.emitted('update')).toContainEqual([{ wallpaperRotationLastAt: 1_800_000_000_000 }])
+
+    await wrapper.get('button[aria-label="暮色"]').trigger('click')
+    expect(wrapper.emitted('update')?.slice(-3).map(([value]) => value)).toEqual([
+      { wallpaper: expect.any(String) },
+      { customWallpaper: '' },
+      { wallpaperRotationLastAt: 1_800_000_000_000 },
+    ])
   })
 })
 

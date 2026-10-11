@@ -12,6 +12,7 @@ import { launcherItems } from './data/defaults'
 import { compressImageBlob, maxImageUploadBytes } from './data/images'
 import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
+import { advanceWallpaperRotation, nextWallpaperRotationDelay } from './data/wallpaperRotation'
 import { normalizeWebUrl } from './data/urls'
 import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelId, type PanelPluginContext } from './plugins/registry'
 import type { LauncherItem, Shortcut, ShortcutFolder } from './types'
@@ -89,6 +90,7 @@ const shortcutLimitReached = computed(() => !editingId.value && shortcuts.value.
 const folderLimitReached = computed(() => !activeFolder.value && folders.value.length >= 500)
 let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
 let homeWheelLocked = false
+let wallpaperRotationTimer: number | undefined
 const allLauncherItems = computed<LauncherItem[]>(() => {
   const items = [
     ...launcherItems.map((item) => item.id === 'todos'
@@ -212,6 +214,7 @@ const backgroundStyle = computed(() => {
 })
 
 watch(pageCount, (count) => { currentPage.value = Math.min(currentPage.value, count - 1) })
+watch(() => [preferences.value.wallpaperRotation, preferences.value.wallpaperRotationLastAt, preferences.value.wallpaper, preferences.value.customWallpaper] as const, scheduleWallpaperRotation)
 watch(activePanel, async (panel, previousPanel) => {
   if (panel && !previousPanel) panelReturnFocusTarget = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
   if (!panel && previousPanel) {
@@ -530,6 +533,27 @@ function updateViewport() {
   viewport.value = { width: window.innerWidth, height: window.innerHeight }
 }
 
+function scheduleWallpaperRotation() {
+  if (wallpaperRotationTimer !== undefined) {
+    window.clearTimeout(wallpaperRotationTimer)
+    wallpaperRotationTimer = undefined
+  }
+  const current = preferences.value
+  if (current.wallpaperRotation === 'off' || current.customWallpaper.trim()) return
+
+  const now = Date.now()
+  const nextWallpaper = advanceWallpaperRotation(current.wallpaper, current.wallpaperRotation, current.wallpaperRotationLastAt, now)
+  if (nextWallpaper && (nextWallpaper.wallpaper !== current.wallpaper || nextWallpaper.lastAt !== current.wallpaperRotationLastAt)) {
+    updatePreferences({ wallpaper: nextWallpaper.wallpaper, wallpaperRotationLastAt: nextWallpaper.lastAt })
+  }
+  const delay = nextWallpaperRotationDelay(current.wallpaperRotation, preferences.value.wallpaperRotationLastAt, now)
+  if (delay !== undefined) wallpaperRotationTimer = window.setTimeout(scheduleWallpaperRotation, delay)
+}
+
+function handleWallpaperRotationVisibility() {
+  if (document.visibilityState === 'visible') scheduleWallpaperRotation()
+}
+
 function handleStorageWriteError() {
   storageError.value = '本地数据未能保存。请检查浏览器存储空间，并先导出备份。'
 }
@@ -538,6 +562,8 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('resize', updateViewport)
   window.addEventListener(storageWriteErrorEvent, handleStorageWriteError)
+  document.addEventListener('visibilitychange', handleWallpaperRotationVisibility)
+  scheduleWallpaperRotation()
   if (typeof window.matchMedia === 'function') {
     systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)')
     updateSystemTheme()
@@ -549,6 +575,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', updateViewport)
   window.removeEventListener(storageWriteErrorEvent, handleStorageWriteError)
+  document.removeEventListener('visibilitychange', handleWallpaperRotationVisibility)
+  if (wallpaperRotationTimer !== undefined) window.clearTimeout(wallpaperRotationTimer)
+  wallpaperRotationTimer = undefined
   if (systemThemeQuery?.removeEventListener) systemThemeQuery.removeEventListener('change', updateSystemTheme)
   else systemThemeQuery?.removeListener?.(updateSystemTheme)
   systemThemeQuery = undefined

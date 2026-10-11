@@ -2,7 +2,7 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { defaultPreferences, launcherItems } from './data/defaults'
+import { defaultPreferences, launcherItems, wallpaperChoices } from './data/defaults'
 import WeatherPanel from './components/WeatherPanel.vue'
 import App from './App.vue'
 
@@ -55,6 +55,7 @@ afterEach(() => {
   wrapper = undefined
   localStorage.clear()
   document.body.innerHTML = ''
+  vi.useRealTimers()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
@@ -162,6 +163,51 @@ describe('new-tab built-in launcher visibility', () => {
     expect(wrapper.find('[data-item-id="weather"]').exists()).toBe(true)
     const restoredOrder = JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]') as string[]
     expect(restoredOrder.indexOf('weather')).toBe(0)
+  })
+})
+
+describe('new-tab wallpaper rotation', () => {
+  it('rotates on schedule and persists the new wallpaper for the next tab', async () => {
+    vi.useFakeTimers()
+    const now = new Date('2026-01-01T12:00:00Z').getTime()
+    vi.setSystemTime(now)
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({
+      ...defaultPreferences,
+      wallpaperRotation: 'hourly',
+      wallpaperRotationLastAt: now,
+    }))
+    wrapper = mount(App, { attachTo: document.body })
+    await nextTick()
+    expect(wrapper.get('main.home').attributes('style')).toContain('forest.webp')
+
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000)
+    await nextTick()
+    expect(wrapper.get('main.home').attributes('style')).toContain('background-image: linear-gradient')
+    await flushLocalStorageWrites()
+    const savedPreferences = JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}') as typeof defaultPreferences
+    expect(savedPreferences.wallpaper).toBe(wallpaperChoices[1]!.value)
+    expect(savedPreferences.wallpaperRotationLastAt).toBe(now + 60 * 60 * 1000)
+  })
+
+  it('pauses automatic changes while a custom background is active', async () => {
+    vi.useFakeTimers()
+    const now = new Date('2026-01-01T12:00:00Z').getTime()
+    vi.setSystemTime(now)
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({
+      ...defaultPreferences,
+      wallpaperRotation: 'hourly',
+      wallpaperRotationLastAt: now,
+      customWallpaper: 'https://example.com/custom-wallpaper.webp',
+    }))
+    wrapper = mount(App, { attachTo: document.body })
+    await vi.advanceTimersByTimeAsync(2 * 60 * 60 * 1000)
+    await nextTick()
+    expect(wrapper.get('main.home').attributes('style')).toContain('custom-wallpaper.webp')
+
+    await flushLocalStorageWrites()
+    const savedPreferences = JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}') as typeof defaultPreferences
+    expect(savedPreferences.wallpaper).toBe(defaultPreferences.wallpaper)
+    expect(savedPreferences.wallpaperRotationLastAt).toBe(now)
   })
 })
 

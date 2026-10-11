@@ -106,6 +106,16 @@ describe('workspace backups', () => {
     })).preferences.customWallpaper).toBe(localWallpaper)
   })
 
+  it('preserves the wallpaper rotation schedule and rejects unknown intervals', () => {
+    const schedule = { ...defaultPreferences, wallpaperRotation: 'daily', wallpaperRotationLastAt: 1_700_000_000_000 }
+    expect(parseWorkspaceBackup(backup({ preferences: schedule })).preferences).toMatchObject({
+      wallpaperRotation: 'daily', wallpaperRotationLastAt: 1_700_000_000_000,
+    })
+    expect(() => parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, wallpaperRotation: 'weekly' },
+    }))).toThrow(/页面设置无法识别/)
+  })
+
   it('rejects oversized sections and unsupported enums', () => {
     expect(() => parseWorkspaceBackup(backup({ notes: Array.from({ length: 501 }, (_, index) => ({ id: String(index), title: '', body: '', updatedAt: 1 })) }))).toThrow(/最多 500/)
     expect(() => parseWorkspaceBackup(backup({ preferences: { ...defaultPreferences, engine: 'other' } }))).toThrow(/搜索引擎/)

@@ -104,6 +104,15 @@ describe('local state sanitization', () => {
     expect(sanitizePreferences({ customWallpaper: `data:image/webp;base64,${'a'.repeat(2_000_001)}` }).customWallpaper).toHaveLength(0)
   })
 
+  it('normalizes wallpaper rotation settings and clamps future schedule timestamps', () => {
+    const now = Date.now()
+    const preferences = sanitizePreferences({ wallpaperRotation: 'daily', wallpaperRotationLastAt: now + 60_000 })
+
+    expect(preferences.wallpaperRotation).toBe('daily')
+    expect(preferences.wallpaperRotationLastAt).toBe(now)
+    expect(sanitizePreferences({ wallpaperRotation: 'weekly' }).wallpaperRotation).toBe('off')
+  })
+
   it('assigns a shortcut to only the first folder and restores it when unassigned', () => {
     const shortcuts = sanitizeShortcuts([{ id: 'shortcut', title: 'Link', url: 'https://example.com', color: '#abc', mark: 'L' }])
     const folders = sanitizeFolders([

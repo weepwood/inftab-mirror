@@ -58,6 +58,10 @@ export function sanitizePreferences(value: unknown): Preferences {
     showClock: typeof merged.showClock === 'boolean' ? merged.showClock : defaultPreferences.showClock,
     wallpaper,
     customWallpaper,
+    wallpaperRotation: merged.wallpaperRotation === 'hourly' || merged.wallpaperRotation === 'daily'
+      ? merged.wallpaperRotation
+      : 'off',
+    wallpaperRotationLastAt: Math.min(Date.now(), boundedNumber(raw.wallpaperRotationLastAt, defaultPreferences.wallpaperRotationLastAt, 0, Number.MAX_SAFE_INTEGER)),
     shade: boundedNumber(raw.shade, defaultPreferences.shade, 0, 0.65),
     iconSize: boundedNumber(raw.iconSize, defaultPreferences.iconSize, 32, 160),
     columns: Math.round(boundedNumber(raw.columns, defaultPreferences.columns, 2, 12)),

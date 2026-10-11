@@ -12,6 +12,8 @@ export const defaultPreferences: Preferences = {
   showClock: true,
   wallpaper: `${base}wallpapers/forest.webp`,
   customWallpaper: '',
+  wallpaperRotation: 'off',
+  wallpaperRotationLastAt: 0,
   shade: 0.2,
   iconSize: 96,
   columns: 6,

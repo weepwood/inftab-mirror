@@ -4,6 +4,7 @@ export type SearchMode = 'html' | 'photos' | 'news' | 'videos' | 'map'
 export type EngineId = 'google' | 'baidu' | 'bing' | 'duckduckgo' | 'sogou' | 'yahoo' | '360'
 export type SearchEngineSelection = EngineId | `custom:${string}`
 export type PageTransitionEffect = 'slide' | 'particles' | 'trails'
+export type WallpaperRotation = 'off' | 'hourly' | 'daily'
 export type ThemeMode = 'light' | 'dark' | 'system'
 
 export interface CustomSearchEngine {
@@ -68,6 +69,8 @@ export interface Preferences {
   showClock: boolean
   wallpaper: string
   customWallpaper: string
+  wallpaperRotation: WallpaperRotation
+  wallpaperRotationLastAt: number
   shade: number
   iconSize: number
   columns: number
