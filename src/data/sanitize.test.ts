@@ -36,7 +36,8 @@ describe('local state sanitization', () => {
       null,
     ])
 
-    expect(shortcuts).toEqual([{ id: 'safe', title: 'Safe', url: 'https://example.com', color: '#abc', mark: 'S', icon: undefined }])
+    expect(shortcuts).toEqual([{ id: 'safe', title: 'Safe', url: 'https://example.com/', color: '#abc', mark: 'S', icon: undefined }])
+    expect(sanitizeShortcuts([{ id: 'bundled', title: 'Bundled', url: 'https://example.com', color: '#abc', mark: 'B', icon: 'site-icon.png' }])[0]?.icon).toBe('site-icon.png')
   })
 
   it('repairs launcher order and stale active note references', () => {

@@ -19,15 +19,15 @@ function backup(overrides: Record<string, unknown> = {}) {
 }
 
 describe('workspace backups', () => {
-  it('normalizes preferences and carries arrays for later relationship repair', () => {
+  it('normalizes preferences and repairs broken entry and note references', () => {
     const parsed = parseWorkspaceBackup(backup({
       preferences: { ...defaultPreferences, columns: 999, shade: -1 },
     }))
 
     expect(parsed.preferences.columns).toBe(12)
     expect(parsed.preferences.shade).toBe(0)
-    expect(parsed.launcherOrder).toContain('stale-id')
-    expect(parsed.activeNoteId).toBe('missing-note')
+    expect(parsed.launcherOrder).not.toContain('stale-id')
+    expect(parsed.activeNoteId).toBe('note-1')
   })
 
   it('rejects duplicate and unsafe shortcut data instead of silently losing it', () => {
@@ -46,6 +46,7 @@ describe('workspace backups', () => {
   it('rejects oversized sections and unsupported enums', () => {
     expect(() => parseWorkspaceBackup(backup({ notes: Array.from({ length: 501 }, (_, index) => ({ id: String(index), title: '', body: '', updatedAt: 1 })) }))).toThrow(/最多 500/)
     expect(() => parseWorkspaceBackup(backup({ preferences: { ...defaultPreferences, engine: 'other' } }))).toThrow(/搜索引擎/)
+    expect(() => parseWorkspaceBackup(backup({ preferences: {} }))).toThrow(/结构不完整/)
   })
 
   it('merges by id while preserving existing order for updated items', () => {

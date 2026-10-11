@@ -10,6 +10,7 @@ import WeatherPanel from './components/WeatherPanel.vue'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { launcherItems } from './data/defaults'
 import { buildSearchUrl } from './data/search'
+import { normalizeWebUrl } from './data/urls'
 import type { LauncherItem, Shortcut } from './types'
 
 type Panel = 'settings' | 'todos' | 'notes' | 'weather' | null
@@ -52,6 +53,7 @@ const shortcutUrl = ref('https://')
 const shortcutColor = ref('#3d82f6')
 const shortcutMark = ref('')
 const shortcutIcon = ref('')
+const shortcutUrlError = ref('')
 const shortcutIconFile = ref<HTMLInputElement>()
 const shortcutIconError = ref('')
 const savingShortcut = ref(false)
@@ -142,6 +144,7 @@ function openShortcutDialog(item?: LauncherItem) {
   editingId.value = item?.shortcut?.id ?? ''
   shortcutTitle.value = item?.shortcut?.title ?? ''
   shortcutUrl.value = item?.shortcut?.url ?? 'https://'
+  shortcutUrlError.value = ''
   shortcutColor.value = item?.shortcut?.color ?? '#3d82f6'
   shortcutMark.value = item?.shortcut?.mark ?? ''
   shortcutIcon.value = item?.shortcut?.icon ?? ''
@@ -152,8 +155,10 @@ function openShortcutDialog(item?: LauncherItem) {
 
 async function imageBlobToDataUrl(blob: Blob) {
   if (!blob.type.startsWith('image/')) throw new Error('这个文件不是可用的图片。')
+  if (blob.size > 10 * 1024 * 1024) throw new Error('图片不能超过 10 MB。')
   const bitmap = await createImageBitmap(blob)
   try {
+    if (bitmap.width * bitmap.height > 40_000_000) throw new Error('图片分辨率过高，请换一张较小的图片。')
     const scale = Math.min(1, 192 / Math.max(bitmap.width, bitmap.height))
     const canvas = document.createElement('canvas')
     canvas.width = Math.max(1, Math.round(bitmap.width * scale))
@@ -197,7 +202,13 @@ async function saveShortcut() {
   const title = shortcutTitle.value.trim()
   let destination = shortcutUrl.value.trim()
   if (!title || !destination) return
-  if (!/^https?:\/\//i.test(destination)) destination = `https://${destination}`
+  const normalizedDestination = normalizeWebUrl(destination)
+  if (!normalizedDestination) {
+    shortcutUrlError.value = '请输入有效的 HTTP 或 HTTPS 网址。'
+    return
+  }
+  destination = normalizedDestination
+  shortcutUrlError.value = ''
   let icon = shortcutIcon.value.trim()
   shortcutIconError.value = ''
   if (/^https?:\/\//i.test(icon)) {
@@ -205,9 +216,13 @@ async function saveShortcut() {
     try {
       const response = await fetch(icon)
       if (!response.ok) throw new Error(`图标下载失败（HTTP ${response.status}）。`)
-      icon = await imageBlobToDataUrl(await response.blob())
-    } catch {
-      shortcutIconError.value = '无法从这个网址读取图片（可能被跨域限制）。请上传本地图片后再保存。'
+      const blob = await response.blob()
+      if (blob.size > 10 * 1024 * 1024) throw new Error('图标图片不能超过 10 MB。')
+      icon = await imageBlobToDataUrl(blob)
+    } catch (error) {
+      shortcutIconError.value = error instanceof Error && !error.message.includes('Failed to fetch')
+        ? error.message
+        : '无法从这个网址读取图片（可能被跨域限制）。请上传本地图片后再保存。'
       savingShortcut.value = false
       return
     }
@@ -375,7 +390,8 @@ onBeforeUnmount(() => {
       <form class="shortcut-dialog" @submit.prevent="saveShortcut">
         <header><div><h2>{{ editingId ? '编辑快捷入口' : '添加快捷入口' }}</h2><p>名称和网址可以随时修改</p></div><button type="button" aria-label="关闭" @click="shortcutDialog = false"><X :size="19" /></button></header>
         <label>名称<input v-model="shortcutTitle" autofocus required maxlength="24" placeholder="例如：GitHub" /></label>
-        <label>网址<input v-model="shortcutUrl" required placeholder="https://example.com" /></label>
+        <label>网址<input v-model="shortcutUrl" required maxlength="2048" placeholder="https://example.com" @input="shortcutUrlError = ''" /></label>
+        <p v-if="shortcutUrlError" class="backup-error" role="alert">{{ shortcutUrlError }}</p>
         <div class="dialog-row">
           <label>图标文字<input v-model="shortcutMark" maxlength="5" placeholder="自动取名称" /></label>
           <label class="color-field">图标颜色<input v-model="shortcutColor" type="color" /></label>

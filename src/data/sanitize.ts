@@ -1,4 +1,5 @@
 import { defaultLauncherOrder, defaultPreferences, launcherItems, wallpaperChoices } from './defaults'
+import { normalizeWebUrl } from './urls'
 import type { Note, Preferences, SearchMode, Shortcut, TodoItem } from '../types'
 
 const engines = new Set(['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yahoo', '360'])
@@ -71,16 +72,6 @@ function validId(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= 128
 }
 
-function validWebUrl(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length > 2048) return false
-  try {
-    const url = new URL(value)
-    return url.protocol === 'https:' || url.protocol === 'http:'
-  } catch {
-    return false
-  }
-}
-
 function validIcon(value: unknown): value is string | undefined {
   if (value === undefined || value === '') return true
   return typeof value === 'string'
@@ -92,14 +83,15 @@ function validIcon(value: unknown): value is string | undefined {
 
 export function sanitizeShortcuts(value: unknown): Shortcut[] {
   return uniqueRecords(value, (item) => {
+    const url = normalizeWebUrl(item.url)
     if (!validId(item.id) || typeof item.title !== 'string' || typeof item.color !== 'string' || !palette.test(item.color)
-      || typeof item.mark !== 'string' || !validWebUrl(item.url) || !validIcon(item.icon)) return undefined
+      || typeof item.mark !== 'string' || !url || !validIcon(item.icon)) return undefined
     const title = item.title.trim().slice(0, 80)
     if (!title) return undefined
     return {
       id: item.id,
       title,
-      url: item.url,
+      url,
       color: item.color,
       mark: item.mark.trim().slice(0, 12),
       icon: typeof item.icon === 'string' && item.icon ? item.icon : undefined,
