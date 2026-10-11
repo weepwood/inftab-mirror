@@ -40,6 +40,50 @@ test('creates a shortcut and keeps it after reloading the new tab', async ({ pag
   await expect(page.getByRole('button', { name: '打开E2E Example' })).toBeVisible()
 })
 
+test('search submits an encoded query to the selected engine and category', async ({ page }) => {
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    const preferences = JSON.parse(localStorage.getItem(key) ?? '{}')
+    localStorage.setItem(key, JSON.stringify({
+      ...preferences,
+      visibleSearchModes: ['html', 'news'],
+    }))
+  })
+  await page.reload()
+  await page.route('https://www.bing.com/**', (route) => route.fulfill({
+    status: 200,
+    contentType: 'text/html',
+    body: '<title>Mock search results</title>',
+  }))
+
+  const search = page.getByRole('searchbox', { name: '输入并搜索' })
+  await page.getByRole('button', { name: '当前搜索引擎：Baidu' }).click()
+  await page.getByRole('option', { name: /Bing/ }).click()
+  await page.getByRole('button', { name: '新闻' }).click()
+  await expect(page.getByRole('button', { name: '新闻' })).toHaveAttribute('aria-pressed', 'true')
+  await search.fill('AI & privacy')
+  await search.press('Enter')
+  await expect(page).toHaveURL(/bing\.com\/news\/search\?q=AI%20%26%20privacy/)
+})
+
+test('a custom search engine can be added and used from the homepage', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByPlaceholder('例如：维基百科').fill('Example Search')
+  await page.getByPlaceholder('https://example.com/search?q={query}').fill('https://search.example/find?q={query}')
+  await page.getByRole('button', { name: '添加搜索引擎' }).click()
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+  await page.route('https://search.example/**', (route) => route.fulfill({
+    status: 200,
+    contentType: 'text/html',
+    body: '<title>Mock custom search results</title>',
+  }))
+
+  const search = page.getByRole('searchbox', { name: '输入并搜索' })
+  await search.fill('Café & tea')
+  await search.press('Enter')
+  await expect(page).toHaveURL(/search\.example\/find\?q=Caf%C3%A9%20%26%20tea/)
+})
+
 test('shortcut deletion can be cancelled and requires confirmation', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByRole('button', { name: /添加快捷入口/ }).click()
