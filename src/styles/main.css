@@ -301,6 +301,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .shortcut-pages { transition-duration: var(--page-transition-duration, 620ms) !important; }
   .shortcut-pages.motion-opt-in { transition-duration: min(var(--page-transition-duration, 620ms), 1200ms) !important; }
+  .shortcut-pages.motion-opt-in.is-resetting { transition-property: none !important; transition-duration: 0ms !important; transition-delay: 0ms !important; }
   .trails-out .shortcut-open::before, .trails-out .shortcut-icon { animation-duration: min(var(--outgoing-duration, 620ms), 1200ms) !important; animation-iteration-count: 1 !important; }
   .particles-mode .shortcut-page.particles-in .shortcut-cell { animation-duration: 780ms !important; animation-iteration-count: 1 !important; }
 }
