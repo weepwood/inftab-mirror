@@ -62,4 +62,22 @@ describe('WeatherSummaryWidget', () => {
     expect(wrapper.text()).toContain('上海 21°')
     expect(wrapper.text()).toContain('天气更新失败，显示上次结果')
   })
+
+  it('does not show the previous city as current when the new city lookup fails', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(weatherResponse('上海', 21)[0])
+      .mockResolvedValueOnce(weatherResponse('上海', 21)[1])
+      .mockRejectedValue(new Error('offline'))
+    vi.stubGlobal('fetch', fetchMock)
+    wrapper = mount(WeatherSummaryWidget, { attachTo: document.body, props: { city: '上海' } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('上海 21°')
+
+    await wrapper.setProps({ city: '北京' })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('上海 21°')
+    expect(wrapper.text()).toContain('offline')
+    expect(wrapper.get('[aria-label="重试获取天气"]').attributes('aria-label')).toBe('重试获取天气')
+  })
 })

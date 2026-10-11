@@ -50,7 +50,12 @@ function refreshIfStale() {
   if (document.visibilityState === 'visible' && Date.now() - lastUpdatedAt >= refreshInterval) void refreshWeather()
 }
 
-watch(() => props.city, () => { void refreshWeather() })
+watch(() => props.city, () => {
+  // A reading for the previous city is not a useful fallback for the newly selected city.
+  summary.value = undefined
+  lastUpdatedAt = 0
+  void refreshWeather()
+})
 onMounted(() => {
   window.addEventListener('focus', refreshIfStale)
   document.addEventListener('visibilitychange', refreshIfStale)
