@@ -19,6 +19,8 @@ interface ChromeExtensionApi {
   runtime?: { id?: string }
   bookmarks?: ChromeBookmarksApi
   permissions?: {
+    onAdded?: ChromeEvent
+    onRemoved?: ChromeEvent
     contains(details: { permissions: string[] }): Promise<boolean>
     request(details: { permissions: string[] }): Promise<boolean>
   }
@@ -66,4 +68,12 @@ export function subscribeToBrowserBookmarks(listener: () => void): () => void {
   ].filter((event): event is ChromeEvent => Boolean(event))
   events.forEach((event) => event.addListener(handleChange))
   return () => events.forEach((event) => event.removeListener(handleChange))
+}
+
+export function subscribeToBrowserBookmarkPermissionChanges(listener: () => void): () => void {
+  const permissions = extensionApi()?.permissions
+  if (!permissions) return () => {}
+  const events = [permissions.onAdded, permissions.onRemoved].filter((event): event is ChromeEvent => Boolean(event))
+  events.forEach((event) => event.addListener(listener))
+  return () => events.forEach((event) => event.removeListener(listener))
 }

@@ -6,6 +6,7 @@ import {
   getBrowserBookmarkTree,
   hasBrowserBookmarksPermission,
   requestBrowserBookmarksPermission,
+  subscribeToBrowserBookmarkPermissionChanges,
   subscribeToBrowserBookmarks,
 } from '../data/browserBookmarks'
 import { normalizeWebUrl } from '../data/urls'
@@ -30,6 +31,7 @@ const query = ref('')
 const tree = ref<BrowserBookmarkNode[]>([])
 const expandedIds = ref(new Set<string>())
 let stopListening: (() => void) | undefined
+let stopWatchingPermission: (() => void) | undefined
 let refreshSequence = 0
 
 const rows = computed(() => {
@@ -72,6 +74,26 @@ function watchBookmarkChanges() {
   if (!stopListening) stopListening = subscribeToBrowserBookmarks(() => { void refreshBookmarks() })
 }
 
+async function syncBookmarkPermission() {
+  try {
+    const granted = await hasBrowserBookmarksPermission()
+    permissionGranted.value = granted
+    if (granted) {
+      watchBookmarkChanges()
+      await refreshBookmarks()
+    } else {
+      refreshSequence += 1
+      stopListening?.()
+      stopListening = undefined
+      tree.value = []
+      loading.value = false
+      error.value = ''
+    }
+  } catch {
+    error.value = '无法检查浏览器书签权限。'
+  }
+}
+
 async function enableBookmarks() {
   if (requestingPermission.value) return
   requestingPermission.value = true
@@ -100,20 +122,14 @@ function toggleFolder(id: string) {
 
 onMounted(async () => {
   if (!supported) return
-  try {
-    permissionGranted.value = await hasBrowserBookmarksPermission()
-    if (permissionGranted.value) {
-      watchBookmarkChanges()
-      await refreshBookmarks()
-    }
-  } catch {
-    error.value = '无法检查浏览器书签权限。'
-  }
+  stopWatchingPermission = subscribeToBrowserBookmarkPermissionChanges(() => { void syncBookmarkPermission() })
+  await syncBookmarkPermission()
 })
 
 onBeforeUnmount(() => {
   refreshSequence += 1
   stopListening?.()
+  stopWatchingPermission?.()
 })
 </script>
 

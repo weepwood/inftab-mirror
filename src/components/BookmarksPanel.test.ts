@@ -64,4 +64,30 @@ describe('BookmarksPanel', () => {
     await wrapper.get('input[aria-label="筛选浏览器书签"]').setValue('vuejs')
     expect(wrapper.findAll('.browser-bookmark-link').map((link) => link.text())).toEqual(['Vue Docs'])
   })
+
+  it('clears the visible bookmark data when permission is revoked while open', async () => {
+    const permissionRemoved = {
+      listeners: new Set<(...args: unknown[]) => void>(),
+      addListener(listener: (...args: unknown[]) => void) { this.listeners.add(listener) },
+      removeListener(listener: (...args: unknown[]) => void) { this.listeners.delete(listener) },
+      fire() { this.listeners.forEach((listener) => listener()) },
+    }
+    const contains = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains, request: vi.fn(), onRemoved: permissionRemoved },
+      bookmarks: {
+        getTree: vi.fn().mockResolvedValue([{ id: '0', title: '', children: [{ id: '2', title: 'Vue Docs', url: 'https://vuejs.org/' }] }]),
+        onCreated: { addListener: vi.fn(), removeListener: vi.fn() },
+      },
+    })
+    wrapper = mount(BookmarksPanel)
+    await flushPromises()
+    expect(wrapper.find('.browser-bookmark-link').exists()).toBe(true)
+
+    permissionRemoved.fire()
+    await flushPromises()
+    expect(wrapper.find('.browser-bookmark-link').exists()).toBe(false)
+    expect(wrapper.text()).toContain('连接当前浏览器的书签')
+  })
 })

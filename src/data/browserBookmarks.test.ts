@@ -4,6 +4,7 @@ import {
   getBrowserBookmarkTree,
   hasBrowserBookmarksPermission,
   requestBrowserBookmarksPermission,
+  subscribeToBrowserBookmarkPermissionChanges,
   subscribeToBrowserBookmarks,
 } from './browserBookmarks'
 
@@ -57,6 +58,24 @@ describe('optional browser bookmark access', () => {
     expect(listener).toHaveBeenCalledTimes(2)
     unsubscribe()
     expect(onCreated.listeners.size).toBe(0)
+    expect(onRemoved.listeners.size).toBe(0)
+  })
+
+  it('subscribes to optional permission changes and cleans them up', () => {
+    const onAdded = event()
+    const onRemoved = event()
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      bookmarks: { getTree: vi.fn() },
+      permissions: { contains: vi.fn(), request: vi.fn(), onAdded, onRemoved },
+    })
+    const listener = vi.fn()
+    const unsubscribe = subscribeToBrowserBookmarkPermissionChanges(listener)
+
+    onRemoved.fire()
+    expect(listener).toHaveBeenCalledOnce()
+    unsubscribe()
+    expect(onAdded.listeners.size).toBe(0)
     expect(onRemoved.listeners.size).toBe(0)
   })
 })
