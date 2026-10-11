@@ -256,6 +256,24 @@ test('pins a custom shortcut from its context menu and restores it after reload'
 
   await page.reload()
   await expect(page.getByRole('navigation', { name: '常驻 Dock' }).getByRole('button', { name: '打开Dock Example' })).toBeVisible()
+
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByRole('button', { name: '新建文件夹' }).click()
+  const folderEditor = page.getByRole('dialog', { name: '新建文件夹' })
+  await folderEditor.getByLabel('文件夹名称').fill('Dock 文件夹')
+  await folderEditor.getByRole('checkbox', { name: /Dock Example/ }).check()
+  await folderEditor.getByRole('button', { name: '保存文件夹' }).click()
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+
+  const shortcutId = await page.evaluate(() => (JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]') as { id: string; title: string }[])
+    .find((shortcut) => shortcut.title === 'Dock Example')?.id)
+  expect(shortcutId).toBeTruthy()
+  await expect(page.locator(`.shortcut-cell[data-item-id="${shortcutId}"]`)).toHaveCount(0)
+  await dock.getByRole('button', { name: '打开Dock Example' }).hover()
+  await dock.getByRole('button', { name: '从 Dock 移除Dock Example' }).click()
+  await expect(dock).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').dockItemIds))
+    .toEqual([])
 })
 
 test('drags a launcher into the dock and places it before the drop target', async ({ page }) => {

@@ -736,7 +736,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <HomeDock v-if="homeDockItems.length" :items="homeDockItems" @open="openItem" />
+    <HomeDock v-if="homeDockItems.length" :items="homeDockItems" @open="openItem" @remove="toggleDockItem" />
 
     <img class="windmill" :src="`${baseUrl}windmill.svg`" alt="" />
     <div v-if="storageError" class="storage-error-toast" role="alert">

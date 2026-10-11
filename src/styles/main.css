@@ -57,8 +57,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .home-widget-preview li { overflow: hidden; color: #505966; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .home-widget-empty { margin: 0; color: #737d88; font-size: 11px; line-height: 1.5; }
 .home-dock { position: fixed; z-index: 2; bottom: 42px; left: 50%; display: flex; gap: 5px; max-width: calc(100vw - 88px); overflow-x: auto; padding: 7px; transform: translateX(-50%); border: 1px solid rgba(255, 255, 255, .46); border-radius: 16px; background: rgba(30, 35, 39, .52); box-shadow: 0 8px 24px rgba(0, 0, 0, .2); backdrop-filter: blur(16px); scrollbar-width: thin; touch-action: pan-x; }
-.home-dock-item { width: 56px; min-height: 58px; flex: 0 0 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; border-radius: 10px; padding: 4px 2px; background: transparent; color: #fff; cursor: pointer; }
+.home-dock-entry { position: relative; width: 56px; flex: 0 0 56px; }
+.home-dock-item { width: 56px; min-height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; border-radius: 10px; padding: 4px 2px; background: transparent; color: #fff; cursor: pointer; }
 .home-dock-item:hover, .home-dock-item:focus-visible { background: rgba(255, 255, 255, .2); }
+.home-dock-remove { position: absolute; z-index: 1; top: 0; right: 0; width: 18px; height: 18px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .7); border-radius: 50%; padding: 0; background: rgba(36, 42, 48, .88); color: #fff; cursor: pointer; opacity: 0; pointer-events: none; }
+.home-dock-entry:hover .home-dock-remove, .home-dock-entry:focus-within .home-dock-remove { opacity: 1; pointer-events: auto; }
 .home-dock-icon { width: 30px; height: 30px; display: grid; place-items: center; overflow: hidden; border-radius: 9px; color: #303640; font-size: 19px; }
 .home-dock-icon img { width: 100%; height: 100%; object-fit: contain; }
 .home-dock-label { width: 100%; overflow: hidden; font-size: 9px; line-height: 1.15; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
@@ -408,6 +411,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .home-widget-shelf { width: min(100%, 620px); grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: min(82%, 320px); justify-content: start; overflow-x: auto; margin-bottom: 16px; padding: 0 2px 4px; scroll-snap-type: x mandatory; scrollbar-width: thin; touch-action: pan-x; }
   .home-widget-card { scroll-snap-align: start; }
   .home-dock { bottom: 40px; max-width: calc(100vw - 24px); }
+}
+
+@media (hover: none) {
+  .home-dock-remove { opacity: 1; pointer-events: auto; }
 }
 
 @media (max-width: 480px) {
