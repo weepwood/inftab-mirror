@@ -17,6 +17,7 @@ export function useStoredState<T>(key: string, fallback: T, normalize: (value: u
   const value = ref(initial) as Ref<T>
   const targetWindow = typeof window === 'undefined' ? undefined : window
   let persistTimer: ReturnType<typeof setTimeout> | undefined
+  let ignoreNextPersistence = false
   function writeValue(next: T) {
     try {
       localStorage.setItem(key, JSON.stringify(next))
@@ -25,26 +26,33 @@ export function useStoredState<T>(key: string, fallback: T, normalize: (value: u
     }
   }
   function flushPendingWrite() {
-    if (persistTimer) clearTimeout(persistTimer)
+    if (persistTimer === undefined) return
+    clearTimeout(persistTimer)
     persistTimer = undefined
     writeValue(value.value)
   }
   watch(value, (next) => {
-    if (persistTimer) clearTimeout(persistTimer)
+    if (ignoreNextPersistence) return
+    if (persistTimer !== undefined) clearTimeout(persistTimer)
     persistTimer = setTimeout(() => {
       persistTimer = undefined
       writeValue(next)
     }, 180)
-  }, { deep: true })
+  }, { deep: true, flush: 'sync' })
 
   const handleStorage = (event: StorageEvent) => {
     if (event.key !== key && event.key !== null) return
+    if (persistTimer !== undefined) clearTimeout(persistTimer)
+    persistTimer = undefined
+    ignoreNextPersistence = true
     try {
       value.value = event.newValue === null
         ? structuredClone(fallback)
         : normalize(JSON.parse(event.newValue))
     } catch {
       value.value = structuredClone(fallback)
+    } finally {
+      ignoreNextPersistence = false
     }
   }
   targetWindow?.addEventListener('storage', handleStorage)

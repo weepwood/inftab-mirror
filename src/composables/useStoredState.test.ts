@@ -111,4 +111,35 @@ describe('useStoredState', () => {
     expect(defaultPreferences.columns).toBe(6)
     scope.stop()
   })
+
+  it('cancels stale writes and does not echo external storage updates', async () => {
+    vi.useFakeTimers()
+    const listeners = new Map<string, (event: StorageEvent) => void>()
+    const values = new Map<string, string>()
+    const setItem = vi.fn((key: string, value: string) => values.set(key, value))
+    vi.stubGlobal('window', {
+      addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem,
+      removeItem: (key: string) => { values.delete(key) },
+    })
+    const scope = effectScope()
+    const preferences = scope.run(() => useStoredState('prefs.v1', defaultPreferences, sanitizePreferences))!
+
+    preferences.value.columns = 9
+    const externalValue = { ...defaultPreferences, columns: 4 }
+    const serializedExternalValue = JSON.stringify(externalValue)
+    values.set('prefs.v1', serializedExternalValue)
+    listeners.get('storage')!({ key: 'prefs.v1', newValue: serializedExternalValue } as StorageEvent)
+    await vi.advanceTimersByTimeAsync(180)
+
+    expect(preferences.value.columns).toBe(4)
+    expect(setItem).not.toHaveBeenCalled()
+    expect(values.get('prefs.v1')).toBe(serializedExternalValue)
+    scope.stop()
+    expect(setItem).not.toHaveBeenCalled()
+  })
 })
