@@ -139,6 +139,22 @@ describe('useLocalWorkspace custom search engines', () => {
     expect(workspace.preferences.value.engine).toBe('custom:imported')
   })
 
+  it.each(['merge', 'replace'] as const)('preserves imported Dock entries and folder membership during %s restore', (mode) => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const backup = workspace.createBackup()
+    backup.shortcuts = [{ id: 'restored-shortcut', title: 'Restored', url: 'https://restored.example/', color: '#abc', mark: 'R' }]
+    backup.folders = [{ id: 'restored-folder', title: 'Restored folder', shortcutIds: ['restored-shortcut'], color: '#369', mark: 'F' }]
+    backup.launcherOrder = ['restored-folder', 'restored-shortcut']
+    backup.preferences.dockItemIds = ['restored-shortcut', 'restored-folder']
+
+    expect(workspace.restoreBackup(backup, mode)).toBeUndefined()
+
+    expect(workspace.preferences.value.dockItemIds).toEqual(['restored-shortcut', 'restored-folder'])
+    expect(workspace.folders.value[0]?.shortcutIds).toEqual(['restored-shortcut'])
+    expect(() => parseWorkspaceBackup(workspace.createBackup())).not.toThrow()
+  })
+
   it('repairs a stored preference that points to a missing custom engine', () => {
     localStorage.setItem('inftab.preferences.v1', JSON.stringify({ engine: 'custom:missing' }))
     scope = effectScope()

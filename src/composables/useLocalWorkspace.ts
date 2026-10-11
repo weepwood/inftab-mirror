@@ -247,11 +247,6 @@ export function useLocalWorkspace() {
     const importedCustomSearchEngines = sanitizeCustomSearchEngines(backup.customSearchEngines ?? [])
     if (mode === 'replace') {
       customSearchEngines.value = importedCustomSearchEngines
-      preferences.value = sanitizePreferences(backup.preferences)
-      if (preferences.value.engine.startsWith('custom:')
-        && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
-        preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
-      }
       shortcuts.value = importedShortcuts
       folders.value = importedFolders
       launcherOrder.value = sanitizeLauncherOrder(backup.launcherOrder, importedShortcuts, importedFolders)
@@ -260,6 +255,11 @@ export function useLocalWorkspace() {
       notes.value = importedNotes
       activeNoteId.value = sanitizeActiveNoteId(backup.activeNoteId, importedNotes)
       weatherCity.value = sanitizeWeatherCity(backup.weatherCity)
+      preferences.value = sanitizePreferences(backup.preferences)
+      if (preferences.value.engine.startsWith('custom:')
+        && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
+        preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
+      }
       return undefined
     }
     const mergeLimits = [
@@ -279,17 +279,17 @@ export function useLocalWorkspace() {
       return `合并失败：${overLimitSections.join('、')}将超过数量上限，未导入任何数据。请先整理现有内容，或选择覆盖导入。`
     }
     customSearchEngines.value = sanitizeCustomSearchEngines(mergeById(customSearchEngines.value, importedCustomSearchEngines))
-    preferences.value = sanitizePreferences({ ...preferences.value, ...backup.preferences })
-    if (preferences.value.engine.startsWith('custom:')
-      && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
-      preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
-    }
     shortcuts.value = sanitizeShortcuts(mergeById(shortcuts.value, importedShortcuts))
     folders.value = sanitizeFolders(mergeById(folders.value, importedFolders), shortcuts.value)
     launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...backup.launcherOrder], shortcuts.value, folders.value)
     todos.value = sanitizeTodos(mergeById(todos.value, importedTodos))
     countdowns.value = sanitizeCountdowns(mergeById(countdowns.value, importedCountdowns))
     notes.value = sanitizeNotes(mergeById(notes.value, importedNotes))
+    preferences.value = sanitizePreferences({ ...preferences.value, ...backup.preferences })
+    if (preferences.value.engine.startsWith('custom:')
+      && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
+      preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
+    }
     const preferredNoteId = backup.notes.some((note) => note.id === backup.activeNoteId) ? backup.activeNoteId : activeNoteId.value
     activeNoteId.value = sanitizeActiveNoteId(preferredNoteId, notes.value)
     weatherCity.value = sanitizeWeatherCity(backup.weatherCity || weatherCity.value)
