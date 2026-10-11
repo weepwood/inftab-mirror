@@ -273,6 +273,34 @@ test('enabled home widgets remain visible and scrollable in a short viewport', a
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', activePage ?? '')
 })
 
+test('countdowns can be created, edited, deleted, and persist across reloads', async ({ page }) => {
+  await page.getByRole('button', { name: '打开纪念日' }).click()
+  const panel = page.getByRole('dialog', { name: '纪念日与倒计时' })
+  await expect(panel).toBeVisible()
+
+  await panel.getByLabel('纪念日名称').fill('出行纪念日')
+  await panel.getByLabel('纪念日日期').fill('2030-04-05')
+  await panel.getByLabel('重复频率').selectOption('yearly')
+  await panel.getByRole('button', { name: '添加纪念日' }).click()
+  await expect(panel.getByText('出行纪念日')).toBeVisible()
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.countdowns.v1') ?? '[]')))
+    .toMatchObject([{ title: '出行纪念日', date: '2030-04-05', recurrence: 'yearly' }])
+
+  await panel.getByRole('button', { name: '编辑出行纪念日' }).click()
+  await panel.getByLabel('纪念日名称').fill('春季旅行')
+  await panel.getByLabel('纪念日日期').fill('2030-05-06')
+  await panel.getByRole('button', { name: '保存修改' }).click()
+  await expect(panel.getByText('春季旅行')).toBeVisible()
+
+  await page.reload()
+  const reloadedPanel = page.getByRole('dialog', { name: '纪念日与倒计时' })
+  await page.getByRole('button', { name: '打开纪念日' }).click()
+  await expect(reloadedPanel.getByText('春季旅行')).toBeVisible()
+  await reloadedPanel.getByRole('button', { name: '删除春季旅行' }).click()
+  await expect(reloadedPanel.getByText('春季旅行')).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.countdowns.v1') ?? '[]'))).toEqual([])
+})
+
 test('notes widget previews the selected note and opens the notes panel', async ({ page }) => {
   await page.getByRole('button', { name: '打开笔记' }).click()
   const notesPanel = page.getByRole('dialog', { name: '笔记' })

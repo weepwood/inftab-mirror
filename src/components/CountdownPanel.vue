@@ -16,6 +16,7 @@ const date = ref('')
 const recurrence = ref<CountdownRecurrence>('once')
 const editingId = ref('')
 const today = ref(new Date())
+const limitReached = computed(() => props.items.length >= 500 && !editingId.value)
 const orderedItems = computed(() => [...props.items].sort((left, right) => {
   const leftDays = daysUntilCountdown(left, today.value)
   const rightDays = daysUntilCountdown(right, today.value)
@@ -74,22 +75,23 @@ function displayDate(value: string) {
   <div class="countdown-content">
     <form class="countdown-form" @submit.prevent="submit">
       <label>名称
-        <input v-model="title" maxlength="80" required aria-label="纪念日名称" placeholder="例如：生日、旅行" />
+        <input v-model="title" maxlength="80" required :disabled="limitReached" aria-label="纪念日名称" placeholder="例如：生日、旅行" />
       </label>
       <label>日期
-        <input v-model="date" type="date" required aria-label="纪念日日期" />
+        <input v-model="date" type="date" required :disabled="limitReached" aria-label="纪念日日期" />
       </label>
       <label>重复
-        <select v-model="recurrence" aria-label="重复频率">
+        <select v-model="recurrence" :disabled="limitReached" aria-label="重复频率">
           <option value="once">仅一次</option>
           <option value="yearly">每年重复</option>
         </select>
       </label>
       <div class="countdown-form-actions">
         <button v-if="editingId" class="button-secondary" type="button" @click="resetForm"><X :size="15" /> 取消</button>
-        <button class="button-primary" type="submit"><component :is="editingId ? CalendarDays : Plus" :size="16" />{{ editingId ? '保存修改' : '添加纪念日' }}</button>
+        <button class="button-primary" type="submit" :disabled="limitReached"><component :is="editingId ? CalendarDays : Plus" :size="16" />{{ editingId ? '保存修改' : '添加纪念日' }}</button>
       </div>
     </form>
+    <p v-if="limitReached" class="panel-footnote" role="status">已达到 500 条纪念日上限；删除一条后即可添加。</p>
 
     <ul v-if="orderedItems.length" class="countdown-list">
       <li v-for="item in orderedItems" :key="item.id" class="countdown-item">
