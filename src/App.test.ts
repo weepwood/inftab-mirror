@@ -323,6 +323,33 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('设置')
   })
 
+  it('keeps homepage search and page shortcuts inactive while the folder dialog is open', async () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, columns: 2, rows: 1, pageTransitionEffect: 'slide' }))
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.home-actions .round-action[aria-label="打开设置"]').trigger('click')
+    await flushPromises()
+    await vi.waitFor(() => expect(wrapper!.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
+    await openFolderDialog()
+    const closeButton = wrapper.get('.folder-dialog [aria-label="关闭文件夹"]').element as HTMLButtonElement
+    closeButton.focus()
+    const currentPage = wrapper.get('.page-dots [aria-current="page"]').attributes('aria-label')
+
+    for (const options of [
+      { key: '/', ctrlKey: false },
+      { key: 'k', ctrlKey: true },
+      { key: 'ArrowRight', ctrlKey: false },
+      { key: 'ArrowLeft', ctrlKey: false },
+    ]) {
+      const event = new KeyboardEvent('keydown', { ...options, bubbles: true, cancelable: true })
+      closeButton.dispatchEvent(event)
+      expect(event.defaultPrevented).toBe(false)
+      expect(document.activeElement).toBe(closeButton)
+    }
+
+    expect(wrapper.get('.page-dots [aria-current="page"]').attributes('aria-label')).toBe(currentPage)
+    expect(wrapper.get('.search-box input[type="search"]').attributes('placeholder')).toBe('输入并搜索')
+  })
+
   it('traps focus in an open side panel and restores it to the opener', async () => {
     wrapper = mount(App, { attachTo: document.body })
     const opener = wrapper.get('.shortcut-open[aria-label="打开设置"]').element as HTMLButtonElement

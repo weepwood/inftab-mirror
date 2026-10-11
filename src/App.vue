@@ -633,14 +633,14 @@ function handleKeydown(event: KeyboardEvent) {
   }
   const focusSearchShortcut = event.key === '/' && !event.altKey && !event.ctrlKey && !event.metaKey
     || event.key.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)
-  if (focusSearchShortcut && !editingText && !activePanel.value && !shortcutDialog.value && searchBar.value) {
+  if (focusSearchShortcut && !editingText && !activePanel.value && !shortcutDialog.value && !folderDialogOpen.value && searchBar.value) {
     event.preventDefault()
     localSearchMode.value = false
     searchBar.value.focusSearch()
     return
   }
-  if (event.key === 'ArrowRight' && !editingText && !localSearchMode.value && !shortcutDialog.value && !activePanel.value) movePage(1)
-  if (event.key === 'ArrowLeft' && !editingText && !localSearchMode.value && !shortcutDialog.value && !activePanel.value) movePage(-1)
+  if (event.key === 'ArrowRight' && !editingText && !localSearchMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(1)
+  if (event.key === 'ArrowLeft' && !editingText && !localSearchMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(-1)
 }
 
 function updateViewport() {
