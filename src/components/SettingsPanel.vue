@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
+import { compressImageBlob, maxImageUploadBytes, maxWallpaperDataUrlLength } from '../data/images'
 import type { PageTransitionEffect, Preferences, SearchMode } from '../types'
 
 const props = defineProps<{ preferences: Preferences; exportError?: string }>()
@@ -19,10 +20,13 @@ const emit = defineEmits<{
   importBackup: [backup: WorkspaceBackup, mode: 'merge' | 'replace']
 }>()
 const fileInput = ref<HTMLInputElement>()
+const wallpaperFileInput = ref<HTMLInputElement>()
+const wallpaperError = ref('')
 const importButton = ref<HTMLButtonElement>()
 const backupDialog = ref<HTMLElement>()
 const pendingBackup = ref<WorkspaceBackup>()
 const importError = ref('')
+const hasLocalWallpaper = computed(() => props.preferences.customWallpaper.startsWith('data:image/'))
 
 watch(pendingBackup, async (backup, previous) => {
   if (backup) {
@@ -50,6 +54,25 @@ function toggleSearchMode(mode: SearchMode, enabled: boolean) {
 
 function setTransitionEffect(effect: PageTransitionEffect) {
   update('pageTransitionEffect', effect)
+}
+
+async function loadWallpaperFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  wallpaperError.value = ''
+  if (file.size > maxImageUploadBytes) {
+    wallpaperError.value = '图片不能超过 10 MB。'
+    return
+  }
+  try {
+    const dataUrl = await compressImageBlob(file, 1920, 1_400_000)
+    if (dataUrl.length > maxWallpaperDataUrlLength) throw new Error('压缩后的图片仍然过大，请换一张内容更简单的图片。')
+    update('customWallpaper', dataUrl)
+  } catch (error) {
+    wallpaperError.value = error instanceof Error ? error.message : '无法处理这张图片。'
+  }
 }
 
 async function readBackup(event: Event) {
@@ -128,8 +151,15 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       </div>
       <p class="wallpaper-note">图库图片保存在项目中，无需依赖外站加载。</p>
       <label class="field-label">自定义背景图片网址
-        <input :value="preferences.customWallpaper" placeholder="https://example.com/wallpaper.jpg" @input="update('customWallpaper', ($event.target as HTMLInputElement).value)" />
+        <input :value="hasLocalWallpaper ? '' : preferences.customWallpaper" placeholder="https://example.com/wallpaper.jpg" @input="update('customWallpaper', ($event.target as HTMLInputElement).value)" />
       </label>
+      <div class="backup-actions wallpaper-upload-actions">
+        <input ref="wallpaperFileInput" class="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="loadWallpaperFile" />
+        <button class="button-secondary" type="button" @click="wallpaperFileInput?.click()">上传本地壁纸</button>
+        <button v-if="hasLocalWallpaper" class="button-secondary" type="button" @click="update('customWallpaper', '')">移除本地壁纸</button>
+      </div>
+      <p v-if="hasLocalWallpaper" class="wallpaper-note">本地壁纸已压缩并离线保存在此浏览器中。</p>
+      <p v-if="wallpaperError" class="backup-error" role="alert">{{ wallpaperError }}</p>
       <label class="range-label"><span>背景暗度</span><input type="range" min="0" max="0.65" step="0.05" :value="preferences.shade" @input="update('shade', Number(($event.target as HTMLInputElement).value))" /></label>
     </section>
 

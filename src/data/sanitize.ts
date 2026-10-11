@@ -1,4 +1,5 @@
 import { defaultLauncherOrder, defaultPreferences, launcherItems, wallpaperChoices } from './defaults'
+import { maxWallpaperDataUrlLength } from './images'
 import { isValidCalendarDate } from './countdown'
 import { normalizeWebUrl } from './urls'
 import type { CountdownItem, Note, Preferences, SearchMode, Shortcut, ShortcutFolder, TodoItem } from '../types'
@@ -29,8 +30,13 @@ export function sanitizePreferences(value: unknown): Preferences {
   const wallpaper = typeof raw.wallpaper === 'string' && wallpaperChoices.some((choice) => choice.value === raw.wallpaper)
     ? raw.wallpaper
     : defaultPreferences.wallpaper
-  const customWallpaperInput = boundedText(raw.customWallpaper, '', 4096)
-  const customWallpaper = /^(https?:\/\/|linear-gradient\()/i.test(customWallpaperInput) ? customWallpaperInput : ''
+  const customWallpaperInput = typeof raw.customWallpaper === 'string' && raw.customWallpaper.length <= maxWallpaperDataUrlLength
+    ? raw.customWallpaper.trim()
+    : ''
+  const customWallpaper = /^(https?:\/\/|linear-gradient\()/i.test(customWallpaperInput)
+    || /^data:image\/(webp|png|jpeg);base64,[a-z\d+/]+={0,2}$/i.test(customWallpaperInput)
+    ? customWallpaperInput
+    : ''
 
   return {
     engine: typeof merged.engine === 'string' && engines.has(merged.engine) ? merged.engine as Preferences['engine'] : defaultPreferences.engine,

@@ -62,10 +62,23 @@ describe('workspace backups', () => {
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.showClock).toBe(true)
   })
 
+  it('preserves a compressed local wallpaper when restoring a backup', () => {
+    const localWallpaper = 'data:image/webp;base64,YWJj'
+    expect(parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, customWallpaper: localWallpaper },
+    })).preferences.customWallpaper).toBe(localWallpaper)
+  })
+
   it('rejects oversized sections and unsupported enums', () => {
     expect(() => parseWorkspaceBackup(backup({ notes: Array.from({ length: 501 }, (_, index) => ({ id: String(index), title: '', body: '', updatedAt: 1 })) }))).toThrow(/最多 500/)
     expect(() => parseWorkspaceBackup(backup({ preferences: { ...defaultPreferences, engine: 'other' } }))).toThrow(/搜索引擎/)
     expect(() => parseWorkspaceBackup(backup({ preferences: {} }))).toThrow(/结构不完整/)
+  })
+
+  it('rejects backups with oversized embedded wallpapers', () => {
+    expect(() => parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, customWallpaper: `data:image/webp;base64,${'a'.repeat(2_000_001)}` },
+    }))).toThrow(/自定义壁纸超过大小限制/)
   })
 
   it('merges by id while preserving existing order for updated items', () => {

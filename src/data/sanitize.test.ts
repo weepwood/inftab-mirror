@@ -83,6 +83,14 @@ describe('local state sanitization', () => {
     expect(preferences.showSearchBar).toBe(false)
   })
 
+  it('preserves compressed local wallpapers and rejects unsupported embedded data', () => {
+    const localWallpaper = `data:image/webp;base64,${'a'.repeat(64)}`
+    expect(sanitizePreferences({ customWallpaper: localWallpaper }).customWallpaper).toBe(localWallpaper)
+    expect(sanitizePreferences({ customWallpaper: 'data:image/png;base64,YWJj' }).customWallpaper).toBe('data:image/png;base64,YWJj')
+    expect(sanitizePreferences({ customWallpaper: 'data:image/svg+xml;base64,PHN2Zz4=' }).customWallpaper).toBe('')
+    expect(sanitizePreferences({ customWallpaper: `data:image/webp;base64,${'a'.repeat(2_000_001)}` }).customWallpaper).toHaveLength(0)
+  })
+
   it('assigns a shortcut to only the first folder and restores it when unassigned', () => {
     const shortcuts = sanitizeShortcuts([{ id: 'shortcut', title: 'Link', url: 'https://example.com', color: '#abc', mark: 'L' }])
     const folders = sanitizeFolders([

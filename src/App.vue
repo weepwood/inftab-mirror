@@ -9,6 +9,7 @@ import FolderDialog from './components/FolderDialog.vue'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent } from './composables/useStoredState'
 import { launcherItems } from './data/defaults'
+import { compressImageBlob, maxImageUploadBytes } from './data/images'
 import { buildSearchUrl } from './data/search'
 import { normalizeWebUrl } from './data/urls'
 import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelId, type PanelPluginContext } from './plugins/registry'
@@ -281,45 +282,18 @@ function openShortcutDialog(item?: LauncherItem) {
   shortcutDialog.value = true
 }
 
-async function imageBlobToDataUrl(blob: Blob) {
-  if (!blob.type.startsWith('image/')) throw new Error('这个文件不是可用的图片。')
-  if (blob.size > 10 * 1024 * 1024) throw new Error('图片不能超过 10 MB。')
-  const bitmap = await createImageBitmap(blob)
-  try {
-    if (bitmap.width * bitmap.height > 40_000_000) throw new Error('图片分辨率过高，请换一张较小的图片。')
-    const scale = Math.min(1, 192 / Math.max(bitmap.width, bitmap.height))
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
-    const context = canvas.getContext('2d')
-    if (!context) throw new Error('浏览器无法处理这张图片。')
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-    const compressed = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((result) => result ? resolve(result) : reject(new Error('图片压缩失败。')), 'image/webp', 0.84)
-    })
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('无法读取压缩后的图片。'))
-      reader.onerror = () => reject(new Error('无法读取压缩后的图片。'))
-      reader.readAsDataURL(compressed)
-    })
-  } finally {
-    bitmap.close()
-  }
-}
-
 async function loadShortcutIconFile(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
   if (!file) return
   shortcutIconError.value = ''
-  if (file.size > 10 * 1024 * 1024) {
+  if (file.size > maxImageUploadBytes) {
     shortcutIconError.value = '图片不能超过 10 MB。'
     return
   }
   try {
-    shortcutIcon.value = await imageBlobToDataUrl(file)
+    shortcutIcon.value = await compressImageBlob(file, 192)
   } catch (error) {
     shortcutIconError.value = error instanceof Error ? error.message : '无法处理这张图片。'
   }
@@ -348,7 +322,7 @@ async function saveShortcut() {
       if (!response.ok) throw new Error(`图标下载失败（HTTP ${response.status}）。`)
       const blob = await response.blob()
       if (blob.size > 10 * 1024 * 1024) throw new Error('图标图片不能超过 10 MB。')
-      icon = await imageBlobToDataUrl(blob)
+      icon = await compressImageBlob(blob, 192)
     } catch (error) {
       shortcutIconError.value = error instanceof Error && !error.message.includes('Failed to fetch')
         ? error.message

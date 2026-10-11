@@ -1,5 +1,6 @@
 import type { CountdownItem, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
+import { maxWallpaperDataUrlLength } from './images'
 
 export interface WorkspaceBackup {
   format: 'inftab-workspace'
@@ -55,6 +56,9 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   }
   if (Object.entries(requiredPreferenceTypes).some(([key, valid]) => !valid(rawPreferences[key]))) {
     throw new Error('备份文件结构不完整或已损坏。')
+  }
+  if (typeof rawPreferences.customWallpaper === 'string' && rawPreferences.customWallpaper.length > maxWallpaperDataUrlLength) {
+    throw new Error('备份中的自定义壁纸超过大小限制。')
   }
   const optionalPreferenceTypes: Record<string, (item: unknown) => boolean> = {
     visibleSearchModes: (item) => Array.isArray(item) && item.every((mode) => ['html', 'photos', 'news', 'videos', 'map'].includes(String(mode))),
