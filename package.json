@@ -8,13 +8,15 @@
     "build": "vue-tsc --noEmit && vite build && node scripts/check-bundle-size.mjs && node scripts/check-extension-build.mjs",
     "preview": "vite preview",
     "check": "vue-tsc --noEmit",
-    "test": "vitest run && node scripts/check-default-assets.mjs"
+    "test": "vitest run && node scripts/check-default-assets.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@lucide/vue": "^1.55.0",
     "vue": "^3.5.43"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@vitejs/plugin-vue": "^6.0.10",
     "@vue/test-utils": "^2.5.1",
     "jsdom": "^30.1.2",

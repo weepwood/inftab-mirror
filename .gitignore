@@ -17,4 +17,6 @@ live_check.js
 node_modules/
 dist/
 .vite/
+playwright-report/
+test-results/
 live_preview.png

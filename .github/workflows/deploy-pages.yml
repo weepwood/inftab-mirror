@@ -29,6 +29,20 @@ jobs:
         run: npm ci
       - name: Run regression tests
         run: npm test
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Run browser end-to-end tests
+        run: npm run test:e2e
+      - name: Save browser test report and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Build site
         run: npm run build
       - name: Upload Pages artifact
