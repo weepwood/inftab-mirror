@@ -108,11 +108,11 @@ export function useLocalWorkspace() {
   }
 
   function updatePreferences(update: Partial<Preferences>) {
-    Object.assign(preferences.value, update)
+    preferences.value = sanitizePreferences({ ...preferences.value, ...update })
   }
 
   function resetPreferences() {
-    Object.assign(preferences.value, defaultPreferences)
+    preferences.value = sanitizePreferences(defaultPreferences)
   }
 
   function createBackup(): WorkspaceBackup {

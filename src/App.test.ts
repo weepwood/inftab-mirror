@@ -162,4 +162,14 @@ describe('new-tab keyboard search', () => {
       icon: 'https://images.example/icon.png',
     }))
   })
+
+  it('restores a fresh copy of default preferences', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+    const columns = wrapper.findAll('.settings-content .range-label').find((label) => label.text().includes('每行图标'))!
+    await columns.get('input').setValue('10')
+    await wrapper.get('.text-button').trigger('click')
+
+    expect(columns.get('input').element).toHaveProperty('value', '6')
+  })
 })

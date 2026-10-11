@@ -68,6 +68,13 @@ describe('local state sanitization', () => {
     expect(folders.some((folder) => folder.id === 'weather')).toBe(false)
   })
 
+  it('does not expose mutable default arrays through sanitized preferences', () => {
+    const preferences = sanitizePreferences({})
+    preferences.visibleSearchModes.push('news')
+
+    expect(defaultPreferences.visibleSearchModes).toEqual([])
+  })
+
   it('assigns a shortcut to only the first folder and restores it when unassigned', () => {
     const shortcuts = sanitizeShortcuts([{ id: 'shortcut', title: 'Link', url: 'https://example.com', color: '#abc', mark: 'L' }])
     const folders = sanitizeFolders([

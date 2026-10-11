@@ -24,7 +24,7 @@ export function sanitizePreferences(value: unknown): Preferences {
   const merged = { ...defaultPreferences, ...raw }
   const visibleSearchModes = Array.isArray(raw.visibleSearchModes)
     ? [...new Set(raw.visibleSearchModes.filter((item): item is SearchMode => typeof item === 'string' && searchModes.has(item as SearchMode))) ]
-    : defaultPreferences.visibleSearchModes
+    : [...defaultPreferences.visibleSearchModes]
   const wallpaper = typeof raw.wallpaper === 'string' && wallpaperChoices.some((choice) => choice.value === raw.wallpaper)
     ? raw.wallpaper
     : defaultPreferences.wallpaper
