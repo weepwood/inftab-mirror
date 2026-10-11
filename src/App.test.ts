@@ -638,6 +638,20 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.find('.empty-state').exists()).toBe(true)
   })
 
+  it('cancels inline todo editing on Escape without closing its panel', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await openLauncher('待办事项')
+    await wrapper.get('.inline-add input').setValue('保留在面板里的待办')
+    await wrapper.get('.inline-add').trigger('submit')
+    await wrapper.get('.todo-list li .icon-action[aria-label="编辑待办"]').trigger('click')
+
+    await wrapper.get('input[aria-label="编辑待办"]').trigger('keydown', { key: 'Escape' })
+
+    expect(wrapper.get('[role="dialog"]').attributes('aria-label')).toBe('待办事项')
+    expect(wrapper.find('input[aria-label="编辑待办"]').exists()).toBe(false)
+    expect(wrapper.get('.todo-list').text()).toContain('保留在面板里的待办')
+  })
+
   it('prevents new todos and notes when their backup-safe item limit is reached', async () => {
     localStorage.setItem('inftab.todos.v1', JSON.stringify(Array.from({ length: 500 }, (_, index) => ({
       id: 'todo-' + index,
