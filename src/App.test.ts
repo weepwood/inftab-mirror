@@ -131,6 +131,25 @@ describe('new-tab color theme', () => {
   })
 })
 
+describe('new-tab built-in launcher visibility', () => {
+  it('hides a panel from the grid and restores it from settings', async () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, hiddenLauncherIds: ['weather'] }))
+    wrapper = mount(App, { attachTo: document.body })
+    await nextTick()
+    expect(wrapper.find('[data-item-id="weather"]').exists()).toBe(false)
+
+    await wrapper.get('[aria-label="打开设置"]').trigger('click')
+    await flushPromises()
+    await vi.waitFor(() => expect(wrapper!.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
+    const weatherRow = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('显示天气'))!
+    const weatherToggle = weatherRow.get('input')
+    expect((weatherToggle.element as HTMLInputElement).checked).toBe(false)
+    await weatherToggle.setValue(true)
+    await nextTick()
+    expect(wrapper.find('[data-item-id="weather"]').exists()).toBe(true)
+  })
+})
+
 describe('new-tab keyboard search', () => {
   it('filters launcher shortcuts with Ctrl/Command+F and opens a selected result', async () => {
     wrapper = mount(App, { attachTo: document.body })

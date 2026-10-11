@@ -65,6 +65,15 @@ describe('workspace backups', () => {
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.themeMode).toBe('light')
   })
 
+  it('preserves hidden panels and rejects unknown hidden launcher ids', () => {
+    expect(parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, hiddenLauncherIds: ['weather', 'calendar'] },
+    })).preferences.hiddenLauncherIds).toEqual(['weather', 'calendar'])
+    expect(() => parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, hiddenLauncherIds: ['custom-shortcut'] },
+    }))).toThrow(/页面设置无法识别/)
+  })
+
   it('imports theme preferences and rejects unsupported theme values', () => {
     expect(parseWorkspaceBackup(backup({
       preferences: { ...defaultPreferences, themeMode: 'dark' },

@@ -112,7 +112,9 @@ const allLauncherItems = computed<LauncherItem[]>(() => {
     })),
   ]
   const order = new Map(launcherOrder.value.map((id, index) => [id, index]))
-  return items.sort((left, right) => (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER))
+  return items
+    .filter((item) => !preferences.value.hiddenLauncherIds.includes(item.id))
+    .sort((left, right) => (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER))
 })
 const unavailableFolderShortcutIds = computed(() => folders.value
   .filter((folder) => folder.id !== activeFolder.value?.id)

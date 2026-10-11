@@ -26,6 +26,10 @@ function boundedText(value: unknown, fallback: string, maxLength: number) {
 export function sanitizePreferences(value: unknown): Preferences {
   const raw = record(value) ? value : {}
   const merged = { ...defaultPreferences, ...raw }
+  const manageableLauncherIds = new Set(launcherItems.filter((item) => item.action && item.id !== 'settings').map((item) => item.id))
+  const hiddenLauncherIds = Array.isArray(raw.hiddenLauncherIds)
+    ? [...new Set(raw.hiddenLauncherIds.filter((item): item is string => typeof item === 'string' && manageableLauncherIds.has(item)))]
+    : [...defaultPreferences.hiddenLauncherIds]
   const visibleSearchModes = Array.isArray(raw.visibleSearchModes)
     ? [...new Set(raw.visibleSearchModes.filter((item): item is SearchMode => typeof item === 'string' && searchModes.has(item as SearchMode))) ]
     : [...defaultPreferences.visibleSearchModes]
@@ -44,6 +48,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     themeMode: merged.themeMode === 'light' || merged.themeMode === 'dark' || merged.themeMode === 'system'
       ? merged.themeMode
       : defaultPreferences.themeMode,
+    hiddenLauncherIds,
     engine: typeof merged.engine === 'string' && (engines.has(merged.engine) || /^custom:[\w-]{1,128}$/.test(merged.engine))
       ? merged.engine as Preferences['engine']
       : defaultPreferences.engine,

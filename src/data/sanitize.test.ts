@@ -37,6 +37,11 @@ describe('local state sanitization', () => {
     expect(sanitizePreferences({ themeMode: 'neon' }).themeMode).toBe('light')
   })
 
+  it('keeps only unique hideable built-in launcher ids', () => {
+    expect(sanitizePreferences({ hiddenLauncherIds: ['weather', 'weather', 'settings', 'custom', 7] }).hiddenLauncherIds).toEqual(['weather'])
+    expect(sanitizePreferences({}).hiddenLauncherIds).toEqual([])
+  })
+
   it('drops unsafe shortcuts, duplicate ids, and malformed records', () => {
     const shortcuts = sanitizeShortcuts([
       { id: 'safe', title: ' Safe ', url: 'https://example.com', color: '#abc', mark: 'S' },

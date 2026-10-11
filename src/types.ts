@@ -60,6 +60,7 @@ export interface Note {
 
 export interface Preferences {
   themeMode: ThemeMode
+  hiddenLauncherIds: string[]
   engine: SearchEngineSelection
   mode: SearchMode
   visibleSearchModes: SearchMode[]

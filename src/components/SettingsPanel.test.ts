@@ -23,6 +23,20 @@ describe('SettingsPanel theme preference', () => {
   })
 })
 
+describe('SettingsPanel built-in launcher visibility', () => {
+  it('emits a hidden panel preference while keeping settings available', async () => {
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+
+    const weatherRow = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('显示天气'))!
+    const weatherToggle = weatherRow.get('input')
+    expect((weatherToggle.element as HTMLInputElement).checked).toBe(true)
+    await weatherToggle.setValue(false)
+
+    expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({ hiddenLauncherIds: ['weather'] })
+    expect(wrapper.findAll('label.toggle-row').some((row) => row.text().includes('显示设置'))).toBe(false)
+  })
+})
+
 describe('SettingsPanel local wallpaper upload', () => {
   it('compresses a selected image and emits it as an offline wallpaper', async () => {
     const bitmap = { width: 4000, height: 2000, close: vi.fn() }

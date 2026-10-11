@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { searchModes, wallpaperChoices } from '../data/defaults'
+import { launcherItems, searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
 import { compressImageBlob, maxImageUploadBytes, maxWallpaperDataUrlLength } from '../data/images'
 import { isValidCustomSearchTemplate } from '../data/search'
@@ -33,6 +33,7 @@ const hasLocalWallpaper = computed(() => props.preferences.customWallpaper.start
 const searchEngineName = ref('')
 const searchEngineTemplate = ref('')
 const searchEngineError = ref('')
+const manageableLauncherItems = launcherItems.filter((item) => item.action && item.id !== 'settings')
 
 watch(pendingBackup, async (backup, previous) => {
   if (backup) {
@@ -56,6 +57,13 @@ function toggleSearchMode(mode: SearchMode, enabled: boolean) {
   if (!visibleModes.has(props.preferences.mode)) {
     update('mode', [...visibleModes][0] ?? 'html')
   }
+}
+
+function toggleLauncher(id: string, enabled: boolean) {
+  const hidden = new Set(props.preferences.hiddenLauncherIds)
+  if (enabled) hidden.delete(id)
+  else hidden.add(id)
+  update('hiddenLauncherIds', [...hidden])
 }
 
 function setTransitionEffect(effect: PageTransitionEffect) {
@@ -219,6 +227,11 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
 
     <section class="settings-section">
       <div class="section-heading"><div><h3>快捷入口</h3><p>调整图标网格外观</p></div></div>
+      <p class="settings-subheading">内置面板</p>
+      <label v-for="item in manageableLauncherItems" :key="item.id" class="toggle-row">
+        <span>显示{{ item.title }}</span><input type="checkbox" :checked="!preferences.hiddenLauncherIds.includes(item.id)" @change="toggleLauncher(item.id, ($event.target as HTMLInputElement).checked)" />
+      </label>
+      <p class="wallpaper-note">设置入口始终保留，可随时恢复已隐藏的面板。</p>
       <button class="settings-add-shortcut" type="button" @click="emit('addShortcut')"><span>＋</span> 添加快捷入口</button>
       <button class="settings-add-shortcut folder-add-button" type="button" @click="emit('addFolder')"><span>▣</span> 新建文件夹</button>
       <label class="range-label"><span>每行图标</span><strong>{{ preferences.columns }}</strong><input type="range" min="2" max="12" step="1" :value="preferences.columns" @input="update('columns', Number(($event.target as HTMLInputElement).value))" /></label>
