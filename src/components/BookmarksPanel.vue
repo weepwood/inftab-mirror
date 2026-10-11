@@ -33,6 +33,7 @@ const expandedIds = ref(new Set<string>())
 let stopListening: (() => void) | undefined
 let stopWatchingPermission: (() => void) | undefined
 let refreshSequence = 0
+let permissionSequence = 0
 
 const rows = computed(() => {
   const cleanQuery = query.value.trim().toLocaleLowerCase()
@@ -75,8 +76,10 @@ function watchBookmarkChanges() {
 }
 
 async function syncBookmarkPermission() {
+  const sequence = ++permissionSequence
   try {
     const granted = await hasBrowserBookmarksPermission()
+    if (sequence !== permissionSequence) return
     permissionGranted.value = granted
     if (granted) {
       watchBookmarkChanges()
@@ -90,16 +93,19 @@ async function syncBookmarkPermission() {
       error.value = ''
     }
   } catch {
-    error.value = '无法检查浏览器书签权限。'
+    if (sequence === permissionSequence) error.value = '无法检查浏览器书签权限。'
   }
 }
 
 async function enableBookmarks() {
   if (requestingPermission.value) return
+  const sequence = ++permissionSequence
   requestingPermission.value = true
   error.value = ''
   try {
-    permissionGranted.value = await requestBrowserBookmarksPermission()
+    const granted = await requestBrowserBookmarksPermission()
+    if (sequence !== permissionSequence) return
+    permissionGranted.value = granted
     if (permissionGranted.value) {
       watchBookmarkChanges()
       await refreshBookmarks()
@@ -107,7 +113,7 @@ async function enableBookmarks() {
       error.value = '未授予书签权限。你仍可稍后在扩展设置中启用。'
     }
   } catch {
-    error.value = '无法请求书签权限，请稍后重试。'
+    if (sequence === permissionSequence) error.value = '无法请求书签权限，请稍后重试。'
   } finally {
     requestingPermission.value = false
   }
@@ -127,6 +133,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  permissionSequence += 1
   refreshSequence += 1
   stopListening?.()
   stopWatchingPermission?.()

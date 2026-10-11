@@ -3,6 +3,12 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import BookmarksPanel from './BookmarksPanel.vue'
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => { resolve = done })
+  return { promise, resolve }
+}
+
 let wrapper: VueWrapper | undefined
 
 afterEach(() => {
@@ -89,5 +95,31 @@ describe('BookmarksPanel', () => {
     await flushPromises()
     expect(wrapper.find('.browser-bookmark-link').exists()).toBe(false)
     expect(wrapper.text()).toContain('连接当前浏览器的书签')
+  })
+
+  it('ignores an old permission check that finishes after permission was revoked', async () => {
+    const oldPermissionCheck = deferred<boolean>()
+    const permissionRemoved = {
+      listeners: new Set<(...args: unknown[]) => void>(),
+      addListener(listener: (...args: unknown[]) => void) { this.listeners.add(listener) },
+      removeListener(listener: (...args: unknown[]) => void) { this.listeners.delete(listener) },
+      fire() { this.listeners.forEach((listener) => listener()) },
+    }
+    const contains = vi.fn().mockReturnValueOnce(oldPermissionCheck.promise).mockResolvedValueOnce(false)
+    const getTree = vi.fn()
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains, request: vi.fn(), onRemoved: permissionRemoved },
+      bookmarks: { getTree, onCreated: { addListener: vi.fn(), removeListener: vi.fn() } },
+    })
+    wrapper = mount(BookmarksPanel)
+    permissionRemoved.fire()
+    await flushPromises()
+    oldPermissionCheck.resolve(true)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('连接当前浏览器的书签')
+    expect(wrapper.find('.browser-bookmark-link').exists()).toBe(false)
+    expect(getTree).not.toHaveBeenCalled()
   })
 })
