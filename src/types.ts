@@ -4,6 +4,7 @@ export type SearchMode = 'html' | 'photos' | 'news' | 'videos' | 'map'
 export type EngineId = 'google' | 'baidu' | 'bing' | 'duckduckgo' | 'sogou' | 'yahoo' | '360'
 export type SearchEngineSelection = EngineId | `custom:${string}`
 export type PageTransitionEffect = 'slide' | 'particles' | 'trails'
+export type ThemeMode = 'light' | 'dark' | 'system'
 
 export interface CustomSearchEngine {
   id: string
@@ -58,6 +59,7 @@ export interface Note {
 }
 
 export interface Preferences {
+  themeMode: ThemeMode
   engine: SearchEngineSelection
   mode: SearchMode
   visibleSearchModes: SearchMode[]

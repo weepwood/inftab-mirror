@@ -57,9 +57,19 @@ describe('workspace backups', () => {
   })
 
   it('keeps older backups compatible with the new clock preference', () => {
-    const preferences = { ...defaultPreferences, showClock: undefined }
+    const preferences = { ...defaultPreferences, showClock: undefined, themeMode: undefined }
 
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.showClock).toBe(true)
+    expect(parseWorkspaceBackup(backup({ preferences })).preferences.themeMode).toBe('light')
+  })
+
+  it('imports theme preferences and rejects unsupported theme values', () => {
+    expect(parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, themeMode: 'dark' },
+    })).preferences.themeMode).toBe('dark')
+    expect(() => parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, themeMode: 'neon' },
+    }))).toThrow(/页面设置无法识别/)
   })
 
   it('preserves custom engines and requires a selected custom engine to be included', () => {

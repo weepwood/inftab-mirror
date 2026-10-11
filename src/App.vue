@@ -55,6 +55,10 @@ const {
 } = useLocalWorkspace()
 
 const query = ref('')
+const systemPrefersDark = ref(false)
+const effectiveTheme = computed(() => preferences.value.themeMode === 'system'
+  ? (systemPrefersDark.value ? 'dark' : 'light')
+  : preferences.value.themeMode)
 const currentPage = ref(0)
 const pageDirection = ref(1)
 const activePanel = ref<Panel>(null)
@@ -115,6 +119,10 @@ const unavailableFolderShortcutIds = computed(() => folders.value
 const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
 const pageNavigation = computed(() => getPageNavigation(pageCount.value, currentPage.value))
 let panelReturnFocusTarget: HTMLElement | undefined
+let systemThemeQuery: MediaQueryList | undefined
+function updateSystemTheme(event?: MediaQueryListEvent) {
+  systemPrefersDark.value = event?.matches ?? systemThemeQuery?.matches ?? false
+}
 const panelContext = computed<PanelPluginContext>(() => ({
   preferences: preferences.value,
   backupExportError: backupExportError.value,
@@ -481,16 +489,25 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('resize', updateViewport)
   window.addEventListener(storageWriteErrorEvent, handleStorageWriteError)
+  if (typeof window.matchMedia === 'function') {
+    systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    updateSystemTheme()
+    if (systemThemeQuery.addEventListener) systemThemeQuery.addEventListener('change', updateSystemTheme)
+    else systemThemeQuery.addListener?.(updateSystemTheme)
+  }
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', updateViewport)
   window.removeEventListener(storageWriteErrorEvent, handleStorageWriteError)
+  if (systemThemeQuery?.removeEventListener) systemThemeQuery.removeEventListener('change', updateSystemTheme)
+  else systemThemeQuery?.removeListener?.(updateSystemTheme)
+  systemThemeQuery = undefined
 })
 </script>
 
 <template>
-  <main class="home" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
+  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark' }" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
     <a class="skip-link" href="#main-content">跳到快捷入口</a>
     <h1 class="visually-hidden">Infinity 新标签页</h1>
     <div class="background-shade"></div>
@@ -509,6 +526,7 @@ onBeforeUnmount(() => {
         v-model:mode="preferences.mode"
         :visible-modes="preferences.visibleSearchModes"
         :custom-engines="customSearchEngines"
+        :dark-theme="effectiveTheme === 'dark'"
         @search="submitSearch"
       />
       <ShortcutGrid

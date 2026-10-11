@@ -1,5 +1,6 @@
 :root {
   font-family: 'Microsoft YaHei', 'PingFang SC', 'Segoe UI', sans-serif;
+  color-scheme: light;
   color: #fff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -398,3 +399,134 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .folder-dialog { padding: 18px; }
   .folder-link-url { display: none; }
 }
+
+.home.theme-dark { color-scheme: dark; }
+.theme-dark .search-box,
+.theme-dark .engine-picker,
+.theme-dark .submit-search,
+.engine-menu.theme-dark,
+.theme-dark .shortcut-context-menu,
+.theme-dark .shortcut-dialog,
+.theme-dark .side-panel {
+  border-color: #343a45;
+  background-color: #1c2028;
+  color: #e7eaf0;
+}
+.theme-dark .search-box { border-color: rgba(255, 255, 255, .35); }
+.theme-dark .search-box input[type='search'],
+.theme-dark .engine-menu button,
+.theme-dark .shortcut-context-menu button { color: #e7eaf0; }
+.theme-dark .engine-menu button { background: #1c2028; }
+.engine-menu.theme-dark button { background: #1c2028; color: #e7eaf0; }
+.theme-dark .engine-menu button:hover,
+.theme-dark .engine-menu button[aria-selected='true'],
+.theme-dark .shortcut-context-menu button:hover { background: #2a303a; }
+.engine-menu.theme-dark button:hover,
+.engine-menu.theme-dark button[aria-selected='true'] { background: #2a303a; }
+.theme-dark .search-box input::placeholder { color: #929aa7; }
+.theme-dark .engine-initial { background: #303744; color: #d5deeb; }
+.theme-dark .panel-header { border-color: #333944; background: rgba(28, 32, 40, .96); }
+.theme-dark .panel-header h2,
+.theme-dark .bookmark-permission p,
+.theme-dark .settings-section,
+.theme-dark .section-heading h3,
+.theme-dark .range-label,
+.theme-dark .toggle-row,
+.theme-dark .custom-engine-list li,
+.theme-dark .browser-bookmark-folder,
+.theme-dark .browser-bookmark-link,
+.theme-dark .countdown-form label,
+.theme-dark .countdown-copy strong,
+.theme-dark .countdown-item,
+.theme-dark .todo-list li,
+.theme-dark .notes-list,
+.theme-dark .note-list-item,
+.theme-dark .note-title,
+.theme-dark .note-editor textarea,
+.theme-dark .weather-place h3,
+.theme-dark .weather-current > div,
+.theme-dark .weather-day,
+.theme-dark .calculator-display input,
+.theme-dark .shortcut-dialog label,
+.theme-dark .backup-counts { color: #e0e4eb; }
+.theme-dark .panel-header p,
+.theme-dark .section-heading p,
+.theme-dark .settings-subheading,
+.theme-dark .local-hint,
+.theme-dark .panel-footnote,
+.theme-dark .backup-description,
+.theme-dark .backup-preview,
+.theme-dark .wallpaper-note,
+.theme-dark .countdown-copy small,
+.theme-dark .note-list-item span,
+.theme-dark .notes-empty,
+.theme-dark .weather-status,
+.theme-dark .weather-attribution,
+.theme-dark .weather-place p,
+.theme-dark .weather-current span,
+.theme-dark .weather-current p,
+.theme-dark .weather-details,
+.theme-dark .calculator-display > span,
+.theme-dark .calculator-footnote,
+.theme-dark .folder-dialog-heading p,
+.theme-dark .folder-selection-label,
+.theme-dark .folder-toolbar,
+.theme-dark .folder-link-url,
+.theme-dark .folder-empty,
+.theme-dark .icon-file-actions span { color: #a4adba; }
+.theme-dark .settings-section,
+.theme-dark .countdown-item,
+.theme-dark .notes-list,
+.theme-dark .weather-day,
+.theme-dark .folder-choice + .folder-choice,
+.theme-dark .folder-link + .folder-link { border-color: #333944; }
+.theme-dark .field-label input,
+.theme-dark .countdown-form,
+.theme-dark .countdown-form input,
+.theme-dark .countdown-form select,
+.theme-dark .inline-add input,
+.theme-dark .todo-edit-form input,
+.theme-dark .weather-search input,
+.theme-dark .weather-locations button,
+.theme-dark .calculator-display,
+.theme-dark .calculator-keys button,
+.theme-dark .shortcut-dialog label input:not([type='color']),
+.theme-dark .color-field input,
+.theme-dark .button-secondary,
+.theme-dark .settings-add-shortcut,
+.theme-dark .folder-choice-list,
+.theme-dark .folder-link-list,
+.theme-dark .folder-link {
+  border-color: #39414e;
+  background-color: #252a34;
+  color: #e2e6ed;
+}
+.theme-dark .button-secondary:hover,
+.theme-dark .settings-add-shortcut:hover,
+.theme-dark .folder-link:hover,
+.theme-dark .folder-choice:hover,
+.theme-dark .weather-locations button:hover { background-color: #303744; }
+.theme-dark .notes-list { background: #191d24; }
+.theme-dark .note-list-item.active,
+.theme-dark .note-list-item:hover { background: #2a303a; }
+.theme-dark .weather-current { background: linear-gradient(135deg, #252e3b, #202733); }
+.theme-dark .weather-locations button { color: #e2e6ed; }
+.theme-dark .weather-day strong { color: #dce2e9; }
+.theme-dark .empty-state p { color: #c0c7d1; }
+.theme-dark .bookmark-permission p { color: #dce2e9; }
+.theme-dark .calculator-keys .calculator-key-utility { color: #b4bdc9; }
+.theme-dark .calculator-keys .calculator-key-operator { border-color: #3a4a67; background: #293750; color: #a9c6ff; }
+.theme-dark .calculator-keys .calculator-key-equals { border-color: #427cf2; background: #427cf2; color: #fff; }
+.theme-dark .folder-choice.unavailable { color: #9ca6b4 !important; }
+.theme-dark .folder-choice.unavailable small { color: #8e98a6; }
+.theme-dark .backup-counts li { background: #292f39; }
+.theme-dark .shortcut-dialog header button,
+.theme-dark .panel-close,
+.theme-dark .back-button { color: #b8c0cb; }
+.theme-dark .panel-close:hover,
+.theme-dark .back-button:hover,
+.theme-dark .shortcut-dialog header button:hover { background: #303744; color: #fff; }
+.theme-dark .browser-bookmark-folder:hover,
+.theme-dark .browser-bookmark-link:hover { background: #2a303a; }
+.theme-dark .weather-place button { background: #293750; color: #a9c6ff; }
+.theme-dark .todo-check { border-color: #515b69; background: #252a34; }

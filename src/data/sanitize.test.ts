@@ -31,6 +31,12 @@ describe('local state sanitization', () => {
     expect(result.visibleSearchModes).toEqual(['map'])
   })
 
+  it('preserves valid theme choices and falls back for invalid values', () => {
+    expect(sanitizePreferences({ themeMode: 'dark' }).themeMode).toBe('dark')
+    expect(sanitizePreferences({ themeMode: 'system' }).themeMode).toBe('system')
+    expect(sanitizePreferences({ themeMode: 'neon' }).themeMode).toBe('light')
+  })
+
   it('drops unsafe shortcuts, duplicate ids, and malformed records', () => {
     const shortcuts = sanitizeShortcuts([
       { id: 'safe', title: ' Safe ', url: 'https://example.com', color: '#abc', mark: 'S' },

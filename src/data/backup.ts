@@ -66,6 +66,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     throw new Error('备份中的自定义壁纸超过大小限制。')
   }
   const optionalPreferenceTypes: Record<string, (item: unknown) => boolean> = {
+    themeMode: (item) => ['light', 'dark', 'system'].includes(String(item)),
     visibleSearchModes: (item) => Array.isArray(item) && item.every((mode) => ['html', 'photos', 'news', 'videos', 'map'].includes(String(mode))),
     showSearchBar: (item) => typeof item === 'boolean',
     showClock: (item) => typeof item === 'boolean',

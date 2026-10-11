@@ -13,6 +13,16 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+describe('SettingsPanel theme preference', () => {
+  it('emits the selected light, dark, or system theme', async () => {
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+
+    await wrapper.get('select[aria-label=\"颜色主题\"]').setValue('dark')
+
+    expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({ themeMode: 'dark' })
+  })
+})
+
 describe('SettingsPanel local wallpaper upload', () => {
   it('compresses a selected image and emits it as an offline wallpaper', async () => {
     const bitmap = { width: 4000, height: 2000, close: vi.fn() }

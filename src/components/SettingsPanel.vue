@@ -4,7 +4,7 @@ import { searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
 import { compressImageBlob, maxImageUploadBytes, maxWallpaperDataUrlLength } from '../data/images'
 import { isValidCustomSearchTemplate } from '../data/search'
-import type { CustomSearchEngine, PageTransitionEffect, Preferences, SearchMode } from '../types'
+import type { CustomSearchEngine, PageTransitionEffect, Preferences, SearchMode, ThemeMode } from '../types'
 
 const props = withDefaults(defineProps<{ preferences: Preferences; exportError?: string; customEngines?: CustomSearchEngine[] }>(), { customEngines: () => [] })
 const transitionEffects: { id: PageTransitionEffect; label: string }[] = [
@@ -155,7 +155,14 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
 <template>
   <div class="settings-content">
     <section class="settings-section">
-      <div class="section-heading"><div><h3>首页组件</h3><p>显示常用信息</p></div></div>
+      <div class="section-heading"><div><h3>界面与主题</h3><p>选择外观并设置首页信息</p></div></div>
+      <label class="toggle-row">颜色主题
+        <select aria-label="颜色主题" :value="preferences.themeMode" @change="update('themeMode', ($event.target as HTMLSelectElement).value as ThemeMode)">
+          <option value="light">浅色</option>
+          <option value="dark">深色</option>
+          <option value="system">跟随系统</option>
+        </select>
+      </label>
       <label class="toggle-row"><span>显示时间和日期</span><input type="checkbox" :checked="preferences.showClock" @change="update('showClock', ($event.target as HTMLInputElement).checked)" /></label>
     </section>
 

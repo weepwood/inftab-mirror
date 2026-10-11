@@ -10,7 +10,8 @@ const props = withDefaults(defineProps<{
   mode: SearchMode
   visibleModes: SearchMode[]
   customEngines?: CustomSearchEngine[]
-}>(), { customEngines: () => [] })
+  darkTheme?: boolean
+}>(), { customEngines: () => [], darkTheme: false })
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -163,7 +164,7 @@ defineExpose({ focusSearch })
     </form>
     <Teleport to="body">
       <Transition name="engine-menu">
-        <div v-if="showEngines" ref="engineMenu" class="engine-menu" role="listbox" aria-label="选择搜索引擎" :style="{ top: `${engineMenuPosition.top}px`, left: `${engineMenuPosition.left}px` }">
+        <div v-if="showEngines" ref="engineMenu" class="engine-menu" :class="{ 'theme-dark': darkTheme }" role="listbox" aria-label="选择搜索引擎" :style="{ top: `${engineMenuPosition.top}px`, left: `${engineMenuPosition.left}px` }">
           <button
             v-for="item in availableEngines"
             :key="item.id"

@@ -3,6 +3,7 @@ import type { EngineId, LauncherItem, Preferences, SearchMode, Shortcut } from '
 const base = import.meta.env.BASE_URL
 
 export const defaultPreferences: Preferences = {
+  themeMode: 'light',
   engine: 'baidu',
   mode: 'html',
   visibleSearchModes: [],

@@ -98,6 +98,35 @@ describe('new-tab short viewport layout', () => {
   })
 })
 
+describe('new-tab color theme', () => {
+  it('applies an explicit dark theme and follows operating-system changes', async () => {
+    const changeListeners = new Set<(event: MediaQueryListEvent) => void>()
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => changeListeners.add(listener),
+      removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => changeListeners.delete(listener),
+    }))
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, themeMode: 'system' }))
+    wrapper = mount(App, { attachTo: document.body })
+    await nextTick()
+    expect(wrapper.get('main.home').classes()).not.toContain('theme-dark')
+
+    changeListeners.forEach((listener) => listener({ matches: true } as MediaQueryListEvent))
+    await nextTick()
+    expect(wrapper.get('main.home').classes()).toContain('theme-dark')
+
+    wrapper.unmount()
+    wrapper = undefined
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, themeMode: 'dark' }))
+    wrapper = mount(App, { attachTo: document.body })
+    await nextTick()
+    expect(wrapper.get('main.home').classes()).toContain('theme-dark')
+    await wrapper.get('.engine-picker').trigger('click')
+    await nextTick()
+    expect(document.body.querySelector('.engine-menu')?.classList).toContain('theme-dark')
+  })
+})
+
 describe('new-tab keyboard search', () => {
   it('focuses search with slash or Ctrl/Command+K', () => {
     wrapper = mount(App, { attachTo: document.body })

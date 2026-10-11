@@ -41,6 +41,9 @@ export function sanitizePreferences(value: unknown): Preferences {
     : ''
 
   return {
+    themeMode: merged.themeMode === 'light' || merged.themeMode === 'dark' || merged.themeMode === 'system'
+      ? merged.themeMode
+      : defaultPreferences.themeMode,
     engine: typeof merged.engine === 'string' && (engines.has(merged.engine) || /^custom:[\w-]{1,128}$/.test(merged.engine))
       ? merged.engine as Preferences['engine']
       : defaultPreferences.engine,
