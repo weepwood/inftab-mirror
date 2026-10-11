@@ -14,4 +14,7 @@ dl_log.txt
 
 capture_report.json
 live_check.js
+node_modules/
+dist/
+.vite/
 live_preview.png

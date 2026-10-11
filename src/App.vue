@@ -1,0 +1,200 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { ArrowLeft, House, Menu, X } from '@lucide/vue'
+import SearchBar from './components/SearchBar.vue'
+import ShortcutGrid from './components/ShortcutGrid.vue'
+import SettingsPanel from './components/SettingsPanel.vue'
+import TodoPanel from './components/TodoPanel.vue'
+import NotesPanel from './components/NotesPanel.vue'
+import WeatherPanel from './components/WeatherPanel.vue'
+import { useLocalWorkspace } from './composables/useLocalWorkspace'
+import { launcherItems } from './data/defaults'
+import { buildSearchUrl } from './data/search'
+import type { LauncherItem, Shortcut } from './types'
+
+type Panel = 'settings' | 'todos' | 'notes' | 'weather' | null
+
+const baseUrl = import.meta.env.BASE_URL
+const {
+  preferences,
+  shortcuts,
+  todos,
+  notes,
+  activeNoteId,
+  saveShortcut: saveShortcutData,
+  removeShortcut: removeShortcutData,
+  reorderShortcuts,
+  addTodo,
+  toggleTodo,
+  removeTodo,
+  addNote,
+  updateNote,
+  removeNote,
+  updatePreferences,
+  resetPreferences,
+} = useLocalWorkspace()
+
+const query = ref('')
+const currentPage = ref(0)
+const activePanel = ref<Panel>(null)
+const shortcutDialog = ref(false)
+const editingId = ref('')
+const shortcutTitle = ref('')
+const shortcutUrl = ref('https://')
+const shortcutColor = ref('#3d82f6')
+const shortcutMark = ref('')
+const pageSize = computed(() => preferences.value.columns * 3)
+const allLauncherItems = computed<LauncherItem[]>(() => [
+  ...launcherItems.map((item) => item.id === 'todos'
+    ? { ...item, badge: todos.value.filter((todo) => !todo.done).length || undefined }
+    : item),
+  ...shortcuts.value.map((shortcut) => ({
+    id: shortcut.id,
+    title: shortcut.title,
+    color: shortcut.color,
+    mark: shortcut.mark,
+    shortcut,
+  })),
+])
+const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
+const pageDots = computed(() => Array.from({ length: pageCount.value }, (_, index) => index))
+const panelTitle = computed(() => ({ settings: '设置', todos: '待办事项', notes: '笔记', weather: '天气' }[activePanel.value ?? 'settings']))
+const backgroundStyle = computed(() => {
+  const value = preferences.value.customWallpaper.trim() || preferences.value.wallpaper
+  const backgroundImage = value.startsWith('linear-gradient') ? value : `url("${value.replaceAll('"', '%22')}")`
+  return {
+    backgroundImage,
+    '--page-shade': String(preferences.value.shade),
+    '--grid-columns': String(preferences.value.columns),
+    '--shortcut-size': `${preferences.value.iconSize}px`,
+    '--shortcut-radius': `${preferences.value.iconRadius}px`,
+  }
+})
+
+watch(pageCount, (count) => { currentPage.value = Math.min(currentPage.value, count - 1) })
+
+function submitSearch() {
+  const destination = buildSearchUrl(preferences.value.engine, preferences.value.mode, query.value)
+  if (destination) window.location.assign(destination)
+}
+
+function openItem(item: LauncherItem) {
+  if (item.action === 'settings' || item.action === 'wallpaper') activePanel.value = 'settings'
+  else if (item.action) activePanel.value = item.action
+  else if (item.shortcut?.id === 'wallpapers') activePanel.value = 'settings'
+  else if (item.shortcut) window.open(item.shortcut.url, '_blank', 'noopener,noreferrer')
+}
+
+function openShortcutDialog(item?: LauncherItem) {
+  editingId.value = item?.shortcut?.id ?? ''
+  shortcutTitle.value = item?.shortcut?.title ?? ''
+  shortcutUrl.value = item?.shortcut?.url ?? 'https://'
+  shortcutColor.value = item?.shortcut?.color ?? '#3d82f6'
+  shortcutMark.value = item?.shortcut?.mark ?? ''
+  shortcutDialog.value = true
+}
+
+function saveShortcut() {
+  const title = shortcutTitle.value.trim()
+  let destination = shortcutUrl.value.trim()
+  if (!title || !destination) return
+  if (!/^https?:\/\//i.test(destination)) destination = `https://${destination}`
+  const next: Shortcut = {
+    id: editingId.value || crypto.randomUUID(),
+    title,
+    url: destination,
+    color: shortcutColor.value,
+    mark: shortcutMark.value.trim() || title.slice(0, 2),
+  }
+  saveShortcutData(next)
+  shortcutDialog.value = false
+}
+
+function removeShortcut(item: LauncherItem) {
+  if (!item.shortcut) return
+  removeShortcutData(item.shortcut.id)
+}
+
+function movePage(direction: number) {
+  currentPage.value = (currentPage.value + direction + pageCount.value) % pageCount.value
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    activePanel.value = null
+    shortcutDialog.value = false
+  }
+  const target = event.target instanceof HTMLElement ? event.target : null
+  const editingText = target?.matches('input, textarea, [contenteditable="true"]') ?? false
+  if (event.key === 'ArrowRight' && !editingText && !shortcutDialog.value && !activePanel.value) movePage(1)
+  if (event.key === 'ArrowLeft' && !editingText && !shortcutDialog.value && !activePanel.value) movePage(-1)
+}
+
+onMounted(() => window.addEventListener('keydown', handleKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
+</script>
+
+<template>
+  <main class="home" :style="backgroundStyle">
+    <div class="background-shade"></div>
+    <header class="home-actions">
+      <button type="button" class="round-action" aria-label="回到首页" @click="currentPage = 0"><House :size="19" /></button>
+      <button type="button" class="round-action" aria-label="打开设置" @click="activePanel = 'settings'"><Menu :size="21" /></button>
+    </header>
+
+    <section class="home-content">
+      <SearchBar
+        v-model="query"
+        v-model:engine="preferences.engine"
+        v-model:mode="preferences.mode"
+        @search="submitSearch"
+      />
+      <ShortcutGrid
+        :items="allLauncherItems"
+        :columns="preferences.columns"
+        :icon-size="preferences.iconSize"
+        :icon-radius="preferences.iconRadius"
+        :show-names="preferences.showNames"
+        :current-page="currentPage"
+        @open="openItem"
+        @edit="openShortcutDialog"
+        @remove="removeShortcut"
+        @reorder="reorderShortcuts"
+      />
+      <nav v-if="pageCount > 1" class="page-dots" aria-label="快捷入口页码">
+        <button type="button" aria-label="上一页" class="page-arrow" @click="movePage(-1)"><ArrowLeft :size="15" /></button>
+        <button v-for="page in pageDots" :key="page" type="button" :aria-label="`第${page + 1}页`" class="page-dot" :class="{ active: page === currentPage }" @click="currentPage = page"></button>
+        <button type="button" aria-label="下一页" class="page-arrow next" @click="movePage(1)"><ArrowLeft :size="15" /></button>
+      </nav>
+    </section>
+
+    <img class="windmill" :src="`${baseUrl}windmill.svg`" alt="" />
+
+    <div v-if="activePanel" class="panel-backdrop" @click.self="activePanel = null">
+      <aside class="side-panel" :class="{ 'notes-panel': activePanel === 'notes' }" aria-modal="true" role="dialog" :aria-label="panelTitle">
+        <header class="panel-header">
+          <button v-if="activePanel !== 'settings'" class="back-button" type="button" aria-label="返回设置" @click="activePanel = 'settings'"><ArrowLeft :size="19" /></button>
+          <div><h2>{{ panelTitle }}</h2><p>{{ activePanel === 'settings' ? '按自己的习惯调整新标签页' : '内容会自动保存在本地' }}</p></div>
+          <button class="panel-close" type="button" aria-label="关闭" @click="activePanel = null"><X :size="19" /></button>
+        </header>
+        <SettingsPanel v-if="activePanel === 'settings'" :preferences="preferences" @update="updatePreferences" @reset="resetPreferences" @add-shortcut="openShortcutDialog()" />
+        <TodoPanel v-else-if="activePanel === 'todos'" :items="todos" @add="addTodo" @toggle="toggleTodo" @remove="removeTodo" />
+        <NotesPanel v-else-if="activePanel === 'notes'" :notes="notes" :active-id="activeNoteId" @add="addNote" @select="activeNoteId = $event" @update="updateNote" @remove="removeNote" />
+        <WeatherPanel v-else-if="activePanel === 'weather'" />
+      </aside>
+    </div>
+
+    <div v-if="shortcutDialog" class="modal-backdrop" @click.self="shortcutDialog = false">
+      <form class="shortcut-dialog" @submit.prevent="saveShortcut">
+        <header><div><h2>{{ editingId ? '编辑快捷入口' : '添加快捷入口' }}</h2><p>名称和网址可以随时修改</p></div><button type="button" aria-label="关闭" @click="shortcutDialog = false"><X :size="19" /></button></header>
+        <label>名称<input v-model="shortcutTitle" autofocus required maxlength="24" placeholder="例如：GitHub" /></label>
+        <label>网址<input v-model="shortcutUrl" required placeholder="https://example.com" /></label>
+        <div class="dialog-row">
+          <label>图标文字<input v-model="shortcutMark" maxlength="5" placeholder="自动取名称" /></label>
+          <label class="color-field">图标颜色<input v-model="shortcutColor" type="color" /></label>
+        </div>
+        <footer><button class="button-secondary" type="button" @click="shortcutDialog = false">取消</button><button class="button-primary" type="submit">保存</button></footer>
+      </form>
+    </div>
+  </main>
+</template>

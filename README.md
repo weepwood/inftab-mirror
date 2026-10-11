@@ -1,54 +1,53 @@
 # inftab-mirror
 
-Infinity New Tab（`inftab.com`）的 **1:1 静态镜像**，可直接托管在 GitHub Pages 等任意静态空间。
+Infinity New Tab 的可维护前端重建。页面使用 Vue 3、TypeScript 和 Vite；原静态镜像保存在 `reference/legacy-mirror/`，作为视觉、资源和行为对照。
 
-## 这是什么
+## 本地开发
 
-[Infinity New Tab](https://inftab.com/) 是一个 Vue SPA 风格的新标签页应用。本仓库通过
-「下载构建产物 + 本地重新托管」的方式完成了对它的完整镜像：
+需要 Node.js 20.19+、22.12+ 或 24+。
 
-- 所有 JS/CSS 构建产物、图片、字体、webpack 动态 chunk 均已下载到本地；
-- 原站引用的 3 个 CDN 域（`infinityicon` / `infinity-permanent` / `infinitypro-img`）已本地化到 `cdn/<host>/`；
-- 所有**根绝对路径**（`/cdn/`、`/vendor/`、`/newtab/`、`/_locales/`、webpack `publicPath` 等）
-  均改写为**相对路径** `./`，因此可部署在任意子路径（如 GitHub Pages 的 `/<repo>/`）。
-
-## 目录结构
-
-```
-index.html                 入口页面
-newtab/                   主入口 chunk
-*.js                      根级 webpack 动态 chunk（按需加载）
-vendor/                   spec / color-thief / color-picker / vue
-cdn/                      3 个 CDN 域的本地化资源（112 个文件）
-images/                   站点静态图片
-_locales/                 多语言 messages
-icon/                     favicon
-serviceworker.js          已禁用注册（避免子路径 scope 报错）
-.nojekyll                 GitHub Pages 关闭 Jekyll，保留 _locales 等下划线目录
+```sh
+npm install
+npm run dev
 ```
 
-## 本地预览
+Vite 会在终端输出本地预览地址。生产构建和本地预览：
 
-由于浏览器对 `file://` 的模块/抓取限制，请用任意静态服务器（不要用双击打开）：
-
-```bash
-# 任选其一
-python3 -m http.server 8080
-npx serve .
+```sh
+npm run build
+npm run preview
 ```
 
-然后访问 `http://localhost:8080/`。
+GitHub Pages 使用 `dist/` 作为发布目录。首次部署前，在仓库 **Settings → Pages → Build and deployment** 中将 Source 设为 **GitHub Actions**。之后推送到 `main` 会自动构建并发布；也可以在 Actions 页面手动运行工作流。`vite.config.ts` 使用相对资源路径，支持部署在仓库子路径下。
 
-## 部署到 GitHub Pages
+## 项目结构
 
-本仓库已适配子路径部署，直接推送 `main` 分支并在仓库
-Settings → Pages 选择 `main` / `root` 即可。站点地址形如
-`https://<user>.github.io/inftab-mirror/`。
+```text
+src/
+  components/       搜索栏、快捷入口、设置、待办、笔记、天气面板
+  composables/      本地工作区状态和浏览器存储
+  data/             默认快捷入口、搜索引擎、搜索地址和外观选项
+  styles/           页面与响应式样式
+  App.vue           页面状态和功能组合
+  main.ts           应用入口
+public/
+  wallpapers/       本地壁纸
+  windmill.svg      页面装饰图标
+reference/
+  legacy-mirror/    原始打包版镜像，仅用于对照
+```
 
-> 说明：页面运行时仍会调用 `api.inftab.com` 的两个**动态数据接口**（搜索建议、通知列表），
-> 这是数据而非静态资源，联网时正常返回 200。其余所有静态资源均已本地化。
+## 已实现
 
-## 复刻说明
+- 多搜索引擎和网页、图片、新闻、视频、地图搜索
+- 快捷入口的添加、编辑、删除、拖动排序和分页
+- 本地待办与笔记
+- 壁纸选择、背景暗度、图标大小/圆角、网格列数和名称显示设置
+- 天气入口：输入城市后打开天气搜索结果
+- 个人设置、快捷入口、待办和笔记保存于当前浏览器的 `localStorage`
 
-站点通过无头 Chromium 真实加载、监听网络请求，递归补齐动态 chunk 与运行时拼接资源，
-反复迭代直到本地缺失资源为 0、控制台错误为 0。
+## 当前边界
+
+此版本重建的是前端交互。原站账号、云同步、原站搜索建议/通知和其他需要原站服务的功能尚未接入；天气入口使用搜索结果，不请求设备位置。持久化数据只保存在本机浏览器。
+
+新功能优先放在 `src/components/`、`src/data/` 或新的功能模块中，不直接修改 `reference/legacy-mirror/` 内的压缩构建文件。
