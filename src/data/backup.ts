@@ -29,6 +29,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     && ['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yahoo', '360'].includes(preferences.engine)
     && typeof preferences.mode === 'string'
     && ['html', 'photos', 'news', 'videos', 'map'].includes(preferences.mode)
+    && (preferences.visibleSearchModes === undefined || (Array.isArray(preferences.visibleSearchModes) && preferences.visibleSearchModes.every((mode) => typeof mode === 'string' && ['html', 'photos', 'news', 'videos', 'map'].includes(mode))))
     && typeof preferences.wallpaper === 'string'
     && typeof preferences.customWallpaper === 'string'
     && typeof preferences.shade === 'number'

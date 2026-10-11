@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { wallpaperChoices } from '../data/defaults'
+import { searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
-import type { Preferences } from '../types'
+import type { Preferences, SearchMode } from '../types'
 
 const props = defineProps<{ preferences: Preferences }>()
 const emit = defineEmits<{
@@ -18,6 +18,13 @@ const importError = ref('')
 
 function update<K extends keyof Preferences>(key: K, value: Preferences[K]) {
   emit('update', { [key]: value } as Pick<Preferences, K>)
+}
+
+function toggleSearchMode(mode: SearchMode, enabled: boolean) {
+  const visibleModes = new Set(props.preferences.visibleSearchModes)
+  if (enabled) visibleModes.add(mode)
+  else visibleModes.delete(mode)
+  update('visibleSearchModes', [...visibleModes])
 }
 
 async function readBackup(event: Event) {
@@ -70,6 +77,8 @@ function applyImport(mode: 'merge' | 'replace') {
     <section class="settings-section">
       <div class="section-heading"><div><h3>搜索栏</h3><p>调整首页搜索区的宽度</p></div></div>
       <label class="range-label"><span>搜索框宽度</span><strong>{{ preferences.searchWidth }} px</strong><input type="range" min="360" max="720" step="8" :value="preferences.searchWidth" @input="update('searchWidth', Number(($event.target as HTMLInputElement).value))" /></label>
+      <p class="settings-subheading">显示搜索类型</p>
+      <label v-for="item in searchModes" :key="item.id" class="toggle-row"><span>{{ item.id }}</span><input type="checkbox" :checked="preferences.visibleSearchModes.includes(item.id)" @change="toggleSearchMode(item.id, ($event.target as HTMLInputElement).checked)" /></label>
     </section>
 
     <section class="settings-section">

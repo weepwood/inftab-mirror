@@ -5,6 +5,7 @@ const base = import.meta.env.BASE_URL
 export const defaultPreferences: Preferences = {
   engine: 'baidu',
   mode: 'html',
+  visibleSearchModes: [],
   wallpaper: `${base}wallpapers/forest.webp`,
   customWallpaper: '',
   shade: 0.2,

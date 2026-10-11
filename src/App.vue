@@ -272,6 +272,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         v-model="query"
         v-model:engine="preferences.engine"
         v-model:mode="preferences.mode"
+        :visible-modes="preferences.visibleSearchModes"
         @search="submitSearch"
       />
       <ShortcutGrid

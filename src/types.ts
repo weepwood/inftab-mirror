@@ -26,6 +26,7 @@ export interface Note {
 export interface Preferences {
   engine: EngineId
   mode: SearchMode
+  visibleSearchModes: SearchMode[]
   wallpaper: string
   customWallpaper: string
   shade: number
