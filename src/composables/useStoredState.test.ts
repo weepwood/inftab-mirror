@@ -131,9 +131,10 @@ describe('useStoredState', () => {
 
     preferences.value.columns = 9
     const externalValue = { ...defaultPreferences, columns: 4 }
+    const previousValue = JSON.stringify(defaultPreferences)
     const serializedExternalValue = JSON.stringify(externalValue)
     values.set('prefs.v1', serializedExternalValue)
-    listeners.get('storage')!({ key: 'prefs.v1', newValue: serializedExternalValue } as StorageEvent)
+    listeners.get('storage')!({ key: 'prefs.v1', oldValue: previousValue, newValue: serializedExternalValue } as StorageEvent)
     await vi.advanceTimersByTimeAsync(180)
 
     expect(preferences.value.columns).toBe(4)
@@ -141,5 +142,34 @@ describe('useStoredState', () => {
     expect(values.get('prefs.v1')).toBe(serializedExternalValue)
     scope.stop()
     expect(setItem).not.toHaveBeenCalled()
+  })
+
+  it('merges concurrent edits to different object fields and persists the combined value', async () => {
+    vi.useFakeTimers()
+    const previousValue = JSON.stringify({ first: 'before', second: 'before' })
+    const externalValue = JSON.stringify({ first: 'before', second: 'remote' })
+    const values = new Map([['state.v1', previousValue]])
+    const listeners = new Map<string, (event: StorageEvent) => void>()
+    const setItem = vi.fn((key: string, value: string) => values.set(key, value))
+    vi.stubGlobal('window', {
+      addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem,
+      removeItem: (key: string) => { values.delete(key) },
+    })
+    const scope = effectScope()
+    const state = scope.run(() => useStoredState('state.v1', { first: 'before', second: 'before' }))!
+    state.value.first = 'local'
+    values.set('state.v1', externalValue)
+    listeners.get('storage')!({ key: 'state.v1', oldValue: previousValue, newValue: externalValue } as StorageEvent)
+
+    expect(state.value).toEqual({ first: 'local', second: 'remote' })
+    await vi.advanceTimersByTimeAsync(180)
+    expect(JSON.parse(values.get('state.v1') ?? '{}')).toEqual({ first: 'local', second: 'remote' })
+
+    scope.stop()
   })
 })

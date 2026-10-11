@@ -14,7 +14,7 @@ import {
   type FocusPhase,
 } from '../data/focusTimer'
 
-const state = useStoredState('inftab.focus-timer.v1', defaultFocusTimerState, sanitizeFocusTimerState)
+const state = useStoredState('inftab.focus-timer.v1', defaultFocusTimerState, sanitizeFocusTimerState, { mergeConcurrentFields: false })
 const now = ref(Date.now())
 const remainingMs = computed(() => getFocusTimerRemainingMs(state.value, now.value))
 const running = computed(() => state.value.endsAt !== null && remainingMs.value > 0)
