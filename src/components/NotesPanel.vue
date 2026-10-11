@@ -31,8 +31,8 @@ const activeNote = computed(() => props.notes.find((note) => note.id === props.a
       <div v-if="!notes.length" class="notes-empty">新建一条笔记开始记录</div>
     </aside>
     <section v-if="activeNote" class="note-editor">
-      <input :value="activeNote.title" class="note-title" placeholder="笔记标题" @input="emit('update', activeNote.id, 'title', ($event.target as HTMLInputElement).value)" />
-      <textarea :value="activeNote.body" placeholder="从这里开始记录……" @input="emit('update', activeNote.id, 'body', ($event.target as HTMLTextAreaElement).value)"></textarea>
+      <input :value="activeNote.title" class="note-title" aria-label="笔记标题" maxlength="500" placeholder="笔记标题" @input="emit('update', activeNote.id, 'title', ($event.target as HTMLInputElement).value)" />
+      <textarea :value="activeNote.body" aria-label="笔记内容" maxlength="500000" placeholder="从这里开始记录……" @input="emit('update', activeNote.id, 'body', ($event.target as HTMLTextAreaElement).value)"></textarea>
       <button class="note-delete" type="button" aria-label="删除笔记" @click="emit('remove', activeNote.id)"><Trash2 :size="15" /> 删除</button>
     </section>
     <section v-else class="note-blank"><span>▮</span><p>选择或新建一条笔记</p></section>

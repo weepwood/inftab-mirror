@@ -194,4 +194,39 @@ describe('new-tab keyboard search', () => {
 
     expect(wrapper.find('.home-clock').exists()).toBe(false)
   })
+
+  it('runs the todo add, edit, complete, and clear flow', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label=\"打开待办事项\"]').trigger('click')
+    await wrapper.get('.inline-add input').setValue('  Review release  ')
+    await wrapper.get('.inline-add').trigger('submit')
+    expect(wrapper.get('.todo-list').text()).toContain('Review release')
+
+    await wrapper.get('.todo-check').trigger('click')
+    expect(wrapper.get('.todo-list li').classes()).toContain('done')
+    await wrapper.get('.todo-list li .icon-action[aria-label=\"编辑待办\"]').trigger('click')
+    await wrapper.get('input[aria-label=\"编辑待办\"]').setValue('Ship release')
+    await wrapper.get('.todo-edit-form').trigger('submit')
+    expect(wrapper.get('.todo-list').text()).toContain('Ship release')
+
+    await wrapper.get('.todo-footer .text-button').trigger('click')
+    expect(wrapper.find('.todo-list').exists()).toBe(false)
+    expect(wrapper.find('.empty-state').exists()).toBe(true)
+  })
+
+  it('keeps the selected note stable while creating and deleting notes', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label=\"打开笔记\"]').trigger('click')
+    await wrapper.get('.note-add').trigger('click')
+    await wrapper.get('input[aria-label=\"笔记标题\"]').setValue('First note')
+    await wrapper.get('textarea[aria-label=\"笔记内容\"]').setValue('Saved text')
+    await wrapper.get('.note-add').trigger('click')
+    await wrapper.get('input[aria-label=\"笔记标题\"]').setValue('Second note')
+
+    expect(wrapper.findAll('.note-list-item')).toHaveLength(2)
+    await wrapper.get('.note-delete').trigger('click')
+    expect(wrapper.get('input[aria-label=\"笔记标题\"]').element).toHaveProperty('value', 'First note')
+    expect(wrapper.get('textarea[aria-label=\"笔记内容\"]').element).toHaveProperty('value', 'Saved text')
+    expect(wrapper.findAll('.note-list-item')).toHaveLength(1)
+  })
 })

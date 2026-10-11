@@ -38,14 +38,14 @@ function saveEdit() {
 <template>
   <div class="todo-content">
     <form class="inline-add" @submit.prevent="submit">
-      <input v-model="draft" placeholder="添加一项待办" aria-label="添加一项待办" />
+      <input v-model="draft" maxlength="500" placeholder="添加一项待办" aria-label="添加一项待办" />
       <button type="submit" aria-label="添加"><Plus :size="19" /></button>
     </form>
     <ul v-if="items.length" class="todo-list">
       <li v-for="item in items" :key="item.id" :class="{ done: item.done }">
         <button class="todo-check" type="button" :aria-label="item.done ? '标记为未完成' : '标记为完成'" @click="emit('toggle', item.id)"><Check :size="14" /></button>
         <form v-if="editingId === item.id" class="todo-edit-form" @submit.prevent="saveEdit">
-          <input v-model="editingTitle" aria-label="编辑待办" autofocus @keydown.esc="editingId = ''" />
+          <input v-model="editingTitle" maxlength="500" aria-label="编辑待办" autofocus @keydown.esc="editingId = ''" />
           <button type="submit" aria-label="保存待办"><Check :size="14" /></button>
         </form>
         <span v-else>{{ item.title }}</span>
