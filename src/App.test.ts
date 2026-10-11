@@ -78,6 +78,26 @@ describe('new-tab keyboard launcher ordering', () => {
   })
 })
 
+describe('new-tab short viewport layout', () => {
+  it('fits launcher icons to a short mobile viewport', () => {
+    const heightDescriptor = Object.getOwnPropertyDescriptor(window, 'innerHeight')
+    const widthDescriptor = Object.getOwnPropertyDescriptor(window, 'innerWidth')
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 360 })
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 })
+    try {
+      wrapper = mount(App, { attachTo: document.body })
+      const homeStyle = wrapper.get('main.home').attributes('style') ?? ''
+      const fittedIconSize = Number(homeStyle.match(/--fit-icon-size: ([\d.]+)px/)?.[1])
+
+      expect(fittedIconSize).toBeCloseTo(35.67, 1)
+      expect(homeStyle).toContain('--shortcut-gap-y: 20px')
+    } finally {
+      if (heightDescriptor) Object.defineProperty(window, 'innerHeight', heightDescriptor)
+      if (widthDescriptor) Object.defineProperty(window, 'innerWidth', widthDescriptor)
+    }
+  })
+})
+
 describe('new-tab keyboard search', () => {
   it('focuses search with slash or Ctrl/Command+K', () => {
     wrapper = mount(App, { attachTo: document.body })
