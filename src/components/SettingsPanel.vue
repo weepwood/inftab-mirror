@@ -41,6 +41,11 @@ async function readBackup(event: Event) {
   const file = input.files?.[0]
   input.value = ''
   if (!file) return
+  if (file.size > 10 * 1024 * 1024) {
+    pendingBackup.value = undefined
+    importError.value = '备份文件不能超过 10 MB。'
+    return
+  }
   try {
     pendingBackup.value = parseWorkspaceBackup(JSON.parse(await file.text()))
     importError.value = ''

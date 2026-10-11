@@ -2,22 +2,23 @@ import { useStoredState } from './useStoredState'
 import { toRaw } from 'vue'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts } from '../data/defaults'
 import { mergeById, type WorkspaceBackup } from '../data/backup'
+import { sanitizeActiveNoteId, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
 import type { Note, Preferences, Shortcut, TodoItem } from '../types'
 
 export function useLocalWorkspace() {
-  const preferences = useStoredState<Preferences>('inftab.preferences.v1', defaultPreferences)
-  const shortcuts = useStoredState<Shortcut[]>('inftab.shortcuts.v1', defaultShortcuts)
-  const launcherOrder = useStoredState<string[]>('inftab.launcher-order.v1', defaultLauncherOrder)
-  const todos = useStoredState<TodoItem[]>('inftab.todos.v1', [])
-  const notes = useStoredState<Note[]>('inftab.notes.v1', [])
-  const activeNoteId = useStoredState<string>('inftab.active-note.v1', '')
+  const preferences = useStoredState<Preferences>('inftab.preferences.v1', defaultPreferences, sanitizePreferences)
+  const shortcuts = useStoredState<Shortcut[]>('inftab.shortcuts.v1', defaultShortcuts, sanitizeShortcuts)
+  const launcherOrder = useStoredState<string[]>('inftab.launcher-order.v1', defaultLauncherOrder, (value) => sanitizeLauncherOrder(value, shortcuts.value))
+  const todos = useStoredState<TodoItem[]>('inftab.todos.v1', [], sanitizeTodos)
+  const notes = useStoredState<Note[]>('inftab.notes.v1', [], sanitizeNotes)
+  const activeNoteId = useStoredState<string>('inftab.active-note.v1', '', (value) => sanitizeActiveNoteId(value, notes.value))
   let previousWeatherCity = '上海'
   try {
     previousWeatherCity = localStorage.getItem('inftab.weather-city') ?? previousWeatherCity
   } catch {
     // Fall back to the default city when browser storage is unavailable.
   }
-  const weatherCity = useStoredState<string>('inftab.weather-city.v1', previousWeatherCity)
+  const weatherCity = useStoredState<string>('inftab.weather-city.v1', previousWeatherCity, sanitizeWeatherCity)
 
   const defaultShortcutById = new Map(defaultShortcuts.map((shortcut) => [shortcut.id, shortcut]))
   shortcuts.value = shortcuts.value.map((shortcut) => {
@@ -110,23 +111,27 @@ export function useLocalWorkspace() {
   }
 
   function restoreBackup(backup: WorkspaceBackup, mode: 'merge' | 'replace') {
+    const importedShortcuts = sanitizeShortcuts(backup.shortcuts)
+    const importedTodos = sanitizeTodos(backup.todos)
+    const importedNotes = sanitizeNotes(backup.notes)
     if (mode === 'replace') {
-      preferences.value = { ...defaultPreferences, ...backup.preferences }
-      shortcuts.value = structuredClone(backup.shortcuts)
-      launcherOrder.value = [...backup.launcherOrder]
-      todos.value = structuredClone(backup.todos)
-      notes.value = structuredClone(backup.notes)
-      activeNoteId.value = backup.activeNoteId
-      weatherCity.value = backup.weatherCity
+      preferences.value = sanitizePreferences(backup.preferences)
+      shortcuts.value = importedShortcuts
+      launcherOrder.value = sanitizeLauncherOrder(backup.launcherOrder, importedShortcuts)
+      todos.value = importedTodos
+      notes.value = importedNotes
+      activeNoteId.value = sanitizeActiveNoteId(backup.activeNoteId, importedNotes)
+      weatherCity.value = sanitizeWeatherCity(backup.weatherCity)
       return
     }
-    preferences.value = { ...preferences.value, ...backup.preferences }
-    shortcuts.value = mergeById(shortcuts.value, backup.shortcuts)
-    launcherOrder.value = [...new Set([...launcherOrder.value, ...backup.launcherOrder])]
-    todos.value = mergeById(todos.value, backup.todos)
-    notes.value = mergeById(notes.value, backup.notes)
-    if (backup.notes.some((note) => note.id === backup.activeNoteId)) activeNoteId.value = backup.activeNoteId
-    weatherCity.value = backup.weatherCity || weatherCity.value
+    preferences.value = sanitizePreferences({ ...preferences.value, ...backup.preferences })
+    shortcuts.value = sanitizeShortcuts(mergeById(shortcuts.value, importedShortcuts))
+    launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...backup.launcherOrder], shortcuts.value)
+    todos.value = sanitizeTodos(mergeById(todos.value, importedTodos))
+    notes.value = sanitizeNotes(mergeById(notes.value, importedNotes))
+    const preferredNoteId = backup.notes.some((note) => note.id === backup.activeNoteId) ? backup.activeNoteId : activeNoteId.value
+    activeNoteId.value = sanitizeActiveNoteId(preferredNoteId, notes.value)
+    weatherCity.value = sanitizeWeatherCity(backup.weatherCity || weatherCity.value)
   }
 
   return {

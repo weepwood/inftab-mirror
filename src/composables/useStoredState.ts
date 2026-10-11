@@ -1,14 +1,12 @@
 import { ref, watch, type Ref } from 'vue'
+import { sanitizeStoredValue } from '../data/sanitize'
 
-export function useStoredState<T>(key: string, fallback: T): Ref<T> {
+export function useStoredState<T>(key: string, fallback: T, normalize: (value: unknown) => T = (value) => sanitizeStoredValue(value, fallback)): Ref<T> {
   let initial = fallback
   try {
     const saved = localStorage.getItem(key)
     if (saved) {
-      const parsed = JSON.parse(saved) as T
-      initial = Array.isArray(fallback)
-        ? (Array.isArray(parsed) ? parsed : fallback)
-        : { ...fallback, ...parsed }
+      initial = normalize(JSON.parse(saved))
     }
   } catch {
     // Keep the defaults when storage is blocked or contains invalid JSON.
