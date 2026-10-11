@@ -649,7 +649,7 @@ onBeforeUnmount(() => {
     >
       <span class="shortcut-icon" :class="{ builtin: draggedItem.action }" :style="{ backgroundColor: draggedItem.color }">
         <img v-if="draggedItem.icon" class="shortcut-picture" :src="draggedItem.icon" alt="" draggable="false" />
-        <component v-else-if="draggedItem.action" :is="itemIcons[draggedItem.action]" :size="35" :stroke-width="2.6" />
+        <component v-else-if="draggedItem.action && itemIcons[draggedItem.action]" :is="itemIcons[draggedItem.action]" :size="35" :stroke-width="2.6" />
         <Folder v-else-if="draggedItem.folder" :size="35" :stroke-width="2.2" />
         <span v-else class="shortcut-mark">{{ draggedItem.mark }}</span>
         <span v-if="draggedItem.badge" class="shortcut-badge">{{ draggedItem.badge }}</span>
@@ -704,7 +704,7 @@ onBeforeUnmount(() => {
             <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" aria-describedby="launcher-reorder-hint" aria-keyshortcuts="Shift+ArrowLeft Shift+ArrowRight" :aria-haspopup="item.folder ? 'dialog' : item.shortcut ? 'menu' : undefined" @click="openItem($event, item)" @keydown="handleShortcutKeydown($event, item)">
               <span class="shortcut-icon" :class="{ builtin: item.action }" :style="{ backgroundColor: item.color }">
                 <img v-if="item.icon" class="shortcut-picture" :src="item.icon" alt="" draggable="false" />
-                <component v-else-if="item.action" :is="itemIcons[item.action]" :size="35" :stroke-width="2.6" />
+                <component v-else-if="item.action && itemIcons[item.action]" :is="itemIcons[item.action]" :size="35" :stroke-width="2.6" />
                 <Folder v-else-if="item.folder" :size="35" :stroke-width="2.2" />
                 <span v-else class="shortcut-mark">{{ item.mark }}</span>
                 <span v-if="item.badge" class="shortcut-badge">{{ item.badge }}</span>

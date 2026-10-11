@@ -403,6 +403,14 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.findAll('.calendar-day')).toHaveLength(42)
   })
 
+  it('opens the focus timer from its built-in launcher', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await openLauncher('focus-timer')
+
+    expect(wrapper.get('.side-panel[role="dialog"] h2').text()).toBe('专注计时')
+    expect(wrapper.get('[role="timer"]').text()).toBe('25:00')
+  })
+
   it('rejects unsafe shortcut URLs and restores a valid shortcut after remount', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await openLauncher('settings')

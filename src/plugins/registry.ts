@@ -5,6 +5,7 @@ import type { CountdownItem, CustomSearchEngine, Note, Preferences, TodoItem } f
 export const launcherPanelRoutes = {
   weather: 'weather',
   todos: 'todos',
+  'focus-timer': 'focus-timer',
   notes: 'notes',
   countdowns: 'countdowns',
   settings: 'settings',
@@ -144,6 +145,13 @@ export const panelPlugins = {
       remove: context.removeTodo,
       clearCompleted: context.clearCompletedTodos,
     }),
+  },
+  'focus-timer': {
+    title: '专注计时',
+    description: '专注一段时间，再给自己片刻休息',
+    component: lazyPanel(() => import('../components/FocusTimerPanel.vue')),
+    props: () => ({}),
+    listeners: () => ({}),
   },
   notes: {
     title: '笔记',

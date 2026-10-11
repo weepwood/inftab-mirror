@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultPreferences } from './defaults'
+import { defaultPreferences, launcherItems } from './defaults'
 import { mergeById, parseWorkspaceBackup } from './backup'
 
 function backup(overrides: Record<string, unknown> = {}) {
@@ -55,7 +55,7 @@ describe('workspace backups', () => {
     }))
     expect(parsed.countdowns).toEqual([{ id: 'anniversary', title: 'Anniversary', date: '2020-02-29', recurrence: 'yearly' }])
     expect(parsed.folders[0]?.shortcutIds).toEqual(['custom'])
-    expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'countdowns', 'todos', 'notes', 'settings', 'bookmarks', 'history', 'calculator', 'calendar'])
+    expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'countdowns', 'todos', 'focus-timer', 'notes', 'settings', 'bookmarks', 'history', 'calculator', 'calendar'])
   })
 
   it('keeps older backups compatible with the new clock preference', () => {
@@ -123,9 +123,10 @@ describe('workspace backups', () => {
   })
 
   it('accepts the maximum launcher order allowed by the shortcut and folder limits', () => {
-    const maximumLauncherOrder = Array.from({ length: 1_009 }, (_, index) => `item-${index}`)
+    const limit = 1_000 + launcherItems.length
+    const maximumLauncherOrder = Array.from({ length: limit }, (_, index) => `item-${index}`)
     expect(() => parseWorkspaceBackup(backup({ launcherOrder: maximumLauncherOrder }))).not.toThrow()
-    expect(() => parseWorkspaceBackup(backup({ launcherOrder: [...maximumLauncherOrder, 'overflow'] }))).toThrow(/最多 1009 项/)
+    expect(() => parseWorkspaceBackup(backup({ launcherOrder: [...maximumLauncherOrder, 'overflow'] }))).toThrow(`最多 ${limit} 项`)
   })
 
   it('rejects backups with oversized embedded wallpapers', () => {
