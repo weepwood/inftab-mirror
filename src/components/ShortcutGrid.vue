@@ -47,14 +47,27 @@ function centeredPhysicalPage(pageIndex = props.currentPage) {
   return pages.value.length > 1 ? pages.value.length * centerCycle + pageIndex : pageIndex
 }
 const displayPages = computed(() => {
-  if (props.transitionEffect === 'particles' || pages.value.length < 2) {
-    return pages.value.map((items, pageIndex) => ({ items, pageIndex, clone: false }))
+  if (props.transitionEffect === 'particles') {
+    const visiblePageIndexes = new Set([props.currentPage, outgoingPage.value?.index, incomingPage.value]
+      .filter((index): index is number => typeof index === 'number'))
+    return pages.value.flatMap((items, pageIndex) => visiblePageIndexes.has(pageIndex)
+      ? [{ items, pageIndex, clone: false, trackIndex: pageIndex }]
+      : [])
   }
-  return Array.from({ length: cycleCount }, (_, cycleIndex) => pages.value.map((items, pageIndex) => ({
-    items,
-    pageIndex,
-    clone: cycleIndex !== centerCycle,
-  }))).flat()
+  if (pages.value.length < 2) {
+    return pages.value.map((items, pageIndex) => ({ items, pageIndex, clone: false, trackIndex: pageIndex }))
+  }
+  return Array.from({ length: cycleCount }, (_, cycleIndex) => pages.value.map((items, pageIndex) => {
+    const trackIndex = cycleIndex * pages.value.length + pageIndex
+    return {
+      // Keep every track slot to preserve seamless looping, but only mount
+      // shortcut cells for the visible page and its immediate neighbors.
+      items: Math.abs(trackIndex - physicalPage.value) <= 1 ? items : [],
+      pageIndex,
+      clone: cycleIndex !== centerCycle,
+      trackIndex,
+    }
+  })).flat()
 })
 const contextItem = ref<LauncherItem>()
 const contextPosition = ref({ left: 0, top: 0 })
@@ -561,15 +574,15 @@ onBeforeUnmount(() => {
           :class="{
             'particles-out': !renderPage.clone && outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'particles',
             'particles-in': incomingPage === renderPage.pageIndex && transitionEffect === 'particles',
-            'trails-out': outgoingPage?.index === renderIndex && outgoingPage.effect === 'trails',
-            'trails-to-next': outgoingPage?.index === renderIndex && outgoingPage.effect === 'trails' && outgoingPage.direction > 0,
-            'trails-to-previous': outgoingPage?.index === renderIndex && outgoingPage.effect === 'trails' && outgoingPage.direction < 0,
+            'trails-out': outgoingPage?.index === renderPage.trackIndex && outgoingPage.effect === 'trails',
+            'trails-to-next': outgoingPage?.index === renderPage.trackIndex && outgoingPage.effect === 'trails' && outgoingPage.direction > 0,
+            'trails-to-previous': outgoingPage?.index === renderPage.trackIndex && outgoingPage.effect === 'trails' && outgoingPage.direction < 0,
           }"
             :data-page-index="renderPage.pageIndex"
-            :data-render-index="renderIndex"
+          :data-render-index="renderPage.trackIndex"
             :data-clone="String(renderPage.clone)"
-            :aria-hidden="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderIndex !== physicalPage"
-            :inert="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderIndex !== physicalPage"
+          :aria-hidden="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderPage.trackIndex !== physicalPage"
+          :inert="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderPage.trackIndex !== physicalPage"
           :style="{
             '--grid-columns': columns,
             '--shortcut-size': `${iconSize}px`,

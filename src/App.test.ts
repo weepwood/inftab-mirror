@@ -102,6 +102,8 @@ describe('new-tab keyboard search', () => {
   it('discards folder edits when cancelling', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+    const columns = wrapper.findAll('.settings-content .range-label').find((label) => label.text().includes('每行图标'))
+    await columns!.get('input').setValue('12')
     await wrapper.get('.folder-add-button').trigger('click')
     await wrapper.get('.folder-dialog input[placeholder="例如：工作"]').setValue('工作')
     await wrapper.get('.folder-choice input[type="checkbox"]').setValue(true)

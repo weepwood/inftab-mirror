@@ -74,4 +74,49 @@ describe('ShortcutGrid page cycling', () => {
     expect(inactive.length).toBeGreaterThan(0)
     wrapper.unmount()
   })
+
+  it('mounts shortcut cells only for the active slide and its neighbors', () => {
+    installAnimationEnvironment()
+    const manyItems = Array.from({ length: 100 }, (_, index) => ({ ...items[index % items.length], id: 'entry-' + index }))
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items: manyItems,
+        columns: 2,
+        rows: 1,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 10,
+        transitionDirection: 1,
+        transitionEffect: 'slide',
+        transitionDuration: 0,
+      },
+    })
+
+    expect(wrapper.findAll('.shortcut-page').length).toBeGreaterThan(100)
+    expect(wrapper.findAll('.shortcut-cell')).toHaveLength(6)
+    wrapper.unmount()
+  })
+
+  it('mounts only the current page when particles are idle', () => {
+    installAnimationEnvironment()
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items: Array.from({ length: 20 }, (_, index) => ({ ...items[index % items.length], id: 'entry-' + index })),
+        columns: 2,
+        rows: 1,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 3,
+        transitionDirection: 1,
+        transitionEffect: 'particles',
+        transitionDuration: 0,
+      },
+    })
+
+    expect(wrapper.findAll('.shortcut-cell')).toHaveLength(2)
+    expect(wrapper.findAll('.shortcut-page')).toHaveLength(1)
+    wrapper.unmount()
+  })
 })
