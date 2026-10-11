@@ -290,3 +290,24 @@ test('drags a launcher into the dock and places it before the drop target', asyn
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').dockItemIds))
     .toEqual(['jd', 'weather'])
 })
+
+test('dock removal remains visible and tappable on touch screens', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+  try {
+    const touchPage = await context.newPage()
+    await touchPage.goto('/')
+    await touchPage.evaluate(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ dockItemIds: ['jd'] })))
+    await touchPage.reload()
+
+    const dock = touchPage.getByRole('navigation', { name: '常驻 Dock' })
+    const remove = dock.getByRole('button', { name: '从 Dock 移除京东商城' })
+    await expect(remove).toBeVisible()
+    const targetSize = await remove.boundingBox()
+    expect(targetSize?.width).toBeGreaterThanOrEqual(24)
+    expect(targetSize?.height).toBeGreaterThanOrEqual(24)
+    await remove.tap()
+    await expect(dock).toHaveCount(0)
+  } finally {
+    await context.close()
+  }
+})
