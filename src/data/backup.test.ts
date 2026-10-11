@@ -75,11 +75,12 @@ describe('workspace backups', () => {
 
   it('keeps backups without the newer focus timer widget size compatible', () => {
     const homeWidgetSizes = Object.fromEntries(Object.entries(defaultPreferences.homeWidgetSizes)
-      .filter(([id]) => id !== 'focus-timer-summary'))
+      .filter(([id]) => id !== 'focus-timer-summary' && id !== 'bookmarks-summary'))
     const preferences = { ...defaultPreferences, homeWidgetSizes }
     const parsed = parseWorkspaceBackup(backup({ preferences, focusTimer: undefined }))
 
     expect(parsed.preferences.homeWidgetSizes['focus-timer-summary']).toBe('standard')
+    expect(parsed.preferences.homeWidgetSizes['bookmarks-summary']).toBe('standard')
     expect(parsed.focusTimer).toBeUndefined()
   })
 

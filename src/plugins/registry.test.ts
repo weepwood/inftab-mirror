@@ -51,6 +51,11 @@ describe('built-in panel plugin registry', () => {
     expect(homeWidgetPlugins['focus-timer-summary'].panel).toBe('focus-timer')
   })
 
+  it('connects the optional browser bookmark widget to the permission-aware panel', () => {
+    expect(homeWidgetPlugins['bookmarks-summary'].panel).toBe('bookmarks')
+    expect(homeWidgetPlugins['bookmarks-summary'].props()).toEqual({})
+  })
+
   it('routes the legacy wallpaper shortcut to settings', () => {
     expect(shortcutPanelRoutes.wallpapers).toBe('settings')
   })

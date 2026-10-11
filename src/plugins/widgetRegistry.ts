@@ -86,4 +86,11 @@ export const homeWidgetPlugins = {
     component: lazyWidget(() => import('../components/FocusTimerSummaryWidget.vue')),
     props: (context) => ({ state: context.focusTimer }),
   },
+  'bookmarks-summary': {
+    title: '书签概览',
+    description: '在首页快速打开浏览器书签中的前几项',
+    panel: 'bookmarks',
+    component: lazyWidget(() => import('../components/BookmarksSummaryWidget.vue')),
+    props: () => ({}),
+  },
 } satisfies HomeWidgetPluginRegistry

@@ -29,7 +29,7 @@ describe('home widget shelf plugin activation', () => {
     wrapper = mount(HomeWidgetShelf, {
       props: {
         widgetIds: ['todo-summary'],
-        widgetSizes: { 'todo-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard', 'weather-summary': 'standard', 'focus-timer-summary': 'standard' },
+        widgetSizes: { 'todo-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard', 'weather-summary': 'standard', 'focus-timer-summary': 'standard', 'bookmarks-summary': 'standard' },
         context,
         plugins,
       },
