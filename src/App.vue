@@ -479,6 +479,8 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="home" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
+    <a class="skip-link" href="#main-content">跳到快捷入口</a>
+    <h1 class="visually-hidden">Infinity 新标签页</h1>
     <div class="background-shade"></div>
     <header class="home-actions">
       <button type="button" class="round-action" aria-label="回到首页" @click="goToPage(0)"><House :size="19" /></button>
@@ -486,7 +488,7 @@ onBeforeUnmount(() => {
     </header>
 
     <ClockWidget v-if="preferences.showClock" />
-    <section class="home-content">
+    <section id="main-content" class="home-content" tabindex="-1">
       <SearchBar
         ref="searchBar"
         v-if="preferences.showSearchBar"

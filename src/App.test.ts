@@ -55,6 +55,16 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+describe('new-tab landmarks', () => {
+  it('provides a skip link and a screen-reader page heading', () => {
+    wrapper = mount(App, { attachTo: document.body })
+
+    expect(document.querySelector('.skip-link')?.getAttribute('href')).toBe('#main-content')
+    expect(wrapper.get('main h1').text()).toBe('Infinity 新标签页')
+    expect(wrapper.get('#main-content').attributes('tabindex')).toBe('-1')
+  })
+})
+
 describe('new-tab keyboard search', () => {
   it('focuses search with slash or Ctrl/Command+K', () => {
     wrapper = mount(App, { attachTo: document.body })
