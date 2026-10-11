@@ -4,7 +4,7 @@ import { searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
 import type { Preferences, SearchMode } from '../types'
 
-const props = defineProps<{ preferences: Preferences }>()
+const props = defineProps<{ preferences: Preferences; exportError?: string }>()
 const emit = defineEmits<{
   update: [value: Partial<Preferences>]
   reset: []
@@ -108,6 +108,7 @@ function applyImport(mode: 'merge' | 'replace') {
         <input ref="fileInput" class="visually-hidden" type="file" accept="application/json,.json" @change="readBackup" />
       </div>
       <p v-if="importError" class="backup-error" role="alert">{{ importError }}</p>
+      <p v-if="exportError" class="backup-error" role="alert">{{ exportError }}</p>
       <p class="backup-description">备份包含快捷入口、待办、笔记、天气城市和页面设置。</p>
     </section>
     <p class="local-hint">设置保存在这台设备的浏览器中。</p>

@@ -43,6 +43,7 @@ const {
 const query = ref('')
 const currentPage = ref(0)
 const activePanel = ref<Panel>(null)
+const backupExportError = ref('')
 const shortcutDialog = ref(false)
 const editingId = ref('')
 const shortcutTitle = ref('')
@@ -235,13 +236,21 @@ function reorderItems(sourceId: string, targetId: string) {
 }
 
 function downloadBackup() {
-  const contents = JSON.stringify(createBackup(), null, 2)
-  const url = URL.createObjectURL(new Blob([contents], { type: 'application/json' }))
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = `inftab-backup-${new Date().toISOString().slice(0, 10)}.json`
-  anchor.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  try {
+    const contents = JSON.stringify(createBackup(), null, 2)
+    const url = URL.createObjectURL(new Blob([contents], { type: 'application/json' }))
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `inftab-backup-${new Date().toISOString().slice(0, 10)}.json`
+    anchor.style.display = 'none'
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    backupExportError.value = ''
+  } catch (error) {
+    backupExportError.value = error instanceof Error ? `导出失败：${error.message}` : '导出失败，请稍后重试。'
+  }
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -306,7 +315,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
           <div><h2>{{ panelTitle }}</h2><p>{{ activePanel === 'settings' ? '按自己的习惯调整新标签页' : '内容会自动保存在本地' }}</p></div>
           <button class="panel-close" type="button" aria-label="关闭" @click="activePanel = null"><X :size="19" /></button>
         </header>
-        <SettingsPanel v-if="activePanel === 'settings'" :preferences="preferences" @update="updatePreferences" @reset="resetPreferences" @add-shortcut="openShortcutDialog()" @export-backup="downloadBackup" @import-backup="restoreBackup" />
+        <SettingsPanel v-if="activePanel === 'settings'" :preferences="preferences" :export-error="backupExportError" @update="updatePreferences" @reset="resetPreferences" @add-shortcut="openShortcutDialog()" @export-backup="downloadBackup" @import-backup="restoreBackup" />
         <TodoPanel v-else-if="activePanel === 'todos'" :items="todos" @add="addTodo" @toggle="toggleTodo" @update="updateTodo" @remove="removeTodo" @clear-completed="clearCompletedTodos" />
         <NotesPanel v-else-if="activePanel === 'notes'" :notes="notes" :active-id="activeNoteId" @add="addNote" @select="activeNoteId = $event" @update="updateNote" @remove="removeNote" />
         <WeatherPanel v-else-if="activePanel === 'weather'" :city="weatherCity" @update:city="weatherCity = $event" />

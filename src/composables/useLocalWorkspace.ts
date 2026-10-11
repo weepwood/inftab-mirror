@@ -1,4 +1,5 @@
 import { useStoredState } from './useStoredState'
+import { toRaw } from 'vue'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts } from '../data/defaults'
 import { mergeById, type WorkspaceBackup } from '../data/backup'
 import type { Note, Preferences, Shortcut, TodoItem } from '../types'
@@ -98,11 +99,11 @@ export function useLocalWorkspace() {
       format: 'inftab-workspace',
       version: 1,
       exportedAt: new Date().toISOString(),
-      preferences: structuredClone(preferences.value),
-      shortcuts: structuredClone(shortcuts.value),
+      preferences: structuredClone(toRaw(preferences.value)),
+      shortcuts: structuredClone(toRaw(shortcuts.value)),
       launcherOrder: [...launcherOrder.value],
-      todos: structuredClone(todos.value),
-      notes: structuredClone(notes.value),
+      todos: structuredClone(toRaw(todos.value)),
+      notes: structuredClone(toRaw(notes.value)),
       activeNoteId: activeNoteId.value,
       weatherCity: weatherCity.value,
     }
