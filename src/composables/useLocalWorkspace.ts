@@ -26,6 +26,9 @@ export function useLocalWorkspace() {
   const weatherCity = useStoredState<string>('inftab.weather-city.v1', previousWeatherCity, sanitizeWeatherCity)
 
   watch([shortcuts, folders], () => {
+    const cleanFolders = sanitizeFolders(folders.value, shortcuts.value)
+    if (JSON.stringify(cleanFolders) !== JSON.stringify(folders.value)) folders.value = cleanFolders
+
     const validDockIds = new Set([
       ...launcherItems.filter((item) => item.action && item.id !== 'settings').map((item) => item.id),
       ...shortcuts.value.map((shortcut) => shortcut.id),
