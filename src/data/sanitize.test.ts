@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { defaultPreferences } from './defaults'
 import {
   sanitizeActiveNoteId,
+  sanitizeCountdowns,
   sanitizeFolders,
   sanitizeLauncherOrder,
   sanitizeNotes,
@@ -92,5 +93,14 @@ describe('local state sanitization', () => {
     expect(folders.map((folder) => folder.shortcutIds)).toEqual([['shortcut'], []])
     expect(sanitizeLauncherOrder(['folder-a'], shortcuts, folders)).not.toContain('shortcut')
     expect(sanitizeLauncherOrder(['folder-a'], shortcuts, [])).toContain('shortcut')
+  })
+
+  it('keeps only valid, uniquely identified countdown records', () => {
+    expect(sanitizeCountdowns([
+      { id: 'birthday', title: '  Birthday ', date: '2000-02-29', recurrence: 'yearly' },
+      { id: 'invalid-date', title: 'Invalid', date: '2025-02-29', recurrence: 'once' },
+      { id: 'birthday', title: 'Duplicate', date: '2025-05-01', recurrence: 'once' },
+      { id: 'unsupported', title: 'Unsupported', date: '2025-05-01', recurrence: 'monthly' },
+    ])).toEqual([{ id: 'birthday', title: 'Birthday', date: '2000-02-29', recurrence: 'yearly' }])
   })
 })

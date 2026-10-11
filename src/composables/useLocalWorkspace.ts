@@ -2,8 +2,9 @@ import { useStoredState } from './useStoredState'
 import { toRaw } from 'vue'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts } from '../data/defaults'
 import { mergeById, type WorkspaceBackup } from '../data/backup'
-import { sanitizeActiveNoteId, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
-import type { Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import { isValidCalendarDate } from '../data/countdown'
+import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
+import type { CountdownItem, CountdownRecurrence, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
 
 export function useLocalWorkspace() {
   const preferences = useStoredState<Preferences>('inftab.preferences.v1', defaultPreferences, sanitizePreferences)
@@ -11,6 +12,7 @@ export function useLocalWorkspace() {
   const folders = useStoredState<ShortcutFolder[]>('inftab.folders.v1', [], (value) => sanitizeFolders(value, shortcuts.value))
   const launcherOrder = useStoredState<string[]>('inftab.launcher-order.v1', defaultLauncherOrder, (value) => sanitizeLauncherOrder(value, shortcuts.value, folders.value))
   const todos = useStoredState<TodoItem[]>('inftab.todos.v1', [], sanitizeTodos)
+  const countdowns = useStoredState<CountdownItem[]>('inftab.countdowns.v1', [], sanitizeCountdowns)
   const notes = useStoredState<Note[]>('inftab.notes.v1', [], sanitizeNotes)
   const activeNoteId = useStoredState<string>('inftab.active-note.v1', '', (value) => sanitizeActiveNoteId(value, notes.value))
   let previousWeatherCity = '上海'
@@ -92,6 +94,25 @@ export function useLocalWorkspace() {
     todos.value = todos.value.filter((item) => !item.done)
   }
 
+  function addCountdown(title: string, date: string, recurrence: CountdownRecurrence) {
+    const cleanTitle = title.trim().slice(0, 80)
+    if (!cleanTitle || !isValidCalendarDate(date) || (recurrence !== 'once' && recurrence !== 'yearly')) return
+    const next = sanitizeCountdowns([{ id: crypto.randomUUID(), title: cleanTitle, date, recurrence }, ...countdowns.value])
+    if (next.length > countdowns.value.length) countdowns.value = next
+  }
+
+  function updateCountdown(id: string, title: string, date: string, recurrence: CountdownRecurrence) {
+    const cleanTitle = title.trim().slice(0, 80)
+    if (!cleanTitle || !isValidCalendarDate(date) || (recurrence !== 'once' && recurrence !== 'yearly')) return
+    countdowns.value = sanitizeCountdowns(countdowns.value.map((item) => item.id === id
+      ? { ...item, title: cleanTitle, date, recurrence }
+      : item))
+  }
+
+  function removeCountdown(id: string) {
+    countdowns.value = countdowns.value.filter((item) => item.id !== id)
+  }
+
   function addNote() {
     const note: Note = { id: crypto.randomUUID(), title: '', body: '', updatedAt: Date.now() }
     notes.value = [note, ...notes.value]
@@ -125,6 +146,7 @@ export function useLocalWorkspace() {
       folders: structuredClone(toRaw(folders.value)),
       launcherOrder: [...launcherOrder.value],
       todos: structuredClone(toRaw(todos.value)),
+      countdowns: structuredClone(toRaw(countdowns.value)),
       notes: structuredClone(toRaw(notes.value)),
       activeNoteId: activeNoteId.value,
       weatherCity: weatherCity.value,
@@ -135,6 +157,7 @@ export function useLocalWorkspace() {
     const importedShortcuts = sanitizeShortcuts(backup.shortcuts)
     const importedFolders = sanitizeFolders(backup.folders, importedShortcuts)
     const importedTodos = sanitizeTodos(backup.todos)
+    const importedCountdowns = sanitizeCountdowns(backup.countdowns)
     const importedNotes = sanitizeNotes(backup.notes)
     if (mode === 'replace') {
       preferences.value = sanitizePreferences(backup.preferences)
@@ -142,6 +165,7 @@ export function useLocalWorkspace() {
       folders.value = importedFolders
       launcherOrder.value = sanitizeLauncherOrder(backup.launcherOrder, importedShortcuts, importedFolders)
       todos.value = importedTodos
+      countdowns.value = importedCountdowns
       notes.value = importedNotes
       activeNoteId.value = sanitizeActiveNoteId(backup.activeNoteId, importedNotes)
       weatherCity.value = sanitizeWeatherCity(backup.weatherCity)
@@ -152,6 +176,7 @@ export function useLocalWorkspace() {
     folders.value = sanitizeFolders(mergeById(folders.value, importedFolders), shortcuts.value)
     launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...backup.launcherOrder], shortcuts.value, folders.value)
     todos.value = sanitizeTodos(mergeById(todos.value, importedTodos))
+    countdowns.value = sanitizeCountdowns(mergeById(countdowns.value, importedCountdowns))
     notes.value = sanitizeNotes(mergeById(notes.value, importedNotes))
     const preferredNoteId = backup.notes.some((note) => note.id === backup.activeNoteId) ? backup.activeNoteId : activeNoteId.value
     activeNoteId.value = sanitizeActiveNoteId(preferredNoteId, notes.value)
@@ -164,6 +189,7 @@ export function useLocalWorkspace() {
     folders,
     launcherOrder,
     todos,
+    countdowns,
     notes,
     activeNoteId,
     weatherCity,
@@ -177,6 +203,9 @@ export function useLocalWorkspace() {
     updateTodo,
     removeTodo,
     clearCompletedTodos,
+    addCountdown,
+    updateCountdown,
+    removeCountdown,
     addNote,
     updateNote,
     removeNote,

@@ -31,6 +31,7 @@ function validBackup(overrides: Record<string, unknown> = {}) {
     folders: [],
     launcherOrder: [],
     todos: [],
+    countdowns: [],
     notes: [],
     activeNoteId: '',
     weatherCity: '上海',
@@ -267,6 +268,39 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('input[aria-label=\"笔记标题\"]').element).toHaveProperty('value', 'First note')
     expect(wrapper.get('textarea[aria-label=\"笔记内容\"]').element).toHaveProperty('value', 'Saved text')
     expect(wrapper.findAll('.note-list-item')).toHaveLength(1)
+  })
+
+  it('creates, edits, removes, and persists annual countdowns', async () => {
+    const targetDate = new Date()
+    targetDate.setDate(targetDate.getDate() + 30)
+    const dateValue = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开纪念日"]').trigger('click')
+    await wrapper.get('input[aria-label="纪念日名称"]').setValue('旅行')
+    await wrapper.get('input[aria-label="纪念日日期"]').setValue(dateValue)
+    await wrapper.get('.countdown-form').trigger('submit')
+
+    expect(wrapper.get('.countdown-item').text()).toContain('还有 30 天')
+    await wrapper.get('[aria-label="编辑旅行"]').trigger('click')
+    await wrapper.get('input[aria-label="纪念日日期"]').setValue('')
+    await wrapper.get('.countdown-form').trigger('submit')
+    expect(wrapper.find('.countdown-item').exists()).toBe(true)
+
+    await wrapper.get('input[aria-label="纪念日日期"]').setValue(dateValue)
+    await wrapper.get('input[aria-label="纪念日名称"]').setValue('周年旅行')
+    await wrapper.get('select[aria-label="重复频率"]').setValue('yearly')
+    await wrapper.get('.countdown-form').trigger('submit')
+    await flushLocalStorageWrites()
+
+    const saved = JSON.parse(localStorage.getItem('inftab.countdowns.v1') ?? '[]')
+    expect(saved).toEqual([expect.objectContaining({ title: '周年旅行', date: dateValue, recurrence: 'yearly' })])
+    expect(wrapper.get('.countdown-item').text()).toContain('每年重复')
+
+    await wrapper.get('[aria-label="编辑周年旅行"]').trigger('click')
+    await wrapper.get('[aria-label="删除周年旅行"]').trigger('click')
+    expect(wrapper.get('.countdown-form button[type="submit"]').text()).toContain('添加纪念日')
+    await flushLocalStorageWrites()
+    expect(JSON.parse(localStorage.getItem('inftab.countdowns.v1') ?? '[]')).toEqual([])
   })
 
   it('shows a recoverable warning when browser storage rejects a save', async () => {

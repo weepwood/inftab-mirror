@@ -1,5 +1,5 @@
-import type { Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
-import { sanitizeActiveNoteId, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
+import type { CountdownItem, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
 
 export interface WorkspaceBackup {
   format: 'inftab-workspace'
@@ -10,6 +10,7 @@ export interface WorkspaceBackup {
   folders: ShortcutFolder[]
   launcherOrder: string[]
   todos: TodoItem[]
+  countdowns: CountdownItem[]
   notes: Note[]
   activeNoteId: string
   weatherCity: string
@@ -37,6 +38,8 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   validateArray(rawFolders, '文件夹')
   validateArray(value.launcherOrder, '入口排序')
   validateArray(value.todos, '待办事项')
+  const rawCountdowns = value.countdowns ?? []
+  validateArray(rawCountdowns, '纪念日')
   validateArray(value.notes, '笔记')
   const rawPreferences = value.preferences
   const requiredPreferenceTypes: Record<string, (item: unknown) => boolean> = {
@@ -77,8 +80,9 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   const shortcuts = sanitizeShortcuts(value.shortcuts)
   const folders = sanitizeFolders(rawFolders, shortcuts)
   const todos = sanitizeTodos(value.todos)
+  const countdowns = sanitizeCountdowns(rawCountdowns)
   const notes = sanitizeNotes(value.notes)
-  if (shortcuts.length !== value.shortcuts.length || folders.length !== rawFolders.length || todos.length !== value.todos.length || notes.length !== value.notes.length) {
+  if (shortcuts.length !== value.shortcuts.length || folders.length !== rawFolders.length || todos.length !== value.todos.length || countdowns.length !== rawCountdowns.length || notes.length !== value.notes.length) {
     throw new Error('备份中包含重复或无法识别的数据，请检查文件后重试。')
   }
   if (!['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yahoo', '360'].includes(String(value.preferences.engine))) {
@@ -100,6 +104,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     folders,
     launcherOrder: sanitizeLauncherOrder(value.launcherOrder, shortcuts, folders),
     todos,
+    countdowns,
     notes,
     activeNoteId: sanitizeActiveNoteId(typeof value.activeNoteId === 'string' ? value.activeNoteId.slice(0, 128) : '', notes),
     weatherCity: sanitizeWeatherCity(value.weatherCity),

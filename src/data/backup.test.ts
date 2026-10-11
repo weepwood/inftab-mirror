@@ -45,12 +45,15 @@ describe('workspace backups', () => {
 
   it('imports version-one backups without folders and filters stale folder members', () => {
     expect(parseWorkspaceBackup(backup()).folders).toEqual([])
+    expect(parseWorkspaceBackup(backup()).countdowns).toEqual([])
     const parsed = parseWorkspaceBackup(backup({
+      countdowns: [{ id: 'anniversary', title: 'Anniversary', date: '2020-02-29', recurrence: 'yearly' }],
       folders: [{ id: 'folder-work', title: '工作', shortcutIds: ['custom', 'missing'], color: '#369', mark: '工' }],
       launcherOrder: ['folder-work', 'custom'],
     }))
+    expect(parsed.countdowns).toEqual([{ id: 'anniversary', title: 'Anniversary', date: '2020-02-29', recurrence: 'yearly' }])
     expect(parsed.folders[0]?.shortcutIds).toEqual(['custom'])
-    expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'todos', 'notes', 'settings'])
+    expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'countdowns', 'todos', 'notes', 'settings'])
   })
 
   it('keeps older backups compatible with the new clock preference', () => {

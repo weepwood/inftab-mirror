@@ -1,6 +1,7 @@
 import { defaultLauncherOrder, defaultPreferences, launcherItems, wallpaperChoices } from './defaults'
+import { isValidCalendarDate } from './countdown'
 import { normalizeWebUrl } from './urls'
-import type { Note, Preferences, SearchMode, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import type { CountdownItem, Note, Preferences, SearchMode, Shortcut, ShortcutFolder, TodoItem } from '../types'
 
 const engines = new Set(['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yahoo', '360'])
 const searchModes = new Set<SearchMode>(['html', 'photos', 'news', 'videos', 'map'])
@@ -134,6 +135,15 @@ export function sanitizeTodos(value: unknown): TodoItem[] {
     if (!validId(item.id) || typeof item.title !== 'string' || typeof item.done !== 'boolean') return undefined
     const title = item.title.trim().slice(0, 500)
     return title ? { id: item.id, title, done: item.done } : undefined
+  })
+}
+
+export function sanitizeCountdowns(value: unknown): CountdownItem[] {
+  return uniqueRecords(value, (item) => {
+    if (!validId(item.id) || typeof item.title !== 'string' || !isValidCalendarDate(item.date)
+      || (item.recurrence !== 'once' && item.recurrence !== 'yearly')) return undefined
+    const title = item.title.trim().slice(0, 80)
+    return title ? { id: item.id, title, date: item.date, recurrence: item.recurrence } : undefined
   })
 }
 

@@ -187,6 +187,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
           <li>{{ pendingBackup.shortcuts.length }} 个快捷入口</li>
           <li>{{ pendingBackup.folders.length }} 个文件夹</li>
           <li>{{ pendingBackup.todos.length }} 条待办</li>
+          <li>{{ pendingBackup.countdowns.length }} 个纪念日</li>
           <li>{{ pendingBackup.notes.length }} 条笔记</li>
         </ul>
         <p class="backup-warning">覆盖会替换当前浏览器中的数据；合并会保留现有项目并按 ID 更新重合内容。</p>

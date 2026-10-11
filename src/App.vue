@@ -7,6 +7,7 @@ import ShortcutGrid from './components/ShortcutGrid.vue'
 import FolderDialog from './components/FolderDialog.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import TodoPanel from './components/TodoPanel.vue'
+import CountdownPanel from './components/CountdownPanel.vue'
 import NotesPanel from './components/NotesPanel.vue'
 import WeatherPanel from './components/WeatherPanel.vue'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
@@ -16,7 +17,7 @@ import { buildSearchUrl } from './data/search'
 import { normalizeWebUrl } from './data/urls'
 import type { LauncherItem, Shortcut, ShortcutFolder } from './types'
 
-type Panel = 'settings' | 'todos' | 'notes' | 'weather' | null
+type Panel = 'settings' | 'todos' | 'notes' | 'countdowns' | 'weather' | null
 
 const baseUrl = import.meta.env.BASE_URL
 const {
@@ -25,6 +26,7 @@ const {
   folders,
   launcherOrder,
   todos,
+  countdowns,
   notes,
   activeNoteId,
   weatherCity,
@@ -38,6 +40,9 @@ const {
   updateTodo,
   removeTodo,
   clearCompletedTodos,
+  addCountdown,
+  updateCountdown,
+  removeCountdown,
   addNote,
   updateNote,
   removeNote,
@@ -125,7 +130,7 @@ const fitMetrics = computed(() => {
   const fittedIcon = Math.max(28, Math.min(preferences.value.iconSize, (available - (rows - 1) * fittedGap) / rows))
   return { fittedGap, fittedIcon }
 })
-const panelTitle = computed(() => ({ settings: '设置', todos: '待办事项', notes: '笔记', weather: '天气' }[activePanel.value ?? 'settings']))
+const panelTitle = computed(() => ({ settings: '设置', todos: '待办事项', notes: '笔记', countdowns: '纪念日与倒计时', weather: '天气' }[activePanel.value ?? 'settings']))
 const backgroundStyle = computed(() => {
   const value = preferences.value.customWallpaper.trim() || preferences.value.wallpaper
   const backgroundImage = value.startsWith('linear-gradient') ? value : `url("${value.replaceAll('"', '%22')}")`
@@ -463,6 +468,7 @@ onBeforeUnmount(() => {
         </header>
         <SettingsPanel v-if="activePanel === 'settings'" :preferences="preferences" :export-error="backupExportError" @update="updatePreferences" @reset="resetPreferences" @add-shortcut="openShortcutDialog()" @add-folder="openFolderEditor()" @export-backup="downloadBackup" @import-backup="restoreBackup" />
         <TodoPanel v-else-if="activePanel === 'todos'" :items="todos" @add="addTodo" @toggle="toggleTodo" @update="updateTodo" @remove="removeTodo" @clear-completed="clearCompletedTodos" />
+        <CountdownPanel v-else-if="activePanel === 'countdowns'" :items="countdowns" @add="addCountdown" @update="updateCountdown" @remove="removeCountdown" />
         <NotesPanel v-else-if="activePanel === 'notes'" :notes="notes" :active-id="activeNoteId" @add="addNote" @select="activeNoteId = $event" @update="updateNote" @remove="removeNote" />
         <WeatherPanel v-else-if="activePanel === 'weather'" :city="weatherCity" @update:city="weatherCity = $event" />
       </aside>

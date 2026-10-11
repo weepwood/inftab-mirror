@@ -25,6 +25,15 @@ export interface TodoItem {
   done: boolean
 }
 
+export type CountdownRecurrence = 'once' | 'yearly'
+
+export interface CountdownItem {
+  id: string
+  title: string
+  date: string
+  recurrence: CountdownRecurrence
+}
+
 export interface Note {
   id: string
   title: string
@@ -56,7 +65,7 @@ export interface Preferences {
   iconRadius: number
 }
 
-export type LauncherAction = 'weather' | 'todos' | 'notes' | 'settings' | 'wallpaper'
+export type LauncherAction = 'weather' | 'todos' | 'notes' | 'countdowns' | 'settings' | 'wallpaper'
 
 export interface LauncherItem {
   id: string
