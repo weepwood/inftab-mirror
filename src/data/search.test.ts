@@ -21,6 +21,12 @@ describe('search URL generation', () => {
     expect(buildSearchUrl('google', 'html', '   ')).toBe('')
   })
 
+  it('replaces malformed Unicode and safely rejects unknown engine selections', () => {
+    expect(buildSearchUrl('google', 'html', '\ud800')).toBe('https://www.google.com/search?q=%EF%BF%BD')
+    expect(buildSearchUrl('unknown' as EngineId, 'html', 'query')).toBe('')
+    expect(buildSearchUrl('google', 'unknown' as SearchMode, 'query')).toBe('')
+  })
+
   it('routes representative categories to the selected provider', () => {
     expect(buildSearchUrl('google', 'photos', 'cats')).toBe('https://www.google.com/search?tbm=isch&q=cats')
     expect(buildSearchUrl('bing', 'news', 'weather')).toBe('https://www.bing.com/news/search?q=weather')

@@ -67,15 +67,46 @@ export function isValidCustomSearchTemplate(template: string) {
   }
 }
 
+function toWellFormedUnicode(value: string) {
+  let result = ''
+  for (let index = 0; index < value.length; index += 1) {
+    const codeUnit = value.charCodeAt(index)
+    if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
+      const nextCodeUnit = value.charCodeAt(index + 1)
+      if (nextCodeUnit >= 0xdc00 && nextCodeUnit <= 0xdfff) {
+        result += value[index] + value[index + 1]
+        index += 1
+      } else {
+        result += '\ufffd'
+      }
+    } else if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
+      result += '\ufffd'
+    } else {
+      result += value[index]
+    }
+  }
+  return result
+}
+
+function encodeQuery(value: string) {
+  try {
+    return encodeURIComponent(value)
+  } catch {
+    return encodeURIComponent(toWellFormedUnicode(value))
+  }
+}
+
 export function buildSearchUrl(engine: SearchEngineSelection, mode: SearchMode, value: string, customEngines: CustomSearchEngine[] = []): string {
+  if (typeof value !== 'string' || typeof engine !== 'string') return ''
   const query = value.trim()
   if (!query) return ''
-  const encodedQuery = encodeURIComponent(query)
+  const encodedQuery = encodeQuery(query)
   if (engine.startsWith('custom:')) {
     const customEngine = customEngines.find((item) => `custom:${item.id}` === engine)
     return customEngine && isValidCustomSearchTemplate(customEngine.template)
       ? customEngine.template.replaceAll('{query}', encodedQuery)
       : ''
   }
-  return templates[engine as EngineId][mode].replace('{query}', encodedQuery)
+  const template = templates[engine as EngineId]?.[mode]
+  return template ? template.replace('{query}', encodedQuery) : ''
 }
