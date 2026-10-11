@@ -15,7 +15,10 @@ function installMemoryStorage(initial: Record<string, string> = {}) {
   return values
 }
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
 
 describe('useStoredState', () => {
   it('sanitizes stale persisted preference values before exposing them', () => {
@@ -28,13 +31,35 @@ describe('useStoredState', () => {
   })
 
   it('recovers from malformed JSON and persists the next valid update', async () => {
+    vi.useFakeTimers()
     const storage = installMemoryStorage({ 'prefs.v1': '{invalid-json' })
     const preferences = useStoredState('prefs.v1', defaultPreferences, sanitizePreferences)
     preferences.value.columns = 8
     await nextTick()
+    await vi.advanceTimersByTimeAsync(180)
 
     expect(preferences.value.columns).toBe(8)
     expect(JSON.parse(storage.get('prefs.v1') ?? '{}').columns).toBe(8)
+  })
+
+  it('coalesces rapid edits into a single storage write', async () => {
+    vi.useFakeTimers()
+    const values = new Map<string, string>()
+    const setItem = vi.fn((key: string, value: string) => values.set(key, value))
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem,
+      removeItem: (key: string) => { values.delete(key) },
+    })
+    const preferences = useStoredState('prefs.v1', defaultPreferences, sanitizePreferences)
+    preferences.value.columns = 7
+    preferences.value.columns = 8
+    preferences.value.columns = 9
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(180)
+
+    expect(setItem).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(values.get('prefs.v1') ?? '{}').columns).toBe(9)
   })
 
   it('keeps defaults isolated and follows changes from another tab', async () => {
@@ -63,11 +88,13 @@ describe('useStoredState', () => {
     const listeners = new Map<string, (event: StorageEvent) => void>()
     vi.stubGlobal('window', { addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener), removeEventListener: vi.fn() })
     installMemoryStorage()
-    const preferences = useStoredState('prefs.v1', defaultPreferences, sanitizePreferences)
+    const scope = effectScope()
+    const preferences = scope.run(() => useStoredState('prefs.v1', defaultPreferences, sanitizePreferences))!
     preferences.value.columns = 10
     listeners.get('storage')!({ key: null, newValue: null } as StorageEvent)
 
     expect(preferences.value.columns).toBe(6)
     expect(defaultPreferences.columns).toBe(6)
+    scope.stop()
   })
 })

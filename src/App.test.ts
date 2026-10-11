@@ -6,6 +6,11 @@ import App from './App.vue'
 
 let wrapper: VueWrapper | undefined
 
+async function flushLocalStorageWrites() {
+  await nextTick()
+  window.dispatchEvent(new Event('pagehide'))
+}
+
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined
@@ -56,7 +61,7 @@ describe('new-tab keyboard search', () => {
 
     await wrapper.get('input[placeholder="https://example.com"]').setValue('example.com')
     await wrapper.get('.shortcut-dialog').trigger('submit')
-    await nextTick()
+    await flushLocalStorageWrites()
     expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]')).toContainEqual(expect.objectContaining({
       title: 'Example',
       url: 'https://example.com/',
@@ -79,6 +84,7 @@ describe('new-tab keyboard search', () => {
     await wrapper.get('.folder-dialog input[placeholder="例如：工作"]').setValue('工作')
     await wrapper.get('.folder-choice input[type="checkbox"]').setValue(true)
     await wrapper.get('.folder-dialog button.button-primary').trigger('click')
+    await flushLocalStorageWrites()
 
     const folders = JSON.parse(localStorage.getItem('inftab.folders.v1') ?? '[]')
     expect(folders).toHaveLength(1)
@@ -94,6 +100,7 @@ describe('new-tab keyboard search', () => {
     expect(open).toHaveBeenCalledWith('https://www.jd.com/', '_blank', 'noopener,noreferrer')
     const folderId = folders[0].id
     await wrapper.get('.folder-dialog .danger-action').trigger('click')
+    await flushLocalStorageWrites()
     expect(JSON.parse(localStorage.getItem('inftab.folders.v1') ?? '[]')).toHaveLength(0)
     expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]').some((item: { id: string }) => item.id === 'jd')).toBe(true)
     expect(JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]')).not.toContain(folderId)
@@ -108,6 +115,7 @@ describe('new-tab keyboard search', () => {
     await wrapper.get('.folder-dialog input[placeholder="例如：工作"]').setValue('工作')
     await wrapper.get('.folder-choice input[type="checkbox"]').setValue(true)
     await wrapper.get('.folder-dialog button.button-primary').trigger('click')
+    await flushLocalStorageWrites()
     await wrapper.get('.panel-close').trigger('click')
     await wrapper.get('.shortcut-open[aria-label="打开工作"]').trigger('click')
     await wrapper.get('.folder-dialog button.button-secondary:not(.danger-action)').trigger('click')
@@ -146,6 +154,7 @@ describe('new-tab keyboard search', () => {
     await wrapper.get('input[placeholder="https://example.com"]').setValue('https://example.com')
     await wrapper.get('.shortcut-dialog input[placeholder="素材文件名、图片网址或 Base64"]').setValue('https://images.example/icon.png')
     await wrapper.get('.shortcut-dialog').trigger('submit')
+    await flushLocalStorageWrites()
 
     expect(fetch).not.toHaveBeenCalled()
     expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]')).toContainEqual(expect.objectContaining({
