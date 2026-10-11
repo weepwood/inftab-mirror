@@ -83,6 +83,27 @@ describe('new-tab keyboard search', () => {
     expect(document.activeElement).toBe(input)
   })
 
+  it('keeps page navigation compact and supports direct jumps on large shortcut collections', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addListener: () => {}, removeListener: () => {} }))
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, pageTransitionEffect: 'slide' }))
+    localStorage.setItem('inftab.shortcuts.v1', JSON.stringify(Array.from({ length: 200 }, (_, index) => ({
+      id: 'shortcut-' + index,
+      title: 'Shortcut ' + index,
+      url: `https://shortcut-${index}.example/`,
+      color: '#abc',
+      mark: 'S',
+    }))))
+    wrapper = mount(App, { attachTo: document.body })
+
+    expect(wrapper.findAll('.page-dots .page-dot')).toHaveLength(4)
+    expect(wrapper.find('.page-ellipsis').exists()).toBe(true)
+    expect(wrapper.get('.page-dots [aria-label="第12页"]').attributes('aria-current')).toBeUndefined()
+    await wrapper.get('.page-dots [aria-label="第12页"]').trigger('click')
+
+    expect(wrapper.get('.page-dots [aria-label="第12页"]').attributes('aria-current')).toBe('page')
+    expect(wrapper.findAll('.page-dots .page-dot')).toHaveLength(4)
+  })
+
   it('closes only the top shortcut dialog before its settings panel', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await openLauncher('settings')

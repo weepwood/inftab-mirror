@@ -11,6 +11,7 @@ import { storageWriteErrorEvent } from './composables/useStoredState'
 import { launcherItems } from './data/defaults'
 import { compressImageBlob, maxImageUploadBytes } from './data/images'
 import { buildSearchUrl } from './data/search'
+import { getPageNavigation } from './data/pagination'
 import { normalizeWebUrl } from './data/urls'
 import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelId, type PanelPluginContext } from './plugins/registry'
 import type { LauncherItem, Shortcut, ShortcutFolder } from './types'
@@ -112,7 +113,7 @@ const unavailableFolderShortcutIds = computed(() => folders.value
   .filter((folder) => folder.id !== activeFolder.value?.id)
   .flatMap((folder) => folder.shortcutIds))
 const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
-const pageDots = computed(() => Array.from({ length: pageCount.value }, (_, index) => index))
+const pageNavigation = computed(() => getPageNavigation(pageCount.value, currentPage.value))
 let panelReturnFocusTarget: HTMLElement | undefined
 const panelContext = computed<PanelPluginContext>(() => ({
   preferences: preferences.value,
@@ -515,7 +516,10 @@ onBeforeUnmount(() => {
       />
       <nav v-if="pageCount > 1" class="page-dots" aria-label="快捷入口页码">
         <button type="button" aria-label="上一页" class="page-arrow" @click="movePage(-1)"><ArrowLeft :size="15" /></button>
-        <button v-for="page in pageDots" :key="page" type="button" :aria-label="`第${page + 1}页`" class="page-dot" :class="{ active: page === currentPage }" @click="goToPage(page)"></button>
+        <template v-for="item in pageNavigation" :key="item.kind === 'page' ? `page-${item.page}` : item.id">
+          <button v-if="item.kind === 'page'" type="button" :aria-label="`第${item.page + 1}页`" :aria-current="item.page === currentPage ? 'page' : undefined" class="page-dot" :class="{ active: item.page === currentPage }" @click="goToPage(item.page)"></button>
+          <span v-else class="page-ellipsis" aria-hidden="true">…</span>
+        </template>
         <button type="button" aria-label="下一页" class="page-arrow next" @click="movePage(1)"><ArrowLeft :size="15" /></button>
       </nav>
     </section>

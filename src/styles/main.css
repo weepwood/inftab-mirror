@@ -116,6 +116,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .page-dots { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 25px; }
 .page-dot { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .38); cursor: pointer; transition: transform .15s, background .15s; }
 .page-dot.active { background: #fff; transform: scale(1.12); }
+.page-ellipsis { min-width: 9px; color: rgba(255, 255, 255, .68); font-size: 12px; line-height: 1; text-align: center; }
 .page-arrow { width: 23px; height: 23px; display: grid; place-items: center; border: 0; background: transparent; color: rgba(255, 255, 255, .68); cursor: pointer; opacity: .65; }
 .page-arrow:hover { opacity: 1; }
 .page-arrow.next svg { transform: rotate(180deg); }
