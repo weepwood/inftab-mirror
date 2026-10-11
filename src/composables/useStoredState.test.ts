@@ -1,4 +1,4 @@
-import { nextTick } from 'vue'
+import { effectScope, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultPreferences } from '../data/defaults'
 import { sanitizePreferences } from '../data/sanitize'
@@ -35,5 +35,39 @@ describe('useStoredState', () => {
 
     expect(preferences.value.columns).toBe(8)
     expect(JSON.parse(storage.get('prefs.v1') ?? '{}').columns).toBe(8)
+  })
+
+  it('keeps defaults isolated and follows changes from another tab', async () => {
+    const listeners = new Map<string, (event: StorageEvent) => void>()
+    const removeListener = vi.fn((type: string) => listeners.delete(type))
+    vi.stubGlobal('window', {
+      addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener),
+      removeEventListener: removeListener,
+    })
+    installMemoryStorage()
+    const scope = effectScope()
+    const preferences = scope.run(() => useStoredState('prefs.v1', defaultPreferences, sanitizePreferences))!
+    preferences.value.columns = 9
+    await nextTick()
+
+    expect(defaultPreferences.columns).toBe(6)
+    listeners.get('storage')!({ key: 'prefs.v1', newValue: JSON.stringify({ columns: 4, engine: 'invalid' }) } as StorageEvent)
+    expect(preferences.value.columns).toBe(4)
+    expect(preferences.value.engine).toBe(defaultPreferences.engine)
+
+    scope.stop()
+    expect(removeListener).toHaveBeenCalledWith('storage', expect.any(Function))
+  })
+
+  it('resets to cloned defaults when another tab clears storage', () => {
+    const listeners = new Map<string, (event: StorageEvent) => void>()
+    vi.stubGlobal('window', { addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener), removeEventListener: vi.fn() })
+    installMemoryStorage()
+    const preferences = useStoredState('prefs.v1', defaultPreferences, sanitizePreferences)
+    preferences.value.columns = 10
+    listeners.get('storage')!({ key: null, newValue: null } as StorageEvent)
+
+    expect(preferences.value.columns).toBe(6)
+    expect(defaultPreferences.columns).toBe(6)
   })
 })
