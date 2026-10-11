@@ -44,6 +44,11 @@ describe('local state sanitization', () => {
     expect(sanitizePreferences({}).hiddenLauncherIds).toEqual([])
   })
 
+  it('keeps only unique dockable built-in launcher ids', () => {
+    expect(sanitizePreferences({ dockItemIds: ['weather', 'weather', 'settings', 'custom', 7] }).dockItemIds).toEqual(['weather'])
+    expect(sanitizePreferences({}).dockItemIds).toEqual([])
+  })
+
   it('keeps enabled home widgets unique and limited to registered ids', () => {
     expect(sanitizePreferences({ homeWidgetIds: ['todo-summary', 'todo-summary', 'unknown', 3, 'countdown-summary'] }).homeWidgetIds)
       .toEqual(['todo-summary', 'countdown-summary'])

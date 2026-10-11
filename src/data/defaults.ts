@@ -5,6 +5,7 @@ const base = import.meta.env.BASE_URL
 export const defaultPreferences: Preferences = {
   themeMode: 'light',
   hiddenLauncherIds: [],
+  dockItemIds: [],
   homeWidgetIds: [],
   engine: 'baidu',
   mode: 'html',

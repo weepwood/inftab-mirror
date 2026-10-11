@@ -30,6 +30,9 @@ export function sanitizePreferences(value: unknown): Preferences {
   const hiddenLauncherIds = Array.isArray(raw.hiddenLauncherIds)
     ? [...new Set(raw.hiddenLauncherIds.filter((item): item is string => typeof item === 'string' && manageableLauncherIds.has(item)))]
     : [...defaultPreferences.hiddenLauncherIds]
+  const dockItemIds = Array.isArray(raw.dockItemIds)
+    ? [...new Set(raw.dockItemIds.filter((item): item is string => typeof item === 'string' && manageableLauncherIds.has(item)))]
+    : [...defaultPreferences.dockItemIds]
   const homeWidgetIds = Array.isArray(raw.homeWidgetIds)
     ? [...new Set(raw.homeWidgetIds.filter((item): item is HomeWidgetId => typeof item === 'string' && availableHomeWidgetIds.includes(item as HomeWidgetId)))]
     : [...defaultPreferences.homeWidgetIds]
@@ -52,6 +55,7 @@ export function sanitizePreferences(value: unknown): Preferences {
       ? merged.themeMode
       : defaultPreferences.themeMode,
     hiddenLauncherIds,
+    dockItemIds,
     homeWidgetIds,
     engine: typeof merged.engine === 'string' && (engines.has(merged.engine) || /^custom:[\w-]{1,128}$/.test(merged.engine))
       ? merged.engine as Preferences['engine']

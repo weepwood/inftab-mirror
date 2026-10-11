@@ -18,6 +18,7 @@ import type { HomeWidgetId, LauncherItem, Shortcut, ShortcutFolder } from './typ
 type Panel = PanelId | null
 
 const HomeWidgetShelf = defineAsyncComponent(() => import('./components/HomeWidgetShelf.vue'))
+const HomeDock = defineAsyncComponent(() => import('./components/HomeDock.vue'))
 const FolderDialog = defineAsyncComponent(() => import('./components/FolderDialog.vue'))
 
 const baseUrl = import.meta.env.BASE_URL
@@ -93,7 +94,7 @@ let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
 let homeWheelLocked = false
 let wallpaperRotationTimer: number | undefined
 let wallpaperRotationRequest = 0
-const allLauncherItems = computed<LauncherItem[]>(() => {
+const availableLauncherItems = computed<LauncherItem[]>(() => {
   const items = [
     ...launcherItems.map((item) => item.id === 'todos'
       ? { ...item, icon: item.icon ? `${baseUrl}inftab-icons/${item.icon}` : undefined, badge: todos.value.filter((todo) => !todo.done).length || undefined }
@@ -117,10 +118,13 @@ const allLauncherItems = computed<LauncherItem[]>(() => {
     })),
   ]
   const order = new Map(launcherOrder.value.map((id, index) => [id, index]))
-  return items
-    .filter((item) => !preferences.value.hiddenLauncherIds.includes(item.id))
-    .sort((left, right) => (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER))
+  return items.sort((left, right) => (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER))
 })
+const allLauncherItems = computed(() => availableLauncherItems.value.filter((item) => !preferences.value.hiddenLauncherIds.includes(item.id)))
+const homeDockItems = computed(() => preferences.value.dockItemIds.flatMap((id) => {
+  const item = availableLauncherItems.value.find((candidate) => candidate.id === id && Boolean(candidate.action))
+  return item ? [item] : []
+}))
 const unavailableFolderShortcutIds = computed(() => folders.value
   .filter((folder) => folder.id !== activeFolder.value?.id)
   .flatMap((folder) => folder.shortcutIds))
@@ -179,7 +183,7 @@ const activePanelProps = computed<Record<string, unknown>>(() => activePanelPlug
 const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanelPlugin.value?.listeners(panelContext.value) ?? {})
 const homeWidgetContext = computed(() => ({ todos: todos.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value }))
 const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0)
-const shortHomeScrollEnabled = computed(() => showHomeWidgets.value && viewport.value.height <= 560)
+const shortHomeScrollEnabled = computed(() => (showHomeWidgets.value || homeDockItems.value.length > 0) && viewport.value.height <= 560)
 const homeWidgetRows = computed(() => {
   if (!showHomeWidgets.value || viewport.value.width <= 780) return showHomeWidgets.value ? 1 : 0
   const shelfWidth = Math.min(Math.max(0, viewport.value.width - 64), 960)
@@ -203,10 +207,11 @@ const fitMetrics = computed(() => {
   const paginationHeight = pageCount.value > 1 ? (veryShortHeight ? 31 : compactHeight ? 37 : mobile ? 43 : 48) : 0
   const nameHeight = preferences.value.showNames ? (smallMobile ? 13 : 17) + 7 : 0
   const footerClearance = veryShortHeight ? 24 : 38
+  const dockClearance = homeDockItems.value.length ? 76 : 0
   const widgetClearance = showHomeWidgets.value && !shortHomeScrollEnabled.value
     ? homeWidgetRows.value * 112 + Math.max(0, homeWidgetRows.value - 1) * 12 + 22
     : 0
-  const available = height - topPadding - widgetClearance - tabHeight - searchHeight - gridTopGap - paginationHeight - footerClearance - rows * nameHeight
+  const available = height - topPadding - widgetClearance - dockClearance - tabHeight - searchHeight - gridTopGap - paginationHeight - footerClearance - rows * nameHeight
   const requestedGap = Math.min(preferences.value.gridGapY, smallMobile ? 20 : mobile ? 24 : preferences.value.gridGapY)
   const fittedGap = rows > 1 ? Math.min(requestedGap, Math.max(4, (available - rows * 32) / (rows - 1))) : requestedGap
   const fittedIcon = Math.max(28, Math.min(preferences.value.iconSize, (available - (rows - 1) * fittedGap) / rows))
@@ -446,7 +451,7 @@ function goToPage(page: number) {
 }
 
 function startHomeSwipe(event: PointerEvent) {
-  if (event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf'))) return
+  if (event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf, .home-dock'))) return
   homeTouchStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
 }
 
@@ -461,7 +466,7 @@ function finishHomeSwipe(event: PointerEvent) {
 function handleHomeWheel(event: WheelEvent) {
   if (shortHomeScrollEnabled.value) return
   if (activePanel.value || shortcutDialog.value || homeWheelLocked
-    || (event.target instanceof Element && event.target.closest('.home-widget-shelf'))) return
+    || (event.target instanceof Element && event.target.closest('.home-widget-shelf, .home-dock'))) return
   const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY)
   const delta = horizontal ? event.deltaX : event.deltaY
   if (Math.abs(delta) <= 24) return
@@ -703,6 +708,8 @@ onBeforeUnmount(() => {
         <button type="button" aria-label="下一页" class="page-arrow next" @click="movePage(1)"><ArrowLeft :size="15" /></button>
       </nav>
     </section>
+
+    <HomeDock v-if="homeDockItems.length" :items="homeDockItems" @open="openItem" />
 
     <img class="windmill" :src="`${baseUrl}windmill.svg`" alt="" />
     <div v-if="storageError" class="storage-error-toast" role="alert">

@@ -206,3 +206,31 @@ test('lazy folder editor creates and opens a folder with selected shortcuts', as
   await expect(folder).toContainText('京东商城')
   await expect(folder).toContainText('天猫精选')
 })
+
+test('pinned dock launchers stay available across pages and reloads', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByLabel('固定天气到 Dock').check()
+  await page.getByLabel('固定待办事项到 Dock').check()
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+
+  const dock = page.getByRole('navigation', { name: '常驻 Dock' })
+  await expect(dock.getByRole('button', { name: '打开天气' })).toBeVisible()
+  await expect(dock.getByRole('button', { name: '打开待办事项' })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').dockItemIds))
+    .toEqual(['weather', 'todos'])
+
+  await page.getByRole('button', { name: '下一页' }).click()
+  await dock.getByRole('button', { name: '打开待办事项' }).click()
+  await expect(page.getByRole('dialog', { name: '待办事项' })).toBeVisible()
+  await page.getByRole('dialog', { name: '待办事项' }).getByRole('button', { name: '关闭' }).click()
+
+  await page.reload()
+  await page.getByRole('button', { name: '下一页' }).click()
+  const restoredDock = page.getByRole('navigation', { name: '常驻 Dock' })
+  await expect(restoredDock.getByRole('button', { name: '打开待办事项' })).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 480 })
+  await expect(page.locator('.home')).toHaveClass(/home-scrollable/)
+  await expect(restoredDock).toBeVisible()
+  await restoredDock.getByRole('button', { name: '打开待办事项' }).click()
+  await expect(page.getByRole('dialog', { name: '待办事项' })).toBeVisible()
+})

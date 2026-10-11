@@ -64,6 +64,7 @@ export interface Note {
 export interface Preferences {
   themeMode: ThemeMode
   hiddenLauncherIds: string[]
+  dockItemIds: string[]
   homeWidgetIds: HomeWidgetId[]
   engine: SearchEngineSelection
   mode: SearchMode

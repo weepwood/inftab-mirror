@@ -55,6 +55,22 @@ describe('SettingsPanel home widgets', () => {
   })
 })
 
+describe('SettingsPanel home dock', () => {
+  it('adds and removes permanent launcher shortcuts without changing their order', async () => {
+    wrapper = mount(SettingsPanel, {
+      props: { preferences: { ...defaultPreferences, dockItemIds: ['calendar'] } },
+    })
+    const weatherLabel = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('固定天气到 Dock'))!
+    await weatherLabel.get('input').setValue(true)
+    expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({ dockItemIds: ['calendar', 'weather'] })
+
+    await wrapper.setProps({ preferences: { ...defaultPreferences, dockItemIds: ['calendar', 'weather'] } })
+    const calendarLabel = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('固定日历到 Dock'))!
+    await calendarLabel.get('input').setValue(false)
+    expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({ dockItemIds: ['weather'] })
+  })
+})
+
 describe('SettingsPanel local wallpaper upload', () => {
   it('compresses a selected image and emits it as an offline wallpaper', async () => {
     const bitmap = { width: 4000, height: 2000, close: vi.fn() }

@@ -74,6 +74,12 @@ function toggleHomeWidget(id: HomeWidgetId, enabled: boolean) {
   update('homeWidgetIds', widgets)
 }
 
+function toggleDockItem(id: string, enabled: boolean) {
+  const items = props.preferences.dockItemIds.filter((itemId) => itemId !== id)
+  if (enabled) items.push(id)
+  update('dockItemIds', items)
+}
+
 function setTransitionEffect(effect: PageTransitionEffect) {
   update('pageTransitionEffect', effect)
 }
@@ -264,6 +270,11 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
         <span>显示{{ homeWidgetPlugins[id].title }}</span><input type="checkbox" :checked="preferences.homeWidgetIds.includes(id)" @change="toggleHomeWidget(id, ($event.target as HTMLInputElement).checked)" />
       </label>
       <p class="wallpaper-note">小组件会保存在本机设置中，可在首页拖动排序，也可用上下按钮调整。</p>
+      <p class="settings-subheading">常驻 Dock</p>
+      <label v-for="item in manageableLauncherItems" :key="`dock-${item.id}`" class="toggle-row">
+        <span>固定{{ item.title }}到 Dock</span><input type="checkbox" :checked="preferences.dockItemIds.includes(item.id)" @change="toggleDockItem(item.id, ($event.target as HTMLInputElement).checked)" />
+      </label>
+      <p class="wallpaper-note">Dock 会固定显示在页面底部，翻页后也可直接打开。</p>
       <p class="settings-subheading">内置面板</p>
       <label v-for="item in manageableLauncherItems" :key="item.id" class="toggle-row">
         <span>显示{{ item.title }}</span><input type="checkbox" :checked="!preferences.hiddenLauncherIds.includes(item.id)" @change="toggleLauncher(item.id, ($event.target as HTMLInputElement).checked)" />

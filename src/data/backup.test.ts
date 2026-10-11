@@ -59,11 +59,21 @@ describe('workspace backups', () => {
   })
 
   it('keeps older backups compatible with the new clock preference', () => {
-    const preferences = { ...defaultPreferences, showClock: undefined, themeMode: undefined, homeWidgetIds: undefined }
+    const preferences = { ...defaultPreferences, showClock: undefined, themeMode: undefined, dockItemIds: undefined, homeWidgetIds: undefined }
 
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.showClock).toBe(true)
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.themeMode).toBe('light')
+    expect(parseWorkspaceBackup(backup({ preferences })).preferences.dockItemIds).toEqual([])
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.homeWidgetIds).toEqual([])
+  })
+
+  it('backs up dockable built-in launchers and rejects unknown ids', () => {
+    expect(parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, dockItemIds: ['weather', 'calendar'] },
+    })).preferences.dockItemIds).toEqual(['weather', 'calendar'])
+    expect(() => parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, dockItemIds: ['custom-shortcut'] },
+    }))).toThrow(/页面设置无法识别/)
   })
 
   it('backs up valid home widgets and rejects unknown widget ids', () => {
