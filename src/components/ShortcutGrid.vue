@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { CloudSun, Folder, Image, ListTodo, Pencil, Settings, StickyNote, Trash2 } from '@lucide/vue'
 import type { Component } from 'vue'
 import type { LauncherItem, PageTransitionEffect } from '../types'
@@ -70,7 +70,10 @@ const displayPages = computed(() => {
   })).flat()
 })
 const contextItem = ref<LauncherItem>()
+const contextMenu = ref<HTMLElement>()
+const contextMenuIndex = ref(0)
 const contextPosition = ref({ left: 0, top: 0 })
+let contextMenuTrigger: HTMLElement | undefined
 const draggingId = ref('')
 const dragPosition = ref({ x: 0, y: 0 })
 const draggedItem = computed(() => props.items.find((item) => item.id === draggingId.value))
@@ -490,28 +493,57 @@ function openContextMenu(event: MouseEvent, item: LauncherItem) {
     return
   }
   event.preventDefault()
-  showContextMenu(item, event.clientX, event.clientY)
+  showContextMenu(item, event.clientX, event.clientY, event.currentTarget as HTMLElement)
 }
 
 function openContextMenuKeyboard(event: KeyboardEvent, item: LauncherItem) {
   if ((event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) || (!item.shortcut && !item.folder)) return
   event.preventDefault()
   const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  showContextMenu(item, bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
+  showContextMenu(item, bounds.left + bounds.width / 2, bounds.top + bounds.height / 2, event.currentTarget as HTMLElement)
 }
 
-function showContextMenu(item: LauncherItem, x: number, y: number) {
+function showContextMenu(item: LauncherItem, x: number, y: number, trigger: HTMLElement) {
   const width = 164
   const height = 94
   contextPosition.value = {
     left: Math.max(8, Math.min(x, window.innerWidth - width - 8)),
     top: Math.max(8, Math.min(y, window.innerHeight - height - 8)),
   }
+  contextMenuTrigger = trigger
+  contextMenuIndex.value = 0
   contextItem.value = item
+  void nextTick(() => contextMenu.value?.querySelector<HTMLElement>('[role="menuitem"]')?.focus())
 }
 
-function closeContextMenu() {
+function closeContextMenu(restoreFocus = false) {
+  const trigger = contextMenuTrigger
+  contextMenuTrigger = undefined
   contextItem.value = undefined
+  if (restoreFocus && trigger?.isConnected) void nextTick(() => trigger.focus())
+}
+
+function handleWindowClick() {
+  closeContextMenu()
+}
+
+function handleContextMenuKeydown(event: KeyboardEvent) {
+  const menuItems = [...(contextMenu.value?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])]
+  if (!menuItems.length) return
+  let nextIndex = contextMenuIndex.value
+  if (event.key === 'ArrowDown') nextIndex = (nextIndex + 1) % menuItems.length
+  else if (event.key === 'ArrowUp') nextIndex = (nextIndex - 1 + menuItems.length) % menuItems.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = menuItems.length - 1
+  else return
+  event.preventDefault()
+  contextMenuIndex.value = nextIndex
+  menuItems[nextIndex]?.focus()
+}
+
+function handleContextMenuFocusOut(event: FocusEvent) {
+  const nextTarget = event.relatedTarget
+  if (!(nextTarget instanceof Node) || !contextMenu.value?.contains(nextTarget)) closeContextMenu()
 }
 
 function openItem(event: MouseEvent, item: LauncherItem) {
@@ -529,21 +561,24 @@ function openItem(event: MouseEvent, item: LauncherItem) {
 function editContextItem(event: MouseEvent) {
   event.stopPropagation()
   if (contextItem.value) emit('edit', contextItem.value)
-  closeContextMenu()
+  closeContextMenu(true)
 }
 
 function removeContextItem(event: MouseEvent) {
   event.stopPropagation()
   if (contextItem.value) emit('remove', contextItem.value)
-  closeContextMenu()
+  closeContextMenu(true)
 }
 
 function closeContextOnEscape(event: KeyboardEvent) {
-  if (event.key === 'Escape') closeContextMenu()
+  if (event.key === 'Escape' && contextItem.value) {
+    event.preventDefault()
+    closeContextMenu(true)
+  }
 }
 
 onMounted(() => {
-  window.addEventListener('click', closeContextMenu)
+  window.addEventListener('click', handleWindowClick)
   window.addEventListener('keydown', closeContextOnEscape)
 })
 onBeforeUnmount(() => {
@@ -551,13 +586,13 @@ onBeforeUnmount(() => {
   cancelTransitionTimers()
   if (rebaseFrame) cancelAnimationFrame(rebaseFrame)
   if (suppressClickTimer) window.clearTimeout(suppressClickTimer)
-  window.removeEventListener('click', closeContextMenu)
+  window.removeEventListener('click', handleWindowClick)
   window.removeEventListener('keydown', closeContextOnEscape)
 })
 </script>
 
 <template>
-  <div class="shortcut-grid-wrap" @click="closeContextMenu">
+  <div class="shortcut-grid-wrap" @click="closeContextMenu()">
     <div
       v-if="draggedItem"
       class="shortcut-drag-ghost"
@@ -635,13 +670,16 @@ onBeforeUnmount(() => {
 
     <div
       v-if="contextItem"
+      ref="contextMenu"
       class="shortcut-context-menu"
       role="menu"
       :style="{ left: `${contextPosition.left}px`, top: `${contextPosition.top}px` }"
       @click.stop
+      @keydown="handleContextMenuKeydown"
+      @focusout="handleContextMenuFocusOut"
     >
-      <button type="button" role="menuitem" @click="editContextItem"><Pencil :size="14" /> 编辑{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
-      <button type="button" role="menuitem" class="danger" @click="removeContextItem"><Trash2 :size="14" /> 删除{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
+      <button type="button" role="menuitem" :tabindex="contextMenuIndex === 0 ? 0 : -1" @click="editContextItem"><Pencil :size="14" /> 编辑{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
+      <button type="button" role="menuitem" class="danger" :tabindex="contextMenuIndex === 1 ? 0 : -1" @click="removeContextItem"><Trash2 :size="14" /> 删除{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
     </div>
   </div>
 </template>

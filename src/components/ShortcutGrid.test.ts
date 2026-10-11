@@ -189,4 +189,48 @@ describe('ShortcutGrid page cycling', () => {
     expect(document.getElementById('shortcut-particle-canvas')).toBeNull()
     wrapper.unmount()
   })
+
+  it('supports keyboard context menus and restores focus after Escape', async () => {
+    installAnimationEnvironment()
+    const shortcut = {
+      id: 'shortcut',
+      title: 'Example',
+      url: 'https://example.com/',
+      color: '#3567aa',
+      mark: 'E',
+    }
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items: [{ id: shortcut.id, title: shortcut.title, color: shortcut.color, mark: shortcut.mark, shortcut }],
+        columns: 2,
+        rows: 1,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 0,
+        transitionDirection: 1,
+        transitionEffect: 'slide',
+        transitionDuration: 0,
+      },
+      attachTo: document.body,
+    })
+
+    const trigger = wrapper.get('.shortcut-open').element as HTMLElement
+    trigger.focus()
+    await wrapper.get('.shortcut-open').trigger('keydown', { key: 'F10', shiftKey: true })
+    await flushPromises()
+    expect(document.activeElement).toBe(wrapper.get('[role="menuitem"]').element)
+
+    const moveDown = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })
+    document.activeElement!.dispatchEvent(moveDown)
+    await flushPromises()
+    expect(moveDown.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(wrapper.findAll('[role="menuitem"]')[1]!.element)
+
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    await flushPromises()
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    expect(document.activeElement).toBe(trigger)
+    wrapper.unmount()
+  })
 })
