@@ -92,6 +92,23 @@ test('settings persist and the main view fits a narrow viewport', async ({ page 
   await expect(page.getByRole('region', { name: '首页小组件' })).toBeVisible()
 })
 
+test('settings changes synchronize between open tabs', async ({ page }) => {
+  const secondTab = await page.context().newPage()
+  await secondTab.goto('/')
+  await expect(secondTab.locator('.home-clock')).toBeVisible()
+
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByLabel('显示时间和日期').uncheck()
+
+  await expect(page.locator('.home-clock')).toHaveCount(0)
+  await expect(secondTab.locator('.home-clock')).toHaveCount(0)
+  await expect.poll(() => secondTab.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').showClock))
+    .toBe(false)
+  await secondTab.reload()
+  await expect(secondTab.locator('.home-clock')).toHaveCount(0)
+  await secondTab.close()
+})
+
 test('home widgets open their panel, reorder, and can be removed', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByLabel('显示待办概览').check()
