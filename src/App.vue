@@ -50,6 +50,9 @@ const shortcutUrl = ref('https://')
 const shortcutColor = ref('#3d82f6')
 const shortcutMark = ref('')
 const shortcutIcon = ref('')
+const shortcutIconFile = ref<HTMLInputElement>()
+const shortcutIconError = ref('')
+const savingShortcut = ref(false)
 const pageSize = computed(() => preferences.value.columns * preferences.value.rows)
 let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
 let homeWheelLocked = false
@@ -114,21 +117,81 @@ function openShortcutDialog(item?: LauncherItem) {
   shortcutColor.value = item?.shortcut?.color ?? '#3d82f6'
   shortcutMark.value = item?.shortcut?.mark ?? ''
   shortcutIcon.value = item?.shortcut?.icon ?? ''
+  shortcutIconError.value = ''
+  if (shortcutIconFile.value) shortcutIconFile.value.value = ''
   shortcutDialog.value = true
 }
 
-function saveShortcut() {
+async function imageBlobToDataUrl(blob: Blob) {
+  if (!blob.type.startsWith('image/')) throw new Error('这个文件不是可用的图片。')
+  const bitmap = await createImageBitmap(blob)
+  try {
+    const scale = Math.min(1, 192 / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('浏览器无法处理这张图片。')
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    const compressed = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((result) => result ? resolve(result) : reject(new Error('图片压缩失败。')), 'image/webp', 0.84)
+    })
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('无法读取压缩后的图片。'))
+      reader.onerror = () => reject(new Error('无法读取压缩后的图片。'))
+      reader.readAsDataURL(compressed)
+    })
+  } finally {
+    bitmap.close()
+  }
+}
+
+async function loadShortcutIconFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  shortcutIconError.value = ''
+  if (file.size > 10 * 1024 * 1024) {
+    shortcutIconError.value = '图片不能超过 10 MB。'
+    return
+  }
+  try {
+    shortcutIcon.value = await imageBlobToDataUrl(file)
+  } catch (error) {
+    shortcutIconError.value = error instanceof Error ? error.message : '无法处理这张图片。'
+  }
+}
+
+async function saveShortcut() {
+  if (savingShortcut.value) return
   const title = shortcutTitle.value.trim()
   let destination = shortcutUrl.value.trim()
   if (!title || !destination) return
   if (!/^https?:\/\//i.test(destination)) destination = `https://${destination}`
+  let icon = shortcutIcon.value.trim()
+  shortcutIconError.value = ''
+  if (/^https?:\/\//i.test(icon)) {
+    savingShortcut.value = true
+    try {
+      const response = await fetch(icon)
+      if (!response.ok) throw new Error(`图标下载失败（HTTP ${response.status}）。`)
+      icon = await imageBlobToDataUrl(await response.blob())
+    } catch {
+      shortcutIconError.value = '无法从这个网址读取图片（可能被跨域限制）。请上传本地图片后再保存。'
+      savingShortcut.value = false
+      return
+    }
+    savingShortcut.value = false
+  }
   const next: Shortcut = {
     id: editingId.value || crypto.randomUUID(),
     title,
     url: destination,
     color: shortcutColor.value,
     mark: shortcutMark.value.trim() || title.slice(0, 2),
-    icon: shortcutIcon.value.trim() || undefined,
+    icon: icon || undefined,
   }
   saveShortcutData(next)
   shortcutDialog.value = false
@@ -258,8 +321,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
           <label>图标文字<input v-model="shortcutMark" maxlength="5" placeholder="自动取名称" /></label>
           <label class="color-field">图标颜色<input v-model="shortcutColor" type="color" /></label>
         </div>
-        <label>图标图片网址（可选）<input v-model="shortcutIcon" placeholder="图标文件名或图片网址" /></label>
-        <footer><button class="button-secondary" type="button" @click="shortcutDialog = false">取消</button><button class="button-primary" type="submit">保存</button></footer>
+        <label>图标图片地址（可选）<input v-model="shortcutIcon" placeholder="素材文件名、图片网址或 Base64" @input="shortcutIconError = ''" /></label>
+        <div class="icon-file-actions">
+          <input ref="shortcutIconFile" class="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="loadShortcutIconFile" />
+          <button class="button-secondary" type="button" @click="shortcutIconFile?.click()">上传本地图片</button>
+          <span>图片会压缩为 Base64 保存在本机，离线可用</span>
+        </div>
+        <p v-if="shortcutIconError" class="backup-error" role="alert">{{ shortcutIconError }}</p>
+        <footer><button class="button-secondary" type="button" @click="shortcutDialog = false">取消</button><button class="button-primary" type="submit" :disabled="savingShortcut">{{ savingShortcut ? '正在转存图标…' : '保存' }}</button></footer>
       </form>
     </div>
   </main>
