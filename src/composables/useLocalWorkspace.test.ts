@@ -108,6 +108,27 @@ describe('useLocalWorkspace dock references', () => {
 })
 
 describe('useLocalWorkspace custom search engines', () => {
+  it('moves selection to a surviving note when another tab deletes the active note', () => {
+    const notes = [
+      { id: 'note-first', title: 'First', body: '', updatedAt: 1 },
+      { id: 'note-active', title: 'Active', body: '', updatedAt: 2 },
+    ]
+    localStorage.setItem('inftab.notes.v1', JSON.stringify(notes))
+    localStorage.setItem('inftab.active-note.v1', JSON.stringify('note-active'))
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'inftab.notes.v1',
+      oldValue: JSON.stringify(notes),
+      newValue: JSON.stringify([notes[0]]),
+    }))
+
+    expect(workspace.notes.value).toEqual([notes[0]])
+    expect(workspace.activeNoteId.value).toBe('note-first')
+    expect(workspace.createBackup().activeNoteId).toBe('note-first')
+  })
+
   it('adds and selects a validated engine, then falls back when it is removed', () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!

@@ -128,6 +128,29 @@ test('settings changes synchronize between open tabs', async ({ page }) => {
   await secondTab.close()
 })
 
+test('selects a surviving note when its active note is deleted in another tab', async ({ page, context }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('inftab.notes.v1', JSON.stringify([
+      { id: 'note-first', title: 'First note', body: 'Keep this note', updatedAt: 1 },
+      { id: 'note-active', title: 'Active note', body: 'Delete this note', updatedAt: 2 },
+    ]))
+    localStorage.setItem('inftab.active-note.v1', JSON.stringify('note-active'))
+  })
+  await page.reload()
+  const secondTab = await context.newPage()
+  await secondTab.goto('/')
+  await page.getByRole('button', { name: '打开笔记' }).click()
+  await secondTab.getByRole('button', { name: '打开笔记' }).click()
+  const secondNotesPanel = secondTab.getByRole('dialog', { name: '笔记' })
+  await expect(secondNotesPanel.getByLabel('笔记标题')).toHaveValue('Active note')
+  await secondNotesPanel.getByRole('button', { name: '删除笔记' }).click()
+
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.active-note.v1') ?? '""'))).toBe('note-first')
+  await expect(page.getByRole('dialog', { name: '笔记' }).getByLabel('笔记标题')).toHaveValue('First note')
+  await expect(page.getByRole('dialog', { name: '笔记' }).getByLabel('笔记内容')).toHaveValue('Keep this note')
+  await secondTab.close()
+})
+
 test('simultaneous settings changes in separate tabs do not overwrite each other', async ({ page }) => {
   const secondTab = await page.context().newPage()
   await secondTab.goto('/')

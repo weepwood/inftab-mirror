@@ -17,6 +17,10 @@ export function useLocalWorkspace() {
   const notes = useStoredState<Note[]>('inftab.notes.v1', [], sanitizeNotes)
   const customSearchEngines = useStoredState<CustomSearchEngine[]>('inftab.custom-search-engines.v1', [], sanitizeCustomSearchEngines)
   const activeNoteId = useStoredState<string>('inftab.active-note.v1', '', (value) => sanitizeActiveNoteId(value, notes.value))
+  watch(notes, () => {
+    const validActiveNoteId = sanitizeActiveNoteId(activeNoteId.value, notes.value)
+    if (validActiveNoteId !== activeNoteId.value) activeNoteId.value = validActiveNoteId
+  }, { flush: 'sync' })
   let previousWeatherCity = '上海'
   try {
     previousWeatherCity = localStorage.getItem('inftab.weather-city') ?? previousWeatherCity
