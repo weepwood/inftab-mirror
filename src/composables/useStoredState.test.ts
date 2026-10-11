@@ -62,6 +62,20 @@ describe('useStoredState', () => {
     expect(JSON.parse(values.get('prefs.v1') ?? '{}').columns).toBe(9)
   })
 
+  it('flushes the latest edit when its effect scope is disposed before the debounce', () => {
+    vi.useFakeTimers()
+    const storage = installMemoryStorage()
+    vi.stubGlobal('window', { addEventListener: vi.fn(), removeEventListener: vi.fn() })
+    const scope = effectScope()
+    const preferences = scope.run(() => useStoredState('prefs.v1', defaultPreferences, sanitizePreferences))!
+
+    preferences.value.columns = 11
+    scope.stop()
+
+    expect(JSON.parse(storage.get('prefs.v1') ?? '{}').columns).toBe(11)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it('keeps defaults isolated and follows changes from another tab', async () => {
     const listeners = new Map<string, (event: StorageEvent) => void>()
     const removeListener = vi.fn((type: string) => listeners.delete(type))

@@ -52,7 +52,10 @@ export function useStoredState<T>(key: string, fallback: T, normalize: (value: u
   if (targetWindow && getCurrentScope()) onScopeDispose(() => {
     targetWindow.removeEventListener('storage', handleStorage)
     targetWindow.removeEventListener('pagehide', flushPendingWrite)
-    if (persistTimer) clearTimeout(persistTimer)
+    // A scope can be disposed before Vue flushes the watcher or the debounce
+    // timer fires. Persist the latest value synchronously so short-lived
+    // owners (for example, future plugin panels) cannot silently lose edits.
+    flushPendingWrite()
   })
 
   return value
