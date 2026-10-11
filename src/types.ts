@@ -1,5 +1,6 @@
 export type SearchMode = 'html' | 'photos' | 'news' | 'videos' | 'map'
 export type EngineId = 'google' | 'baidu' | 'bing' | 'duckduckgo' | 'sogou' | 'yahoo' | '360'
+export type PageTransitionEffect = 'slide' | 'particles' | 'trails'
 
 export interface Shortcut {
   id: string
@@ -40,6 +41,7 @@ export interface Preferences {
   searchHeight: number
   gridTopGap: number
   pageTransitionMs: number
+  pageTransitionEffect: PageTransitionEffect
   hoverGlow: number
   showNames: boolean
   iconRadius: number

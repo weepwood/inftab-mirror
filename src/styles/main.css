@@ -60,6 +60,25 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .shortcut-grid-viewport { width: 100%; clip-path: inset(-30px 0 -30px); }
 .shortcut-pages { display: flex; align-items: flex-start; transition: transform var(--page-transition-duration, 620ms) cubic-bezier(.22, .72, .22, 1); will-change: transform; }
 .shortcut-page { flex: 0 0 100%; min-width: 0; display: grid; grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr)); justify-items: center; align-items: start; gap: var(--shortcut-gap-y, clamp(18px, 3.5vh, 30px)) var(--shortcut-gap-x, 18px); }
+.shortcut-page.particles-out .shortcut-cell { visibility: hidden; }
+.shortcut-open { position: relative; }
+.shortcut-open::before { position: absolute; z-index: 0; top: 0; left: 50%; width: min(var(--shortcut-size), var(--fit-icon-size, var(--shortcut-size)), 84%); aspect-ratio: 1; border-radius: var(--shortcut-radius); content: ''; pointer-events: none; opacity: 0; filter: blur(13px); }
+.shortcut-icon, .shortcut-name { z-index: 1; }
+.trails-out .shortcut-open::before { animation: light-trail var(--outgoing-duration, 620ms) ease-out both; }
+.trails-to-next .shortcut-open::before { background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, .02) 22%, rgba(170, 222, 255, .48) 52%, rgba(255, 255, 255, .08) 78%, transparent 100%); }
+.trails-to-previous .shortcut-open::before { background: linear-gradient(270deg, transparent 0%, rgba(255, 255, 255, .02) 22%, rgba(170, 222, 255, .48) 52%, rgba(255, 255, 255, .08) 78%, transparent 100%); }
+.trails-out .shortcut-icon { animation: trail-glow var(--outgoing-duration, 620ms) ease-out both; }
+@keyframes light-trail {
+  0% { transform: translateX(-50%) scaleX(.2); opacity: 0; }
+  18% { transform: translateX(calc(-50% + var(--trail-offset, 18px))) scaleX(1.55); opacity: .78; }
+  100% { transform: translateX(calc(-50% + var(--trail-offset-end, 36px))) scaleX(2.1); opacity: 0; }
+}
+@keyframes trail-glow {
+  0% { filter: drop-shadow(var(--trail-offset, 18px) 0 8px rgba(167, 220, 255, .58)) drop-shadow(var(--trail-offset-end, 36px) 0 15px rgba(167, 220, 255, .3)); }
+  100% { filter: drop-shadow(var(--trail-offset, 18px) 0 0 rgba(167, 220, 255, 0)) drop-shadow(var(--trail-offset-end, 36px) 0 0 rgba(167, 220, 255, 0)); }
+}
+.trails-to-next { --trail-offset: 18px; --trail-offset-end: 36px; }
+.trails-to-previous { --trail-offset: -18px; --trail-offset-end: -36px; }
 .shortcut-cell { position: relative; width: 100%; min-width: 0; display: flex; justify-content: center; user-select: none; transition: transform .16s ease, opacity .16s ease; }
 .shortcut-cell.dragging { z-index: 3; opacity: .2; }
 .shortcut-cell.dragging .shortcut-open { cursor: grabbing; }

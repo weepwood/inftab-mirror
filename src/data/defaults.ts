@@ -19,6 +19,7 @@ export const defaultPreferences: Preferences = {
   searchHeight: 54,
   gridTopGap: 50,
   pageTransitionMs: 620,
+  pageTransitionEffect: 'particles',
   hoverGlow: 100,
   showNames: true,
   iconRadius: 50,

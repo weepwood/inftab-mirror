@@ -45,6 +45,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     && (preferences.searchHeight === undefined || typeof preferences.searchHeight === 'number')
     && (preferences.gridTopGap === undefined || typeof preferences.gridTopGap === 'number')
     && (preferences.pageTransitionMs === undefined || typeof preferences.pageTransitionMs === 'number')
+    && (preferences.pageTransitionEffect === undefined || ['slide', 'particles', 'trails'].includes(String(preferences.pageTransitionEffect)))
     && (preferences.hoverGlow === undefined || typeof preferences.hoverGlow === 'number')
   if (!validPreferences
     || !shortcuts.every((item) => isRecord(item) && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.url === 'string' && typeof item.color === 'string' && typeof item.mark === 'string' && (item.icon === undefined || typeof item.icon === 'string'))

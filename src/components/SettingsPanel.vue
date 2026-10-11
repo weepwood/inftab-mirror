@@ -2,9 +2,14 @@
 import { ref } from 'vue'
 import { searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
-import type { Preferences, SearchMode } from '../types'
+import type { PageTransitionEffect, Preferences, SearchMode } from '../types'
 
 const props = defineProps<{ preferences: Preferences; exportError?: string }>()
+const transitionEffects: { id: PageTransitionEffect; label: string }[] = [
+  { id: 'particles', label: '微粒消散' },
+  { id: 'trails', label: '光迹拖尾' },
+  { id: 'slide', label: '平滑滑动' },
+]
 const emit = defineEmits<{
   update: [value: Partial<Preferences>]
   reset: []
@@ -25,6 +30,10 @@ function toggleSearchMode(mode: SearchMode, enabled: boolean) {
   if (enabled) visibleModes.add(mode)
   else visibleModes.delete(mode)
   update('visibleSearchModes', [...visibleModes])
+}
+
+function setTransitionEffect(effect: PageTransitionEffect) {
+  update('pageTransitionEffect', effect)
 }
 
 async function readBackup(event: Event) {
@@ -98,6 +107,10 @@ function applyImport(mode: 'merge' | 'replace') {
 
     <section class="settings-section">
       <div class="section-heading"><div><h3>动画与反馈</h3><p>控制翻页速度和图标悬停效果</p></div></div>
+      <p class="settings-subheading">翻页效果</p>
+      <label v-for="effect in transitionEffects" :key="effect.id" class="toggle-row transition-option">
+        <span>{{ effect.label }}</span><input type="radio" name="page-transition-effect" :checked="preferences.pageTransitionEffect === effect.id" @change="setTransitionEffect(effect.id)" />
+      </label>
       <label class="range-label"><span>翻页动画时长</span><strong>{{ preferences.pageTransitionMs }} ms</strong><input type="range" min="0" max="2000" step="40" :value="preferences.pageTransitionMs" @input="update('pageTransitionMs', Number(($event.target as HTMLInputElement).value))" /></label>
       <label class="range-label"><span>悬停光晕强度</span><strong>{{ preferences.hoverGlow }}%</strong><input type="range" min="0" max="100" step="5" :value="preferences.hoverGlow" @input="update('hoverGlow', Number(($event.target as HTMLInputElement).value))" /></label>
     </section>
