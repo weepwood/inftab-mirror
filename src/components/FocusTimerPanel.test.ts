@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import FocusTimerPanel from './FocusTimerPanel.vue'
 
 let wrapper: VueWrapper | undefined
@@ -26,6 +27,40 @@ describe('FocusTimerPanel', () => {
 
     await wrapper.get('[aria-label="暂停计时"]').trigger('click')
     expect(clearInterval).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops polling when another tab pauses the timer', async () => {
+    vi.useFakeTimers()
+    const clearInterval = vi.spyOn(window, 'clearInterval')
+    wrapper = mount(FocusTimerPanel)
+    await wrapper.get('[aria-label="开始计时"]').trigger('click')
+
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'inftab.focus-timer.v1',
+      newValue: JSON.stringify({
+        phase: 'focus', focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15,
+        completedSessions: 0, remainingMs: 24 * 60_000, endsAt: null,
+      }),
+    }))
+    await nextTick()
+
+    expect(wrapper.find('[aria-label="开始计时"]').exists()).toBe(true)
+    expect(wrapper.get('[role="timer"]').text()).toBe('24:00')
+    expect(clearInterval).toHaveBeenCalledOnce()
+  })
+
+  it('recalibrates the countdown when the page becomes visible', async () => {
+    vi.useFakeTimers()
+    const now = 1_800_000_000_000
+    vi.setSystemTime(now)
+    wrapper = mount(FocusTimerPanel)
+    await wrapper.get('[aria-label="开始计时"]').trigger('click')
+    vi.setSystemTime(now + 65_000)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await nextTick()
+
+    expect(wrapper.get('[role="timer"]').text()).toBe('23:55')
   })
 
   it('keeps the countdown running across panel unmount and remount', async () => {
