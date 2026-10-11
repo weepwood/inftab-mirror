@@ -25,6 +25,32 @@ afterEach(() => {
 })
 
 describe('ShortcutGrid page cycling', () => {
+  it('skips configured page effects when reduced motion is requested', async () => {
+    installAnimationEnvironment()
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addListener: () => {}, removeEventListener: () => {} }))
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items: Array.from({ length: 8 }, (_, index) => ({ ...items[index % items.length]!, id: `reduced-${index}` })),
+        columns: 2,
+        rows: 1,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 0,
+        transitionDirection: 1,
+        transitionEffect: 'particles',
+        transitionDuration: 1800,
+      },
+    })
+
+    await wrapper.setProps({ currentPage: 1 })
+
+    expect(wrapper.find('.particles-in, .particles-out, .trails-out').exists()).toBe(false)
+    expect(document.getElementById('shortcut-particle-canvas')).toBeNull()
+    expect(wrapper.get('.shortcut-pages').attributes('style')).toContain('transform: none')
+    wrapper.unmount()
+  })
+
   it('renders a non-empty icon for every built-in launcher action', () => {
     installAnimationEnvironment()
     const wrapper = mount(ShortcutGrid, {

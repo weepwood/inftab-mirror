@@ -71,6 +71,25 @@ test('keyboard launcher search opens the matching built-in panel', async ({ page
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
+test('reduced-motion preference skips page effects and long transitions', async ({ page }) => {
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    const preferences = JSON.parse(localStorage.getItem(key) ?? '{}')
+    localStorage.setItem(key, JSON.stringify({ ...preferences, columns: 2, rows: 1, pageTransitionEffect: 'particles', pageTransitionMs: 1800 }))
+  })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.reload()
+
+  const track = page.locator('.shortcut-pages')
+  await expect(track).toHaveClass(/particles-mode/)
+  await page.getByRole('button', { name: '下一页' }).click()
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
+  await expect(page.locator('#shortcut-particle-canvas')).toHaveCount(0)
+  await expect(page.locator('.particles-in, .particles-out, .trails-out')).toHaveCount(0)
+  const transitionDurationMs = await track.evaluate((element) => Number.parseFloat(getComputedStyle(element).transitionDuration) * 1000)
+  expect(transitionDurationMs).toBeLessThanOrEqual(0.02)
+})
+
 test('settings persist and the main view fits a narrow viewport', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const showClock = page.getByLabel('显示时间和日期')
