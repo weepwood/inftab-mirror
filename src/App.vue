@@ -190,7 +190,17 @@ const homeWidgetRows = computed(() => {
   if (!showHomeWidgets.value || viewport.value.width <= 780) return showHomeWidgets.value ? 1 : 0
   const shelfWidth = Math.min(Math.max(0, viewport.value.width - 64), 960)
   const columns = Math.max(1, Math.floor((shelfWidth + 12) / 252))
-  return Math.ceil(preferences.value.homeWidgetIds.length / columns)
+  let rows = 1
+  let occupiedColumns = 0
+  for (const id of preferences.value.homeWidgetIds) {
+    const span = preferences.value.homeWidgetSizes[id] === 'wide' ? Math.min(2, columns) : 1
+    if (occupiedColumns + span > columns) {
+      rows += 1
+      occupiedColumns = 0
+    }
+    occupiedColumns += span
+  }
+  return rows
 })
 const compactRows = computed(() => Math.min(preferences.value.rows, Math.max(1, Math.ceil(allLauncherItems.value.length / preferences.value.columns))))
 const fitMetrics = computed(() => {
@@ -519,6 +529,10 @@ function removeHomeWidget(id: HomeWidgetId) {
   updatePreferences({ homeWidgetIds: preferences.value.homeWidgetIds.filter((widgetId) => widgetId !== id) })
 }
 
+function resizeHomeWidget(id: HomeWidgetId, size: 'standard' | 'wide') {
+  updatePreferences({ homeWidgetSizes: { ...preferences.value.homeWidgetSizes, [id]: size } })
+}
+
 function reorderHomeWidgets(from: number, to: number) {
   const next = [...preferences.value.homeWidgetIds]
   const [widgetId] = next.splice(from, 1)
@@ -670,10 +684,12 @@ onBeforeUnmount(() => {
       <HomeWidgetShelf
         v-if="showHomeWidgets"
         :widget-ids="preferences.homeWidgetIds"
+        :widget-sizes="preferences.homeWidgetSizes"
         :context="homeWidgetContext"
         @open="activePanel = $event"
         @remove="removeHomeWidget"
         @reorder="reorderHomeWidgets"
+        @resize="resizeHomeWidget"
       />
       <SearchBar
         ref="searchBar"

@@ -267,6 +267,14 @@ test('desktop widget shelf fits every enabled widget into a responsive grid', as
   await expect(cards).toHaveCount(3)
   const wideLayoutRows = await cards.evaluateAll((elements) => new Set(elements.map((element) => Math.round(element.getBoundingClientRect().y))).size)
   expect(wideLayoutRows).toBe(1)
+  await page.getByRole('button', { name: '将待办概览加宽' }).click()
+  await expect(page.locator('[data-widget-id="todo-summary"]')).toHaveClass(/home-widget-card-wide/)
+  const expandedLayoutRows = await cards.evaluateAll((elements) => new Set(elements.map((element) => Math.round(element.getBoundingClientRect().y))).size)
+  expect(expandedLayoutRows).toBe(2)
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').homeWidgetSizes?.['todo-summary']))
+    .toBe('wide')
+  await page.reload()
+  await expect(page.locator('[data-widget-id="todo-summary"]')).toHaveClass(/home-widget-card-wide/)
   await page.setViewportSize({ width: 800, height: 900 })
   const compactLayout = await shelf.evaluate((element) => ({
     columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
@@ -275,6 +283,10 @@ test('desktop widget shelf fits every enabled widget into a responsive grid', as
   }))
   expect(compactLayout.columns).toBe(2)
   expect(compactLayout.scrollWidth).toBeLessThanOrEqual(compactLayout.clientWidth)
+  expect(await cards.evaluateAll((elements) => new Set(elements.map((element) => Math.round(element.getBoundingClientRect().y))).size)).toBe(2)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.locator('[data-widget-id="todo-summary"]').evaluate((element) => getComputedStyle(element).gridColumn)).toBe('auto')
 })
 
 test('lazy folder editor creates and opens a folder with selected shortcuts', async ({ page }) => {

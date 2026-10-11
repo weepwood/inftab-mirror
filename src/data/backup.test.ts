@@ -84,6 +84,12 @@ describe('workspace backups', () => {
     expect(parseWorkspaceBackup(backup({
       preferences: { ...defaultPreferences, homeWidgetIds: ['todo-summary', 'countdown-summary', 'notes-summary'] },
     })).preferences.homeWidgetIds).toEqual(['todo-summary', 'countdown-summary', 'notes-summary'])
+    expect(parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, homeWidgetSizes: { ...defaultPreferences.homeWidgetSizes, 'todo-summary': 'wide' } },
+    })).preferences.homeWidgetSizes['todo-summary']).toBe('wide')
+    expect(() => parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, homeWidgetSizes: { ...defaultPreferences.homeWidgetSizes, 'todo-summary': 'huge' } },
+    }))).toThrow(/页面设置无法识别/)
     expect(() => parseWorkspaceBackup(backup({
       preferences: { ...defaultPreferences, homeWidgetIds: ['remote-code'] },
     }))).toThrow(/页面设置无法识别/)

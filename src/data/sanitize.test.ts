@@ -58,6 +58,12 @@ describe('local state sanitization', () => {
     expect(sanitizePreferences({}).homeWidgetIds).toEqual([])
   })
 
+  it('keeps only supported home widget sizes and defaults older settings to standard', () => {
+    expect(sanitizePreferences({ homeWidgetSizes: { 'todo-summary': 'wide', 'notes-summary': 'huge', unknown: 'wide' } }).homeWidgetSizes)
+      .toEqual({ 'todo-summary': 'wide', 'countdown-summary': 'standard', 'notes-summary': 'standard' })
+    expect(sanitizePreferences({}).homeWidgetSizes).toEqual(defaultPreferences.homeWidgetSizes)
+  })
+
   it('drops unsafe shortcuts, duplicate ids, and malformed records', () => {
     const shortcuts = sanitizeShortcuts([
       { id: 'safe', title: ' Safe ', url: 'https://example.com', color: '#abc', mark: 'S' },

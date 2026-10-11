@@ -36,6 +36,11 @@ export function sanitizePreferences(value: unknown): Preferences {
   const homeWidgetIds = Array.isArray(raw.homeWidgetIds)
     ? [...new Set(raw.homeWidgetIds.filter((item): item is HomeWidgetId => typeof item === 'string' && availableHomeWidgetIds.includes(item as HomeWidgetId)))]
     : [...defaultPreferences.homeWidgetIds]
+  const rawWidgetSizes = record(raw.homeWidgetSizes) ? raw.homeWidgetSizes : {}
+  const homeWidgetSizes = Object.fromEntries(availableHomeWidgetIds.map((id) => [
+    id,
+    rawWidgetSizes[id] === 'wide' ? 'wide' : 'standard',
+  ])) as Preferences['homeWidgetSizes']
   const visibleSearchModes = Array.isArray(raw.visibleSearchModes)
     ? [...new Set(raw.visibleSearchModes.filter((item): item is SearchMode => typeof item === 'string' && searchModes.has(item as SearchMode))) ]
     : [...defaultPreferences.visibleSearchModes]
@@ -57,6 +62,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     hiddenLauncherIds,
     dockItemIds,
     homeWidgetIds,
+    homeWidgetSizes,
     engine: typeof merged.engine === 'string' && (engines.has(merged.engine) || /^custom:[\w-]{1,128}$/.test(merged.engine))
       ? merged.engine as Preferences['engine']
       : defaultPreferences.engine,

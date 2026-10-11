@@ -10,6 +10,7 @@ export type SearchEngineSelection = EngineId | `custom:${string}`
 export type PageTransitionEffect = 'slide' | 'particles' | 'trails'
 export type WallpaperRotation = 'off' | 'hourly' | 'daily'
 export type ThemeMode = 'light' | 'dark' | 'system'
+export type HomeWidgetSize = 'standard' | 'wide'
 export const maxDockItems = 24
 
 export interface CustomSearchEngine {
@@ -69,6 +70,7 @@ export interface Preferences {
   hiddenLauncherIds: string[]
   dockItemIds: string[]
   homeWidgetIds: HomeWidgetId[]
+  homeWidgetSizes: Record<HomeWidgetId, HomeWidgetSize>
   engine: SearchEngineSelection
   mode: SearchMode
   visibleSearchModes: SearchMode[]

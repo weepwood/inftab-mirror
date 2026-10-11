@@ -7,6 +7,11 @@ export const defaultPreferences: Preferences = {
   hiddenLauncherIds: [],
   dockItemIds: [],
   homeWidgetIds: [],
+  homeWidgetSizes: {
+    'todo-summary': 'standard',
+    'countdown-summary': 'standard',
+    'notes-summary': 'standard',
+  },
   engine: 'baidu',
   mode: 'html',
   visibleSearchModes: [],

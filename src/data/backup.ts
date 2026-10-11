@@ -72,6 +72,9 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     hiddenLauncherIds: (item) => Array.isArray(item) && item.every((id) => typeof id === 'string' && launcherItems.some((launcher) => launcher.id === id && launcher.action && launcher.id !== 'settings')),
     dockItemIds: (item) => Array.isArray(item) && item.length <= maxDockItems && item.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 128),
     homeWidgetIds: (item) => Array.isArray(item) && item.every((id) => typeof id === 'string' && availableHomeWidgetIds.includes(id as typeof availableHomeWidgetIds[number])),
+    homeWidgetSizes: (item) => isRecord(item)
+      && Object.keys(item).length === availableHomeWidgetIds.length
+      && availableHomeWidgetIds.every((id) => item[id] === 'standard' || item[id] === 'wide'),
     visibleSearchModes: (item) => Array.isArray(item) && item.every((mode) => ['html', 'photos', 'news', 'videos', 'map'].includes(String(mode))),
     showSearchBar: (item) => typeof item === 'boolean',
     showClock: (item) => typeof item === 'boolean',
