@@ -40,6 +40,24 @@ test('creates a shortcut and keeps it after reloading the new tab', async ({ pag
   await expect(page.getByRole('button', { name: '打开E2E Example' })).toBeVisible()
 })
 
+test('pointer dragging a built-in shortcut reorders and persists the launcher', async ({ page }) => {
+  const source = page.locator('.shortcut-cell[data-item-id="weather"] .shortcut-open')
+  const target = page.locator('.shortcut-cell[data-item-id="calendar"] .shortcut-open')
+  await source.dragTo(target)
+
+  const launcherOrder = () => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]') as string[])
+  await expect.poll(async () => {
+    const order = await launcherOrder()
+    return order.indexOf('weather') < order.indexOf('calendar') && order.indexOf('weather') > 0
+  }).toBe(true)
+
+  await page.reload()
+  await expect.poll(async () => {
+    const order = await launcherOrder()
+    return order.indexOf('weather') < order.indexOf('calendar') && order.indexOf('weather') > 0
+  }).toBe(true)
+})
+
 test('keyboard launcher search opens the matching built-in panel', async ({ page }) => {
   await page.keyboard.press('Control+f')
   const search = page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })
