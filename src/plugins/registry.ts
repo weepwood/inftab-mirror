@@ -10,6 +10,7 @@ export const launcherPanelRoutes = {
   settings: 'settings',
   wallpaper: 'settings',
   bookmarks: 'bookmarks',
+  history: 'history',
   calculator: 'calculator',
   calendar: 'calendar',
 } as const
@@ -76,6 +77,13 @@ export const panelPlugins = {
     title: '浏览器书签',
     description: '查看当前浏览器中保存的书签',
     component: lazyPanel(() => import('../components/BookmarksPanel.vue')),
+    props: () => ({}),
+    listeners: () => ({}),
+  },
+  history: {
+    title: '浏览历史',
+    description: '搜索当前浏览器的访问记录',
+    component: lazyPanel(() => import('../components/HistoryPanel.vue')),
     props: () => ({}),
     listeners: () => ({}),
   },

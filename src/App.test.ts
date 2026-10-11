@@ -276,6 +276,12 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('此功能需要浏览器扩展')
   })
 
+  it('routes the browser history launcher to its permission-aware panel', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await openLauncher('history')
+    expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('此功能需要浏览器扩展')
+  })
+
   it('loads the calendar as a built-in on-demand panel', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await openLauncher('日历')

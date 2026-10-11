@@ -46,8 +46,8 @@ if (JSON.stringify(hostPermissions) !== JSON.stringify(allowedHosts)) {
 for (const permissionField of ['permissions', 'optional_permissions']) {
   const permissions = manifest[permissionField]
   if (permissionField === 'optional_permissions') {
-    if (!Array.isArray(permissions) || JSON.stringify(permissions) !== JSON.stringify(['bookmarks', 'clipboardWrite'])) {
-      fail('optional_permissions must contain only the opt-in bookmarks and clipboard features.')
+    if (!Array.isArray(permissions) || JSON.stringify(permissions) !== JSON.stringify(['bookmarks', 'clipboardWrite', 'history'])) {
+      fail('optional_permissions must contain only the opt-in bookmarks, clipboard, and browsing history features.')
     }
     continue
   }
@@ -79,4 +79,4 @@ if (existsSync(htmlPath)) {
   for (const asset of localAssets) resolvePackageFile(asset.slice(2), 'index.html asset')
 }
 
-if (process.exitCode !== 1) console.log('Extension package check passed: Manifest V3, new-tab entry, local assets, weather hosts, and optional bookmarks and clipboard access are valid.')
+if (process.exitCode !== 1) console.log('Extension package check passed: Manifest V3, new-tab entry, local assets, weather hosts, and optional bookmarks, clipboard, and browsing history access are valid.')

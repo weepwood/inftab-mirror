@@ -73,6 +73,7 @@ export const launcherItems: LauncherItem[] = [
   { id: 'notes', title: '笔记', action: 'notes', color: '#fff', mark: '▮', icon: '006b88c07a2e87d5a61f3c969a70575c.png' },
   { id: 'settings', title: '设置', action: 'settings', color: '#fff', mark: '⚙', icon: '9622b98e90dd4f107d23481566095b34.png' },
   { id: 'bookmarks', title: '书签', action: 'bookmarks', color: '#fff', mark: '☆' },
+  { id: 'history', title: '浏览历史', action: 'history', color: '#fff', mark: '↶' },
   { id: 'calculator', title: '计算器', action: 'calculator', color: '#fff', mark: '＋' },
   { id: 'calendar', title: '日历', action: 'calendar', color: '#fff', mark: '日' },
 ]

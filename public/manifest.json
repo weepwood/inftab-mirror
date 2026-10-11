@@ -8,7 +8,8 @@
   },
   "optional_permissions": [
     "bookmarks",
-    "clipboardWrite"
+    "clipboardWrite",
+    "history"
   ],
   "host_permissions": [
     "https://api.open-meteo.com/*",
