@@ -65,6 +65,7 @@ const gridViewport = ref<HTMLElement>()
 const outgoingPage = ref<{ index: number; effect: PageTransitionEffect; direction: number; duration: number }>()
 const incomingPage = ref<number>()
 const physicalPage = ref(props.transitionEffect === 'particles' ? props.currentPage : centeredPhysicalPage())
+const trackOffsetPx = ref(0)
 const resettingTrack = ref(false)
 let pointer: { id: number; type: string; x: number; y: number; clientX: number; clientY: number; sourceId: string; targetId: string; dragging: boolean; hold?: number } | undefined
 let suppressClick = false
@@ -75,8 +76,8 @@ let particleFrame = 0
 let transitionTimer = 0
 let trackSettleTimer = 0
 let trackTransitionPending = false
-let settleFrame = 0
 let resetFrame = 0
+let rebaseFrame = 0
 
 interface IconParticle {
   x: number
@@ -194,9 +195,7 @@ function playParticleTransition(pageIndex: number, direction: number, duration: 
 function cancelTransitionTimers() {
   if (transitionTimer) window.clearTimeout(transitionTimer)
   if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
-  if (settleFrame) cancelAnimationFrame(settleFrame)
   if (resetFrame) cancelAnimationFrame(resetFrame)
-  settleFrame = 0
   resetFrame = 0
 }
 
@@ -223,9 +222,46 @@ function finishTrackReset() {
   resetFrame = requestAnimationFrame(() => {
     resetFrame = requestAnimationFrame(() => {
       resettingTrack.value = false
+      trackOffsetPx.value = 0
       resetFrame = 0
       completeTrackTransition()
     })
+  })
+}
+
+function readTrackTranslateX(track: HTMLElement) {
+  const transform = getComputedStyle(track).transform
+  if (transform === 'none') return 0
+  const values = transform.slice(transform.indexOf('(') + 1, -1).split(',').map(Number)
+  return transform.startsWith('matrix3d') ? values[12] ?? 0 : values[4] ?? 0
+}
+
+function rebaseTrackIfNeeded() {
+  const pageCount = pages.value.length
+  if (props.transitionEffect === 'particles' || pageCount < 2) return
+  const lowerLimit = pageCount
+  const upperLimit = pageCount * (cycleCount - 1)
+  if (physicalPage.value >= lowerLimit && physicalPage.value < upperLimit) return
+
+  const track = gridViewport.value?.querySelector<HTMLElement>('.shortcut-pages')
+  const viewportWidth = gridViewport.value?.getBoundingClientRect().width ?? 0
+  const targetBeforeRebase = physicalPage.value
+  const targetAfterRebase = centeredPhysicalPage()
+  if (!track || !viewportWidth) {
+    physicalPage.value = targetAfterRebase
+    return
+  }
+
+  // Shift by whole page cycles while preserving the exact in-flight visual position.
+  const currentX = readTrackTranslateX(track)
+  trackOffsetPx.value = currentX + targetBeforeRebase * viewportWidth
+  resettingTrack.value = true
+  physicalPage.value = targetAfterRebase
+  if (rebaseFrame) cancelAnimationFrame(rebaseFrame)
+  rebaseFrame = requestAnimationFrame(() => {
+    resettingTrack.value = false
+    trackOffsetPx.value = 0
+    rebaseFrame = 0
   })
 }
 
@@ -237,17 +273,16 @@ function settleTrackTransition() {
 }
 
 function scheduleTrackSettleFallback() {
-  if (settleFrame) cancelAnimationFrame(settleFrame)
-  settleFrame = requestAnimationFrame(() => {
-    settleFrame = 0
-    if (!trackTransitionPending) return
-    const track = gridViewport.value?.querySelector<HTMLElement>('.shortcut-pages')
-    const duration = getComputedStyle(track ?? document.documentElement).transitionDuration.split(',')[0].trim()
-    const durationMs = duration.endsWith('ms')
-      ? Number.parseFloat(duration)
-      : Number.parseFloat(duration) * 1000
-    trackSettleTimer = window.setTimeout(settleTrackTransition, (Number.isFinite(durationMs) ? durationMs : 0) + 180)
-  })
+  if (!trackTransitionPending) return
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const configuredDuration = Math.max(0, props.transitionDuration)
+  const trackDuration = reducedMotion && props.transitionEffect === 'trails'
+    ? Math.min(configuredDuration, 1200)
+    : configuredDuration
+  const visualDuration = props.transitionEffect === 'trails'
+    ? (reducedMotion ? Math.min(1200, Math.max(420, configuredDuration)) : Math.max(260, configuredDuration))
+    : 0
+  trackSettleTimer = window.setTimeout(settleTrackTransition, Math.max(trackDuration, visualDuration) + 180)
 }
 
 function handleTrackTransitionEnd(event: TransitionEvent) {
@@ -258,6 +293,12 @@ function handleTrackTransitionEnd(event: TransitionEvent) {
 watch(() => props.currentPage, (pageIndex, previousPage) => {
   if (pageIndex === previousPage) return
   cancelTransitionTimers()
+  if (rebaseFrame) {
+    cancelAnimationFrame(rebaseFrame)
+    rebaseFrame = 0
+    resettingTrack.value = false
+    trackOffsetPx.value = 0
+  }
   trackTransitionPending = true
   resettingTrack.value = false
   const direction = props.transitionDirection < 0 ? -1 : 1
@@ -290,15 +331,19 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
     return
   }
   physicalPage.value += direction
+  rebaseTrackIfNeeded()
   scheduleTrackSettleFallback()
 })
 
 watch(() => [pages.value.length, props.transitionEffect] as const, () => {
   cancelTransitionTimers()
+  if (rebaseFrame) cancelAnimationFrame(rebaseFrame)
+  rebaseFrame = 0
   trackTransitionPending = false
   outgoingPage.value = undefined
   incomingPage.value = undefined
   resettingTrack.value = true
+  trackOffsetPx.value = 0
   physicalPage.value = props.transitionEffect === 'particles' ? props.currentPage : centeredPhysicalPage()
   requestAnimationFrame(() => { resettingTrack.value = false })
 }, { flush: 'post' })
@@ -474,6 +519,7 @@ onBeforeUnmount(() => {
   if (transitionTimer) window.clearTimeout(transitionTimer)
   if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
   if (resetFrame) cancelAnimationFrame(resetFrame)
+  if (rebaseFrame) cancelAnimationFrame(rebaseFrame)
   document.getElementById('shortcut-particle-canvas')?.remove()
   window.removeEventListener('click', closeContextMenu)
   window.removeEventListener('keydown', closeContextOnEscape)
@@ -504,7 +550,7 @@ onBeforeUnmount(() => {
           'particles-mode': transitionEffect === 'particles',
           'is-resetting': resettingTrack,
         }"
-        :style="{ transform: transitionEffect === 'particles' ? 'none' : `translate3d(-${physicalPage * 100}%, 0, 0)` }"
+        :style="{ transform: transitionEffect === 'particles' ? 'none' : `translate3d(calc(-${physicalPage * 100}% + ${trackOffsetPx}px), 0, 0)` }"
         @transitionend="handleTrackTransitionEnd"
       >
           <section
