@@ -1,6 +1,6 @@
-export const maxImageUploadBytes = 10 * 1024 * 1024
-export const maxImagePixels = 40_000_000
-export const maxWallpaperDataUrlLength = 2_000_000
+import { maxImagePixels, maxImageUploadBytes } from './imageLimits'
+
+export { maxImagePixels, maxImageUploadBytes, maxWallpaperDataUrlLength } from './imageLimits'
 
 export function fitImageDimensions(width: number, height: number, maxDimension: number) {
   if (![width, height, maxDimension].every(Number.isFinite) || width <= 0 || height <= 0 || maxDimension <= 0) {

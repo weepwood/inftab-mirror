@@ -9,7 +9,7 @@ import FolderDialog from './components/FolderDialog.vue'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent } from './composables/useStoredState'
 import { launcherItems } from './data/defaults'
-import { compressImageBlob, maxImageUploadBytes } from './data/images'
+import { maxImageUploadBytes } from './data/imageLimits'
 import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
 import { normalizeWebUrl } from './data/urls'
@@ -362,6 +362,7 @@ async function loadShortcutIconFile(event: Event) {
     return
   }
   try {
+    const { compressImageBlob } = await import('./data/images')
     shortcutIcon.value = await compressImageBlob(file, 192)
   } catch (error) {
     shortcutIconError.value = error instanceof Error ? error.message : '无法处理这张图片。'
@@ -391,6 +392,7 @@ async function saveShortcut() {
       if (!response.ok) throw new Error(`图标下载失败（HTTP ${response.status}）。`)
       const blob = await response.blob()
       if (blob.size > 10 * 1024 * 1024) throw new Error('图标图片不能超过 10 MB。')
+      const { compressImageBlob } = await import('./data/images')
       icon = await compressImageBlob(blob, 192)
     } catch (error) {
       shortcutIconError.value = error instanceof Error && !error.message.includes('Failed to fetch')

@@ -1,5 +1,5 @@
 import { defaultLauncherOrder, defaultPreferences, launcherItems, wallpaperChoices } from './defaults'
-import { maxWallpaperDataUrlLength } from './images'
+import { maxWallpaperDataUrlLength } from './imageLimits'
 import { isValidCalendarDate } from './countdown'
 import { isValidCustomSearchTemplate } from './search'
 import { normalizeWebUrl } from './urls'

@@ -518,6 +518,26 @@ describe('new-tab keyboard search', () => {
     expect(assignedShortcut?.text()).toContain('已在其他文件夹')
   })
 
+  it('loads image compression on demand when a shortcut icon is uploaded', async () => {
+    const bitmap = { width: 400, height: 200, close: vi.fn() }
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(bitmap))
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D)
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => callback(new Blob(['webp-icon'], { type: 'image/webp' })))
+    wrapper = mount(App, { attachTo: document.body })
+    await openLauncher('settings')
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+
+    const file = new File(['source-icon'], 'icon.png', { type: 'image/png' })
+    const input = wrapper.get('.shortcut-dialog input[accept="image/png,image/jpeg,image/webp,image/gif"]')
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [file] })
+    await input.trigger('change')
+    const iconField = wrapper.get('.shortcut-dialog input[placeholder="素材文件名、图片网址或 Base64"]')
+    await vi.waitFor(() => expect((iconField.element as HTMLInputElement).value).toMatch(/^data:image\/webp;base64,/))
+
+    expect(vi.mocked(createImageBitmap)).toHaveBeenCalledOnce()
+    expect(bitmap.close).toHaveBeenCalledOnce()
+  })
+
   it('keeps remote shortcut icons as image URLs in the extension build', async () => {
     vi.stubGlobal('location', { protocol: 'chrome-extension:' })
     const fetch = vi.spyOn(globalThis, 'fetch')

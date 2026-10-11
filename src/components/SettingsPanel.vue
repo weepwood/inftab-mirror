@@ -2,7 +2,8 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { launcherItems, searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
-import { compressImageBlob, maxImageUploadBytes, maxWallpaperDataUrlLength } from '../data/images'
+import { compressImageBlob } from '../data/images'
+import { maxImageUploadBytes, maxWallpaperDataUrlLength } from '../data/imageLimits'
 import { isValidCustomSearchTemplate } from '../data/search'
 import type { CustomSearchEngine, PageTransitionEffect, Preferences, SearchMode, ThemeMode, WallpaperRotation } from '../types'
 

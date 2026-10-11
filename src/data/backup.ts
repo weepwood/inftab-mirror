@@ -1,7 +1,7 @@
 import type { CountdownItem, CustomSearchEngine, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
 import { launcherItems } from './defaults'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
-import { maxWallpaperDataUrlLength } from './images'
+import { maxWallpaperDataUrlLength } from './imageLimits'
 
 export interface WorkspaceBackup {
   format: 'inftab-workspace'
