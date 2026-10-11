@@ -31,7 +31,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-The end-to-end suite covers shortcut creation and persistence, keyboard launcher search, panel open/close, settings persistence, and narrow-screen overflow. GitHub Actions runs both suites for pull requests and before publishing to Pages; browser reports and failure traces are retained as workflow artifacts.
+The end-to-end suite covers shortcut creation and persistence, keyboard launcher search, panel open/close, widget add/reorder/remove and persistence, settings persistence, and narrow-screen overflow. GitHub Actions runs both suites for pull requests and before publishing to Pages; browser reports and failure traces are retained as workflow artifacts.
 
 GitHub Pages 使用 `dist/` 作为发布目录。首次部署前，在仓库 **Settings → Pages → Build and deployment** 中将 Source 设为 **GitHub Actions**。之后推送到 `main` 会自动构建并发布；也可以在 Actions 页面手动运行工作流。`vite.config.ts` 使用相对资源路径，支持部署在仓库子路径下。
 
@@ -41,10 +41,10 @@ GitHub Pages 使用 `dist/` 作为发布目录。首次部署前，在仓库 **S
 
 ```text
 src/
-  components/       搜索栏、快捷入口、设置、书签、日历、待办、纪念日、笔记、天气面板
+  components/       搜索栏、快捷入口、设置、首页小组件、书签、日历、待办、纪念日、笔记、天气面板
   composables/      本地工作区状态和浏览器存储
   data/             默认快捷入口、日历日期计算、搜索引擎、书签 API、搜索地址和外观选项
-  plugins/          内置面板插件注册表、入口路由和面板数据适配器
+  plugins/          内置面板和首页小组件注册表、入口路由和数据适配器
   styles/           页面与响应式样式
   App.vue           页面状态和功能组合
   main.ts           应用入口
@@ -71,6 +71,7 @@ reference/
 - 首页内容会随宽度扩展到 1440px，并按窗口高度和当前入口数量自适应图标与行距，尽量让完整图标页、页码和底部信息同时可见
 - 本地待办（新增、编辑、完成、删除、清除已完成）、笔记和离线四则计算器（支持括号、键盘输入与按键操作）
 - 专注计时器支持 15、25、50 分钟专注时长；结束后按四轮节奏进入短休息或长休息，关闭面板和刷新页面后继续计时
+- 首页可固定待办概览和纪念日倒计时小组件；支持拖动排序、键盘上下调整和单独移除，点击标题可直接打开对应面板；小组件配置纳入备份，并按需加载
 - 可查看本地日期的月历，支持跨月导航、选择日期和一键返回今天；周一作为每周起始日
 - 纪念日与倒计时（添加、编辑、删除；支持一次性日期、每年重复和过期日期计时，并纳入数据备份）
 - 壁纸选择、浅色/深色/跟随系统主题、背景暗度、搜索栏显隐与宽高、搜索类型标签（默认隐藏）、图标大小/圆角、每页行列数、图标间距、搜索区与图标间距、翻页动画时长和悬停光晕强度均可在设置中调整
@@ -78,7 +79,7 @@ reference/
 - 可上传本地壁纸；图片会缩放并压缩为 WebP 后离线保存在本机，也可通过 JSON 备份迁移
 - 天气城市搜索、当前天气和未来三日预报；城市由用户手动选择，不请求设备定位
 - 天气、书签、设置、笔记、待办和纪念日面板按需加载，减少打开新标签页时的首屏 JavaScript 工作
-- JSON 数据备份与迁移：导入前预览，可选择按 ID 合并或替换
+- JSON 数据备份与迁移：导入前预览，可选择按 ID 合并或替换；首页小组件和排序随页面设置一并迁移
 - 个人设置、快捷入口、待办、笔记和天气城市保存在当前浏览器的 `localStorage`
 
 ## 当前边界
@@ -89,4 +90,4 @@ reference/
 
 新功能优先放在 `src/components/`、`src/data/` 或新的功能模块中，不直接修改 `reference/legacy-mirror/` 内的压缩构建文件。
 
-内置工具面板通过 `src/plugins/registry.ts` 注册组件、标题、快捷入口路由、属性和事件适配器。添加面板时应在注册表中声明，并增加覆盖入口路由和交互的测试。注册表目前只加载仓库内受信任的模块，不执行远程插件代码；计算器示例也展示了如何在不增加首屏负担的情况下按需接入面板。
+内置工具面板通过 `src/plugins/registry.ts` 注册组件、标题、快捷入口路由、属性和事件适配器；首页小组件通过 `src/plugins/widgetRegistry.ts` 注册视图、上下文数据和关联面板。添加功能时应在对应注册表声明，并增加数据校验、备份兼容及用户交互测试。注册表目前只加载仓库内受信任的模块，不执行远程插件代码；面板与小组件都按需加载，避免增加首屏工作。

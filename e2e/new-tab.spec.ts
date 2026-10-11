@@ -57,8 +57,10 @@ test('settings persist and the main view fits a narrow viewport', async ({ page 
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const showClock = page.getByLabel('显示时间和日期')
   await showClock.uncheck()
+  await page.getByLabel('显示待办概览').check()
   await page.getByRole('button', { name: '关闭' }).click()
   await expect(page.getByText(/\d{2}:\d{2}/)).toHaveCount(0)
+  await expect(page.getByRole('region', { name: '首页小组件' })).toBeVisible()
 
   await page.setViewportSize({ width: 390, height: 844 })
   const dimensions = await page.evaluate(() => ({
@@ -69,4 +71,40 @@ test('settings persist and the main view fits a narrow viewport', async ({ page 
 
   await page.reload()
   await expect(page.getByText(/\d{2}:\d{2}/)).toHaveCount(0)
+  await expect(page.getByRole('region', { name: '首页小组件' })).toBeVisible()
+})
+
+test('home widgets open their panel, reorder, and can be removed', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByLabel('显示待办概览').check()
+  await page.getByLabel('显示倒计时').check()
+  await page.getByRole('button', { name: '关闭' }).click()
+
+  const widgetTitles = page.locator('.home-widget-title')
+  await expect(widgetTitles).toHaveText(['待办概览', '倒计时'])
+  await page.getByRole('button', { name: '将待办概览下移' }).click()
+  await expect(widgetTitles).toHaveText(['倒计时', '待办概览'])
+  await expect(page.locator('.home-widget-shelf [role="status"]')).toHaveText('待办概览已移到第2个位置。')
+  await page.locator('[data-widget-id="todo-summary"] .home-widget-header')
+    .dragTo(page.locator('[data-widget-id="countdown-summary"]'))
+  await expect(widgetTitles).toHaveText(['待办概览', '倒计时'])
+  await expect(page.locator('.home-widget-shelf [role="status"]')).toHaveText('待办概览已移到第1个位置。')
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').homeWidgetIds))
+    .toEqual(['todo-summary', 'countdown-summary'])
+
+  await page.reload()
+  await expect(widgetTitles).toHaveText(['待办概览', '倒计时'])
+  const activePageBeforeWidgetScroll = await page.locator('.page-dot[aria-current="page"]').getAttribute('aria-label')
+  const widgetScrollPrevented = await page.locator('.home-widget-shelf').evaluate((element) => {
+    const event = new WheelEvent('wheel', { deltaX: 80, bubbles: true, cancelable: true })
+    element.dispatchEvent(event)
+    return event.defaultPrevented
+  })
+  expect(widgetScrollPrevented).toBe(false)
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', activePageBeforeWidgetScroll ?? '')
+  await page.getByRole('button', { name: '打开倒计时' }).click()
+  await expect(page.getByRole('dialog', { name: '纪念日与倒计时' })).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: '关闭' }).click()
+  await page.getByRole('button', { name: '移除倒计时' }).click()
+  await expect(page.locator('.home-widget-card')).toHaveCount(1)
 })

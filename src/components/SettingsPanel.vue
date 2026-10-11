@@ -5,7 +5,8 @@ import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
 import { compressImageBlob } from '../data/images'
 import { maxImageUploadBytes, maxWallpaperDataUrlLength } from '../data/imageLimits'
 import { isValidCustomSearchTemplate } from '../data/search'
-import type { CustomSearchEngine, PageTransitionEffect, Preferences, SearchMode, ThemeMode, WallpaperRotation } from '../types'
+import { availableHomeWidgetIds, type CustomSearchEngine, type HomeWidgetId, type PageTransitionEffect, type Preferences, type SearchMode, type ThemeMode, type WallpaperRotation } from '../types'
+import { homeWidgetPlugins } from '../plugins/widgetRegistry'
 
 const props = withDefaults(defineProps<{ preferences: Preferences; exportError?: string; customEngines?: CustomSearchEngine[] }>(), { customEngines: () => [] })
 const transitionEffects: { id: PageTransitionEffect; label: string }[] = [
@@ -65,6 +66,12 @@ function toggleLauncher(id: string, enabled: boolean) {
   if (enabled) hidden.delete(id)
   else hidden.add(id)
   update('hiddenLauncherIds', [...hidden])
+}
+
+function toggleHomeWidget(id: HomeWidgetId, enabled: boolean) {
+  const widgets = props.preferences.homeWidgetIds.filter((widgetId) => widgetId !== id)
+  if (enabled) widgets.push(id)
+  update('homeWidgetIds', widgets)
 }
 
 function setTransitionEffect(effect: PageTransitionEffect) {
@@ -252,6 +259,11 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
 
     <section class="settings-section">
       <div class="section-heading"><div><h3>快捷入口</h3><p>调整图标网格外观</p></div></div>
+      <p class="settings-subheading">首页小组件</p>
+      <label v-for="id in availableHomeWidgetIds" :key="id" class="toggle-row">
+        <span>显示{{ homeWidgetPlugins[id].title }}</span><input type="checkbox" :checked="preferences.homeWidgetIds.includes(id)" @change="toggleHomeWidget(id, ($event.target as HTMLInputElement).checked)" />
+      </label>
+      <p class="wallpaper-note">小组件会保存在本机设置中，可在首页拖动排序，也可用上下按钮调整。</p>
       <p class="settings-subheading">内置面板</p>
       <label v-for="item in manageableLauncherItems" :key="item.id" class="toggle-row">
         <span>显示{{ item.title }}</span><input type="checkbox" :checked="!preferences.hiddenLauncherIds.includes(item.id)" @change="toggleLauncher(item.id, ($event.target as HTMLInputElement).checked)" />

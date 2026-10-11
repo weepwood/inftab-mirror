@@ -17,6 +17,7 @@ export const launcherPanelRoutes = {
 } as const
 
 export type LauncherPanelAction = keyof typeof launcherPanelRoutes
+export type PanelId = 'bookmarks' | 'history' | 'calculator' | 'calendar' | 'settings' | 'todos' | 'focus-timer' | 'notes' | 'countdowns' | 'weather'
 
 export const shortcutPanelRoutes: Readonly<Record<string, PanelId>> = {
   wallpapers: 'settings',
@@ -183,6 +184,4 @@ export const panelPlugins = {
     props: (context) => ({ city: context.weatherCity }),
     listeners: (context) => ({ 'update:city': context.updateWeatherCity }),
   },
-} satisfies Record<string, PanelPlugin>
-
-export type PanelId = keyof typeof panelPlugins
+} satisfies Record<PanelId, PanelPlugin>

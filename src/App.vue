@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { ArrowLeft, House, Menu, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
@@ -14,9 +14,11 @@ import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
 import { normalizeWebUrl } from './data/urls'
 import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelId, type PanelPluginContext } from './plugins/registry'
-import type { LauncherItem, Shortcut, ShortcutFolder } from './types'
+import type { HomeWidgetId, LauncherItem, Shortcut, ShortcutFolder } from './types'
 
 type Panel = PanelId | null
+
+const HomeWidgetShelf = defineAsyncComponent(() => import('./components/HomeWidgetShelf.vue'))
 
 const baseUrl = import.meta.env.BASE_URL
 const {
@@ -175,6 +177,8 @@ const activePanelPlugin = computed(() => activePanel.value ? panelPlugins[active
 const activePanelComponent = computed<Component | undefined>(() => activePanelPlugin.value?.component)
 const activePanelProps = computed<Record<string, unknown>>(() => activePanelPlugin.value?.props(panelContext.value) ?? {})
 const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanelPlugin.value?.listeners(panelContext.value) ?? {})
+const homeWidgetContext = computed(() => ({ todos: todos.value, countdowns: countdowns.value }))
+const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0 && viewport.value.height > 560)
 const compactRows = computed(() => Math.min(preferences.value.rows, Math.max(1, Math.ceil(allLauncherItems.value.length / preferences.value.columns))))
 const fitMetrics = computed(() => {
   const { width, height } = viewport.value
@@ -192,7 +196,8 @@ const fitMetrics = computed(() => {
   const paginationHeight = pageCount.value > 1 ? (veryShortHeight ? 31 : compactHeight ? 37 : mobile ? 43 : 48) : 0
   const nameHeight = preferences.value.showNames ? (smallMobile ? 13 : 17) + 7 : 0
   const footerClearance = veryShortHeight ? 24 : 38
-  const available = height - topPadding - tabHeight - searchHeight - gridTopGap - paginationHeight - footerClearance - rows * nameHeight
+  const widgetClearance = showHomeWidgets.value ? 156 : 0
+  const available = height - topPadding - widgetClearance - tabHeight - searchHeight - gridTopGap - paginationHeight - footerClearance - rows * nameHeight
   const requestedGap = Math.min(preferences.value.gridGapY, smallMobile ? 20 : mobile ? 24 : preferences.value.gridGapY)
   const fittedGap = rows > 1 ? Math.min(requestedGap, Math.max(4, (available - rows * 32) / (rows - 1))) : requestedGap
   const fittedIcon = Math.max(28, Math.min(preferences.value.iconSize, (available - (rows - 1) * fittedGap) / rows))
@@ -432,7 +437,7 @@ function goToPage(page: number) {
 }
 
 function startHomeSwipe(event: PointerEvent) {
-  if (event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell'))) return
+  if (event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf'))) return
   homeTouchStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
 }
 
@@ -445,7 +450,8 @@ function finishHomeSwipe(event: PointerEvent) {
 }
 
 function handleHomeWheel(event: WheelEvent) {
-  if (activePanel.value || shortcutDialog.value || homeWheelLocked) return
+  if (activePanel.value || shortcutDialog.value || homeWheelLocked
+    || (event.target instanceof Element && event.target.closest('.home-widget-shelf'))) return
   const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY)
   const delta = horizontal ? event.deltaX : event.deltaY
   if (Math.abs(delta) <= 24) return
@@ -468,6 +474,18 @@ function moveLauncherItemByKeyboard(itemId: string, direction: -1 | 1) {
   if (item === undefined) return
   nextOrder.splice(nextIndex, 0, item)
   setVisibleLauncherOrder(nextOrder)
+}
+
+function removeHomeWidget(id: HomeWidgetId) {
+  updatePreferences({ homeWidgetIds: preferences.value.homeWidgetIds.filter((widgetId) => widgetId !== id) })
+}
+
+function reorderHomeWidgets(from: number, to: number) {
+  const next = [...preferences.value.homeWidgetIds]
+  const [widgetId] = next.splice(from, 1)
+  if (!widgetId || to < 0 || to >= next.length + 1) return
+  next.splice(to, 0, widgetId)
+  updatePreferences({ homeWidgetIds: next })
 }
 
 function downloadBackup() {
@@ -610,6 +628,14 @@ onBeforeUnmount(() => {
 
     <ClockWidget v-if="preferences.showClock" />
     <section id="main-content" class="home-content" tabindex="-1">
+      <HomeWidgetShelf
+        v-if="showHomeWidgets"
+        :widget-ids="preferences.homeWidgetIds"
+        :context="homeWidgetContext"
+        @open="activePanel = $event"
+        @remove="removeHomeWidget"
+        @reorder="reorderHomeWidgets"
+      />
       <SearchBar
         ref="searchBar"
         v-if="preferences.showSearchBar"

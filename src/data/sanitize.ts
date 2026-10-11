@@ -3,7 +3,7 @@ import { maxWallpaperDataUrlLength } from './imageLimits'
 import { isValidCalendarDate } from './countdown'
 import { isValidCustomSearchTemplate } from './search'
 import { normalizeWebUrl } from './urls'
-import type { CountdownItem, CustomSearchEngine, Note, Preferences, SearchMode, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import { availableHomeWidgetIds, type CountdownItem, type CustomSearchEngine, type HomeWidgetId, type Note, type Preferences, type SearchMode, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
 
 const engines = new Set(['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yahoo', '360'])
 const searchModes = new Set<SearchMode>(['html', 'photos', 'news', 'videos', 'map'])
@@ -30,6 +30,9 @@ export function sanitizePreferences(value: unknown): Preferences {
   const hiddenLauncherIds = Array.isArray(raw.hiddenLauncherIds)
     ? [...new Set(raw.hiddenLauncherIds.filter((item): item is string => typeof item === 'string' && manageableLauncherIds.has(item)))]
     : [...defaultPreferences.hiddenLauncherIds]
+  const homeWidgetIds = Array.isArray(raw.homeWidgetIds)
+    ? [...new Set(raw.homeWidgetIds.filter((item): item is HomeWidgetId => typeof item === 'string' && availableHomeWidgetIds.includes(item as HomeWidgetId)))]
+    : [...defaultPreferences.homeWidgetIds]
   const visibleSearchModes = Array.isArray(raw.visibleSearchModes)
     ? [...new Set(raw.visibleSearchModes.filter((item): item is SearchMode => typeof item === 'string' && searchModes.has(item as SearchMode))) ]
     : [...defaultPreferences.visibleSearchModes]
@@ -49,6 +52,7 @@ export function sanitizePreferences(value: unknown): Preferences {
       ? merged.themeMode
       : defaultPreferences.themeMode,
     hiddenLauncherIds,
+    homeWidgetIds,
     engine: typeof merged.engine === 'string' && (engines.has(merged.engine) || /^custom:[\w-]{1,128}$/.test(merged.engine))
       ? merged.engine as Preferences['engine']
       : defaultPreferences.engine,

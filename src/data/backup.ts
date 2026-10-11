@@ -1,4 +1,4 @@
-import type { CountdownItem, CustomSearchEngine, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import { availableHomeWidgetIds, type CountdownItem, type CustomSearchEngine, type Note, type Preferences, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
 import { launcherItems } from './defaults'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
 import { maxWallpaperDataUrlLength } from './imageLimits'
@@ -70,6 +70,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     wallpaperRotation: (item) => ['off', 'hourly', 'daily'].includes(String(item)),
     wallpaperRotationLastAt: (item) => typeof item === 'number' && Number.isFinite(item) && item >= 0,
     hiddenLauncherIds: (item) => Array.isArray(item) && item.every((id) => typeof id === 'string' && launcherItems.some((launcher) => launcher.id === id && launcher.action && launcher.id !== 'settings')),
+    homeWidgetIds: (item) => Array.isArray(item) && item.every((id) => typeof id === 'string' && availableHomeWidgetIds.includes(id as typeof availableHomeWidgetIds[number])),
     visibleSearchModes: (item) => Array.isArray(item) && item.every((mode) => ['html', 'photos', 'news', 'videos', 'map'].includes(String(mode))),
     showSearchBar: (item) => typeof item === 'boolean',
     showClock: (item) => typeof item === 'boolean',

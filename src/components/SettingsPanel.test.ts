@@ -37,6 +37,24 @@ describe('SettingsPanel built-in launcher visibility', () => {
   })
 })
 
+describe('SettingsPanel home widgets', () => {
+  it('adds and removes registered widgets without disturbing their order', async () => {
+    wrapper = mount(SettingsPanel, {
+      props: { preferences: { ...defaultPreferences, homeWidgetIds: ['countdown-summary'] } },
+    })
+    const todoLabel = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('显示待办概览'))!
+    await todoLabel.get('input').setValue(true)
+    expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({ homeWidgetIds: ['countdown-summary', 'todo-summary'] })
+    await wrapper.setProps({
+      preferences: { ...defaultPreferences, homeWidgetIds: ['countdown-summary', 'todo-summary'] },
+    })
+
+    const countdownLabel = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('显示倒计时'))!
+    await countdownLabel.get('input').setValue(false)
+    expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({ homeWidgetIds: ['todo-summary'] })
+  })
+})
+
 describe('SettingsPanel local wallpaper upload', () => {
   it('compresses a selected image and emits it as an offline wallpaper', async () => {
     const bitmap = { width: 4000, height: 2000, close: vi.fn() }

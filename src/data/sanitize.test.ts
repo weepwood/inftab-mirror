@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultPreferences } from './defaults'
 import {
   sanitizeActiveNoteId,
@@ -11,6 +11,8 @@ import {
   sanitizeShortcuts,
   sanitizeTodos,
 } from './sanitize'
+
+afterEach(() => vi.restoreAllMocks())
 
 describe('local state sanitization', () => {
   it('clamps numeric preferences and restores unknown choices to defaults', () => {
@@ -40,6 +42,12 @@ describe('local state sanitization', () => {
   it('keeps only unique hideable built-in launcher ids', () => {
     expect(sanitizePreferences({ hiddenLauncherIds: ['weather', 'weather', 'settings', 'custom', 7] }).hiddenLauncherIds).toEqual(['weather'])
     expect(sanitizePreferences({}).hiddenLauncherIds).toEqual([])
+  })
+
+  it('keeps enabled home widgets unique and limited to registered ids', () => {
+    expect(sanitizePreferences({ homeWidgetIds: ['todo-summary', 'todo-summary', 'unknown', 3, 'countdown-summary'] }).homeWidgetIds)
+      .toEqual(['todo-summary', 'countdown-summary'])
+    expect(sanitizePreferences({}).homeWidgetIds).toEqual([])
   })
 
   it('drops unsafe shortcuts, duplicate ids, and malformed records', () => {
@@ -105,7 +113,8 @@ describe('local state sanitization', () => {
   })
 
   it('normalizes wallpaper rotation settings and clamps future schedule timestamps', () => {
-    const now = Date.now()
+    const now = 1_800_000_000_000
+    vi.spyOn(Date, 'now').mockReturnValue(now)
     const preferences = sanitizePreferences({ wallpaperRotation: 'daily', wallpaperRotationLastAt: now + 60_000 })
 
     expect(preferences.wallpaperRotation).toBe('daily')

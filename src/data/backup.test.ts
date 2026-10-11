@@ -59,10 +59,20 @@ describe('workspace backups', () => {
   })
 
   it('keeps older backups compatible with the new clock preference', () => {
-    const preferences = { ...defaultPreferences, showClock: undefined, themeMode: undefined }
+    const preferences = { ...defaultPreferences, showClock: undefined, themeMode: undefined, homeWidgetIds: undefined }
 
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.showClock).toBe(true)
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.themeMode).toBe('light')
+    expect(parseWorkspaceBackup(backup({ preferences })).preferences.homeWidgetIds).toEqual([])
+  })
+
+  it('backs up valid home widgets and rejects unknown widget ids', () => {
+    expect(parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, homeWidgetIds: ['todo-summary', 'countdown-summary'] },
+    })).preferences.homeWidgetIds).toEqual(['todo-summary', 'countdown-summary'])
+    expect(() => parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, homeWidgetIds: ['remote-code'] },
+    }))).toThrow(/页面设置无法识别/)
   })
 
   it('preserves hidden panels and rejects unknown hidden launcher ids', () => {
