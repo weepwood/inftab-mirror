@@ -358,9 +358,18 @@ function downloadBackup() {
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
-    activePanel.value = null
-    shortcutDialog.value = false
-    closeFolderDialog()
+    if (shortcutDialog.value) {
+      shortcutDialog.value = false
+      return
+    }
+    if (folderDialogOpen.value) {
+      closeFolderDialog()
+      return
+    }
+    if (activePanel.value) {
+      activePanel.value = null
+      return
+    }
   }
   const target = event.target instanceof HTMLElement ? event.target : null
   const editingText = target?.matches('input, textarea, [contenteditable="true"]') ?? false

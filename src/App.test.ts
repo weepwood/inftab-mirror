@@ -48,6 +48,18 @@ describe('new-tab keyboard search', () => {
     expect(document.activeElement).toBe(input)
   })
 
+  it('closes only the top shortcut dialog before its settings panel', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await nextTick()
+
+    expect(wrapper.find('.shortcut-dialog').exists()).toBe(false)
+    expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('设置')
+  })
+
   it('rejects unsafe shortcut URLs and restores a valid shortcut after remount', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
