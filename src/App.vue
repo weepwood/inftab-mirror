@@ -10,6 +10,7 @@ import TodoPanel from './components/TodoPanel.vue'
 import NotesPanel from './components/NotesPanel.vue'
 import WeatherPanel from './components/WeatherPanel.vue'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
+import { storageWriteErrorEvent } from './composables/useStoredState'
 import { launcherItems } from './data/defaults'
 import { buildSearchUrl } from './data/search'
 import { normalizeWebUrl } from './data/urls'
@@ -51,6 +52,7 @@ const currentPage = ref(0)
 const pageDirection = ref(1)
 const activePanel = ref<Panel>(null)
 const backupExportError = ref('')
+const storageError = ref('')
 const searchBar = ref<{ focusSearch: () => void }>()
 const folderDialogOpen = ref(false)
 const activeFolder = ref<ShortcutFolder>()
@@ -377,13 +379,19 @@ function updateViewport() {
   viewport.value = { width: window.innerWidth, height: window.innerHeight }
 }
 
+function handleStorageWriteError() {
+  storageError.value = '本地数据未能保存。请检查浏览器存储空间，并先导出备份。'
+}
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('resize', updateViewport)
+  window.addEventListener(storageWriteErrorEvent, handleStorageWriteError)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', updateViewport)
+  window.removeEventListener(storageWriteErrorEvent, handleStorageWriteError)
 })
 </script>
 
@@ -431,6 +439,10 @@ onBeforeUnmount(() => {
     </section>
 
     <img class="windmill" :src="`${baseUrl}windmill.svg`" alt="" />
+    <div v-if="storageError" class="storage-error-toast" role="alert">
+      <span>{{ storageError }}</span>
+      <button type="button" aria-label="关闭保存提示" @click="storageError = ''"><X :size="15" /></button>
+    </div>
     <footer class="home-footer">渝ICP备15002199号-1</footer>
 
     <div v-if="activePanel" class="panel-backdrop" @click.self="activePanel = null">

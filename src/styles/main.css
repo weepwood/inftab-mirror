@@ -120,6 +120,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .page-arrow.next svg { transform: rotate(180deg); }
 .windmill { position: absolute; z-index: 1; right: 19px; bottom: 23px; width: 43px; height: 43px; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .18)); }
 .home-footer { position: absolute; z-index: 1; right: 0; bottom: 14px; left: 0; color: rgba(255, 255, 255, .48); font-size: 11px; text-align: center; text-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+.storage-error-toast { position: absolute; z-index: 5; right: 50%; bottom: 46px; display: flex; align-items: center; gap: 14px; max-width: min(560px, calc(100vw - 32px)); padding: 10px 12px 10px 15px; transform: translateX(50%); border: 1px solid rgba(255, 255, 255, .36); border-radius: 10px; background: rgba(43, 47, 52, .92); color: #fff; box-shadow: 0 8px 24px rgba(0, 0, 0, .24); font-size: 12px; line-height: 1.45; }
+.storage-error-toast button { width: 25px; height: 25px; display: grid; flex: 0 0 auto; place-items: center; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.storage-error-toast button:hover { background: rgba(255, 255, 255, .16); }
 
 .panel-backdrop, .modal-backdrop { position: fixed; inset: 0; z-index: 10; display: flex; justify-content: flex-end; background: rgba(0, 0, 0, .36); backdrop-filter: blur(3px); animation: fade-in .15s ease-out; }
 .side-panel { width: min(410px, 100vw); height: 100%; display: flex; flex-direction: column; overflow-y: auto; background: #fbfbfc; color: #22252a; box-shadow: -16px 0 48px rgba(0, 0, 0, .2); animation: slide-in .2s ease-out; }

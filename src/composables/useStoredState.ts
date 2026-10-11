@@ -1,6 +1,8 @@
 import { getCurrentScope, onScopeDispose, ref, watch, type Ref } from 'vue'
 import { sanitizeStoredValue } from '../data/sanitize'
 
+export const storageWriteErrorEvent = 'inftab:storage-write-error'
+
 export function useStoredState<T>(key: string, fallback: T, normalize: (value: unknown) => T = (value) => sanitizeStoredValue(value, fallback)): Ref<T> {
   let initial = structuredClone(fallback)
   try {
@@ -13,12 +15,13 @@ export function useStoredState<T>(key: string, fallback: T, normalize: (value: u
   }
 
   const value = ref(initial) as Ref<T>
+  const targetWindow = typeof window === 'undefined' ? undefined : window
   let persistTimer: ReturnType<typeof setTimeout> | undefined
   function writeValue(next: T) {
     try {
       localStorage.setItem(key, JSON.stringify(next))
     } catch {
-      // The page remains usable if browser storage is full or unavailable.
+      targetWindow?.dispatchEvent(new CustomEvent(storageWriteErrorEvent, { detail: { key } }))
     }
   }
   function flushPendingWrite() {
@@ -44,7 +47,6 @@ export function useStoredState<T>(key: string, fallback: T, normalize: (value: u
       value.value = structuredClone(fallback)
     }
   }
-  const targetWindow = typeof window === 'undefined' ? undefined : window
   targetWindow?.addEventListener('storage', handleStorage)
   targetWindow?.addEventListener('pagehide', flushPendingWrite)
   if (targetWindow && getCurrentScope()) onScopeDispose(() => {

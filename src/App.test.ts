@@ -229,4 +229,23 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('textarea[aria-label=\"笔记内容\"]').element).toHaveProperty('value', 'Saved text')
     expect(wrapper.findAll('.note-list-item')).toHaveLength(1)
   })
+
+  it('shows a recoverable warning when browser storage rejects a save', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    const originalSetItem = Storage.prototype.setItem
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+      if (key === 'inftab.preferences.v1') throw new DOMException('Storage quota exceeded', 'QuotaExceededError')
+      return originalSetItem.call(this, key, value)
+    })
+
+    await wrapper.get('.shortcut-open[aria-label=\"打开settings\"]').trigger('click')
+    const clockToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().includes('显示时间和日期'))!
+    await clockToggle.get('input').setValue(false)
+    await flushLocalStorageWrites()
+
+    expect(setItem).toHaveBeenCalled()
+    expect(wrapper.get('.storage-error-toast').text()).toContain('本地数据未能保存')
+    await wrapper.get('.storage-error-toast button').trigger('click')
+    expect(wrapper.find('.storage-error-toast').exists()).toBe(false)
+  })
 })
