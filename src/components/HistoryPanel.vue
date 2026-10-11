@@ -86,6 +86,11 @@ async function enableHistory() {
   }
 }
 
+function retry() {
+  if (permissionGranted.value) void refreshHistory()
+  else void syncPermission()
+}
+
 watch(query, () => {
   if (refreshTimer) clearTimeout(refreshTimer)
   refreshTimer = setTimeout(() => {
@@ -141,7 +146,7 @@ onBeforeUnmount(() => {
       </button>
     </div>
     <div v-else-if="loading && !entries.length" class="empty-state"><p>正在读取浏览历史…</p></div>
-    <p v-if="error" class="backup-error" role="alert">{{ error }}</p>
+    <p v-if="error" class="backup-error" role="alert">{{ error }} <button class="history-retry" type="button" @click="retry">重试</button></p>
     <div v-if="permissionGranted && !loading && !entries.length && !error" class="empty-state">
       <Clock3 :size="27" />
       <p>{{ query ? '没有匹配的浏览记录' : '浏览器中还没有可显示的记录' }}</p>

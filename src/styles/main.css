@@ -177,6 +177,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .history-permission > svg { color: #6885ac; }
 .history-permission p { margin: 0; color: #454d56; font-size: 15px; font-weight: 600; }
 .history-permission small { max-width: 290px; font-size: 12px; line-height: 1.6; }
+.history-retry { margin-left: 4px; border: 0; padding: 0; background: transparent; color: #5075bd; font: inherit; text-decoration: underline; cursor: pointer; }
 .browser-history-list { display: grid; align-content: start; gap: 3px; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
 .browser-history-list li { min-width: 0; }
 .browser-history-list a { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 7px 9px; border-radius: 8px; color: #3f4852; text-decoration: none; }
@@ -589,6 +590,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .theme-dark .browser-bookmark-link:hover { background: #2a303a; }
 .theme-dark .history-search > span { border-color: #3a414d; background: #252a34; color: #9ca6b4; }
 .theme-dark .history-search > span input { color: #dce2e9; }
+.theme-dark .history-retry { color: #9fc0ff; }
 .theme-dark .browser-history-list a:hover { background: #2a303a; }
 .theme-dark .history-entry-copy small,
 .theme-dark .browser-history-list time { color: #9ca6b4; }

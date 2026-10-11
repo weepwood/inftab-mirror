@@ -77,4 +77,24 @@ describe('browser history panel', () => {
     expect(historyApi.searchBrowserHistory).not.toHaveBeenCalled()
     wrapper.unmount()
   })
+
+  it('retries a failed history read without reopening the panel', async () => {
+    historyApi.hasBrowserHistoryPermission.mockResolvedValue(true)
+    historyApi.searchBrowserHistory
+      .mockRejectedValueOnce(new Error('temporary failure'))
+      .mockResolvedValueOnce([
+        { id: 'retried', title: 'Recovered page', url: 'https://example.com/recovered', lastVisitTime: 1_700_000_000_000, visitCount: 1 },
+      ])
+    const wrapper = mount(HistoryPanel)
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('请检查权限后重试')
+
+    await wrapper.get('.history-retry').trigger('click')
+    await flushPromises()
+
+    expect(historyApi.searchBrowserHistory).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('Recovered page')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
 })
