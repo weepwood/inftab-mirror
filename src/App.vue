@@ -201,6 +201,10 @@ function openFolderShortcut(shortcut: Shortcut) {
   window.open(shortcut.url, '_blank', 'noopener,noreferrer')
 }
 
+function openFolderShortcuts(items: Shortcut[]) {
+  for (const shortcut of items) window.open(shortcut.url, '_blank', 'noopener,noreferrer')
+}
+
 function openShortcutDialog(item?: LauncherItem) {
   editingId.value = item?.shortcut?.id ?? ''
   shortcutTitle.value = item?.shortcut?.title ?? ''
@@ -483,6 +487,7 @@ onBeforeUnmount(() => {
       @save="saveFolder"
       @remove="removeFolderData($event); closeFolderDialog()"
       @open-shortcut="openFolderShortcut"
+      @open-all-shortcuts="openFolderShortcuts"
     />
 
     <div v-if="shortcutDialog" class="modal-backdrop" @click.self="shortcutDialog = false">

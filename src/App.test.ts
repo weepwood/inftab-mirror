@@ -122,13 +122,15 @@ describe('new-tab keyboard search', () => {
     await columns!.get('input').setValue('12')
     await wrapper.get('.folder-add-button').trigger('click')
     await wrapper.get('.folder-dialog input[placeholder="例如：工作"]').setValue('工作')
-    await wrapper.get('.folder-choice input[type="checkbox"]').setValue(true)
+    const folderChoices = wrapper.findAll('.folder-choice input[type="checkbox"]')
+    await folderChoices[0]!.setValue(true)
+    await folderChoices[1]!.setValue(true)
     await wrapper.get('.folder-dialog button.button-primary').trigger('click')
     await flushLocalStorageWrites()
 
     const folders = JSON.parse(localStorage.getItem('inftab.folders.v1') ?? '[]')
     expect(folders).toHaveLength(1)
-    expect(folders[0].shortcutIds).toContain('jd')
+    expect(folders[0].shortcutIds).toEqual(['jd', 'tmall'])
     expect(JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]')).toContain(folders[0].id)
     expect(JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]')).not.toContain('jd')
 
@@ -138,6 +140,10 @@ describe('new-tab keyboard search', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     await wrapper.get('.folder-link').trigger('click')
     expect(open).toHaveBeenCalledWith('https://www.jd.com/', '_blank', 'noopener,noreferrer')
+    await wrapper.get('.folder-toolbar button').trigger('click')
+    expect(open).toHaveBeenCalledTimes(3)
+    expect(open).toHaveBeenNthCalledWith(2, 'https://www.jd.com/', '_blank', 'noopener,noreferrer')
+    expect(open).toHaveBeenNthCalledWith(3, 'https://www.tmall.com/', '_blank', 'noopener,noreferrer')
     const folderId = folders[0].id
     await wrapper.get('.folder-dialog .danger-action').trigger('click')
     await flushLocalStorageWrites()
@@ -158,7 +164,7 @@ describe('new-tab keyboard search', () => {
     await flushLocalStorageWrites()
     await wrapper.get('.panel-close').trigger('click')
     await wrapper.get('.shortcut-open[aria-label="打开工作"]').trigger('click')
-    await wrapper.get('.folder-dialog button.button-secondary:not(.danger-action)').trigger('click')
+    await wrapper.get('.folder-dialog footer button.button-secondary:not(.danger-action)').trigger('click')
 
     await wrapper.get('.folder-dialog input[placeholder="例如：工作"]').setValue('未保存的名称')
     await wrapper.get('.folder-choice input[type="checkbox"]').setValue(false)

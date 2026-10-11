@@ -56,4 +56,20 @@ describe('FolderDialog accessibility', () => {
 
     expect(document.activeElement).toBe(wrapper.get('input[placeholder="例如：工作"]').element)
   })
+
+  it('opens all contained shortcuts in their saved order', async () => {
+    const first = { id: 'first', title: 'First', url: 'https://first.example/', color: '#369', mark: 'F' }
+    const second = { id: 'second', title: 'Second', url: 'https://second.example/', color: '#936', mark: 'S' }
+    wrapper = mount(FolderDialog, {
+      props: {
+        folder: { id: 'work', title: 'Work', shortcutIds: ['second', 'first'], color: '#369', mark: 'W' },
+        shortcuts: [first, second],
+      },
+    })
+
+    await wrapper.get('.folder-toolbar button').trigger('click')
+
+    expect(wrapper.emitted('openAllShortcuts')).toEqual([[[second, first]]])
+    expect(wrapper.findAll('.folder-link')).toHaveLength(2)
+  })
 })

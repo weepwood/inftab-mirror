@@ -338,6 +338,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .folder-dialog-heading p { margin: 4px 0 0; color: #91959b; font-size: 12px; }
 .folder-selection-label { margin: 10px 0 6px; color: #5d646c; font-size: 12px; }
 .folder-choice-list, .folder-link-list { min-height: 0; overflow: auto; border: 1px solid #e6e9ee; border-radius: 10px; }
+.folder-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -4px 0 12px; color: #858b94; font-size: 11px; }
+.folder-toolbar button { flex: 0 0 auto; }
 .folder-choice { display: flex !important; align-items: center; gap: 10px; min-height: 43px; margin: 0 !important; padding: 5px 10px; color: #41474e !important; cursor: pointer; }
 .folder-choice.unavailable { color: #9299a1 !important; cursor: not-allowed; }
 .folder-choice.unavailable small { display: block; margin-top: 2px; color: #9aa0a7; font-size: 10px; }

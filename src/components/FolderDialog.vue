@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { FolderOpen, Pencil, Trash2, X } from '@lucide/vue'
 import type { Shortcut, ShortcutFolder } from '../types'
 
@@ -9,6 +9,7 @@ const emit = defineEmits<{
   save: [folder: ShortcutFolder]
   remove: [id: string]
   openShortcut: [shortcut: Shortcut]
+  openAllShortcuts: [shortcuts: Shortcut[]]
 }>()
 
 const editing = ref(!props.folder)
@@ -18,6 +19,11 @@ const selectedIds = ref([...(props.folder?.shortcutIds ?? [])])
 const error = ref('')
 const dialog = ref<HTMLElement>()
 const titleInput = ref<HTMLInputElement>()
+const shortcutById = computed(() => new Map(props.shortcuts.map((shortcut) => [shortcut.id, shortcut])))
+const folderShortcutItems = computed(() => selectedIds.value.flatMap((id) => {
+  const shortcut = shortcutById.value.get(id)
+  return shortcut ? [shortcut] : []
+}))
 let returnFocusTarget: HTMLElement | undefined
 
 watch(() => props.folder, (folder) => {
@@ -45,11 +51,6 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   if (returnFocusTarget?.isConnected) returnFocusTarget.focus()
-})
-
-const folderShortcuts = () => selectedIds.value.flatMap((id) => {
-  const shortcut = props.shortcuts.find((item) => item.id === id)
-  return shortcut ? [shortcut] : []
 })
 
 function toggleShortcut(id: string, checked: boolean) {
@@ -115,7 +116,7 @@ function save() {
     <section ref="dialog" class="shortcut-dialog folder-dialog" role="dialog" aria-modal="true" :aria-labelledby="editing ? 'folder-edit-title' : 'folder-view-title'" @keydown="handleDialogKeydown">
       <header>
         <div v-if="editing"><h2 id="folder-edit-title">{{ folder ? '编辑文件夹' : '新建文件夹' }}</h2><p>把常用网站整理到一个入口中</p></div>
-        <div v-else class="folder-dialog-heading"><FolderOpen :size="21" :style="{ color: folder?.color }" /><div><h2 id="folder-view-title">{{ folder?.title }}</h2><p>{{ folderShortcuts().length }} 个快捷入口</p></div></div>
+        <div v-else class="folder-dialog-heading"><FolderOpen :size="21" :style="{ color: folder?.color }" /><div><h2 id="folder-view-title">{{ folder?.title }}</h2><p>{{ folderShortcutItems.length }} 个快捷入口</p></div></div>
         <button type="button" aria-label="关闭文件夹" @click="emit('close')"><X :size="19" /></button>
       </header>
 
@@ -139,12 +140,16 @@ function save() {
       </template>
 
       <template v-else>
+        <div v-if="folderShortcutItems.length" class="folder-toolbar">
+          <span>将在 {{ folderShortcutItems.length }} 个新标签页打开</span>
+          <button class="button-secondary" type="button" @click="emit('openAllShortcuts', folderShortcutItems)">打开全部</button>
+        </div>
         <div class="folder-link-list">
-          <button v-for="shortcut in folderShortcuts()" :key="shortcut.id" type="button" class="folder-link" @click="emit('openShortcut', shortcut)">
+          <button v-for="shortcut in folderShortcutItems" :key="shortcut.id" type="button" class="folder-link" @click="emit('openShortcut', shortcut)">
             <span class="folder-choice-mark" :style="{ backgroundColor: shortcut.color }">{{ shortcut.mark }}</span>
             <span class="folder-link-title">{{ shortcut.title }}</span><span class="folder-link-url">{{ shortcut.url }}</span>
           </button>
-          <p v-if="!folderShortcuts().length" class="folder-empty">这个文件夹还没有快捷入口。</p>
+          <p v-if="!folderShortcutItems.length" class="folder-empty">这个文件夹还没有快捷入口。</p>
         </div>
         <footer>
           <button class="button-secondary danger-action" type="button" @click="folder && emit('remove', folder.id)"><Trash2 :size="15" /> 删除文件夹</button>
