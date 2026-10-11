@@ -55,7 +55,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 
 .shortcut-grid-wrap { position: relative; z-index: 2; width: 100%; margin: 50px auto 0; }
 .shortcut-grid-viewport { width: 100%; clip-path: inset(-30px 0 -30px); }
-.shortcut-pages { display: flex; align-items: flex-start; transition: transform .42s cubic-bezier(.22, .72, .22, 1); will-change: transform; }
+.shortcut-pages { display: flex; align-items: flex-start; transition: transform .62s cubic-bezier(.22, .72, .22, 1); will-change: transform; }
 .shortcut-page { flex: 0 0 100%; min-width: 0; display: grid; grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr)); justify-items: center; align-items: start; gap: clamp(18px, 3.5vh, 30px) 18px; }
 .shortcut-cell { position: relative; width: 100%; min-width: 0; display: flex; justify-content: center; user-select: none; transition: transform .16s ease, opacity .16s ease; }
 .shortcut-cell.dragging { z-index: 3; opacity: .2; }
