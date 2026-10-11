@@ -166,3 +166,43 @@ test('notes widget previews the selected note and opens the notes panel', async 
   await widget.getByRole('button', { name: '打开便签' }).click()
   await expect(page.getByRole('dialog', { name: '笔记' }).getByLabel('笔记内容')).toHaveValue('确认打包、回归和发布记录。')
 })
+
+test('desktop widget shelf fits every enabled widget into a responsive grid', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByLabel('显示待办概览').check()
+  await page.getByLabel('显示倒计时').check()
+  await page.getByLabel('显示便签').check()
+  await page.getByRole('button', { name: '关闭' }).click()
+
+  const shelf = page.getByRole('region', { name: '首页小组件' })
+  const cards = shelf.locator('.home-widget-card')
+  await expect(cards).toHaveCount(3)
+  const wideLayoutRows = await cards.evaluateAll((elements) => new Set(elements.map((element) => Math.round(element.getBoundingClientRect().y))).size)
+  expect(wideLayoutRows).toBe(1)
+  await page.setViewportSize({ width: 800, height: 900 })
+  const compactLayout = await shelf.evaluate((element) => ({
+    columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
+    scrollWidth: element.scrollWidth,
+    clientWidth: element.clientWidth,
+  }))
+  expect(compactLayout.columns).toBe(2)
+  expect(compactLayout.scrollWidth).toBeLessThanOrEqual(compactLayout.clientWidth)
+})
+
+test('lazy folder editor creates and opens a folder with selected shortcuts', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByRole('button', { name: '新建文件夹' }).click()
+  const editor = page.getByRole('dialog', { name: '新建文件夹' })
+  await editor.getByLabel('文件夹名称').fill('工作')
+  await editor.getByRole('checkbox', { name: /京东商城/ }).check()
+  await editor.getByRole('checkbox', { name: /天猫精选/ }).check()
+  await editor.getByRole('button', { name: '保存文件夹' }).click()
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+
+  await page.getByRole('button', { name: '下一页' }).click()
+  await page.getByRole('button', { name: '打开工作' }).click()
+  const folder = page.getByRole('dialog', { name: '工作' })
+  await expect(folder).toContainText('京东商城')
+  await expect(folder).toContainText('天猫精选')
+})

@@ -5,7 +5,6 @@ import { ArrowLeft, House, Menu, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
 import ClockWidget from './components/ClockWidget.vue'
 import ShortcutGrid from './components/ShortcutGrid.vue'
-import FolderDialog from './components/FolderDialog.vue'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent } from './composables/useStoredState'
 import { launcherItems } from './data/defaults'
@@ -19,6 +18,7 @@ import type { HomeWidgetId, LauncherItem, Shortcut, ShortcutFolder } from './typ
 type Panel = PanelId | null
 
 const HomeWidgetShelf = defineAsyncComponent(() => import('./components/HomeWidgetShelf.vue'))
+const FolderDialog = defineAsyncComponent(() => import('./components/FolderDialog.vue'))
 
 const baseUrl = import.meta.env.BASE_URL
 const {
@@ -180,6 +180,12 @@ const activePanelListeners = computed<Record<string, (...args: never[]) => void>
 const homeWidgetContext = computed(() => ({ todos: todos.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value }))
 const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0)
 const shortHomeScrollEnabled = computed(() => showHomeWidgets.value && viewport.value.height <= 560)
+const homeWidgetRows = computed(() => {
+  if (!showHomeWidgets.value || viewport.value.width <= 780) return showHomeWidgets.value ? 1 : 0
+  const shelfWidth = Math.min(Math.max(0, viewport.value.width - 64), 960)
+  const columns = Math.max(1, Math.floor((shelfWidth + 12) / 252))
+  return Math.ceil(preferences.value.homeWidgetIds.length / columns)
+})
 const compactRows = computed(() => Math.min(preferences.value.rows, Math.max(1, Math.ceil(allLauncherItems.value.length / preferences.value.columns))))
 const fitMetrics = computed(() => {
   const { width, height } = viewport.value
@@ -197,7 +203,9 @@ const fitMetrics = computed(() => {
   const paginationHeight = pageCount.value > 1 ? (veryShortHeight ? 31 : compactHeight ? 37 : mobile ? 43 : 48) : 0
   const nameHeight = preferences.value.showNames ? (smallMobile ? 13 : 17) + 7 : 0
   const footerClearance = veryShortHeight ? 24 : 38
-  const widgetClearance = showHomeWidgets.value && !shortHomeScrollEnabled.value ? 156 : 0
+  const widgetClearance = showHomeWidgets.value && !shortHomeScrollEnabled.value
+    ? homeWidgetRows.value * 112 + Math.max(0, homeWidgetRows.value - 1) * 12 + 22
+    : 0
   const available = height - topPadding - widgetClearance - tabHeight - searchHeight - gridTopGap - paginationHeight - footerClearance - rows * nameHeight
   const requestedGap = Math.min(preferences.value.gridGapY, smallMobile ? 20 : mobile ? 24 : preferences.value.gridGapY)
   const fittedGap = rows > 1 ? Math.min(requestedGap, Math.max(4, (available - rows * 32) / (rows - 1))) : requestedGap

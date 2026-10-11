@@ -23,6 +23,12 @@ async function openLauncher(id: string) {
   await vi.waitFor(() => expect(wrapper!.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
 }
 
+async function openFolderDialog() {
+  await wrapper!.get('.folder-add-button').trigger('click')
+  await flushPromises()
+  await vi.waitFor(() => expect(wrapper!.find('.folder-dialog').exists()).toBe(true), { timeout: 5_000 })
+}
+
 async function selectBackupFile(contents: unknown) {
   const file = new File(['backup'], 'inftab-backup.json', { type: 'application/json' })
   Object.defineProperty(file, 'text', { value: async () => typeof contents === 'string' ? contents : JSON.stringify(contents) })
@@ -448,7 +454,7 @@ describe('new-tab keyboard search', () => {
     await openLauncher('settings')
     const columns = wrapper.findAll('.settings-content .range-label').find((label) => label.text().includes('每行图标'))
     await columns!.get('input').setValue('12')
-    await wrapper.get('.folder-add-button').trigger('click')
+    await openFolderDialog()
     await wrapper.get('.folder-dialog input[placeholder="例如：工作"]').setValue('工作')
     const folderChoices = wrapper.findAll('.folder-choice input[type="checkbox"]')
     await folderChoices[0]!.setValue(true)
@@ -485,7 +491,7 @@ describe('new-tab keyboard search', () => {
     await openLauncher('settings')
     const columns = wrapper.findAll('.settings-content .range-label').find((label) => label.text().includes('每行图标'))
     await columns!.get('input').setValue('12')
-    await wrapper.get('.folder-add-button').trigger('click')
+    await openFolderDialog()
     await wrapper.get('.folder-dialog input[placeholder="例如：工作"]').setValue('工作')
     await wrapper.get('.folder-choice input[type="checkbox"]').setValue(true)
     await wrapper.get('.folder-dialog button.button-primary').trigger('click')
@@ -506,11 +512,11 @@ describe('new-tab keyboard search', () => {
   it('prevents adding a shortcut to multiple folders', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await openLauncher('settings')
-    await wrapper.get('.folder-add-button').trigger('click')
+    await openFolderDialog()
     await wrapper.get('.folder-dialog input[placeholder="例如：工作"]').setValue('工作')
     await wrapper.get('.folder-choice input[type="checkbox"]').setValue(true)
     await wrapper.get('.folder-dialog button.button-primary').trigger('click')
-    await wrapper.get('.folder-add-button').trigger('click')
+    await openFolderDialog()
     await wrapper.get('.folder-dialog input[placeholder="例如：工作"]').setValue('生活')
 
     const assignedShortcut = wrapper.findAll('.folder-choice').find((choice) => choice.text().includes('京东商城'))
@@ -677,7 +683,7 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.shortcut-dialog button[type="submit"]').element).toHaveProperty('disabled', true)
     await wrapper.get('.shortcut-dialog button[type="button"]').trigger('click')
 
-    await wrapper.get('.folder-add-button').trigger('click')
+    await openFolderDialog()
     expect(wrapper.get('.folder-dialog').text()).toContain('最多只能保存 500 个文件夹')
     expect(wrapper.get('.folder-dialog button.button-primary').element).toHaveProperty('disabled', true)
   })
