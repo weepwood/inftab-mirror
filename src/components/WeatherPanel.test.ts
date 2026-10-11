@@ -61,6 +61,25 @@ describe('WeatherPanel request ordering', () => {
     wrapper.unmount()
   })
 
+  it('cancels pending results when the city query is cleared and submitted', async () => {
+    const oldSearch = deferred<Response>()
+    const fetchMock = vi.fn().mockReturnValue(oldSearch.promise)
+    vi.stubGlobal('fetch', fetchMock)
+    const wrapper = mount(WeatherPanel, { props: { city: '旧城市' } })
+    await flushPromises()
+
+    await wrapper.get('input').setValue('   ')
+    await wrapper.get('form').trigger('submit')
+    oldSearch.resolve(response({ results: [{ ...locations[0], id: 9, name: '旧城市结果' }] }))
+    await flushPromises()
+
+    expect(wrapper.find('.weather-error').text()).toBe('请输入城市名称。')
+    expect(wrapper.find('.weather-locations').exists()).toBe(false)
+    expect(wrapper.find('.weather-place').exists()).toBe(false)
+    expect(fetchMock).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
   it('keeps the latest selected city when an earlier forecast arrives late', async () => {
     const oldForecast = deferred<Response>()
     const fetchMock = vi.fn()

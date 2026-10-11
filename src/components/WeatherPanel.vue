@@ -116,7 +116,15 @@ watch(() => props.city, (city) => {
 
 async function searchCity() {
   const name = query.value.trim()
-  if (!name) return
+  if (!name) {
+    beginRequest()
+    loading.value = false
+    forecast.value = undefined
+    locations.value = []
+    selectedLocation.value = undefined
+    error.value = '请输入城市名称。'
+    return
+  }
   const version = beginRequest()
   loading.value = true
   forecast.value = undefined
