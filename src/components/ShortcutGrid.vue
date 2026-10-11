@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { CloudSun, Image, ListTodo, Pencil, Settings, StickyNote, Trash2 } from '@lucide/vue'
 import type { Component } from 'vue'
 import type { LauncherItem } from '../types'
@@ -18,6 +18,7 @@ const emit = defineEmits<{
   edit: [item: LauncherItem]
   remove: [item: LauncherItem]
   reorder: [sourceId: string, targetId: string]
+  swipe: [direction: number]
 }>()
 
 const itemIcons: Record<string, Component> = {
@@ -29,43 +30,202 @@ const itemIcons: Record<string, Component> = {
 }
 
 const pageSize = computed(() => props.columns * 3)
-const visibleItems = computed(() => props.items.slice(props.currentPage * pageSize.value, (props.currentPage + 1) * pageSize.value))
+const pages = computed(() => {
+  const result: LauncherItem[][] = []
+  for (let index = 0; index < props.items.length; index += pageSize.value) {
+    result.push(props.items.slice(index, index + pageSize.value))
+  }
+  return result
+})
+const contextItem = ref<LauncherItem>()
+const contextPosition = ref({ left: 0, top: 0 })
+const draggingId = ref('')
+let pointer: { id: number; type: string; x: number; y: number; sourceId: string; targetId: string; dragging: boolean; hold?: number } | undefined
+let suppressClick = false
 
-function dropOn(event: DragEvent, item: LauncherItem) {
-  const sourceId = event.dataTransfer?.getData('text/plain')
-  if (sourceId && sourceId !== item.id) emit('reorder', sourceId, item.id)
+function startDrag() {
+  if (!pointer || pointer.dragging) return
+  pointer.dragging = true
+  draggingId.value = pointer.sourceId
 }
+
+function onPointerDown(event: PointerEvent, item: LauncherItem) {
+  if (event.button !== 0 || (event.target instanceof Element && event.target.closest('.shortcut-context-menu'))) return
+  pointer = { id: event.pointerId, type: event.pointerType, x: event.clientX, y: event.clientY, sourceId: item.id, targetId: item.id, dragging: false }
+  if (event.pointerType === 'touch') {
+    pointer.hold = window.setTimeout(startDrag, 360)
+  }
+  window.addEventListener('pointermove', onPointerMove, { passive: false })
+  window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', cancelPointer)
+}
+
+function onPointerMove(event: PointerEvent) {
+  if (!pointer || event.pointerId !== pointer.id) return
+  const deltaX = event.clientX - pointer.x
+  const deltaY = event.clientY - pointer.y
+  if (pointer.type === 'touch' && !pointer.dragging) {
+    if (Math.abs(deltaX) > 18 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      if (pointer.hold) window.clearTimeout(pointer.hold)
+      pointer.hold = undefined
+      return
+    }
+    if (Math.abs(deltaX) + Math.abs(deltaY) > 10) {
+      if (pointer.hold) window.clearTimeout(pointer.hold)
+      pointer.hold = undefined
+      startDrag()
+    }
+  } else if (!pointer.dragging && Math.hypot(deltaX, deltaY) > 7) {
+    startDrag()
+  }
+  if (!pointer.dragging) return
+  event.preventDefault()
+  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-item-id]')
+  if (target?.dataset.itemId) pointer.targetId = target.dataset.itemId
+}
+
+function cleanPointer() {
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerup', onPointerUp)
+  window.removeEventListener('pointercancel', cancelPointer)
+  if (pointer?.hold) window.clearTimeout(pointer.hold)
+}
+
+function onPointerUp(event: PointerEvent) {
+  if (!pointer || event.pointerId !== pointer.id) return
+  const deltaX = event.clientX - pointer.x
+  const deltaY = event.clientY - pointer.y
+  if (pointer.dragging && pointer.sourceId !== pointer.targetId) {
+    emit('reorder', pointer.sourceId, pointer.targetId)
+    suppressClick = true
+    window.setTimeout(() => { suppressClick = false }, 100)
+  } else if (pointer.type === 'touch' && !pointer.dragging && Math.abs(deltaX) > 52 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+    emit('swipe', deltaX < 0 ? 1 : -1)
+    suppressClick = true
+    window.setTimeout(() => { suppressClick = false }, 100)
+  }
+  draggingId.value = ''
+  pointer = undefined
+  cleanPointer()
+}
+
+function cancelPointer() {
+  draggingId.value = ''
+  pointer = undefined
+  cleanPointer()
+}
+
+function openContextMenu(event: MouseEvent, item: LauncherItem) {
+  if (!item.shortcut) {
+    closeContextMenu()
+    return
+  }
+  event.preventDefault()
+  showContextMenu(item, event.clientX, event.clientY)
+}
+
+function openContextMenuKeyboard(event: KeyboardEvent, item: LauncherItem) {
+  if ((event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) || !item.shortcut) return
+  event.preventDefault()
+  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  showContextMenu(item, bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
+}
+
+function showContextMenu(item: LauncherItem, x: number, y: number) {
+  const width = 164
+  const height = 94
+  contextPosition.value = {
+    left: Math.max(8, Math.min(x, window.innerWidth - width - 8)),
+    top: Math.max(8, Math.min(y, window.innerHeight - height - 8)),
+  }
+  contextItem.value = item
+}
+
+function closeContextMenu() {
+  contextItem.value = undefined
+}
+
+function openItem(event: MouseEvent, item: LauncherItem) {
+  if (suppressClick) {
+    event.preventDefault()
+    event.stopPropagation()
+    suppressClick = false
+    return
+  }
+  emit('open', item)
+}
+
+function editContextItem(event: MouseEvent) {
+  event.stopPropagation()
+  if (contextItem.value) emit('edit', contextItem.value)
+  closeContextMenu()
+}
+
+function removeContextItem(event: MouseEvent) {
+  event.stopPropagation()
+  if (contextItem.value) emit('remove', contextItem.value)
+  closeContextMenu()
+}
+
+function closeContextOnEscape(event: KeyboardEvent) {
+  if (event.key === 'Escape') closeContextMenu()
+}
+
+onMounted(() => {
+  window.addEventListener('click', closeContextMenu)
+  window.addEventListener('keydown', closeContextOnEscape)
+})
+onBeforeUnmount(() => {
+  cleanPointer()
+  window.removeEventListener('click', closeContextMenu)
+  window.removeEventListener('keydown', closeContextOnEscape)
+})
 </script>
 
 <template>
-  <div class="shortcut-grid-wrap">
+  <div class="shortcut-grid-wrap" @click="closeContextMenu">
+    <div class="shortcut-grid-viewport">
+      <div class="shortcut-pages" :style="{ transform: `translate3d(-${currentPage * 100}%, 0, 0)` }">
+          <section
+            v-for="(page, pageIndex) in pages"
+            :key="pageIndex"
+            class="shortcut-page"
+            :aria-hidden="pageIndex !== currentPage"
+            :inert="pageIndex !== currentPage"
+            :style="{ '--grid-columns': columns, '--shortcut-size': `${iconSize}px`, '--shortcut-radius': `${iconRadius}px` }"
+          >
+          <article
+            v-for="item in page"
+            :key="item.id"
+            class="shortcut-cell"
+            :class="{ dragging: draggingId === item.id }"
+            :data-item-id="item.id"
+            @pointerdown="onPointerDown($event, item)"
+            @contextmenu="openContextMenu($event, item)"
+          >
+            <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" :aria-haspopup="item.shortcut ? 'menu' : undefined" @click="openItem($event, item)" @keydown="openContextMenuKeyboard($event, item)">
+              <span class="shortcut-icon" :class="{ builtin: item.action }" :style="{ backgroundColor: item.color }">
+                <img v-if="item.icon" class="shortcut-picture" :src="item.icon" alt="" draggable="false" />
+                <component v-else-if="item.action" :is="itemIcons[item.action]" :size="35" :stroke-width="2.6" />
+                <span v-else class="shortcut-mark">{{ item.mark }}</span>
+                <span v-if="item.badge" class="shortcut-badge">{{ item.badge }}</span>
+              </span>
+              <span v-if="showNames" class="shortcut-name">{{ item.title }}</span>
+            </button>
+          </article>
+        </section>
+      </div>
+    </div>
+
     <div
-      class="shortcut-grid"
-      :style="{ '--grid-columns': columns, '--shortcut-size': `${iconSize}px`, '--shortcut-radius': `${iconRadius}px` }"
+      v-if="contextItem"
+      class="shortcut-context-menu"
+      role="menu"
+      :style="{ left: `${contextPosition.left}px`, top: `${contextPosition.top}px` }"
+      @click.stop
     >
-      <article
-        v-for="item in visibleItems"
-        :key="item.id"
-        class="shortcut-cell"
-        :draggable="true"
-        @dragstart="$event.dataTransfer?.setData('text/plain', item.id)"
-        @dragover.prevent
-        @drop="dropOn($event, item)"
-      >
-        <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" @click="emit('open', item)">
-          <span class="shortcut-icon" :class="{ builtin: item.action }" :style="{ backgroundColor: item.color }">
-            <img v-if="item.icon" class="shortcut-picture" :src="item.icon" alt="" draggable="false" />
-            <component v-else-if="item.action" :is="itemIcons[item.action]" :size="35" :stroke-width="2.6" />
-            <span v-else class="shortcut-mark">{{ item.mark }}</span>
-            <span v-if="item.badge" class="shortcut-badge">{{ item.badge }}</span>
-          </span>
-          <span v-if="showNames" class="shortcut-name">{{ item.title }}</span>
-        </button>
-        <div v-if="item.shortcut" class="shortcut-tools">
-          <button type="button" :aria-label="`编辑${item.title}`" @click="emit('edit', item)"><Pencil :size="13" /></button>
-          <button type="button" :aria-label="`删除${item.title}`" @click="emit('remove', item)"><Trash2 :size="13" /></button>
-        </div>
-      </article>
+      <button type="button" role="menuitem" @click="editContextItem"><Pencil :size="14" /> 编辑快捷入口</button>
+      <button type="button" role="menuitem" class="danger" @click="removeContextItem"><Trash2 :size="14" /> 删除快捷入口</button>
     </div>
   </div>
 </template>

@@ -22,6 +22,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   min-height: 500px;
   overflow: hidden;
   isolation: isolate;
+  touch-action: pan-y;
   background-color: #34453f;
   background-repeat: no-repeat;
   background-position: center;
@@ -52,13 +53,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .engine-menu button:hover, .engine-menu button[aria-selected='true'] { background: #f5f7fa; }
 .engine-check { margin-left: auto; color: #3478f6; }
 
-.shortcut-grid-wrap { width: 100%; margin: 50px auto 0; }
-.shortcut-grid { display: grid; grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr)); justify-items: center; align-items: start; gap: clamp(18px, 3.5vh, 30px) 18px; }
-.shortcut-cell { position: relative; width: 100%; min-width: 0; display: flex; justify-content: center; }
-.shortcut-open { width: 100%; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 7px; border: 0; padding: 0 4px; background: transparent; cursor: pointer; }
+.shortcut-grid-wrap { position: relative; width: 100%; margin: 50px auto 0; }
+.shortcut-grid-viewport { width: 100%; overflow: hidden; }
+.shortcut-pages { display: flex; align-items: flex-start; transition: transform .42s cubic-bezier(.22, .72, .22, 1); will-change: transform; }
+.shortcut-page { flex: 0 0 100%; min-width: 0; display: grid; grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr)); justify-items: center; align-items: start; gap: clamp(18px, 3.5vh, 30px) 18px; }
+.shortcut-cell { position: relative; width: 100%; min-width: 0; display: flex; justify-content: center; user-select: none; transition: transform .16s ease, opacity .16s ease; }
+.shortcut-cell.dragging { z-index: 3; transform: scale(1.08); opacity: .62; }
+.shortcut-cell.dragging .shortcut-open { cursor: grabbing; }
+.shortcut-open { width: 100%; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 7px; border: 0; padding: 0 4px; background: transparent; cursor: pointer; touch-action: none; }
 .shortcut-icon { position: relative; width: min(var(--shortcut-size), 84%); aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; border-radius: var(--shortcut-radius); color: white; box-shadow: 0 3px 12px rgba(0, 0, 0, .13); transition: transform .18s, box-shadow .18s; }
 .shortcut-picture { width: 100%; height: 100%; object-fit: cover; }
-.shortcut-open:hover .shortcut-icon { transform: translateY(-4px) scale(1.035); box-shadow: 0 10px 22px rgba(0, 0, 0, .22); }
+.shortcut-open:hover .shortcut-icon { transform: translateY(-4px) scale(1.035); box-shadow: 0 0 0 2px rgba(255, 255, 255, .48), 0 0 24px 7px rgba(255, 255, 255, .42), 0 10px 22px rgba(0, 0, 0, .22); }
 .shortcut-icon.builtin { color: #7d8993; }
 .shortcut-cell:nth-child(2) .shortcut-icon.builtin { color: #18b641; }
 .shortcut-cell:nth-child(3) .shortcut-icon.builtin { color: #2993f1; }
@@ -66,10 +71,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .shortcut-mark { max-width: 100%; padding: 2px; color: #fff; font-size: clamp(17px, 2vw, 26px); font-weight: 700; line-height: 1; text-align: center; text-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
 .shortcut-badge { position: absolute; top: -3px; right: -3px; min-width: 21px; height: 21px; display: grid; place-items: center; padding: 0 5px; border-radius: 99px; background: #ff4b57; color: #fff; font-size: 11px; font-weight: 650; box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
 .shortcut-name { width: 100%; overflow: hidden; color: rgba(255, 255, 255, .94); font-size: 13px; line-height: 1.35; text-align: center; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 4px rgba(0, 0, 0, .3); }
-.shortcut-tools { position: absolute; top: 1px; right: max(5px, calc(50% - var(--shortcut-size) / 2 - 8px)); display: flex; gap: 3px; opacity: 0; transition: opacity .15s; }
-.shortcut-cell:hover .shortcut-tools, .shortcut-cell:focus-within .shortcut-tools { opacity: 1; }
-.shortcut-tools button { width: 25px; height: 25px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .55); border-radius: 50%; background: rgba(30, 34, 35, .65); color: #fff; cursor: pointer; }
-.shortcut-tools button:hover { background: #202326; }
+.shortcut-context-menu { position: fixed; z-index: 9; width: 164px; overflow: hidden; padding: 5px; border: 1px solid rgba(255, 255, 255, .78); border-radius: 10px; background: rgba(255, 255, 255, .97); box-shadow: 0 12px 32px rgba(0, 0, 0, .22); color: #343a41; backdrop-filter: blur(12px); animation: pop-in .12s ease-out; }
+.shortcut-context-menu button { width: 100%; height: 37px; display: flex; align-items: center; gap: 9px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.shortcut-context-menu button:hover { background: #f0f3f7; }
+.shortcut-context-menu button.danger { color: #ca555c; }
+.shortcut-context-menu button.danger:hover { background: #fff1f1; }
 .page-dots { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 25px; }
 .page-dot { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .38); cursor: pointer; transition: transform .15s, background .15s; }
 .page-dot.active { background: #fff; transform: scale(1.12); }
@@ -217,7 +223,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .search-tabs { gap: clamp(14px, 6vw, 30px); }
   .search-tab { font-size: 12px; }
   .search-box { height: 48px; }
-  .shortcut-grid { gap: 24px 8px; }
+  .shortcut-page { gap: 24px 8px; }
   .shortcut-icon { width: min(var(--shortcut-size), 84%, 60px); }
   .shortcut-name { font-size: 11px; }
   .shortcut-grid-wrap { margin-top: 34px; }
@@ -228,7 +234,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .home-content { width: calc(100vw - 26px); padding-top: 18vh; }
   .search-tabs { height: 28px; gap: 15px; }
   .search-tab { font-size: 11px; }
-  .shortcut-grid { gap: 20px 2px; }
+  .shortcut-page { gap: 20px 2px; }
   .shortcut-icon { width: min(var(--shortcut-size), 60px); }
   .shortcut-mark { font-size: 17px; }
   .shortcut-name { font-size: 10px; }

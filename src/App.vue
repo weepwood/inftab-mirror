@@ -51,6 +51,8 @@ const shortcutColor = ref('#3d82f6')
 const shortcutMark = ref('')
 const shortcutIcon = ref('')
 const pageSize = computed(() => preferences.value.columns * 3)
+let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
+let homeWheelLocked = false
 const allLauncherItems = computed<LauncherItem[]>(() => {
   const items = [
     ...launcherItems.map((item) => item.id === 'todos'
@@ -135,6 +137,28 @@ function movePage(direction: number) {
   currentPage.value = (currentPage.value + direction + pageCount.value) % pageCount.value
 }
 
+function startHomeSwipe(event: PointerEvent) {
+  if (event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell'))) return
+  homeTouchStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
+}
+
+function finishHomeSwipe(event: PointerEvent) {
+  if (!homeTouchStart || event.pointerId !== homeTouchStart.pointerId) return
+  const deltaX = event.clientX - homeTouchStart.x
+  const deltaY = event.clientY - homeTouchStart.y
+  if (Math.abs(deltaX) > 52 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) movePage(deltaX < 0 ? 1 : -1)
+  homeTouchStart = undefined
+}
+
+function handleHomeWheel(event: WheelEvent) {
+  if (!homeWheelLocked && Math.abs(event.deltaX) > 32 && Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+    event.preventDefault()
+    movePage(event.deltaX > 0 ? 1 : -1)
+    homeWheelLocked = true
+    setTimeout(() => { homeWheelLocked = false }, 450)
+  }
+}
+
 function reorderItems(sourceId: string, targetId: string) {
   reorderLauncherOrder(sourceId, targetId, allLauncherItems.value.map((item) => item.id))
 }
@@ -165,7 +189,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 </script>
 
 <template>
-  <main class="home" :style="backgroundStyle">
+  <main class="home" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
     <div class="background-shade"></div>
     <header class="home-actions">
       <button type="button" class="round-action" aria-label="回到首页" @click="currentPage = 0"><House :size="19" /></button>
@@ -189,7 +213,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         @open="openItem"
         @edit="openShortcutDialog"
         @remove="removeShortcut"
-      @reorder="reorderItems"
+        @reorder="reorderItems"
+        @swipe="movePage"
       />
       <nav v-if="pageCount > 1" class="page-dots" aria-label="快捷入口页码">
         <button type="button" aria-label="上一页" class="page-arrow" @click="movePage(-1)"><ArrowLeft :size="15" /></button>
