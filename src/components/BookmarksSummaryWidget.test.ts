@@ -66,7 +66,9 @@ describe('BookmarksSummaryWidget', () => {
 
     expect(wrapper.findAll('a').map((link) => link.text())).toEqual(['Vue Docs', 'GitHub'])
     expect(wrapper.html()).not.toContain('javascript:')
+    vi.useFakeTimers()
     bookmarkCreated.fire()
+    await vi.advanceTimersByTimeAsync(100)
     await flushPromises()
     expect(getTree).toHaveBeenCalledTimes(2)
 

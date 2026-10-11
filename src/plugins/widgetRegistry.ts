@@ -93,4 +93,11 @@ export const homeWidgetPlugins = {
     component: lazyWidget(() => import('../components/BookmarksSummaryWidget.vue')),
     props: () => ({}),
   },
+  'history-summary': {
+    title: '最近访问',
+    description: '在首页快速打开最近访问的网页',
+    panel: 'history',
+    component: lazyWidget(() => import('../components/HistorySummaryWidget.vue')),
+    props: () => ({}),
+  },
 } satisfies HomeWidgetPluginRegistry

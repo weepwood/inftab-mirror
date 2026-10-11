@@ -56,6 +56,11 @@ describe('built-in panel plugin registry', () => {
     expect(homeWidgetPlugins['bookmarks-summary'].props()).toEqual({})
   })
 
+  it('connects the optional history widget to its panel', () => {
+    expect(homeWidgetPlugins['history-summary'].panel).toBe('history')
+    expect(homeWidgetPlugins['history-summary'].props()).toEqual({})
+  })
+
   it('routes the legacy wallpaper shortcut to settings', () => {
     expect(shortcutPanelRoutes.wallpapers).toBe('settings')
   })

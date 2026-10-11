@@ -459,6 +459,18 @@ test('bookmark widget keeps its extension permission boundary on the website', a
   await expect(page.getByRole('dialog', { name: '浏览器书签' })).toContainText('请在已安装的 Chrome 或 Edge 新标签页中查看浏览器书签')
 })
 
+test('history widget keeps its extension permission boundary on the website', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settingsPanel = page.getByRole('dialog', { name: '设置' })
+  await settingsPanel.getByLabel('显示最近访问小组件').check()
+  await settingsPanel.getByRole('button', { name: '关闭' }).click()
+
+  const widget = page.locator('[data-widget-id="history-summary"]')
+  await expect(widget).toContainText('此功能需要浏览器扩展')
+  await widget.getByRole('button', { name: '打开最近访问' }).click()
+  await expect(page.getByRole('dialog', { name: '浏览历史' })).toContainText('请在已安装的 Chrome 或 Edge 新标签页中查看浏览历史')
+})
+
 test('countdowns can be created, edited, deleted, and persist across reloads', async ({ page }) => {
   await page.getByRole('button', { name: '打开纪念日' }).click()
   const panel = page.getByRole('dialog', { name: '纪念日与倒计时' })

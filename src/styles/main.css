@@ -65,6 +65,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .bookmarks-summary-list a { min-width: 0; display: flex; align-items: center; gap: 7px; color: #414954; font-size: 11px; text-decoration: none; }
 .bookmarks-summary-list a:hover { color: #3974d6; }
 .bookmarks-summary-list a span { min-width: 0; overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
+.history-summary-list { display: grid; gap: 5px; margin: 0; padding: 2px 5px 0 20px; list-style: none; }
+.history-summary-list a { min-width: 0; display: flex; align-items: center; gap: 7px; color: #414954; font-size: 11px; text-decoration: none; }
+.history-summary-list a:hover { color: #3974d6; }
+.history-summary-list a span { min-width: 0; overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
+.history-summary-list time { flex: 0 0 auto; color: #828b97; font-size: 9px; font-variant-numeric: tabular-nums; }
+.history-summary-retry { border: 0; padding: 0; background: transparent; color: #3974d6; font: inherit; cursor: pointer; }
 .home-widget-calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; padding: 2px 4px 0; font-variant-numeric: tabular-nums; }
 .home-widget-calendar-weekday, .home-widget-calendar-day { min-width: 0; display: grid; place-items: center; aspect-ratio: 1; border-radius: 5px; color: #5f6874; font-size: 10px; }
 .home-widget-calendar-weekday { color: #828b97; font-size: 9px; }
@@ -540,7 +546,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .theme-dark .home-widget-highlight,
 .theme-dark .focus-timer-summary-clock,
 .theme-dark .bookmarks-summary-list a,
+.theme-dark .history-summary-list a,
 .theme-dark .home-widget-preview li { color: #e0e4eb; }
+.theme-dark .history-summary-list time { color: #a4adba; }
 .theme-dark .home-widget-metric { color: #86adff; }
 .theme-dark .home-widget-empty { color: #a4adba; }
 .theme-dark .weather-summary-copy span,

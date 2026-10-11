@@ -15,6 +15,7 @@ export const defaultPreferences: Preferences = {
     'weather-summary': 'standard',
     'focus-timer-summary': 'standard',
     'bookmarks-summary': 'standard',
+    'history-summary': 'standard',
   },
   engine: 'baidu',
   mode: 'html',
