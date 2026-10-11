@@ -113,4 +113,24 @@ describe('useLocalWorkspace custom search engines', () => {
     expect(workspace.notes.value[0]?.body).toHaveLength(500_000)
     expect(() => parseWorkspaceBackup(workspace.createBackup())).not.toThrow()
   })
+
+  it('enforces shortcut and folder backup limits at the workspace boundary', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    workspace.shortcuts.value = Array.from({ length: 500 }, (_, index) => ({
+      id: `shortcut-${index}`, title: `Shortcut ${index}`, url: `https://example-${index}.com/`, color: '#abc', mark: 'S',
+    }))
+    expect(workspace.saveShortcut({ id: 'shortcut-overflow', title: 'Overflow', url: 'https://overflow.example/', color: '#abc', mark: 'O' })).toBe(false)
+    expect(workspace.shortcuts.value).toHaveLength(500)
+
+    workspace.folders.value = Array.from({ length: 500 }, (_, index) => ({
+      id: `folder-${index}`, title: `Folder ${index}`, shortcutIds: [], color: '#abc', mark: 'F',
+    }))
+    expect(workspace.saveFolder({ id: 'folder-overflow', title: 'Overflow', shortcutIds: [], color: '#abc', mark: 'O' })).toBe(false)
+    expect(workspace.folders.value).toHaveLength(500)
+
+    const originalFolder = workspace.folders.value[0]!
+    expect(workspace.saveFolder({ ...originalFolder, color: 'invalid' })).toBe(false)
+    expect(workspace.folders.value[0]).toEqual(originalFolder)
+  })
 })

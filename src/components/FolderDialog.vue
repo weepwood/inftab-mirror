@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { FolderOpen, Pencil, Trash2, X } from '@lucide/vue'
 import type { Shortcut, ShortcutFolder } from '../types'
 
-const props = defineProps<{ folder?: ShortcutFolder; shortcuts: Shortcut[]; unavailableShortcutIds?: string[] }>()
+const props = defineProps<{ folder?: ShortcutFolder; shortcuts: Shortcut[]; unavailableShortcutIds?: string[]; saveError?: string; limitReached?: boolean }>()
 const emit = defineEmits<{
   close: []
   save: [folder: ShortcutFolder]
@@ -132,10 +132,11 @@ function save() {
           </label>
           <p v-if="!shortcuts.length" class="folder-empty">先添加快捷入口，再将它们放入文件夹。</p>
         </div>
-        <p v-if="error" class="backup-error" role="alert">{{ error }}</p>
+        <p v-if="limitReached" class="backup-error" role="status">最多只能保存 500 个文件夹。</p>
+        <p v-if="error || saveError" class="backup-error" role="alert">{{ error || saveError }}</p>
         <footer>
           <button class="button-secondary" type="button" @click="cancelEditing">取消</button>
-          <button class="button-primary" type="button" @click="save">保存文件夹</button>
+          <button class="button-primary" type="button" :disabled="limitReached" @click="save">保存文件夹</button>
         </footer>
       </template>
 

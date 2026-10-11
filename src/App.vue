@@ -63,6 +63,7 @@ const searchBar = ref<{ focusSearch: () => void }>()
 const sidePanel = ref<HTMLElement>()
 const folderDialogOpen = ref(false)
 const activeFolder = ref<ShortcutFolder>()
+const folderSaveError = ref('')
 const shortcutDialog = ref(false)
 const editingId = ref('')
 const shortcutTitle = ref('')
@@ -71,11 +72,14 @@ const shortcutColor = ref('#3d82f6')
 const shortcutMark = ref('')
 const shortcutIcon = ref('')
 const shortcutUrlError = ref('')
+const shortcutSaveError = ref('')
 const shortcutIconFile = ref<HTMLInputElement>()
 const shortcutIconError = ref('')
 const savingShortcut = ref(false)
 const viewport = ref({ width: window.innerWidth, height: window.innerHeight })
 const pageSize = computed(() => preferences.value.columns * preferences.value.rows)
+const shortcutLimitReached = computed(() => !editingId.value && shortcuts.value.length >= 500)
+const folderLimitReached = computed(() => !activeFolder.value && folders.value.length >= 500)
 let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
 let homeWheelLocked = false
 const allLauncherItems = computed<LauncherItem[]>(() => {
@@ -237,11 +241,13 @@ function openItem(item: LauncherItem) {
 }
 
 function openFolder(folder: ShortcutFolder) {
+  folderSaveError.value = ''
   activeFolder.value = folder
   folderDialogOpen.value = true
 }
 
 function openFolderEditor(folder?: ShortcutFolder) {
+  folderSaveError.value = ''
   activeFolder.value = folder
   folderDialogOpen.value = true
 }
@@ -249,10 +255,15 @@ function openFolderEditor(folder?: ShortcutFolder) {
 function closeFolderDialog() {
   folderDialogOpen.value = false
   activeFolder.value = undefined
+  folderSaveError.value = ''
 }
 
 function saveFolder(folder: ShortcutFolder) {
-  saveFolderData(folder)
+  if (!saveFolderData(folder)) {
+    folderSaveError.value = '最多只能保存 500 个文件夹。'
+    return
+  }
+  folderSaveError.value = ''
   activeFolder.value = folder
   folderDialogOpen.value = false
 }
@@ -280,6 +291,7 @@ function openShortcutDialog(item?: LauncherItem) {
   shortcutTitle.value = item?.shortcut?.title ?? ''
   shortcutUrl.value = item?.shortcut?.url ?? 'https://'
   shortcutUrlError.value = ''
+  shortcutSaveError.value = ''
   shortcutColor.value = item?.shortcut?.color ?? '#3d82f6'
   shortcutMark.value = item?.shortcut?.mark ?? ''
   shortcutIcon.value = item?.shortcut?.icon ?? ''
@@ -346,7 +358,11 @@ async function saveShortcut() {
     mark: shortcutMark.value.trim() || title.slice(0, 2),
     icon: icon || undefined,
   }
-  saveShortcutData(next)
+  if (!saveShortcutData(next)) {
+    shortcutSaveError.value = '最多只能保存 500 个快捷入口。'
+    return
+  }
+  shortcutSaveError.value = ''
   shortcutDialog.value = false
 }
 
@@ -523,6 +539,8 @@ onBeforeUnmount(() => {
       :folder="activeFolder"
       :shortcuts="shortcuts"
       :unavailable-shortcut-ids="unavailableFolderShortcutIds"
+      :save-error="folderSaveError"
+      :limit-reached="folderLimitReached"
       @close="closeFolderDialog"
       @save="saveFolder"
       @remove="removeFolderData($event); closeFolderDialog()"
@@ -534,8 +552,10 @@ onBeforeUnmount(() => {
       <form class="shortcut-dialog" @submit.prevent="saveShortcut">
         <header><div><h2>{{ editingId ? '编辑快捷入口' : '添加快捷入口' }}</h2><p>名称和网址可以随时修改</p></div><button type="button" aria-label="关闭" @click="shortcutDialog = false"><X :size="19" /></button></header>
         <label>名称<input v-model="shortcutTitle" autofocus required maxlength="24" placeholder="例如：GitHub" /></label>
+        <p v-if="shortcutLimitReached" class="backup-error" role="status">最多只能保存 500 个快捷入口。</p>
         <label>网址<input v-model="shortcutUrl" required maxlength="2048" placeholder="https://example.com" @input="shortcutUrlError = ''" /></label>
         <p v-if="shortcutUrlError" class="backup-error" role="alert">{{ shortcutUrlError }}</p>
+        <p v-if="shortcutSaveError" class="backup-error" role="alert">{{ shortcutSaveError }}</p>
         <div class="dialog-row">
           <label>图标文字<input v-model="shortcutMark" maxlength="5" placeholder="自动取名称" /></label>
           <label class="color-field">图标颜色<input v-model="shortcutColor" type="color" /></label>
@@ -547,7 +567,7 @@ onBeforeUnmount(() => {
           <span>图片会压缩为 Base64 保存在本机，离线可用</span>
         </div>
         <p v-if="shortcutIconError" class="backup-error" role="alert">{{ shortcutIconError }}</p>
-        <footer><button class="button-secondary" type="button" @click="shortcutDialog = false">取消</button><button class="button-primary" type="submit" :disabled="savingShortcut">{{ savingShortcut ? '正在转存图标…' : '保存' }}</button></footer>
+        <footer><button class="button-secondary" type="button" @click="shortcutDialog = false">取消</button><button class="button-primary" type="submit" :disabled="savingShortcut || shortcutLimitReached">{{ savingShortcut ? '正在转存图标…' : '保存' }}</button></footer>
       </form>
     </div>
   </main>

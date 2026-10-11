@@ -1,4 +1,5 @@
 import type { CountdownItem, CustomSearchEngine, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import { launcherItems } from './defaults'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
 import { maxWallpaperDataUrlLength } from './images'
 
@@ -23,10 +24,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 const maxItems = 500
+const maxLauncherOrderItems = maxItems * 2 + launcherItems.length
 
-function validateArray(value: unknown, label: string): asserts value is unknown[] {
-  if (!Array.isArray(value) || value.length > maxItems) {
-    throw new Error(`备份中的${label}数量无效（最多 ${maxItems} 项）。`)
+function validateArray(value: unknown, label: string, limit = maxItems): asserts value is unknown[] {
+  if (!Array.isArray(value) || value.length > limit) {
+    throw new Error(`备份中的${label}数量无效（最多 ${limit} 项）。`)
   }
 }
 
@@ -38,7 +40,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   validateArray(value.shortcuts, '快捷入口')
   const rawFolders = value.folders ?? []
   validateArray(rawFolders, '文件夹')
-  validateArray(value.launcherOrder, '入口排序')
+  validateArray(value.launcherOrder, '入口排序', maxLauncherOrderItems)
   validateArray(value.todos, '待办事项')
   const rawCountdowns = value.countdowns ?? []
   const rawCustomSearchEngines = value.customSearchEngines ?? []

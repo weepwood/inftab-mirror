@@ -91,6 +91,12 @@ describe('workspace backups', () => {
     expect(() => parseWorkspaceBackup(backup({ preferences: {} }))).toThrow(/结构不完整/)
   })
 
+  it('accepts the maximum launcher order allowed by the shortcut and folder limits', () => {
+    const maximumLauncherOrder = Array.from({ length: 1_006 }, (_, index) => `item-${index}`)
+    expect(() => parseWorkspaceBackup(backup({ launcherOrder: maximumLauncherOrder }))).not.toThrow()
+    expect(() => parseWorkspaceBackup(backup({ launcherOrder: [...maximumLauncherOrder, 'overflow'] }))).toThrow(/最多 1006 项/)
+  })
+
   it('rejects backups with oversized embedded wallpapers', () => {
     expect(() => parseWorkspaceBackup(backup({
       preferences: { ...defaultPreferences, customWallpaper: `data:image/webp;base64,${'a'.repeat(2_000_001)}` },

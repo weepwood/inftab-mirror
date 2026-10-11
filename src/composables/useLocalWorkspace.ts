@@ -49,12 +49,16 @@ export function useLocalWorkspace() {
     return defaults ? { ...defaults, ...shortcut, icon } : shortcut
   })
 
-  function saveShortcut(shortcut: Shortcut) {
+  function saveShortcut(shortcut: Shortcut): boolean {
     const exists = shortcuts.value.some((item) => item.id === shortcut.id)
-    shortcuts.value = exists
+    const next = exists
       ? shortcuts.value.map((item) => item.id === shortcut.id ? shortcut : item)
       : [...shortcuts.value, shortcut]
+    const sanitized = sanitizeShortcuts(next)
+    if (!sanitized.some((item) => item.id === shortcut.id)) return false
+    shortcuts.value = sanitized
     if (!exists) launcherOrder.value = [...launcherOrder.value, shortcut.id]
+    return true
   }
 
   function removeShortcut(id: string) {
@@ -66,14 +70,16 @@ export function useLocalWorkspace() {
     launcherOrder.value = sanitizeLauncherOrder(launcherOrder.value.filter((itemId) => itemId !== id), shortcuts.value, folders.value)
   }
 
-  function saveFolder(folder: ShortcutFolder) {
+  function saveFolder(folder: ShortcutFolder): boolean {
     const exists = folders.value.some((item) => item.id === folder.id)
     const next = exists
       ? folders.value.map((item) => item.id === folder.id ? folder : item)
       : [...folders.value, folder]
-    folders.value = sanitizeFolders(next, shortcuts.value)
-    if (!folders.value.some((item) => item.id === folder.id)) return
+    const sanitized = sanitizeFolders(next, shortcuts.value)
+    if (!sanitized.some((item) => item.id === folder.id)) return false
+    folders.value = sanitized
     launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...(exists ? [] : [folder.id])], shortcuts.value, folders.value)
+    return true
   }
 
   function removeFolder(id: string) {

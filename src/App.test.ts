@@ -353,6 +353,34 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.notes-empty[role="status"]').text()).toContain('500 条笔记上限')
   })
 
+  it('prevents adding shortcuts and folders when their backup-safe limits are reached', async () => {
+    localStorage.setItem('inftab.shortcuts.v1', JSON.stringify(Array.from({ length: 500 }, (_, index) => ({
+      id: 'shortcut-' + index,
+      title: 'Shortcut ' + index,
+      url: `https://shortcut-${index}.example/`,
+      color: '#abc',
+      mark: 'S',
+    }))))
+    localStorage.setItem('inftab.folders.v1', JSON.stringify(Array.from({ length: 500 }, (_, index) => ({
+      id: 'folder-' + index,
+      title: 'Folder ' + index,
+      shortcutIds: [],
+      color: '#abc',
+      mark: 'F',
+    }))))
+    wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('.shortcut-open[aria-label="打开settings"]').trigger('click')
+
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+    expect(wrapper.get('.shortcut-dialog').text()).toContain('最多只能保存 500 个快捷入口')
+    expect(wrapper.get('.shortcut-dialog button[type="submit"]').element).toHaveProperty('disabled', true)
+    await wrapper.get('.shortcut-dialog button[type="button"]').trigger('click')
+
+    await wrapper.get('.folder-add-button').trigger('click')
+    expect(wrapper.get('.folder-dialog').text()).toContain('最多只能保存 500 个文件夹')
+    expect(wrapper.get('.folder-dialog button.button-primary').element).toHaveProperty('disabled', true)
+  })
+
   it('keeps the selected note stable while creating and deleting notes', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await wrapper.get('.shortcut-open[aria-label=\"打开笔记\"]').trigger('click')
