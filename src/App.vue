@@ -151,12 +151,14 @@ function finishHomeSwipe(event: PointerEvent) {
 }
 
 function handleHomeWheel(event: WheelEvent) {
-  if (!homeWheelLocked && Math.abs(event.deltaX) > 32 && Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
-    event.preventDefault()
-    movePage(event.deltaX > 0 ? 1 : -1)
-    homeWheelLocked = true
-    setTimeout(() => { homeWheelLocked = false }, 450)
-  }
+  if (activePanel.value || shortcutDialog.value || homeWheelLocked) return
+  const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY)
+  const delta = horizontal ? event.deltaX : event.deltaY
+  if (Math.abs(delta) <= 24) return
+  event.preventDefault()
+  movePage(delta > 0 ? 1 : -1)
+  homeWheelLocked = true
+  setTimeout(() => { homeWheelLocked = false }, 450)
 }
 
 function reorderItems(sourceId: string, targetId: string) {

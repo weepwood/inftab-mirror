@@ -40,8 +40,10 @@ const pages = computed(() => {
 const contextItem = ref<LauncherItem>()
 const contextPosition = ref({ left: 0, top: 0 })
 const draggingId = ref('')
+const dragPosition = ref({ x: 0, y: 0 })
+const draggedItem = computed(() => props.items.find((item) => item.id === draggingId.value))
 const gridViewport = ref<HTMLElement>()
-let pointer: { id: number; type: string; x: number; y: number; sourceId: string; targetId: string; dragging: boolean; hold?: number } | undefined
+let pointer: { id: number; type: string; x: number; y: number; clientX: number; clientY: number; sourceId: string; targetId: string; dragging: boolean; hold?: number } | undefined
 let suppressClick = false
 let edgeTimer: number | undefined
 let edgeDirection = 0
@@ -51,11 +53,12 @@ function startDrag() {
   if (!pointer || pointer.dragging) return
   pointer.dragging = true
   draggingId.value = pointer.sourceId
+  dragPosition.value = { x: pointer.clientX, y: pointer.clientY }
 }
 
 function onPointerDown(event: PointerEvent, item: LauncherItem) {
   if (event.button !== 0 || (event.target instanceof Element && event.target.closest('.shortcut-context-menu'))) return
-  pointer = { id: event.pointerId, type: event.pointerType, x: event.clientX, y: event.clientY, sourceId: item.id, targetId: item.id, dragging: false }
+  pointer = { id: event.pointerId, type: event.pointerType, x: event.clientX, y: event.clientY, clientX: event.clientX, clientY: event.clientY, sourceId: item.id, targetId: item.id, dragging: false }
   if (event.pointerType === 'touch') {
     pointer.hold = window.setTimeout(startDrag, 360)
   }
@@ -66,6 +69,8 @@ function onPointerDown(event: PointerEvent, item: LauncherItem) {
 
 function onPointerMove(event: PointerEvent) {
   if (!pointer || event.pointerId !== pointer.id) return
+  pointer.clientX = event.clientX
+  pointer.clientY = event.clientY
   const deltaX = event.clientX - pointer.x
   const deltaY = event.clientY - pointer.y
   if (pointer.type === 'touch' && !pointer.dragging) {
@@ -84,6 +89,7 @@ function onPointerMove(event: PointerEvent) {
   }
   if (!pointer.dragging) return
   event.preventDefault()
+  dragPosition.value = { x: event.clientX, y: event.clientY }
   const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-item-id]')
   if (target?.dataset.itemId) pointer.targetId = target.dataset.itemId
   scheduleEdgePageTurn(event.clientX)
@@ -217,6 +223,20 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="shortcut-grid-wrap" @click="closeContextMenu">
+    <div
+      v-if="draggedItem"
+      class="shortcut-drag-ghost"
+      aria-hidden="true"
+      :style="{ left: `${dragPosition.x}px`, top: `${dragPosition.y}px`, '--shortcut-size': `${iconSize}px`, '--shortcut-radius': `${iconRadius}px` }"
+    >
+      <span class="shortcut-icon" :class="{ builtin: draggedItem.action }" :style="{ backgroundColor: draggedItem.color }">
+        <img v-if="draggedItem.icon" class="shortcut-picture" :src="draggedItem.icon" alt="" draggable="false" />
+        <component v-else-if="draggedItem.action" :is="itemIcons[draggedItem.action]" :size="35" :stroke-width="2.6" />
+        <span v-else class="shortcut-mark">{{ draggedItem.mark }}</span>
+        <span v-if="draggedItem.badge" class="shortcut-badge">{{ draggedItem.badge }}</span>
+      </span>
+      <span v-if="showNames" class="shortcut-name">{{ draggedItem.title }}</span>
+    </div>
     <div ref="gridViewport" class="shortcut-grid-viewport">
       <div class="shortcut-pages" :style="{ transform: `translate3d(-${currentPage * 100}%, 0, 0)` }">
           <section
