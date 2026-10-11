@@ -66,6 +66,22 @@ describe('useLocalWorkspace dock references', () => {
     workspace.removeFolder(folder.id)
     expect(workspace.preferences.value.dockItemIds).toEqual([])
   })
+
+  it('cleans Dock references when shortcuts disappear in another tab', () => {
+    localStorage.setItem('inftab.shortcuts.v1', JSON.stringify([
+      { id: 'external-link', title: 'Link', url: 'https://example.com/', color: '#abc', mark: 'L' },
+    ]))
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ dockItemIds: ['external-link'] }))
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'inftab.shortcuts.v1',
+      newValue: '[]',
+    }))
+
+    expect(workspace.preferences.value.dockItemIds).toEqual([])
+  })
 })
 
 describe('useLocalWorkspace custom search engines', () => {

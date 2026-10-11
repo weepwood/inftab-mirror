@@ -1,6 +1,6 @@
 import { useStoredState } from './useStoredState'
 import { watch } from 'vue'
-import { defaultLauncherOrder, defaultPreferences, defaultShortcuts } from '../data/defaults'
+import { defaultLauncherOrder, defaultPreferences, defaultShortcuts, launcherItems } from '../data/defaults'
 import { mergeById, type WorkspaceBackup } from '../data/backup'
 import { isValidCalendarDate } from '../data/countdown'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
@@ -24,6 +24,18 @@ export function useLocalWorkspace() {
     // Fall back to the default city when browser storage is unavailable.
   }
   const weatherCity = useStoredState<string>('inftab.weather-city.v1', previousWeatherCity, sanitizeWeatherCity)
+
+  watch([shortcuts, folders], () => {
+    const validDockIds = new Set([
+      ...launcherItems.filter((item) => item.action && item.id !== 'settings').map((item) => item.id),
+      ...shortcuts.value.map((shortcut) => shortcut.id),
+      ...folders.value.map((folder) => folder.id),
+    ])
+    const dockItemIds = preferences.value.dockItemIds.filter((id) => validDockIds.has(id))
+    if (dockItemIds.length !== preferences.value.dockItemIds.length) {
+      preferences.value = sanitizePreferences({ ...preferences.value, dockItemIds })
+    }
+  }, { flush: 'sync', immediate: true })
 
   if (preferences.value.engine.startsWith('custom:')
     && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
