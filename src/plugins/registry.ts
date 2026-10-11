@@ -1,6 +1,9 @@
 import { defineAsyncComponent, h, type Component } from 'vue'
 import type { WorkspaceBackup } from '../data/backup'
 import type { CountdownItem, CustomSearchEngine, Note, Preferences, TodoItem } from '../types'
+import type { PanelId } from './ids'
+
+export type { PanelId } from './ids'
 
 export const launcherPanelRoutes = {
   weather: 'weather',
@@ -14,10 +17,9 @@ export const launcherPanelRoutes = {
   history: 'history',
   calculator: 'calculator',
   calendar: 'calendar',
-} as const
+} as const satisfies Record<string, PanelId>
 
 export type LauncherPanelAction = keyof typeof launcherPanelRoutes
-export type PanelId = 'bookmarks' | 'history' | 'calculator' | 'calendar' | 'settings' | 'todos' | 'focus-timer' | 'notes' | 'countdowns' | 'weather'
 
 export const shortcutPanelRoutes: Readonly<Record<string, PanelId>> = {
   wallpapers: 'settings',

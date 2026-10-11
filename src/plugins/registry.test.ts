@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { launcherItems } from '../data/defaults'
 import { launcherPanelRoutes, panelPlugins, retryPanelLoad, shortcutPanelRoutes } from './registry'
+import { availableHomeWidgetIds, availablePanelIds } from './ids'
+import { homeWidgetPlugins } from './widgetRegistry'
 
 afterEach(() => vi.useRealTimers())
 
@@ -15,12 +17,24 @@ describe('built-in panel plugin registry', () => {
   })
 
   it('provides render metadata and adapters for every panel', () => {
+    expect(Object.keys(panelPlugins).sort()).toEqual([...availablePanelIds].sort())
     for (const [id, plugin] of Object.entries(panelPlugins)) {
       expect(plugin.title, `${id} title`).toBeTruthy()
       expect(plugin.description, `${id} description`).toBeTruthy()
       expect(plugin.component, `${id} component`).toBeTruthy()
       expect(typeof plugin.props, `${id} props adapter`).toBe('function')
       expect(typeof plugin.listeners, `${id} event adapter`).toBe('function')
+    }
+  })
+
+  it('keeps every registered home widget connected to a valid panel', () => {
+    expect(Object.keys(homeWidgetPlugins).sort()).toEqual([...availableHomeWidgetIds].sort())
+    for (const [id, widget] of Object.entries(homeWidgetPlugins)) {
+      expect(widget.title, `${id} title`).toBeTruthy()
+      expect(widget.description, `${id} description`).toBeTruthy()
+      expect(panelPlugins[widget.panel], `${id} panel`).toBeTruthy()
+      expect(widget.component, `${id} component`).toBeTruthy()
+      expect(typeof widget.props, `${id} props adapter`).toBe('function')
     }
   })
 

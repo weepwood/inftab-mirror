@@ -1,6 +1,7 @@
 import { defineAsyncComponent, h, type Component } from 'vue'
-import type { CountdownItem, HomeWidgetId, Note, TodoItem } from '../types'
-import type { PanelId } from './registry'
+import type { CountdownItem, Note, TodoItem } from '../types'
+import type { PanelId } from './ids'
+import type { HomeWidgetId } from './ids'
 
 export interface HomeWidgetContext {
   todos: TodoItem[]

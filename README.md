@@ -92,3 +92,5 @@ reference/
 新功能优先放在 `src/components/`、`src/data/` 或新的功能模块中，不直接修改 `reference/legacy-mirror/` 内的压缩构建文件。
 
 内置工具面板通过 `src/plugins/registry.ts` 注册组件、标题、快捷入口路由、属性和事件适配器；首页小组件通过 `src/plugins/widgetRegistry.ts` 注册视图、上下文数据和关联面板。添加功能时应在对应注册表声明，并增加数据校验、备份兼容及用户交互测试。注册表目前只加载仓库内受信任的模块，不执行远程插件代码；面板与小组件都按需加载，避免增加首屏工作。
+
+面板和小组件 ID 集中在 `src/plugins/ids.ts`，注册表通过 TypeScript 校验 ID 清单与实现是否齐全。新增内置面板或首页小组件的步骤、状态和测试要求见 [`docs/plugin-development.md`](docs/plugin-development.md)。

@@ -1,4 +1,8 @@
 import type { LauncherPanelAction } from './plugins/registry'
+import type { HomeWidgetId } from './plugins/ids'
+
+export { availableHomeWidgetIds } from './plugins/ids'
+export type { HomeWidgetId } from './plugins/ids'
 
 export type SearchMode = 'html' | 'photos' | 'news' | 'videos' | 'map'
 export type EngineId = 'google' | 'baidu' | 'bing' | 'duckduckgo' | 'sogou' | 'yahoo' | '360'
@@ -6,8 +10,6 @@ export type SearchEngineSelection = EngineId | `custom:${string}`
 export type PageTransitionEffect = 'slide' | 'particles' | 'trails'
 export type WallpaperRotation = 'off' | 'hourly' | 'daily'
 export type ThemeMode = 'light' | 'dark' | 'system'
-export const availableHomeWidgetIds = ['todo-summary', 'countdown-summary', 'notes-summary'] as const
-export type HomeWidgetId = typeof availableHomeWidgetIds[number]
 export const maxDockItems = 24
 
 export interface CustomSearchEngine {
