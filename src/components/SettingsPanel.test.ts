@@ -42,14 +42,14 @@ describe('SettingsPanel home widgets', () => {
     wrapper = mount(SettingsPanel, {
       props: { preferences: { ...defaultPreferences, homeWidgetIds: ['countdown-summary'] } },
     })
-    const todoLabel = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('显示待办概览'))!
+    const todoLabel = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('待办概览小组件'))!
     await todoLabel.get('input').setValue(true)
     expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({ homeWidgetIds: ['countdown-summary', 'todo-summary'] })
     await wrapper.setProps({
       preferences: { ...defaultPreferences, homeWidgetIds: ['countdown-summary', 'todo-summary'] },
     })
 
-    const countdownLabel = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('显示倒计时'))!
+    const countdownLabel = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('倒计时小组件'))!
     await countdownLabel.get('input').setValue(false)
     expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({ homeWidgetIds: ['todo-summary'] })
   })

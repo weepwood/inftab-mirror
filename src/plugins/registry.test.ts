@@ -38,6 +38,11 @@ describe('built-in panel plugin registry', () => {
     }
   })
 
+  it('passes the selected weather city to its homepage widget plugin', () => {
+    expect(homeWidgetPlugins['weather-summary'].panel).toBe('weather')
+    expect(homeWidgetPlugins['weather-summary'].props({ weatherCity: '杭州' } as never)).toEqual({ city: '杭州' })
+  })
+
   it('routes the legacy wallpaper shortcut to settings', () => {
     expect(shortcutPanelRoutes.wallpapers).toBe('settings')
   })

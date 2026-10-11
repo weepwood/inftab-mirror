@@ -125,6 +125,20 @@ describe('WeatherPanel request ordering', () => {
     wrapper.unmount()
   })
 
+  it('rejects unknown current weather codes instead of labeling them as a real condition', async () => {
+    const invalidForecast = forecast(20)
+    invalidForecast.current.weather_code = 90
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(response({ results: [locations[0]] }))
+      .mockResolvedValueOnce(response(invalidForecast)))
+    const wrapper = mount(WeatherPanel, { props: { city: '新加坡' } })
+    await flushPromises()
+
+    expect(wrapper.find('.weather-error').text()).toContain('数据格式无法识别')
+    expect(wrapper.find('.weather-current').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('does not request a forecast for out-of-range coordinates returned by geocoding', async () => {
     const fetchMock = vi.fn().mockResolvedValue(response({
       results: [{ ...locations[0], latitude: 95 }],

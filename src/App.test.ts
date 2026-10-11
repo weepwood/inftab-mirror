@@ -191,6 +191,7 @@ describe('new-tab wallpaper rotation', () => {
     }))
     wrapper = mount(App, { attachTo: document.body })
     await nextTick()
+    await flushPromises()
     expect(wrapper.get('main.home').attributes('style')).toContain('forest.webp')
 
     await vi.advanceTimersByTimeAsync(60 * 60 * 1000)

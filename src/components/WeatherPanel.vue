@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Droplets, RefreshCw, Search, Snowflake, Sun, Wind } from '@lucide/vue'
 import { isValidCalendarDate } from '../data/countdown'
+import { isValidWeatherCode, weatherDescription as weatherLabel } from '../data/weatherSummary'
 
 interface LocationResult {
   id: number
@@ -43,21 +44,6 @@ let internallySelectedCity = ''
 const requestTimeoutMs = 15_000
 
 const today = computed(() => forecast.value?.daily.time[0])
-
-function weatherLabel(code: number) {
-  if (code === 0) return '晴朗'
-  if (code === 1) return '大致晴朗'
-  if (code === 2) return '局部多云'
-  if (code === 3) return '阴天'
-  if (code === 45 || code === 48) return '有雾'
-  if (code >= 51 && code <= 57) return '毛毛雨'
-  if (code >= 61 && code <= 67) return '下雨'
-  if (code >= 71 && code <= 77) return '下雪'
-  if (code >= 80 && code <= 82) return '阵雨'
-  if (code === 85 || code === 86) return '阵雪'
-  if (code >= 95) return '雷雨'
-  return '天气状况'
-}
 
 function WeatherIcon({ code }: { code: number }) {
   if (code === 0) return Sun
@@ -207,6 +193,7 @@ function isWeatherResponse(value: unknown): value is WeatherResponse {
   const temperatureMin = daily.temperature_2m_min
   const currentKeys = ['temperature_2m', 'apparent_temperature', 'relative_humidity_2m', 'weather_code', 'wind_speed_10m']
   if (!currentKeys.every((key) => typeof current[key] === 'number' && Number.isFinite(current[key]))) return false
+  if (!isValidWeatherCode(current.weather_code)) return false
   return Array.isArray(times)
     && Array.isArray(weatherCodes)
     && Array.isArray(temperatureMax)
@@ -217,6 +204,7 @@ function isWeatherResponse(value: unknown): value is WeatherResponse {
     && [weatherCodes, temperatureMax, temperatureMin].every((series) =>
       series.length === times.length
       && series.every((item) => typeof item === 'number' && Number.isFinite(item)))
+    && weatherCodes.every(isValidWeatherCode)
 }
 
 function formatWeekday(date: string) {

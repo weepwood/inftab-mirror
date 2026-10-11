@@ -141,7 +141,7 @@ test('settings persist and the main view fits a narrow viewport', async ({ page 
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const showClock = page.getByLabel('显示时间和日期')
   await showClock.uncheck()
-  await page.getByLabel('显示待办概览').check()
+  await page.getByLabel('显示待办概览小组件').check()
   await page.getByRole('button', { name: '关闭' }).click()
   await expect(page.getByText(/\d{2}:\d{2}/)).toHaveCount(0)
   await expect(page.getByRole('region', { name: '首页小组件' })).toBeVisible()
@@ -209,7 +209,7 @@ test('simultaneous settings changes in separate tabs do not overwrite each other
 
   await Promise.all([
     page.getByLabel('显示时间和日期').uncheck(),
-    secondTab.getByLabel('显示待办概览').check(),
+    secondTab.getByLabel('显示待办概览小组件').check(),
   ])
 
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}')))
@@ -257,8 +257,8 @@ test('simultaneous widget selections in separate tabs are combined', async ({ pa
   ])
 
   await Promise.all([
-    page.getByLabel('显示待办概览').check(),
-    secondTab.getByLabel('显示倒计时').check(),
+    page.getByLabel('显示待办概览小组件').check(),
+    secondTab.getByLabel('显示倒计时小组件').check(),
   ])
 
   await expect.poll(() => page.evaluate(() => {
@@ -271,8 +271,8 @@ test('simultaneous widget selections in separate tabs are combined', async ({ pa
 
 test('home widgets open their panel, reorder, and can be removed', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
-  await page.getByLabel('显示待办概览').check()
-  await page.getByLabel('显示倒计时').check()
+  await page.getByLabel('显示待办概览小组件').check()
+  await page.getByLabel('显示倒计时小组件').check()
   await page.getByRole('button', { name: '关闭' }).click()
 
   const widgetTitles = page.locator('.home-widget-title')
@@ -306,7 +306,7 @@ test('home widgets open their panel, reorder, and can be removed', async ({ page
 
 test('enabled home widgets remain visible and scrollable in a short viewport', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
-  await page.getByLabel('显示待办概览').check()
+  await page.getByLabel('显示待办概览小组件').check()
   await page.getByRole('button', { name: '关闭' }).click()
   await page.setViewportSize({ width: 390, height: 480 })
 
@@ -323,7 +323,7 @@ test('enabled home widgets remain visible and scrollable in a short viewport', a
 
 test('calendar home widget can be enabled and opens the interactive calendar panel', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
-  await page.getByLabel('显示月历').check()
+  await page.getByLabel('显示月历小组件').check()
   await page.getByRole('button', { name: '关闭' }).click()
 
   const calendarWidget = page.locator('[data-widget-id="calendar-summary"]')
@@ -337,6 +337,19 @@ test('calendar home widget can be enabled and opens the interactive calendar pan
   const monthBefore = await calendarPanel.locator('.calendar-month-nav h3').textContent()
   await calendarPanel.getByRole('button', { name: '下个月' }).click()
   await expect(calendarPanel.locator('.calendar-month-nav h3')).not.toHaveText(monthBefore ?? '')
+})
+
+test('weather home widget shows the current city reading and opens its panel', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settingsPanel = page.getByRole('dialog', { name: '设置' })
+  await settingsPanel.getByLabel('显示天气小组件').check()
+  await settingsPanel.getByRole('button', { name: '关闭' }).click()
+
+  const widget = page.locator('[data-widget-id="weather-summary"]')
+  await expect(widget).toContainText('上海 20°')
+  await expect(widget).toContainText('大致晴朗')
+  await widget.getByRole('button', { name: '打开天气' }).click()
+  await expect(page.getByRole('dialog', { name: '天气' })).toBeVisible()
 })
 
 test('countdowns can be created, edited, deleted, and persist across reloads', async ({ page }) => {
@@ -377,7 +390,7 @@ test('notes widget previews the selected note and opens the notes panel', async 
   await notesPanel.getByRole('button', { name: '关闭' }).click()
 
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
-  await page.getByLabel('显示便签').check()
+  await page.getByLabel('显示便签小组件').check()
   await page.getByRole('button', { name: '关闭' }).click()
 
   const widget = page.locator('[data-widget-id="notes-summary"]')
@@ -394,9 +407,9 @@ test('notes widget previews the selected note and opens the notes panel', async 
 test('desktop widget shelf fits every enabled widget into a responsive grid', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
-  await page.getByLabel('显示待办概览').check()
-  await page.getByLabel('显示倒计时').check()
-  await page.getByLabel('显示便签').check()
+  await page.getByLabel('显示待办概览小组件').check()
+  await page.getByLabel('显示倒计时小组件').check()
+  await page.getByLabel('显示便签小组件').check()
   await page.getByRole('button', { name: '关闭' }).click()
 
   const shelf = page.getByRole('region', { name: '首页小组件' })

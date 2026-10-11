@@ -24,11 +24,11 @@ describe('home widget shelf plugin activation', () => {
         props: () => ({}),
       },
     }
-    const context: HomeWidgetContext = { todos: [], countdowns: [], notes: [], activeNoteId: '' }
+    const context: HomeWidgetContext = { todos: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海' }
     wrapper = mount(HomeWidgetShelf, {
       props: {
         widgetIds: ['todo-summary'],
-        widgetSizes: { 'todo-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard' },
+        widgetSizes: { 'todo-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard', 'weather-summary': 'standard' },
         context,
         plugins,
       },

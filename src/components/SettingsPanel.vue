@@ -267,7 +267,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       <div class="section-heading"><div><h3>快捷入口</h3><p>调整图标网格外观</p></div></div>
       <p class="settings-subheading">首页小组件</p>
       <label v-for="id in availableHomeWidgetIds" :key="id" class="toggle-row">
-        <span>显示{{ homeWidgetPlugins[id].title }}</span><input type="checkbox" :checked="preferences.homeWidgetIds.includes(id)" @change="toggleHomeWidget(id, ($event.target as HTMLInputElement).checked)" />
+        <span>{{ homeWidgetPlugins[id].title }}小组件</span><input type="checkbox" :aria-label="`显示${homeWidgetPlugins[id].title}小组件`" :checked="preferences.homeWidgetIds.includes(id)" @change="toggleHomeWidget(id, ($event.target as HTMLInputElement).checked)" />
       </label>
       <p class="wallpaper-note">小组件会保存在本机设置中，可在首页拖动排序，也可用上下按钮调整。</p>
       <p class="settings-subheading">常驻 Dock</p>

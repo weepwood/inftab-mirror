@@ -8,6 +8,7 @@ export interface HomeWidgetContext {
   countdowns: CountdownItem[]
   notes: Note[]
   activeNoteId: string
+  weatherCity: string
 }
 
 export interface HomeWidgetPlugin {
@@ -68,5 +69,12 @@ export const homeWidgetPlugins = {
     panel: 'calendar',
     component: lazyWidget(() => import('../components/CalendarSummaryWidget.vue')),
     props: () => ({}),
+  },
+  'weather-summary': {
+    title: '天气',
+    description: '在首页查看当前城市天气',
+    panel: 'weather',
+    component: lazyWidget(() => import('../components/WeatherSummaryWidget.vue')),
+    props: (context) => ({ city: context.weatherCity }),
   },
 } satisfies HomeWidgetPluginRegistry

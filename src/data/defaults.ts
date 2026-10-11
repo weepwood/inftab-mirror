@@ -12,6 +12,7 @@ export const defaultPreferences: Preferences = {
     'countdown-summary': 'standard',
     'notes-summary': 'standard',
     'calendar-summary': 'standard',
+    'weather-summary': 'standard',
   },
   engine: 'baidu',
   mode: 'html',
