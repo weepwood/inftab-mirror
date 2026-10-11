@@ -56,6 +56,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   const optionalPreferenceTypes: Record<string, (item: unknown) => boolean> = {
     visibleSearchModes: (item) => Array.isArray(item) && item.every((mode) => ['html', 'photos', 'news', 'videos', 'map'].includes(String(mode))),
     showSearchBar: (item) => typeof item === 'boolean',
+    showClock: (item) => typeof item === 'boolean',
     rows: (item) => typeof item === 'number' && Number.isFinite(item),
     gridGapX: (item) => typeof item === 'number' && Number.isFinite(item),
     gridGapY: (item) => typeof item === 'number' && Number.isFinite(item),

@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowLeft, House, Menu, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
+import ClockWidget from './components/ClockWidget.vue'
 import ShortcutGrid from './components/ShortcutGrid.vue'
 import FolderDialog from './components/FolderDialog.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
@@ -394,6 +395,7 @@ onBeforeUnmount(() => {
       <button type="button" class="round-action" aria-label="打开设置" @click="activePanel = 'settings'"><Menu :size="21" /></button>
     </header>
 
+    <ClockWidget v-if="preferences.showClock" />
     <section class="home-content">
       <SearchBar
         ref="searchBar"

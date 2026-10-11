@@ -69,6 +69,11 @@ function applyImport(mode: 'merge' | 'replace') {
 <template>
   <div class="settings-content">
     <section class="settings-section">
+      <div class="section-heading"><div><h3>首页组件</h3><p>显示常用信息</p></div></div>
+      <label class="toggle-row"><span>显示时间和日期</span><input type="checkbox" :checked="preferences.showClock" @change="update('showClock', ($event.target as HTMLInputElement).checked)" /></label>
+    </section>
+
+    <section class="settings-section">
       <div class="section-heading">
         <div><h3>背景图库</h3><p>选择归档壁纸或本地背景主题</p></div>
         <button class="text-button" type="button" @click="$emit('reset')">恢复默认</button>

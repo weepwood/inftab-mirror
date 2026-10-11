@@ -75,6 +75,13 @@ describe('local state sanitization', () => {
     expect(defaultPreferences.visibleSearchModes).toEqual([])
   })
 
+  it('defaults the optional clock setting on for older saved preferences', () => {
+    const preferences = sanitizePreferences({ showSearchBar: false })
+
+    expect(preferences.showClock).toBe(true)
+    expect(preferences.showSearchBar).toBe(false)
+  })
+
   it('assigns a shortcut to only the first folder and restores it when unassigned', () => {
     const shortcuts = sanitizeShortcuts([{ id: 'shortcut', title: 'Link', url: 'https://example.com', color: '#abc', mark: 'L' }])
     const folders = sanitizeFolders([

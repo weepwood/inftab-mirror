@@ -7,6 +7,7 @@ export const defaultPreferences: Preferences = {
   mode: 'html',
   visibleSearchModes: [],
   showSearchBar: true,
+  showClock: true,
   wallpaper: `${base}wallpapers/forest.webp`,
   customWallpaper: '',
   shade: 0.2,

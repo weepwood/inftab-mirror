@@ -36,6 +36,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     mode: typeof merged.mode === 'string' && searchModes.has(merged.mode as SearchMode) ? merged.mode as SearchMode : defaultPreferences.mode,
     visibleSearchModes,
     showSearchBar: typeof merged.showSearchBar === 'boolean' ? merged.showSearchBar : defaultPreferences.showSearchBar,
+    showClock: typeof merged.showClock === 'boolean' ? merged.showClock : defaultPreferences.showClock,
     wallpaper,
     customWallpaper,
     shade: boundedNumber(raw.shade, defaultPreferences.shade, 0, 0.65),

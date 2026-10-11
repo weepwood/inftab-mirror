@@ -184,4 +184,14 @@ describe('new-tab keyboard search', () => {
     await newsToggle.get('input').setValue(false)
     expect(wrapper.find('.search-tabs').exists()).toBe(false)
   })
+
+  it('allows the homepage clock widget to be hidden from settings', async () => {
+    wrapper = mount(App, { attachTo: document.body })
+    expect(wrapper.find('.home-clock').exists()).toBe(true)
+    await wrapper.get('.shortcut-open[aria-label=\"打开settings\"]').trigger('click')
+    const clockToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().includes('显示时间和日期'))!
+    await clockToggle.get('input').setValue(false)
+
+    expect(wrapper.find('.home-clock').exists()).toBe(false)
+  })
 })

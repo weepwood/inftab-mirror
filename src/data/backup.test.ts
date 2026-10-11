@@ -53,6 +53,12 @@ describe('workspace backups', () => {
     expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'todos', 'notes', 'settings'])
   })
 
+  it('keeps older backups compatible with the new clock preference', () => {
+    const preferences = { ...defaultPreferences, showClock: undefined }
+
+    expect(parseWorkspaceBackup(backup({ preferences })).preferences.showClock).toBe(true)
+  })
+
   it('rejects oversized sections and unsupported enums', () => {
     expect(() => parseWorkspaceBackup(backup({ notes: Array.from({ length: 501 }, (_, index) => ({ id: String(index), title: '', body: '', updatedAt: 1 })) }))).toThrow(/最多 500/)
     expect(() => parseWorkspaceBackup(backup({ preferences: { ...defaultPreferences, engine: 'other' } }))).toThrow(/搜索引擎/)

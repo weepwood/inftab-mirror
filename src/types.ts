@@ -37,6 +37,7 @@ export interface Preferences {
   mode: SearchMode
   visibleSearchModes: SearchMode[]
   showSearchBar: boolean
+  showClock: boolean
   wallpaper: string
   customWallpaper: string
   shade: number
