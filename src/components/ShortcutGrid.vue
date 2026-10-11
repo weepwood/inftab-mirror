@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Bookmark, CalendarDays, Calculator, CloudSun, Folder, Image, ListTodo, PartyPopper, Pencil, Settings, StickyNote, Trash2 } from '@lucide/vue'
+import { Bookmark, CalendarDays, Calculator, CloudSun, Copy, Folder, Image, ListTodo, PartyPopper, Pencil, Settings, StickyNote, Trash2 } from '@lucide/vue'
 import type { Component } from 'vue'
 import type { LauncherItem, PageTransitionEffect } from '../types'
 
@@ -530,7 +530,7 @@ function handleShortcutKeydown(event: KeyboardEvent, item: LauncherItem) {
 
 function showContextMenu(item: LauncherItem, x: number, y: number, trigger: HTMLElement) {
   const width = 164
-  const height = 94
+  const height = item.shortcut ? 130 : 94
   contextPosition.value = {
     left: Math.max(8, Math.min(x, window.innerWidth - width - 8)),
     top: Math.max(8, Math.min(y, window.innerHeight - height - 8)),
@@ -592,6 +592,26 @@ function editContextItem(event: MouseEvent) {
 function removeContextItem(event: MouseEvent) {
   event.stopPropagation()
   if (contextItem.value) emit('remove', contextItem.value)
+  closeContextMenu(true)
+}
+
+async function copyContextItem(event: MouseEvent) {
+  event.stopPropagation()
+  const shortcut = contextItem.value?.shortcut
+  if (!shortcut) return
+  try {
+    const extensionPermissions = (globalThis as typeof globalThis & {
+      chrome?: { permissions?: { request: (permissions: { permissions: string[] }) => Promise<boolean> } }
+    }).chrome?.permissions
+    if (extensionPermissions && !(await extensionPermissions.request({ permissions: ['clipboardWrite'] }))) {
+      throw new Error('Clipboard permission was not granted')
+    }
+    if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable')
+    await navigator.clipboard.writeText(shortcut.url)
+    moveAnnouncement.value = `已复制${shortcut.title}的网址。`
+  } catch {
+    moveAnnouncement.value = '无法复制网址，请检查浏览器剪贴板权限。'
+  }
   closeContextMenu(true)
 }
 
@@ -706,7 +726,8 @@ onBeforeUnmount(() => {
       @focusout="handleContextMenuFocusOut"
     >
       <button type="button" role="menuitem" :tabindex="contextMenuIndex === 0 ? 0 : -1" @click="editContextItem"><Pencil :size="14" /> 编辑{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
-      <button type="button" role="menuitem" class="danger" :tabindex="contextMenuIndex === 1 ? 0 : -1" @click="removeContextItem"><Trash2 :size="14" /> 删除{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
+      <button v-if="contextItem.shortcut" type="button" role="menuitem" :tabindex="contextMenuIndex === 1 ? 0 : -1" @click="copyContextItem"><Copy :size="14" /> 复制网址</button>
+      <button type="button" role="menuitem" class="danger" :tabindex="contextMenuIndex === (contextItem.shortcut ? 2 : 1) ? 0 : -1" @click="removeContextItem"><Trash2 :size="14" /> 删除{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
     </div>
   </div>
 </template>

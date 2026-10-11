@@ -260,6 +260,76 @@ describe('ShortcutGrid page cycling', () => {
 })
 
 describe('ShortcutGrid keyboard reordering', () => {
+  it('copies a shortcut URL from its accessible keyboard context menu', async () => {
+    installAnimationEnvironment()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    const requestPermission = vi.fn().mockResolvedValue(true)
+    vi.stubGlobal('chrome', { permissions: { request: requestPermission } })
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    const shortcut = { id: 'shortcut', title: 'Example', url: 'https://example.com/', color: '#3567aa', mark: 'E' }
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items: [{ id: shortcut.id, title: shortcut.title, color: shortcut.color, mark: shortcut.mark, shortcut }],
+        columns: 2,
+        rows: 1,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 0,
+        transitionDirection: 1,
+        transitionEffect: 'slide',
+        transitionDuration: 0,
+      },
+      attachTo: document.body,
+    })
+
+    const trigger = wrapper.get('.shortcut-open')
+    await trigger.trigger('keydown', { key: 'F10', shiftKey: true })
+    await flushPromises()
+    await wrapper.findAll('[role="menuitem"]')[0]!.trigger('keydown', { key: 'ArrowDown' })
+    const copyAction = wrapper.findAll('[role="menuitem"]').find((item) => item.text().includes('复制网址'))!
+    expect(document.activeElement).toBe(copyAction.element)
+    await copyAction.trigger('click')
+    await flushPromises()
+
+    expect(writeText).toHaveBeenCalledWith('https://example.com/')
+    expect(requestPermission).toHaveBeenCalledWith({ permissions: ['clipboardWrite'] })
+    expect(wrapper.get('[role="status"]').text()).toContain('已复制Example的网址')
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    expect(document.activeElement).toBe(trigger.element)
+    wrapper.unmount()
+  })
+
+  it('announces when clipboard permission is denied', async () => {
+    installAnimationEnvironment()
+    const writeText = vi.fn()
+    vi.stubGlobal('chrome', { permissions: { request: vi.fn().mockResolvedValue(false) } })
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    const shortcut = { id: 'shortcut', title: 'Example', url: 'https://example.com/', color: '#3567aa', mark: 'E' }
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items: [{ id: shortcut.id, title: shortcut.title, color: shortcut.color, mark: shortcut.mark, shortcut }],
+        columns: 2,
+        rows: 1,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 0,
+        transitionDirection: 1,
+        transitionEffect: 'slide',
+        transitionDuration: 0,
+      },
+    })
+
+    await wrapper.get('.shortcut-open').trigger('keydown', { key: 'F10', shiftKey: true })
+    await wrapper.findAll('[role="menuitem"]').find((item) => item.text().includes('复制网址'))!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[role="status"]').text()).toContain('无法复制网址')
+    expect(writeText).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('offers a keyboard alternative and emits bounded adjacent moves', async () => {
     installAnimationEnvironment()
     const wrapper = mount(ShortcutGrid, {
