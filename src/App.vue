@@ -54,6 +54,7 @@ const shortcutIcon = ref('')
 const shortcutIconFile = ref<HTMLInputElement>()
 const shortcutIconError = ref('')
 const savingShortcut = ref(false)
+const viewport = ref({ width: window.innerWidth, height: window.innerHeight })
 const pageSize = computed(() => preferences.value.columns * preferences.value.rows)
 let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
 let homeWheelLocked = false
@@ -78,6 +79,28 @@ const allLauncherItems = computed<LauncherItem[]>(() => {
 })
 const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
 const pageDots = computed(() => Array.from({ length: pageCount.value }, (_, index) => index))
+const compactRows = computed(() => Math.min(preferences.value.rows, Math.max(1, Math.ceil(allLauncherItems.value.length / preferences.value.columns))))
+const fitMetrics = computed(() => {
+  const { width, height } = viewport.value
+  const mobile = width <= 780
+  const smallMobile = width <= 480
+  const compactHeight = height <= 680
+  const veryShortHeight = height <= 560
+  const rows = compactRows.value
+  const topPadding = veryShortHeight ? 38 : compactHeight ? Math.min(64, Math.max(48, height * 0.09)) : smallMobile ? height * 0.18 : mobile ? height * 0.17 : Math.min(112, Math.max(72, height * 0.09))
+  const tabHeight = preferences.value.visibleSearchModes.length ? (veryShortHeight ? 26 : smallMobile ? 28 : 33) : 0
+  const searchHeight = veryShortHeight ? 44 : mobile ? 48 : 54
+  const configuredTopGap = preferences.value.gridTopGap * (mobile && !compactHeight ? 0.68 : 1)
+  const gridTopGap = veryShortHeight ? Math.min(configuredTopGap, 16) : compactHeight ? Math.min(configuredTopGap, 28) : configuredTopGap
+  const paginationHeight = pageCount.value > 1 ? (veryShortHeight ? 31 : compactHeight ? 37 : mobile ? 43 : 48) : 0
+  const nameHeight = preferences.value.showNames ? (smallMobile ? 13 : 17) + 7 : 0
+  const footerClearance = veryShortHeight ? 24 : 38
+  const available = height - topPadding - tabHeight - searchHeight - gridTopGap - paginationHeight - footerClearance - rows * nameHeight
+  const requestedGap = Math.min(preferences.value.gridGapY, smallMobile ? 20 : mobile ? 24 : preferences.value.gridGapY)
+  const fittedGap = rows > 1 ? Math.min(requestedGap, Math.max(4, (available - rows * 32) / (rows - 1))) : requestedGap
+  const fittedIcon = Math.max(28, Math.min(preferences.value.iconSize, (available - (rows - 1) * fittedGap) / rows))
+  return { fittedGap, fittedIcon }
+})
 const panelTitle = computed(() => ({ settings: '设置', todos: '待办事项', notes: '笔记', weather: '天气' }[activePanel.value ?? 'settings']))
 const backgroundStyle = computed(() => {
   const value = preferences.value.customWallpaper.trim() || preferences.value.wallpaper
@@ -91,7 +114,8 @@ const backgroundStyle = computed(() => {
     '--search-width': `${preferences.value.searchWidth}px`,
     '--grid-top-gap': `${preferences.value.gridTopGap}px`,
     '--shortcut-gap-x': `${preferences.value.gridGapX}px`,
-    '--shortcut-gap-y': `${preferences.value.gridGapY}px`,
+    '--shortcut-gap-y': `${fitMetrics.value.fittedGap}px`,
+    '--fit-icon-size': `${fitMetrics.value.fittedIcon}px`,
     '--page-transition-duration': `${preferences.value.pageTransitionMs}ms`,
     '--hover-glow-strength': String(preferences.value.hoverGlow / 100),
   }
@@ -264,8 +288,18 @@ function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'ArrowLeft' && !editingText && !shortcutDialog.value && !activePanel.value) movePage(-1)
 }
 
-onMounted(() => window.addEventListener('keydown', handleKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
+function updateViewport() {
+  viewport.value = { width: window.innerWidth, height: window.innerHeight }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('resize', updateViewport)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('resize', updateViewport)
+})
 </script>
 
 <template>

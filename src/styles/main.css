@@ -33,7 +33,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .round-action { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(67, 67, 67, .6); color: #fff; cursor: pointer; transition: background .18s, transform .18s; }
 .round-action:hover { background: rgba(33, 33, 33, .8); transform: translateY(-1px); }
 
-.home-content { position: relative; z-index: 1; width: min(900px, calc(100vw - 56px)); margin: 0 auto; padding-top: clamp(72px, 9vh, 112px); }
+.home-content { position: relative; z-index: 1; width: min(1440px, calc(100vw - 64px)); margin: 0 auto; padding-top: clamp(72px, 9vh, 112px); }
 .search-area { position: relative; z-index: 1; width: min(var(--search-width, 548px), 100%); margin: 0 auto; }
 .search-tabs { height: 33px; display: flex; align-items: flex-start; justify-content: center; gap: 38px; }
 .search-tab { border: 0; padding: 0 0 8px; background: transparent; color: rgba(255, 255, 255, .58); font-size: 14px; cursor: pointer; transition: color .15s; }
@@ -63,10 +63,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .shortcut-cell { position: relative; width: 100%; min-width: 0; display: flex; justify-content: center; user-select: none; transition: transform .16s ease, opacity .16s ease; }
 .shortcut-cell.dragging { z-index: 3; opacity: .2; }
 .shortcut-cell.dragging .shortcut-open { cursor: grabbing; }
-.shortcut-drag-ghost { position: fixed; z-index: 8; display: flex; flex-direction: column; align-items: center; gap: 7px; width: min(var(--shortcut-size), 18vw); transform: translate(-50%, -50%) scale(1.06); pointer-events: none; opacity: .96; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .3)); }
+.shortcut-drag-ghost { position: fixed; z-index: 8; display: flex; flex-direction: column; align-items: center; gap: 7px; width: min(var(--fit-icon-size, var(--shortcut-size)), 18vw); transform: translate(-50%, -50%) scale(1.06); pointer-events: none; opacity: .96; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .3)); }
 .shortcut-drag-ghost .shortcut-icon { width: 100%; box-shadow: 0 0 0 2px rgba(255, 255, 255, .64), 0 0 28px 9px rgba(255, 255, 255, .38); }
 .shortcut-open { width: 100%; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 7px; border: 0; padding: 0 4px; background: transparent; cursor: pointer; touch-action: none; }
-.shortcut-icon { position: relative; width: min(var(--shortcut-size), 84%); aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; border-radius: var(--shortcut-radius); color: white; box-shadow: 0 3px 12px rgba(0, 0, 0, .13); transition: transform .18s, box-shadow .18s; }
+.shortcut-icon { position: relative; width: min(var(--shortcut-size), var(--fit-icon-size, var(--shortcut-size)), 84%); aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; border-radius: var(--shortcut-radius); color: white; box-shadow: 0 3px 12px rgba(0, 0, 0, .13); transition: transform .18s, box-shadow .18s; }
 .shortcut-picture { width: 100%; height: 100%; object-fit: cover; }
 .shortcut-open:hover .shortcut-icon { transform: translateY(-4px) scale(1.035); box-shadow: 0 0 0 2px rgba(255, 255, 255, calc(.48 * var(--hover-glow-strength, 1))), 0 0 24px 7px rgba(255, 255, 255, calc(.42 * var(--hover-glow-strength, 1))), 0 10px 22px rgba(0, 0, 0, .22); }
 .shortcut-icon.builtin { color: #7d8993; }
@@ -233,7 +233,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .search-tab { font-size: 12px; }
   .search-box { height: 48px; }
   .shortcut-page { column-gap: min(var(--shortcut-gap-x, 8px), 8px); row-gap: min(var(--shortcut-gap-y, 24px), 24px); }
-  .shortcut-icon { width: min(var(--shortcut-size), 84%, 60px); }
+  .shortcut-icon { width: min(var(--shortcut-size), var(--fit-icon-size, var(--shortcut-size)), 84%, 60px); }
   .shortcut-name { font-size: 11px; }
   .shortcut-grid-wrap { margin-top: calc(var(--grid-top-gap, 50px) * .68); }
   .page-dots { margin-top: 20px; }
@@ -244,7 +244,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .search-tabs { height: 28px; gap: 15px; }
   .search-tab { font-size: 11px; }
   .shortcut-page { column-gap: min(var(--shortcut-gap-x, 2px), 2px); row-gap: min(var(--shortcut-gap-y, 20px), 20px); }
-  .shortcut-icon { width: min(var(--shortcut-size), 60px); }
+  .shortcut-icon { width: min(var(--shortcut-size), var(--fit-icon-size, var(--shortcut-size)), 60px); }
   .shortcut-mark { font-size: 17px; }
   .shortcut-name { font-size: 10px; }
   .notes-layout { grid-template-columns: 118px minmax(0, 1fr); }
@@ -252,6 +252,21 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .settings-content, .todo-content { padding-right: 17px; padding-left: 17px; }
   .windmill { width: 36px; height: 36px; right: 8px; bottom: 8px; }
   .home-footer { bottom: 13px; font-size: 10px; }
+}
+
+@media (max-height: 680px) {
+  .home-content { padding-top: clamp(48px, 9vh, 64px); }
+  .shortcut-grid-wrap { margin-top: min(var(--grid-top-gap, 50px), 28px); }
+  .page-dots { margin-top: 14px; }
+}
+
+@media (max-height: 560px) {
+  .home-content { padding-top: 38px; }
+  .search-tabs { height: 26px; }
+  .search-box { height: 44px; }
+  .shortcut-grid-wrap { margin-top: min(var(--grid-top-gap, 50px), 16px); }
+  .page-dots { margin-top: 8px; }
+  .home-footer { bottom: 6px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
