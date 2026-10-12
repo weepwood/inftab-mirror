@@ -14,15 +14,28 @@ export interface HomeWidgetContext {
   focusTimer: FocusTimerState
 }
 
-export interface HomeWidgetPlugin {
+type NoProps = Record<string, never>
+
+export interface HomeWidgetPropsById {
+  'todo-summary': { items: TodoItem[] }
+  'countdown-summary': { items: CountdownItem[] }
+  'notes-summary': { notes: Note[]; activeId: string }
+  'calendar-summary': NoProps
+  'weather-summary': { city: string }
+  'focus-timer-summary': { state: FocusTimerState }
+  'bookmarks-summary': NoProps
+  'history-summary': NoProps
+}
+
+export type HomeWidgetPlugin<Id extends HomeWidgetId = HomeWidgetId> = {
   title: string
   description: string
   panel?: PanelId
   component: Component
-  props: (context: HomeWidgetContext) => Record<string, unknown>
+  props: (context: HomeWidgetContext) => HomeWidgetPropsById[Id]
 }
 
-export type HomeWidgetPluginRegistry = Record<HomeWidgetId, HomeWidgetPlugin>
+export type HomeWidgetPluginRegistry = { [Id in HomeWidgetId]: HomeWidgetPlugin<Id> }
 
 function lazyWidget(loader: () => Promise<{ default: Component }>) {
   return lazyPluginComponent(loader, '正在加载小组件…', '小组件加载失败，请重试。')

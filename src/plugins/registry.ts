@@ -65,13 +65,72 @@ export interface PanelPluginContext {
   setFocusDuration: (minutes: number) => void
 }
 
-export interface PanelPlugin {
+type NoProps = Record<string, never>
+
+export interface PanelPropsById {
+  bookmarks: NoProps
+  history: NoProps
+  calculator: NoProps
+  calendar: NoProps
+  settings: { preferences: Preferences; exportError: string; customEngines: CustomSearchEngine[] }
+  todos: { items: TodoItem[] }
+  'focus-timer': { state: FocusTimerState }
+  notes: { notes: Note[]; activeId: string }
+  countdowns: { items: CountdownItem[] }
+  weather: { city: string }
+}
+
+export interface PanelEventsById {
+  bookmarks: { addShortcut: (title: string, url: string) => void }
+  history: NoProps
+  calculator: NoProps
+  calendar: NoProps
+  settings: {
+    update: (update: Partial<Preferences>) => void
+    reset: () => void
+    addShortcut: () => void
+    addFolder: () => void
+    exportBackup: () => void
+    importBackup: (backup: WorkspaceBackup, mode: 'merge' | 'replace') => void
+    addSearchEngine: (name: string, template: string) => void
+    removeSearchEngine: (id: string) => void
+  }
+  todos: {
+    add: (title: string) => void
+    toggle: (id: string) => void
+    update: (id: string, title: string) => void
+    remove: (id: string) => void
+    clearCompleted: () => void
+  }
+  'focus-timer': {
+    start: () => void
+    pause: () => void
+    reset: () => void
+    setDuration: (minutes: number) => void
+  }
+  notes: {
+    add: () => void
+    select: (id: string) => void
+    update: (id: string, field: 'title' | 'body', value: string) => void
+    remove: (id: string) => void
+  }
+  countdowns: {
+    add: (title: string, date: string, recurrence: 'once' | 'yearly') => void
+    update: (id: string, title: string, date: string, recurrence: 'once' | 'yearly') => void
+    remove: (id: string) => void
+  }
+  weather: { 'update:city': (city: string) => void }
+}
+
+export interface PanelPlugin<Id extends PanelId = PanelId> {
   title: string
   description: string
   component: Component
-  props: (context: PanelPluginContext) => Record<string, unknown>
-  listeners: (context: PanelPluginContext) => Record<string, (...args: never[]) => void>
+  props: (context: PanelPluginContext) => PanelPropsById[Id]
+  listeners: (context: PanelPluginContext) => PanelEventsById[Id]
 }
+
+export type PanelPluginRegistry = { [Id in PanelId]: PanelPlugin<Id> }
 
 function lazyPanel(loader: () => Promise<{ default: Component }>) {
   return lazyPluginComponent(loader, '正在加载面板…', '面板加载失败，请重试。')
@@ -177,4 +236,4 @@ export const panelPlugins = {
     props: (context) => ({ city: context.weatherCity }),
     listeners: (context) => ({ 'update:city': context.updateWeatherCity }),
   },
-} satisfies Record<PanelId, PanelPlugin>
+} satisfies PanelPluginRegistry

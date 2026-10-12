@@ -2,7 +2,7 @@
 import { defineComponent, h } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
-import type { HomeWidgetContext } from '../plugins/widgetRegistry'
+import type { HomeWidgetContext, HomeWidgetPluginRegistry } from '../plugins/widgetRegistry'
 import { homeWidgetPlugins } from '../plugins/widgetRegistry'
 import { defaultFocusTimerState } from '../data/focusTimer'
 import HomeWidgetShelf from './HomeWidgetShelf.vue'
@@ -22,9 +22,9 @@ describe('home widget shelf plugin activation', () => {
         title: '独立组件',
         description: '无需单独面板',
         component: defineComponent({ render: () => h('p', '组件内容') }),
-        props: () => ({}),
+        props: (context: HomeWidgetContext) => ({ items: context.todos }),
       },
-    }
+    } satisfies HomeWidgetPluginRegistry
     const context: HomeWidgetContext = { todos: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海', focusTimer: defaultFocusTimerState }
     wrapper = mount(HomeWidgetShelf, {
       props: {

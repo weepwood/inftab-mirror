@@ -2,7 +2,7 @@
 
 当前插件注册表用于组织仓库内受信任的功能模块，不会加载远程 JavaScript。新增模块时保持按需加载，并让数据校验、备份和交互测试跟上功能实现。
 
-注册表 adapter 的 props 与事件名称由 `src/plugins/registry.test.ts` 做逐项契约检查；该测试会由 `npm run check` 静态类型检查。新增或调整面板/小组件时，同步更新对应的契约清单，并为实际组件交互保留端到端回归。
+面板 adapter 的属性和事件参数类型集中在 `src/plugins/registry.ts` 的 `PanelPropsById`、`PanelEventsById`；首页小组件属性类型集中在 `src/plugins/widgetRegistry.ts` 的 `HomeWidgetPropsById`。注册适配器时，TypeScript 会按 ID 检查返回值。若更改组件契约，同步更新这些类型和 `src/plugins/registry.test.ts` 中的键名断言，并为实际组件交互保留端到端回归。`npm run check` 会执行插件测试的静态类型检查。
 
 ## 新增工具面板
 
