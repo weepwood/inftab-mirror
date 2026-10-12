@@ -155,6 +155,40 @@ describe('useLocalWorkspace home workspaces', () => {
     )
   })
 
+  it('merges separate shortcut moves made concurrently in different workspaces', async () => {
+    vi.useFakeTimers()
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const firstWorkspaceId = workspace.createHomeWorkspace('第一组')!
+    const firstShortcut = { id: 'first-workspace-link', title: 'First', url: 'https://first.example/', color: '#abc', mark: 'F' }
+    workspace.saveShortcut(firstShortcut, firstWorkspaceId)
+    const secondWorkspaceId = workspace.createHomeWorkspace('第二组')!
+    const secondShortcut = { id: 'second-workspace-link', title: 'Second', url: 'https://second.example/', color: '#abc', mark: 'S' }
+    workspace.saveShortcut(secondShortcut, secondWorkspaceId)
+    await vi.advanceTimersByTimeAsync(180)
+
+    const storageKey = 'inftab.home-workspaces.v1'
+    const previous = localStorage.getItem(storageKey)!
+    workspace.saveShortcut(firstShortcut, 'default')
+    const externalWorkspaces = JSON.parse(previous) as { id: string; itemIds: string[] }[]
+    const externalDefault = externalWorkspaces.find((item) => item.id === 'default')!
+    const externalSecond = externalWorkspaces.find((item) => item.id === secondWorkspaceId)!
+    externalDefault.itemIds.push(secondShortcut.id)
+    externalSecond.itemIds = externalSecond.itemIds.filter((id) => id !== secondShortcut.id)
+    const external = JSON.stringify(externalWorkspaces)
+    localStorage.setItem(storageKey, external)
+    window.dispatchEvent(new StorageEvent('storage', { key: storageKey, oldValue: previous, newValue: external }))
+
+    const defaultItems = workspace.homeWorkspaces.value.find((item) => item.id === 'default')?.itemIds ?? []
+    expect(defaultItems).toEqual(expect.arrayContaining([firstShortcut.id, secondShortcut.id]))
+    expect(workspace.homeWorkspaces.value.find((item) => item.id === firstWorkspaceId)?.itemIds).not.toContain(firstShortcut.id)
+    expect(workspace.homeWorkspaces.value.find((item) => item.id === secondWorkspaceId)?.itemIds).not.toContain(secondShortcut.id)
+    await vi.advanceTimersByTimeAsync(180)
+    const persistedWorkspaces = JSON.parse(localStorage.getItem(storageKey) ?? '[]') as { id: string; itemIds: string[] }[]
+    expect(persistedWorkspaces.find((item) => item.id === 'default')?.itemIds)
+      .toEqual(expect.arrayContaining([firstShortcut.id, secondShortcut.id]))
+  })
+
   it('rejects workspace overflow merges before changing any local data', () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
