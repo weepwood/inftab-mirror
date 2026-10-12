@@ -13,6 +13,22 @@ afterEach(() => {
 })
 
 describe('lazy plugin component loading', () => {
+  it('cancels a scheduled chunk retry when its wrapper unmounts', async () => {
+    vi.useFakeTimers()
+    const loader = vi.fn(async () => { throw new Error('chunk unavailable') })
+    const plugin = lazyPluginComponent(loader, 'Loading plugin…', 'Plugin failed to load.')
+    wrapper = mount(defineComponent({ setup: () => () => h('section', [h(plugin)]) }))
+    await flushPromises()
+
+    expect(loader).toHaveBeenCalledOnce()
+    wrapper.unmount()
+    wrapper = undefined
+    await vi.advanceTimersByTimeAsync(5_000)
+    await flushPromises()
+
+    expect(loader).toHaveBeenCalledOnce()
+  })
+
   it('retries transient chunk failures automatically and offers another retry after exhaustion', async () => {
     const loadedComponent = defineComponent({ setup: () => () => h('p', 'Loaded plugin') })
     const loader = vi.fn(async () => {

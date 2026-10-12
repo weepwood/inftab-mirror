@@ -1,14 +1,4 @@
-import { defineAsyncComponent, defineComponent, h, shallowRef, type AsyncComponentLoader, type Component, type ShallowRef } from 'vue'
-
-type RetryAction = () => void
-
-function retryPluginChunk(retry: RetryAction, fail: () => void, attempts: number) {
-  if (attempts >= 3) {
-    fail()
-    return
-  }
-  setTimeout(retry, attempts * 250)
-}
+import { defineAsyncComponent, defineComponent, h, onBeforeUnmount, shallowRef, type AsyncComponentLoader, type Component, type ShallowRef } from 'vue'
 
 export function lazyPluginComponent(loader: AsyncComponentLoader, loadingMessage: string, failureMessage: string): Component {
   const loadingComponent = defineComponent({
@@ -21,6 +11,11 @@ export function lazyPluginComponent(loader: AsyncComponentLoader, loadingMessage
     inheritAttrs: false,
     setup(_props, { attrs, slots }) {
       let component: ShallowRef<Component>
+      let retryTimer: ReturnType<typeof setTimeout> | undefined
+
+      onBeforeUnmount(() => {
+        if (retryTimer !== undefined) clearTimeout(retryTimer)
+      })
 
       function retryManually() {
         component.value = createAsyncComponent()
@@ -47,7 +42,14 @@ export function lazyPluginComponent(loader: AsyncComponentLoader, loadingMessage
           delay: 0,
           suspensible: false,
           onError(_error, retry, fail, attempts) {
-            retryPluginChunk(retry, fail, attempts)
+            if (attempts >= 3) {
+              fail()
+              return
+            }
+            retryTimer = setTimeout(() => {
+              retryTimer = undefined
+              retry()
+            }, attempts * 250)
           },
         })
       }
