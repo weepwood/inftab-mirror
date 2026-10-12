@@ -657,6 +657,27 @@ test('settings persist and the main view fits a narrow viewport', async ({ page 
   await expect(page.getByRole('region', { name: '首页小组件' })).toBeVisible()
 })
 
+test('unsafe wallpaper CSS from browser storage cannot trigger a hidden remote image request', async ({ page }) => {
+  const remoteRequests: string[] = []
+  await page.route('https://tracker.example/**', async (route) => {
+    remoteRequests.push(route.request().url())
+    await route.abort()
+  })
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    const preferences = JSON.parse(localStorage.getItem(key) ?? '{}')
+    localStorage.setItem(key, JSON.stringify({
+      ...preferences,
+      customWallpaper: 'linear-gradient(red), url(https://tracker.example/pixel)',
+    }))
+  })
+  await page.reload()
+
+  await expect(page.locator('main.home')).toBeVisible()
+  await expect.poll(() => page.locator('main.home').evaluate((element) => getComputedStyle(element).backgroundImage)).not.toContain('tracker.example')
+  expect(remoteRequests).toEqual([])
+})
+
 test('settings changes synchronize between open tabs', async ({ page }) => {
   const secondTab = await page.context().newPage()
   await secondTab.goto('/')

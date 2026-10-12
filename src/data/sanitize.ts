@@ -12,6 +12,10 @@ const transitionEffects = new Set(['slide', 'particles', 'trails'])
 const customEngineId = /^[\w-]{1,128}$/
 const palette = /^#[\da-f]{3,8}$/i
 const reservedLauncherIds = new Set(launcherItems.map((item) => item.id))
+const gradientColor = '(?:#[\\da-f]{3,8}|[a-z]{1,32}|(?:rgb|hsl)a?\\([\\d.%\\s,/+-]+\\))'
+const gradientStop = `${gradientColor}(?:\\s+\\d+(?:\\.\\d+)?%)?`
+const gradientDirection = '(?:(?:\\d+(?:\\.\\d+)?deg|to (?:top|right|bottom|left)(?: (?:top|right|bottom|left))?)\\s*,\\s*)?'
+const safeLinearGradient = new RegExp(`^linear-gradient\\(\\s*${gradientDirection}${gradientStop}(?:\\s*,\\s*${gradientStop})+\\s*\\)$`, 'i')
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -52,10 +56,16 @@ export function sanitizePreferences(value: unknown): Preferences {
   const customWallpaperInput = typeof raw.customWallpaper === 'string' && raw.customWallpaper.length <= maxWallpaperDataUrlLength
     ? raw.customWallpaper.trim()
     : ''
-  const customWallpaper = /^(https?:\/\/|linear-gradient\()/i.test(customWallpaperInput)
-    || /^data:image\/(webp|png|jpeg);base64,[a-z\d+/]+={0,2}$/i.test(customWallpaperInput)
+  const customWallpaperUrl = /^https?:\/\//i.test(customWallpaperInput)
+    ? normalizeWebUrl(customWallpaperInput) ?? ''
+    : ''
+  const customWallpaperGradient = safeLinearGradient.test(customWallpaperInput)
+    ? customWallpaperInput.replace(/^linear-gradient/i, 'linear-gradient')
+    : ''
+  const customWallpaperData = /^data:image\/(webp|png|jpeg);base64,[a-z\d+/]+={0,2}$/i.test(customWallpaperInput)
     ? customWallpaperInput
     : ''
+  const customWallpaper = customWallpaperUrl || customWallpaperGradient || customWallpaperData
 
   return {
     themeMode: merged.themeMode === 'light' || merged.themeMode === 'dark' || merged.themeMode === 'system'

@@ -32,6 +32,17 @@ describe('workspace backups', () => {
     expect(parsed.habits).toEqual([])
   })
 
+  it('strips layered wallpaper CSS that could trigger hidden remote image requests', () => {
+    const parsed = parseWorkspaceBackup(backup({
+      preferences: {
+        ...defaultPreferences,
+        customWallpaper: 'linear-gradient(red), url(https://tracker.example/pixel)',
+      },
+    }))
+
+    expect(parsed.preferences.customWallpaper).toBe('')
+  })
+
   it('validates and migrates local habit records in backups', () => {
     const parsed = parseWorkspaceBackup(backup({
       habits: [{ id: 'read', title: ' 阅读 ', completedDates: ['2026-10-12'] }],

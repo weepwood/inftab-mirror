@@ -133,6 +133,17 @@ describe('local state sanitization', () => {
     expect(sanitizePreferences({ customWallpaper: `data:image/webp;base64,${'a'.repeat(2_000_001)}` }).customWallpaper).toHaveLength(0)
   })
 
+  it('keeps custom background CSS to a single safe gradient and canonical web image URL', () => {
+    expect(sanitizePreferences({ customWallpaper: 'linear-gradient(red), url(https://tracker.example/pixel)' }).customWallpaper).toBe('')
+    expect(sanitizePreferences({ customWallpaper: 'https://images.example/a.jpg"),url(https://tracker.example/pixel)' }).customWallpaper)
+      .toBe('https://images.example/a.jpg%22),url(https://tracker.example/pixel)')
+    expect(sanitizePreferences({ customWallpaper: 'https://user:pass@images.example/a.jpg' }).customWallpaper).toBe('')
+    expect(sanitizePreferences({ customWallpaper: 'linear-gradient(135deg, #192a3a, #e0a777 52%)' }).customWallpaper)
+      .toBe('linear-gradient(135deg, #192a3a, #e0a777 52%)')
+    expect(sanitizePreferences({ customWallpaper: 'LINEAR-GRADIENT(135deg, #192a3a, #e0a777 52%)' }).customWallpaper)
+      .toBe('linear-gradient(135deg, #192a3a, #e0a777 52%)')
+  })
+
   it('normalizes wallpaper rotation settings and clamps future schedule timestamps', () => {
     const now = 1_800_000_000_000
     vi.spyOn(Date, 'now').mockReturnValue(now)
