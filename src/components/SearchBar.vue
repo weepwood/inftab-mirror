@@ -97,6 +97,11 @@ function handleEngineOptionKeydown(event: KeyboardEvent) {
     event.preventDefault()
     closeEngineMenu(true)
     return
+  } else if (event.key === 'Tab') {
+    event.preventDefault()
+    closeEngineMenu()
+    void nextTick(() => (event.shiftKey ? enginePicker.value : searchInput.value)?.focus())
+    return
   }
   if (nextIndex === undefined) return
   event.preventDefault()

@@ -86,6 +86,31 @@ describe('SearchBar keyboard navigation', () => {
     expect(document.activeElement).toBe(picker.element)
   })
 
+  it('closes the engine listbox on Tab and preserves logical forward and reverse focus order', async () => {
+    wrapper = mount(SearchBar, {
+      attachTo: document.body,
+      props: { modelValue: '', engine: 'baidu', mode: 'html', visibleModes: [] },
+    })
+    const picker = wrapper.get('.engine-picker').element as HTMLButtonElement
+    const searchInput = wrapper.get('input[type="search"]').element as HTMLInputElement
+    await wrapper.get('.engine-picker').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    const options = [...document.body.querySelectorAll<HTMLButtonElement>('.engine-menu [role="option"]')]
+    options[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))
+    await wrapper.vm.$nextTick()
+    expect(document.querySelector('.engine-menu')).toBeNull()
+    expect(document.activeElement).toBe(searchInput)
+
+    await wrapper.get('.engine-picker').trigger('click')
+    await wrapper.vm.$nextTick()
+    const selected = document.querySelector<HTMLButtonElement>('.engine-menu [aria-selected="true"]')!
+    selected.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }))
+    await wrapper.vm.$nextTick()
+    expect(document.querySelector('.engine-menu')).toBeNull()
+    expect(document.activeElement).toBe(picker)
+  })
+
   it('offers custom engines and hides unsupported category tabs for them', async () => {
     wrapper = mount(SearchBar, {
       attachTo: document.body,

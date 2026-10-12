@@ -49,6 +49,22 @@ test('quick translation reports an exhausted chunk load without an unhandled pag
   expect(pageErrors).toEqual([])
 })
 
+test('search engine menu keeps Tab focus in the search controls', async ({ page }) => {
+  const picker = page.getByRole('button', { name: '当前搜索引擎：Baidu' })
+  const search = page.getByRole('searchbox', { name: '输入并搜索' })
+
+  await picker.click()
+  await expect(page.getByRole('option', { name: /Baidu/ })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(page.locator('.engine-menu')).toHaveCount(0)
+  await expect(search).toBeFocused()
+
+  await picker.click()
+  await page.keyboard.press('Shift+Tab')
+  await expect(page.locator('.engine-menu')).toHaveCount(0)
+  await expect(picker).toBeFocused()
+})
+
 test('recovers the shortcut grid after its chunk fails and manual retry succeeds', async ({ page }) => {
   let chunkRequests = 0
   const pageErrors: string[] = []
