@@ -570,6 +570,46 @@ describe('useLocalWorkspace dock references', () => {
 })
 
 describe('useLocalWorkspace custom search engines', () => {
+  it('keeps a pending active note when its note-list event arrives later', async () => {
+    const existingNote = { id: 'existing-note', title: 'Existing', body: '', updatedAt: 1 }
+    const incomingNote = { id: 'incoming-note', title: 'Incoming', body: '', updatedAt: 2 }
+    localStorage.setItem('inftab.notes.v1', JSON.stringify([existingNote]))
+    localStorage.setItem('inftab.active-note.v1', JSON.stringify(existingNote.id))
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const activeBefore = JSON.stringify(existingNote.id)
+    const activeAfter = JSON.stringify(incomingNote.id)
+    const notesBefore = JSON.stringify([existingNote])
+    const intermediateNotes = JSON.stringify([existingNote, { id: 'unrelated-note', title: 'Other', body: '', updatedAt: 3 }])
+    const notesAfter = JSON.stringify([existingNote, { id: 'unrelated-note', title: 'Other', body: '', updatedAt: 3 }, incomingNote])
+
+    localStorage.setItem('inftab.active-note.v1', activeAfter)
+    window.dispatchEvent(new StorageEvent('storage', { key: 'inftab.active-note.v1', oldValue: activeBefore, newValue: activeAfter }))
+    await vi.waitFor(() => expect(workspace.activeNoteId.value).toBe(incomingNote.id))
+
+    localStorage.setItem('inftab.notes.v1', intermediateNotes)
+    window.dispatchEvent(new StorageEvent('storage', { key: 'inftab.notes.v1', oldValue: notesBefore, newValue: intermediateNotes }))
+    await vi.waitFor(() => expect(workspace.notes.value.map((note) => note.id)).toContain('unrelated-note'))
+    expect(workspace.activeNoteId.value).toBe(incomingNote.id)
+
+    localStorage.setItem('inftab.notes.v1', notesAfter)
+    window.dispatchEvent(new StorageEvent('storage', { key: 'inftab.notes.v1', oldValue: intermediateNotes, newValue: notesAfter }))
+    await vi.waitFor(() => expect(workspace.notes.value.map((note) => note.id)).toContain(incomingNote.id))
+    expect(workspace.activeNoteId.value).toBe(incomingNote.id)
+  })
+
+  it('repairs an active note id that does not arrive in the note list', async () => {
+    vi.useFakeTimers()
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+
+    workspace.activeNoteId.value = 'never-arrives'
+    expect(workspace.activeNoteId.value).toBe('never-arrives')
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(workspace.activeNoteId.value).toBe('')
+  })
+
   it('moves selection to a surviving note when another tab deletes the active note', () => {
     const notes = [
       { id: 'note-first', title: 'First', body: '', updatedAt: 1 },

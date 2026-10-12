@@ -1,5 +1,6 @@
 import { useStoredState } from './useStoredState'
-import { onScopeDispose, watch } from 'vue'
+import { watch } from 'vue'
+import { watchDeferredReference } from './watchDeferredReference'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts, launcherItems } from '../data/defaults'
 import type { WorkspaceBackup } from '../data/backup'
 import { mergeById } from '../data/mergeById'
@@ -10,8 +11,6 @@ import { defaultFocusTimerState, sanitizeFocusTimerState } from '../data/focusTi
 import { defaultHomeWorkspace, defaultHomeWorkspaceId, maxHomeWorkspaceNameLength, maxHomeWorkspaces, sanitizeActiveHomeWorkspaceId, sanitizeHomeWorkspaces, type HomeWorkspace } from '../data/homeWorkspaces'
 import type { CountdownItem, CountdownRecurrence, CustomSearchEngine, Habit, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
 import { getLocalDateKey, maxCompletionDatesPerHabit, maxHabits, maxHabitTitleLength } from '../data/habits'
-
-const activeHomeWorkspaceReferenceGraceMs = 500
 
 export function useLocalWorkspace() {
   const preferences = useStoredState<Preferences>('inftab.preferences.v1', defaultPreferences, sanitizePreferences)
@@ -36,45 +35,30 @@ export function useLocalWorkspace() {
   )
   const initialActiveHomeWorkspaceId = sanitizeActiveHomeWorkspaceId(activeHomeWorkspaceId.value, homeWorkspaces.value)
   if (initialActiveHomeWorkspaceId !== activeHomeWorkspaceId.value) activeHomeWorkspaceId.value = initialActiveHomeWorkspaceId
-  let activeWorkspaceValidationTimer: ReturnType<typeof setTimeout> | undefined
-  let lastKnownActiveHomeWorkspaceId = initialActiveHomeWorkspaceId
-  function clearActiveWorkspaceValidationTimer() {
-    if (activeWorkspaceValidationTimer === undefined) return
-    clearTimeout(activeWorkspaceValidationTimer)
-    activeWorkspaceValidationTimer = undefined
-  }
-  watch(homeWorkspaces, () => {
-    const selectedId = activeHomeWorkspaceId.value
-    if (homeWorkspaces.value.some((workspace) => workspace.id === selectedId)) {
-      lastKnownActiveHomeWorkspaceId = selectedId
-      clearActiveWorkspaceValidationTimer()
-    } else if (selectedId === lastKnownActiveHomeWorkspaceId) {
-      activeHomeWorkspaceId.value = sanitizeActiveHomeWorkspaceId(selectedId, homeWorkspaces.value)
-    }
-  }, { flush: 'sync' })
-  watch(activeHomeWorkspaceId, (workspaceId) => {
-    clearActiveWorkspaceValidationTimer()
-    if (homeWorkspaces.value.some((workspace) => workspace.id === workspaceId)) {
-      lastKnownActiveHomeWorkspaceId = workspaceId
-      return
-    }
-    activeWorkspaceValidationTimer = setTimeout(() => {
-      activeWorkspaceValidationTimer = undefined
-      const validId = sanitizeActiveHomeWorkspaceId(activeHomeWorkspaceId.value, homeWorkspaces.value)
-      if (validId !== activeHomeWorkspaceId.value) activeHomeWorkspaceId.value = validId
-    }, activeHomeWorkspaceReferenceGraceMs)
-  }, { flush: 'sync' })
-  onScopeDispose(clearActiveWorkspaceValidationTimer)
+  const reconcileActiveHomeWorkspace = watchDeferredReference(
+    activeHomeWorkspaceId,
+    (id) => homeWorkspaces.value.some((workspace) => workspace.id === id),
+    () => sanitizeActiveHomeWorkspaceId(activeHomeWorkspaceId.value, homeWorkspaces.value),
+  )
+  watch(homeWorkspaces, reconcileActiveHomeWorkspace, { flush: 'sync' })
   const todos = useStoredState<TodoItem[]>('inftab.todos.v1', [], sanitizeTodos)
   const habits = useStoredState<Habit[]>('inftab.habits.v1', [], sanitizeHabits)
   const countdowns = useStoredState<CountdownItem[]>('inftab.countdowns.v1', [], sanitizeCountdowns)
   const notes = useStoredState<Note[]>('inftab.notes.v1', [], sanitizeNotes)
   const customSearchEngines = useStoredState<CustomSearchEngine[]>('inftab.custom-search-engines.v1', [], sanitizeCustomSearchEngines)
-  const activeNoteId = useStoredState<string>('inftab.active-note.v1', '', (value) => sanitizeActiveNoteId(value, notes.value))
-  watch(notes, () => {
-    const validActiveNoteId = sanitizeActiveNoteId(activeNoteId.value, notes.value)
-    if (validActiveNoteId !== activeNoteId.value) activeNoteId.value = validActiveNoteId
-  }, { flush: 'sync' })
+  const activeNoteId = useStoredState<string>(
+    'inftab.active-note.v1',
+    '',
+    (value) => typeof value === 'string' && value.length > 0 && value.length <= 128 ? value : '',
+  )
+  const initialActiveNoteId = sanitizeActiveNoteId(activeNoteId.value, notes.value)
+  if (initialActiveNoteId !== activeNoteId.value) activeNoteId.value = initialActiveNoteId
+  const reconcileActiveNote = watchDeferredReference(
+    activeNoteId,
+    (id) => notes.value.some((note) => note.id === id) || (!id && notes.value.length === 0),
+    () => sanitizeActiveNoteId(activeNoteId.value, notes.value),
+  )
+  watch(notes, reconcileActiveNote, { flush: 'sync' })
   let previousWeatherCity = '上海'
   try {
     previousWeatherCity = localStorage.getItem('inftab.weather-city') ?? previousWeatherCity
