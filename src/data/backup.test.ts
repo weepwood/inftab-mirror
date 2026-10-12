@@ -58,6 +58,20 @@ describe('workspace backups', () => {
     }])
   })
 
+  it('repairs invalid imported colors without dropping shortcuts, folders, or workspace membership', () => {
+    const parsed = parseWorkspaceBackup(backup({
+      shortcuts: [{ id: 'custom', title: 'Custom', url: 'https://example.com', color: '#12345', mark: 'C' }],
+      folders: [{ id: 'folder-work', title: 'Work', shortcutIds: ['custom'], color: '#1234567', mark: 'W' }],
+      launcherOrder: ['folder-work', 'custom'],
+      homeWorkspaces: [{ id: 'default', name: '主页', itemIds: ['folder-work', 'custom'] }],
+    }))
+
+    expect(parsed.shortcuts).toEqual([expect.objectContaining({ id: 'custom', color: '#3d82f6' })])
+    expect(parsed.folders).toEqual([expect.objectContaining({ id: 'folder-work', color: '#4176e8', shortcutIds: ['custom'] })])
+    expect(parsed.homeWorkspaces?.[0]?.itemIds).toEqual(expect.arrayContaining(['folder-work', 'custom']))
+    expect(() => parseWorkspaceBackup(parsed)).not.toThrow()
+  })
+
   it('validates and migrates local habit records in backups', () => {
     const parsed = parseWorkspaceBackup(backup({
       habits: [{ id: 'read', title: ' 阅读 ', completedDates: ['2026-10-12'] }],
