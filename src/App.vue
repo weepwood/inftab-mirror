@@ -4,7 +4,6 @@ import type { Component } from 'vue'
 import { ArrowLeft, House, Menu, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
 import ClockWidget from './components/ClockWidget.vue'
-import ShortcutGrid from './components/ShortcutGrid.vue'
 import { lazyPluginComponent, retryAsyncLoad } from './plugins/asyncComponent'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent } from './composables/useStoredState'
@@ -19,6 +18,11 @@ import { maxDockItems, type HomeWidgetId, type LauncherItem, type Shortcut, type
 
 type Panel = PanelId | null
 
+const ShortcutGrid = lazyPluginComponent(
+  () => import('./components/ShortcutGrid.vue'),
+  '正在加载快捷入口…',
+  '快捷入口暂时无法加载，请重试。',
+)
 const HomeWidgetShelf = lazyPluginComponent(
   () => import('./components/HomeWidgetShelf.vue'),
   '正在加载首页组件…',

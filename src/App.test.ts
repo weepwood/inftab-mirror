@@ -6,7 +6,13 @@ import { defaultPreferences, launcherItems, wallpaperChoices } from './data/defa
 import WeatherPanel from './components/WeatherPanel.vue'
 import App from './App.vue'
 
-let wrapper: VueWrapper | undefined
+let wrapper: VueWrapper = null!
+
+async function mountApp(): Promise<VueWrapper> {
+  wrapper = mount(App, { attachTo: document.body })
+  await vi.waitFor(() => expect(wrapper.find('.shortcut-grid-wrap').exists()).toBe(true), { timeout: 5_000 })
+  return wrapper
+}
 
 async function flushLocalStorageWrites() {
   await nextTick()
@@ -16,30 +22,30 @@ async function flushLocalStorageWrites() {
 async function openLauncher(id: string) {
   const builtin = launcherItems.find((item) => item.id === id || item.title === id)
   const trigger = builtin
-    ? wrapper!.get(`[data-item-id="${builtin.id}"] .shortcut-open`)
-    : wrapper!.get(`.shortcut-open[aria-label="打开${id}"]`)
+    ? wrapper.get(`[data-item-id="${builtin.id}"] .shortcut-open`)
+    : wrapper.get(`.shortcut-open[aria-label="打开${id}"]`)
   await trigger.trigger('click')
   await flushPromises()
-  await vi.waitFor(() => expect(wrapper!.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
+  await vi.waitFor(() => expect(wrapper.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
 }
 
 async function openFolderDialog() {
-  await wrapper!.get('.folder-add-button').trigger('click')
+  await wrapper.get('.folder-add-button').trigger('click')
   await flushPromises()
-  await vi.waitFor(() => expect(wrapper!.find('.folder-dialog').exists()).toBe(true), { timeout: 5_000 })
+  await vi.waitFor(() => expect(wrapper.find('.folder-dialog').exists()).toBe(true), { timeout: 5_000 })
 }
 
 async function confirmPendingAction() {
   await flushPromises()
-  await vi.waitFor(() => expect(wrapper!.find('.confirm-dialog').exists()).toBe(true), { timeout: 5_000 })
-  await wrapper!.get('.confirm-dialog .confirm-danger').trigger('click')
+  await vi.waitFor(() => expect(wrapper.find('.confirm-dialog').exists()).toBe(true), { timeout: 5_000 })
+  await wrapper.get('.confirm-dialog .confirm-danger').trigger('click')
   await flushPromises()
 }
 
 async function selectBackupFile(contents: unknown) {
   const file = new File(['backup'], 'inftab-backup.json', { type: 'application/json' })
   Object.defineProperty(file, 'text', { value: async () => typeof contents === 'string' ? contents : JSON.stringify(contents) })
-  const input = wrapper!.get('input[accept="application/json,.json"]')
+  const input = wrapper.get('input[accept="application/json,.json"]')
   Object.defineProperty(input.element, 'files', { configurable: true, value: [file] })
   await input.trigger('change')
   await flushPromises()
@@ -65,7 +71,7 @@ function validBackup(overrides: Record<string, unknown> = {}) {
 
 afterEach(() => {
   wrapper?.unmount()
-  wrapper = undefined
+  wrapper = null!
   localStorage.clear()
   document.body.innerHTML = ''
   vi.useRealTimers()
@@ -74,8 +80,8 @@ afterEach(() => {
 })
 
 describe('new-tab landmarks', () => {
-  it('provides a skip link and a screen-reader page heading', () => {
-    wrapper = mount(App, { attachTo: document.body })
+  it('provides a skip link and a screen-reader page heading', async () => {
+    await mountApp()
 
     expect(document.querySelector('.skip-link')?.getAttribute('href')).toBe('#main-content')
     expect(wrapper.get('main h1').text()).toBe('Infinity 新标签页')
@@ -85,7 +91,7 @@ describe('new-tab landmarks', () => {
 
 describe('new-tab keyboard launcher ordering', () => {
   it('moves a focused launcher and persists the new order', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     const weather = wrapper.get('[data-item-id="weather"] .shortcut-open')
     await weather.trigger('keydown', { key: 'ArrowRight', shiftKey: true })
     await flushLocalStorageWrites()
@@ -93,20 +99,20 @@ describe('new-tab keyboard launcher ordering', () => {
     const order = JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]') as string[]
     expect(order.indexOf('weather')).toBe(order.indexOf('countdowns') + 1)
     await vi.waitFor(() => {
-      const status = wrapper!.findAll('[role="status"]').find((item) => item.text().includes('已将天气移动到第2个位置'))
+      const status = wrapper.findAll('[role="status"]').find((item) => item.text().includes('已将天气移动到第2个位置'))
       expect(status?.text()).toContain('已将天气移动到第2个位置')
     })
   })
 })
 
 describe('new-tab short viewport layout', () => {
-  it('fits launcher icons to a short mobile viewport', () => {
+  it('fits launcher icons to a short mobile viewport', async () => {
     const heightDescriptor = Object.getOwnPropertyDescriptor(window, 'innerHeight')
     const widthDescriptor = Object.getOwnPropertyDescriptor(window, 'innerWidth')
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 360 })
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 })
     try {
-      wrapper = mount(App, { attachTo: document.body })
+      await mountApp()
       const homeStyle = wrapper.get('main.home').attributes('style') ?? ''
       const fittedIconSize = Number(homeStyle.match(/--fit-icon-size: ([\d.]+)px/)?.[1])
 
@@ -128,7 +134,7 @@ describe('new-tab color theme', () => {
       removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => changeListeners.delete(listener),
     }))
     localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, themeMode: 'system' }))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await nextTick()
     expect(wrapper.get('main.home').classes()).not.toContain('theme-dark')
 
@@ -137,9 +143,9 @@ describe('new-tab color theme', () => {
     expect(wrapper.get('main.home').classes()).toContain('theme-dark')
 
     wrapper.unmount()
-    wrapper = undefined
+    wrapper = null!
     localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, themeMode: 'dark' }))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await nextTick()
     expect(wrapper.get('main.home').classes()).toContain('theme-dark')
     await wrapper.get('.engine-picker').trigger('click')
@@ -151,13 +157,13 @@ describe('new-tab color theme', () => {
 describe('new-tab built-in launcher visibility', () => {
   it('hides a panel from the grid and restores it from settings', async () => {
     localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, hiddenLauncherIds: ['weather'] }))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await nextTick()
     expect(wrapper.find('[data-item-id="weather"]').exists()).toBe(false)
 
     await wrapper.get('[aria-label="打开设置"]').trigger('click')
     await flushPromises()
-    await vi.waitFor(() => expect(wrapper!.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
+    await vi.waitFor(() => expect(wrapper.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
     const weatherRow = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('显示天气'))!
     const weatherToggle = weatherRow.get('input')
     expect((weatherToggle.element as HTMLInputElement).checked).toBe(false)
@@ -171,7 +177,7 @@ describe('new-tab built-in launcher visibility', () => {
 
     await wrapper.get('[aria-label="打开设置"]').trigger('click')
     await flushPromises()
-    await vi.waitFor(() => expect(wrapper!.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
+    await vi.waitFor(() => expect(wrapper.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
     const restoredWeatherRow = wrapper.findAll('label.toggle-row').find((row) => row.text().includes('显示天气'))!
     await restoredWeatherRow.get('input').setValue(true)
     await nextTick()
@@ -193,7 +199,7 @@ describe('new-tab wallpaper rotation', () => {
       wallpaperRotationLastAt: now,
     }))
     const setTimeoutSpy = vi.spyOn(window, 'setTimeout')
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await nextTick()
     await flushPromises()
     expect(wrapper.get('main.home').attributes('style')).toContain('forest.webp')
@@ -220,7 +226,7 @@ describe('new-tab wallpaper rotation', () => {
       wallpaperRotationLastAt: now,
       customWallpaper: 'https://example.com/custom-wallpaper.webp',
     }))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await vi.advanceTimersByTimeAsync(2 * 60 * 60 * 1000)
     await nextTick()
     expect(wrapper.get('main.home').attributes('style')).toContain('custom-wallpaper.webp')
@@ -242,7 +248,7 @@ describe('focus timer lifecycle', () => {
       phase: 'focus', focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15,
       completedSessions: 0, remainingMs: 1_000, endsAt: now + 1_000,
     }))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
 
     await vi.advanceTimersByTimeAsync(1_000)
     await flushPromises()
@@ -257,7 +263,7 @@ describe('focus timer lifecycle', () => {
 
 describe('new-tab keyboard search', () => {
   it('filters launcher shortcuts with Ctrl/Command+F and opens a selected result', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     const shortcut = new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true, cancelable: true })
     window.dispatchEvent(shortcut)
 
@@ -278,7 +284,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('keeps empty local searches local and exits with Escape', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', metaKey: true, bubbles: true, cancelable: true }))
     await nextTick()
     const input = wrapper.get('input[type="search"]')
@@ -294,8 +300,8 @@ describe('new-tab keyboard search', () => {
     expect(input.attributes('placeholder')).toBe('输入并搜索')
   })
 
-  it('focuses search with slash or Ctrl/Command+K', () => {
-    wrapper = mount(App, { attachTo: document.body })
+  it('focuses search with slash or Ctrl/Command+K', async () => {
+    await mountApp()
     const input = wrapper.get('input[type="search"]').element
 
     const slash = new KeyboardEvent('keydown', { key: '/', bubbles: true, cancelable: true })
@@ -310,8 +316,8 @@ describe('new-tab keyboard search', () => {
     expect(document.activeElement).toBe(input)
   })
 
-  it('does not intercept typing shortcuts while a text field is active', () => {
-    wrapper = mount(App, { attachTo: document.body })
+  it('does not intercept typing shortcuts while a text field is active', async () => {
+    await mountApp()
     const input = wrapper.get('input[type="search"]').element as HTMLInputElement
     input.focus()
 
@@ -331,7 +337,7 @@ describe('new-tab keyboard search', () => {
       color: '#abc',
       mark: 'S',
     }))))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
 
     expect(wrapper.findAll('.page-dots .page-dot')).toHaveLength(4)
     expect(wrapper.find('.page-ellipsis').exists()).toBe(true)
@@ -343,7 +349,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('closes only the top shortcut dialog before its settings panel', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     await wrapper.get('.settings-add-shortcut').trigger('click')
 
@@ -356,10 +362,10 @@ describe('new-tab keyboard search', () => {
 
   it('keeps homepage search and page shortcuts inactive while the folder dialog is open', async () => {
     localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, columns: 2, rows: 1, pageTransitionEffect: 'slide' }))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await wrapper.get('.home-actions .round-action[aria-label="打开设置"]').trigger('click')
     await flushPromises()
-    await vi.waitFor(() => expect(wrapper!.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
+    await vi.waitFor(() => expect(wrapper.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
     await openFolderDialog()
     const closeButton = wrapper.get('.folder-dialog [aria-label="关闭文件夹"]').element as HTMLButtonElement
     closeButton.focus()
@@ -382,7 +388,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('traps focus in an open side panel and restores it to the opener', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     const opener = wrapper.get('.shortcut-open[aria-label="打开设置"]').element as HTMLButtonElement
     opener.focus()
     await openLauncher('settings')
@@ -411,7 +417,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('connects plugin events with colons to the workspace state', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('weather')
     expect(wrapper.findComponent(WeatherPanel).exists()).toBe(true)
 
@@ -422,7 +428,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('routes the browser bookmarks launcher to its permission-aware panel', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('书签')
     expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('此功能需要浏览器扩展')
   })
@@ -446,7 +452,7 @@ describe('new-tab keyboard search', () => {
         onImportEnded: bookmarkChange,
       },
     })
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('书签')
     await wrapper.get('[aria-label="添加Vue Docs到快捷入口"]').trigger('click')
 
@@ -478,7 +484,7 @@ describe('new-tab keyboard search', () => {
         onImportEnded: bookmarkChange,
       },
     })
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('书签')
     await wrapper.get('[aria-label="选择Vue Docs"]').setValue(true)
     await wrapper.get('[aria-label="选择Vite Docs"]').setValue(true)
@@ -492,13 +498,13 @@ describe('new-tab keyboard search', () => {
   })
 
   it('routes the browser history launcher to its permission-aware panel', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('history')
     expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('此功能需要浏览器扩展')
   })
 
   it('loads the calendar as a built-in on-demand panel', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('日历')
 
     expect(wrapper.get('.side-panel[role="dialog"] h2').text()).toBe('日历')
@@ -506,7 +512,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('opens the focus timer from its built-in launcher', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('focus-timer')
 
     expect(wrapper.get('.side-panel[role="dialog"] h2').text()).toBe('专注计时')
@@ -514,7 +520,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('rejects unsafe shortcut URLs and restores a valid shortcut after remount', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     await wrapper.get('.settings-add-shortcut').trigger('click')
     await wrapper.get('input[placeholder="例如：GitHub"]').setValue('Example')
@@ -538,7 +544,7 @@ describe('new-tab keyboard search', () => {
     }))
 
     wrapper.unmount()
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await nextTick()
     expect(JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]')).toContain(
       JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]').find((item: { title: string }) => item.title === 'Example')?.id,
@@ -546,7 +552,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('creates a folder, opens it, and launches a contained shortcut', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     const columns = wrapper.findAll('.settings-content .range-label').find((label) => label.text().includes('每行图标'))
     await columns!.get('input').setValue('12')
@@ -578,7 +584,7 @@ describe('new-tab keyboard search', () => {
     expect(open).toHaveBeenNthCalledWith(3, 'https://www.tmall.com/', '_blank', 'noopener,noreferrer')
     const folderId = folders[0].id
     await wrapper.get('.folder-dialog .danger-action').trigger('click')
-    await vi.waitFor(() => expect(wrapper!.find('[role="alertdialog"]').exists()).toBe(true), { timeout: 5_000 })
+    await vi.waitFor(() => expect(wrapper.find('[role="alertdialog"]').exists()).toBe(true), { timeout: 5_000 })
     expect(wrapper.find('[role="alertdialog"]').text()).toContain('其中的快捷入口会保留')
     await confirmPendingAction()
     await flushLocalStorageWrites()
@@ -588,7 +594,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('discards folder edits when cancelling', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     const columns = wrapper.findAll('.settings-content .range-label').find((label) => label.text().includes('每行图标'))
     await columns!.get('input').setValue('12')
@@ -611,7 +617,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('prevents adding a shortcut to multiple folders', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     await openFolderDialog()
     await wrapper.get('.folder-dialog input[placeholder="例如：工作"]').setValue('工作')
@@ -630,7 +636,7 @@ describe('new-tab keyboard search', () => {
     vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(bitmap))
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D)
     vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => callback(new Blob(['webp-icon'], { type: 'image/webp' })))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     await wrapper.get('.settings-add-shortcut').trigger('click')
 
@@ -648,7 +654,7 @@ describe('new-tab keyboard search', () => {
   it('keeps remote shortcut icons as image URLs in the extension build', async () => {
     vi.stubGlobal('location', { protocol: 'chrome-extension:' })
     const fetch = vi.spyOn(globalThis, 'fetch')
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     await wrapper.get('.settings-add-shortcut').trigger('click')
     await wrapper.get('input[placeholder="例如：GitHub"]').setValue('Example')
@@ -665,7 +671,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('restores a fresh copy of default preferences', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     const columns = wrapper.findAll('.settings-content .range-label').find((label) => label.text().includes('每行图标'))!
     await columns.get('input').setValue('10')
@@ -676,7 +682,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('keeps the selected search mode visible when its tab visibility changes', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     let newsToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().trim() === '新闻')!
     await newsToggle.get('input').setValue(true)
@@ -689,7 +695,7 @@ describe('new-tab keyboard search', () => {
 
   it('adds, selects, persists, and removes a custom search engine from settings', async () => {
     localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, visibleSearchModes: ['html', 'news'] }))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     await wrapper.get('input[placeholder="例如：维基百科"]').setValue('Wiki')
     await wrapper.get('input[placeholder="https://example.com/search?q={query}"]').setValue('https://example.com/search?q={query}')
@@ -711,7 +717,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('allows the homepage clock widget to be hidden from settings', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     expect(wrapper.find('.home-clock').exists()).toBe(true)
     await openLauncher('settings')
     const clockToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().includes('显示时间和日期'))!
@@ -721,7 +727,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('runs the todo add, edit, complete, and clear flow', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('待办事项')
     await wrapper.get('.inline-add input').setValue('  Review release  ')
     await wrapper.get('.inline-add').trigger('submit')
@@ -743,7 +749,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('cancels inline todo editing on Escape without closing its panel', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('待办事项')
     await wrapper.get('.inline-add input').setValue('保留在面板里的待办')
     await wrapper.get('.inline-add').trigger('submit')
@@ -768,7 +774,7 @@ describe('new-tab keyboard search', () => {
       body: '',
       updatedAt: 1,
     }))))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
 
     await openLauncher('待办事项')
     expect(wrapper.get('.inline-add input').element).toHaveProperty('disabled', true)
@@ -795,7 +801,7 @@ describe('new-tab keyboard search', () => {
       color: '#abc',
       mark: 'F',
     }))))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
 
     await wrapper.get('.settings-add-shortcut').trigger('click')
@@ -809,7 +815,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('keeps the selected note stable while creating and deleting notes', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('笔记')
     await wrapper.get('.note-add').trigger('click')
     await wrapper.get('input[aria-label=\"笔记标题\"]').setValue('First note')
@@ -835,7 +841,7 @@ describe('new-tab keyboard search', () => {
     const targetDate = new Date()
     targetDate.setDate(targetDate.getDate() + 30)
     const dateValue = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('纪念日')
     await wrapper.get('input[aria-label="纪念日名称"]').setValue('旅行')
     await wrapper.get('input[aria-label="纪念日日期"]').setValue(dateValue)
@@ -866,7 +872,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('shows a recoverable warning when browser storage rejects a save', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     const originalSetItem = Storage.prototype.setItem
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
       if (key === 'inftab.preferences.v1') throw new DOMException('Storage quota exceeded', 'QuotaExceededError')
@@ -888,7 +894,7 @@ describe('new-tab keyboard search', () => {
     localStorage.setItem('inftab.shortcuts.v1', JSON.stringify([
       { id: 'existing', title: 'Existing', url: 'https://existing.example/', color: '#369', mark: 'E' },
     ]))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     await selectBackupFile(validBackup({
       shortcuts: [{ id: 'imported', title: 'Imported', url: 'https://imported.example/', color: '#936', mark: 'I' }],
@@ -916,7 +922,7 @@ describe('new-tab keyboard search', () => {
       mark: 'S',
     }))))
     localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, showClock: true }))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     await selectBackupFile(validBackup({
       shortcuts: [{ id: 'imported', title: 'Imported', url: 'https://imported.example/', color: '#936', mark: 'I' }],
@@ -933,7 +939,7 @@ describe('new-tab keyboard search', () => {
 
   it('replaces existing data only after backup confirmation and reports malformed files', async () => {
     localStorage.setItem('inftab.todos.v1', JSON.stringify([{ id: 'old-todo', title: 'Keep me?', done: false }]))
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     await selectBackupFile(validBackup({ todos: [{ id: 'new-todo', title: 'Restored', done: false }] }))
     expect(JSON.parse(localStorage.getItem('inftab.todos.v1') ?? '[]')).toContainEqual(expect.objectContaining({ id: 'old-todo' }))
@@ -950,7 +956,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('keeps keyboard focus inside the backup prompt and closes only that prompt on Escape', async () => {
-    wrapper = mount(App, { attachTo: document.body })
+    await mountApp()
     await openLauncher('settings')
     await selectBackupFile(validBackup())
 
