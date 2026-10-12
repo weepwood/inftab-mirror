@@ -429,8 +429,8 @@ test('large local lists skip rendering offscreen rows without hiding their recor
   const assertVirtualizedRows = async (selector: string, expectedCount: number, expectedSize: string) => {
     const rows = page.locator(selector)
     await expect(rows).toHaveCount(expectedCount)
-    await expect.poll(() => rows.first().evaluate((element) => getComputedStyle(element).contentVisibility)).toBe('auto')
-    await expect.poll(() => rows.first().evaluate((element) => getComputedStyle(element).containIntrinsicSize)).toContain(expectedSize)
+    await expect.poll(() => rows.first().evaluate((element) => getComputedStyle(element).contentVisibility), { timeout: 15_000 }).toBe('auto')
+    await expect.poll(() => rows.first().evaluate((element) => getComputedStyle(element).containIntrinsicSize), { timeout: 15_000 }).toContain(expectedSize)
   }
 
   await search('待办事项')

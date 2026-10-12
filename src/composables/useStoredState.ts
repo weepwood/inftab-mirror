@@ -38,6 +38,12 @@ export function useStoredState<T>(
   const targetWindow = typeof window === 'undefined' ? undefined : window
   const targetDocument = targetWindow?.document
   let persistTimer: ReturnType<typeof setTimeout> | undefined
+  let isProcessingStorageEvents = false
+  const pendingStorageEvents: Array<{
+    event: StorageEvent
+    resolve: () => void
+    reject: (reason?: unknown) => void
+  }> = []
   let ignoreNextPersistence = false
   function writeValue(next: T) {
     try {
@@ -114,11 +120,33 @@ export function useStoredState<T>(
     }
     if (persistMergedValue) scheduleWrite()
   }
-  targetWindow?.addEventListener('storage', handleStorage)
+  async function processStorageEvents() {
+    if (isProcessingStorageEvents) return
+    isProcessingStorageEvents = true
+    try {
+      while (pendingStorageEvents.length) {
+        const pending = pendingStorageEvents.shift()!
+        try {
+          await handleStorage(pending.event)
+          pending.resolve()
+        } catch (error) {
+          pending.reject(error)
+        }
+      }
+    } finally {
+      isProcessingStorageEvents = false
+      if (pendingStorageEvents.length) void processStorageEvents()
+    }
+  }
+  const queueStorageEvent = (event: StorageEvent) => new Promise<void>((resolve, reject) => {
+    pendingStorageEvents.push({ event, resolve, reject })
+    void processStorageEvents()
+  })
+  targetWindow?.addEventListener('storage', queueStorageEvent)
   targetWindow?.addEventListener('pagehide', flushPendingWrite)
   targetDocument?.addEventListener('visibilitychange', handleVisibilityChange)
   if (targetWindow && getCurrentScope()) onScopeDispose(() => {
-    targetWindow.removeEventListener('storage', handleStorage)
+    targetWindow.removeEventListener('storage', queueStorageEvent)
     targetWindow.removeEventListener('pagehide', flushPendingWrite)
     targetDocument?.removeEventListener('visibilitychange', handleVisibilityChange)
     // A scope can be disposed before Vue flushes the watcher or the debounce

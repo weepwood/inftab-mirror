@@ -200,6 +200,37 @@ describe('useStoredState', () => {
     scope.stop()
   })
 
+  it('applies rapid storage events in arrival order while a merge is loading', async () => {
+    vi.useFakeTimers()
+    const previous = JSON.stringify({ value: 'before' })
+    const first = JSON.stringify({ value: 'shared' })
+    const latest = JSON.stringify({ value: 'latest' })
+    const values = new Map([['state.v1', first]])
+    const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
+    vi.stubGlobal('window', {
+      addEventListener: (type: string, listener: (event: StorageEvent) => void | Promise<void>) => listeners.set(type, listener),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value) },
+      removeItem: (key: string) => { values.delete(key) },
+    })
+    const scope = effectScope()
+    const state = scope.run(() => useStoredState('state.v1', { value: 'fallback' }))!
+    const listener = listeners.get('storage')!
+    values.set('state.v1', latest)
+
+    const earlierEvent = listener({ key: 'state.v1', oldValue: previous, newValue: first } as StorageEvent)
+    const laterEvent = listener({ key: 'state.v1', oldValue: first, newValue: latest } as StorageEvent)
+    await Promise.all([earlierEvent, laterEvent])
+
+    expect(state.value).toEqual({ value: 'latest' })
+    await vi.advanceTimersByTimeAsync(180)
+    expect(JSON.parse(values.get('state.v1') ?? '{}')).toEqual({ value: 'latest' })
+    scope.stop()
+  })
+
   it('merges concurrent list additions, deletions, and nested ID lists', async () => {
     vi.useFakeTimers()
     const previous = {
