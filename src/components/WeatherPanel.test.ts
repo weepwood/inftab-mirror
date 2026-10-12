@@ -2,6 +2,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import WeatherPanel from './WeatherPanel.vue'
+import { weatherHostPermissions } from '../data/weatherPermissions'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -49,6 +50,28 @@ afterEach(() => {
 })
 
 describe('WeatherPanel request ordering', () => {
+  it('waits for an explicit weather permission grant before loading city data', async () => {
+    const contains = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true)
+    const request = vi.fn().mockResolvedValue(true)
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response({ results: [locations[0]] }))
+      .mockResolvedValueOnce(response(forecast(22)))
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, permissions: { contains, request } })
+    vi.stubGlobal('fetch', fetchMock)
+    const wrapper = mount(WeatherPanel, { props: { city: '新加坡' } })
+    await flushPromises()
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(wrapper.get('[role="status"]').text()).toContain('需要你授权')
+
+    await wrapper.get('.weather-authorize').trigger('click')
+    await flushPromises()
+
+    expect(request).toHaveBeenCalledWith({ origins: [...weatherHostPermissions] })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('.weather-place h3').text()).toBe('新加坡东')
+  })
+
   it('allows a new city search to cancel a stalled request', async () => {
     const fetchMock = vi.fn()
       .mockImplementationOnce(waitForAbort)

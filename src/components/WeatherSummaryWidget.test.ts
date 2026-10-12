@@ -2,6 +2,7 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import WeatherSummaryWidget from './WeatherSummaryWidget.vue'
+import { weatherHostPermissions } from '../data/weatherPermissions'
 
 let wrapper: VueWrapper | undefined
 
@@ -27,6 +28,47 @@ afterEach(() => {
 })
 
 describe('WeatherSummaryWidget', () => {
+  it('does not contact weather hosts before the extension user grants permission', async () => {
+    const contains = vi.fn().mockResolvedValue(false)
+    const request = vi.fn().mockResolvedValue(false)
+    const fetchMock = vi.fn()
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, permissions: { contains, request } })
+    vi.stubGlobal('fetch', fetchMock)
+    wrapper = mount(WeatherSummaryWidget, { props: { city: '上海' } })
+    await flushPromises()
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(wrapper.get('[role="status"]').text()).toContain('尚未授权')
+    expect(wrapper.get('.weather-summary-authorize').text()).toContain('授权并获取天气')
+
+    await wrapper.get('.weather-summary-authorize').trigger('click')
+    await flushPromises()
+
+    expect(request).toHaveBeenCalledWith({ origins: [...weatherHostPermissions] })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(wrapper.get('[role="status"]').text()).toContain('尚未授权')
+  })
+
+  it('requests weather hosts from a direct user action and loads the widget after approval', async () => {
+    const contains = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true)
+    const request = vi.fn().mockResolvedValue(true)
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(weatherResponse('上海', 21)[0])
+      .mockResolvedValueOnce(weatherResponse('上海', 21)[1])
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, permissions: { contains, request } })
+    vi.stubGlobal('fetch', fetchMock)
+    wrapper = mount(WeatherSummaryWidget, { props: { city: '上海' } })
+    await flushPromises()
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await wrapper.get('.weather-summary-authorize').trigger('click')
+    await flushPromises()
+
+    expect(request).toHaveBeenCalledWith({ origins: [...weatherHostPermissions] })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('上海 21°')
+  })
+
   it('loads the selected city and refreshes when the tab returns after data becomes stale', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-12T12:00:00'))
@@ -111,6 +153,7 @@ describe('WeatherSummaryWidget', () => {
     vi.setSystemTime(new Date('2026-10-12T12:16:00'))
     window.dispatchEvent(new Event('focus'))
     document.dispatchEvent(new Event('visibilitychange'))
+    await flushPromises()
 
     expect(fetchMock).toHaveBeenCalledTimes(3)
     expect((fetchMock.mock.calls[2]?.[1] as RequestInit).signal?.aborted).toBe(false)

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Droplets, RefreshCw, Search, Snowflake, Sun, Wind } from '@lucide/vue'
 import { isValidCalendarDate } from '../data/countdown'
 import { isValidWeatherCode, weatherDescription as weatherLabel } from '../data/weatherSummary'
+import { hasWeatherPermission, requestWeatherPermission } from '../data/weatherPermissions'
 
 interface LocationResult {
   id: number
@@ -38,6 +39,8 @@ const selectedLocation = ref<LocationResult>()
 const forecast = ref<WeatherResponse>()
 const loading = ref(false)
 const error = ref('')
+const permissionRequired = ref(false)
+const requestingPermission = ref(false)
 let requestVersion = 0
 let activeRequest: AbortController | undefined
 let internallySelectedCity = ''
@@ -62,6 +65,12 @@ async function loadForecast(location: LocationResult) {
   query.value = location.name
   selectedLocation.value = location
   try {
+    if (!(await hasWeatherPermission())) {
+      if (version === requestVersion) permissionRequired.value = true
+      return
+    }
+    if (version !== requestVersion) return
+    permissionRequired.value = false
     const params = new URLSearchParams({
       latitude: String(location.latitude),
       longitude: String(location.longitude),
@@ -116,6 +125,12 @@ async function searchCity() {
   locations.value = []
   selectedLocation.value = undefined
   try {
+    if (!(await hasWeatherPermission())) {
+      if (version === requestVersion) permissionRequired.value = true
+      return
+    }
+    if (version !== requestVersion) return
+    permissionRequired.value = false
     const params = new URLSearchParams({ name, count: '6', language: 'zh', format: 'json' })
     const data = await requestJson(`https://geocoding-api.open-meteo.com/v1/search?${params}`, '城市搜索暂时不可用，请稍后重试。')
     if (!isRecord(data) || (data.results !== undefined && !Array.isArray(data.results))) throw new Error('城市搜索返回的数据格式无法识别。')
@@ -127,6 +142,25 @@ async function searchCity() {
     if (version === requestVersion && !isAbortError(cause)) error.value = cause instanceof Error ? cause.message : '城市搜索失败，请检查网络后重试。'
   } finally {
     if (version === requestVersion) loading.value = false
+  }
+}
+
+async function authorizeWeather() {
+  requestingPermission.value = true
+  error.value = ''
+  try {
+    if (await requestWeatherPermission()) {
+      permissionRequired.value = false
+      await searchCity()
+    } else {
+      permissionRequired.value = true
+      error.value = '尚未获得天气访问权限。'
+    }
+  } catch (cause) {
+    permissionRequired.value = true
+    error.value = cause instanceof Error ? cause.message : '天气访问授权失败，请重试。'
+  } finally {
+    requestingPermission.value = false
   }
 }
 
@@ -225,8 +259,10 @@ onBeforeUnmount(() => {
       <button type="submit" aria-label="搜索城市"><Search :size="17" /></button>
     </form>
 
-    <p v-if="loading && !forecast" class="weather-status" role="status">正在获取天气…</p>
+    <p v-if="permissionRequired" class="weather-status" role="status">天气联网功能需要你授权 Open-Meteo 访问权限后才会请求数据。</p>
+    <p v-else-if="loading && !forecast" class="weather-status" role="status">正在获取天气…</p>
     <p v-else-if="error" class="weather-status weather-error" role="alert">{{ error }}</p>
+    <button v-if="permissionRequired" class="button-secondary weather-authorize" type="button" :disabled="requestingPermission" @click="authorizeWeather">{{ requestingPermission ? '等待授权…' : '授权并加载天气' }}</button>
 
     <div v-if="locations.length > 1 && !forecast" class="weather-locations" aria-label="选择城市">
       <button v-for="location in locations" :key="location.id" type="button" @click="loadForecast(location)">

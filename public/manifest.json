@@ -13,11 +13,9 @@
     "tabs",
     "topSites"
   ],
-  "host_permissions": [
-    "https://api.open-meteo.com/*",
-    "https://geocoding-api.open-meteo.com/*"
-  ],
   "optional_host_permissions": [
+    "https://api.open-meteo.com/*",
+    "https://geocoding-api.open-meteo.com/*",
     "https://hacker-news.firebaseio.com/*"
   ]
 }

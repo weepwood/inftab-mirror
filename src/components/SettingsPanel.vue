@@ -270,6 +270,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
         <span>{{ homeWidgetPlugins[id].title }}小组件</span><input type="checkbox" :aria-label="`显示${homeWidgetPlugins[id].title}小组件`" :checked="preferences.homeWidgetIds.includes(id)" @change="toggleHomeWidget(id, ($event.target as HTMLInputElement).checked)" />
       </label>
       <p class="wallpaper-note">小组件会保存在本机设置中，可在首页拖动排序，也可用上下按钮调整。</p>
+      <p class="wallpaper-note">天气和资讯仅在启用后联网；Chrome 扩展还会在你点击组件中的授权按钮后，才请求对应数据源的访问权限。</p>
       <p class="settings-subheading">常驻 Dock</p>
       <label v-for="item in manageableLauncherItems" :key="`dock-${item.id}`" class="toggle-row">
         <span>固定{{ item.title }}到 Dock</span><input type="checkbox" :checked="preferences.dockItemIds.includes(item.id)" :disabled="!preferences.dockItemIds.includes(item.id) && preferences.dockItemIds.length >= maxDockItems" @change="toggleDockItem(item.id, ($event.target as HTMLInputElement).checked)" />

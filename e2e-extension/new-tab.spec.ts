@@ -43,7 +43,9 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
       const chromeApi = (window as unknown as {
         chrome?: {
           runtime?: { id?: string; getManifest?: () => { manifest_version?: number } }
-          permissions?: { contains: (details: { permissions: string[] }) => Promise<boolean> }
+          permissions?: {
+            contains: (details: { permissions?: string[]; origins?: string[] }) => Promise<boolean>
+          }
         }
       }).chrome
 
@@ -54,6 +56,7 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
         chromeApi?.permissions?.contains({ permissions: ['history'] }) ?? true,
         chromeApi?.permissions?.contains({ permissions: ['tabs'] }) ?? true,
         chromeApi?.permissions?.contains({ permissions: ['topSites'] }) ?? true,
+        chromeApi?.permissions?.contains({ origins: ['https://api.open-meteo.com/*', 'https://geocoding-api.open-meteo.com/*'] }) ?? true,
       ])
     })
 
@@ -63,6 +66,7 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
     expect(extensionState[3]).toBe(false)
     expect(extensionState[4]).toBe(false)
     expect(extensionState[5]).toBe(false)
+    expect(extensionState[6]).toBe(false)
 
     await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
     await page.getByRole('button', { name: /添加快捷入口/ }).click()
@@ -142,8 +146,10 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
 
     await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
     const extensionSettings = page.getByRole('dialog', { name: '设置' })
+    await extensionSettings.getByLabel('显示天气小组件').check()
     await extensionSettings.getByLabel('显示热门资讯小组件').check()
     await extensionSettings.getByRole('button', { name: '关闭' }).click()
+    await expect(page.locator('[data-widget-id="weather-summary"] .weather-summary-authorize')).toContainText('授权并获取天气')
     await expect(page.locator('[data-widget-id="news-summary"]')).toContainText('需要单独授权网络访问')
     const newsPermission = await page.evaluate(() => {
       const permissions = (window as unknown as {

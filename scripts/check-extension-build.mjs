@@ -35,17 +35,17 @@ if (typeof manifest.name !== 'string' || !manifest.name.trim()) fail('the extens
 if (typeof manifest.version !== 'string' || !/^\d+(?:\.\d+){0,3}$/.test(manifest.version)) fail('the extension version is invalid.')
 if (manifest.chrome_url_overrides?.newtab !== 'index.html') fail('the new-tab override must point to index.html.')
 
-const allowedHosts = [
+const optionalHostPermissions = [
   'https://api.open-meteo.com/*',
   'https://geocoding-api.open-meteo.com/*',
+  'https://hacker-news.firebaseio.com/*',
 ]
 const hostPermissions = manifest.host_permissions ?? []
-if (JSON.stringify(hostPermissions) !== JSON.stringify(allowedHosts)) {
-  fail(`host_permissions must stay limited to the weather APIs (${allowedHosts.join(', ')}).`)
+if (hostPermissions.length > 0) {
+  fail('host_permissions must be empty; network access must be requested per feature.')
 }
-const optionalHostPermissions = manifest.optional_host_permissions ?? []
-if (JSON.stringify(optionalHostPermissions) !== JSON.stringify(['https://hacker-news.firebaseio.com/*'])) {
-  fail('optional_host_permissions must contain only the user-enabled Hacker News feed host.')
+if (JSON.stringify(manifest.optional_host_permissions ?? []) !== JSON.stringify(optionalHostPermissions)) {
+  fail(`optional_host_permissions must contain only opt-in weather and Hacker News hosts (${optionalHostPermissions.join(', ')}).`)
 }
 for (const permissionField of ['permissions', 'optional_permissions']) {
   const permissions = manifest[permissionField]
@@ -83,4 +83,4 @@ if (existsSync(htmlPath)) {
   for (const asset of localAssets) resolvePackageFile(asset.slice(2), 'index.html asset')
 }
 
-if (process.exitCode !== 1) console.log('Extension package check passed: Manifest V3, new-tab entry, local assets, weather hosts, optional Hacker News host access, and optional bookmarks, clipboard, and browsing history access are valid.')
+if (process.exitCode !== 1) console.log('Extension package check passed: Manifest V3, new-tab entry, local assets, optional weather and Hacker News host access, and optional bookmarks, clipboard, and browsing history access are valid.')

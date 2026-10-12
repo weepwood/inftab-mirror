@@ -105,6 +105,7 @@ select { background-color: #fff; color: #343a40; }
 .weather-summary-attribution:hover { text-decoration: underline; }
 .weather-summary-copy small { color: #ac6e36; font-size: 9px; }
 .weather-summary-refresh { width: 27px; height: 27px; display: grid; flex: 0 0 auto; place-items: center; border: 0; border-radius: 7px; background: transparent; color: #727f8e; cursor: pointer; }
+.weather-summary-authorize { width: auto; padding: 0 8px; background: rgba(76, 93, 116, .1); font-size: 10px; white-space: nowrap; }
 .weather-summary-refresh:hover:not(:disabled) { background: rgba(76, 93, 116, .12); color: #26313e; }
 .weather-summary-refresh:disabled { opacity: .45; cursor: wait; }
 .home-dock { position: fixed; z-index: 2; bottom: 42px; left: 50%; display: flex; gap: 5px; max-width: calc(100vw - 88px); overflow-x: auto; padding: 7px; transform: translateX(-50%); border: 1px solid rgba(255, 255, 255, .46); border-radius: 16px; background: rgba(30, 35, 39, .52); box-shadow: 0 8px 24px rgba(0, 0, 0, .2); backdrop-filter: blur(16px); scrollbar-width: thin; touch-action: pan-x pinch-zoom; }
