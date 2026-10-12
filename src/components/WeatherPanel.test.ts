@@ -72,6 +72,25 @@ describe('WeatherPanel request ordering', () => {
     expect(wrapper.get('.weather-place h3').text()).toBe('新加坡东')
   })
 
+  it('does not resume the city search when authorization resolves after the panel closes', async () => {
+    const authorization = deferred<boolean>()
+    const contains = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true)
+    const request = vi.fn().mockReturnValue(authorization.promise)
+    const fetchMock = vi.fn()
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, permissions: { contains, request } })
+    vi.stubGlobal('fetch', fetchMock)
+    const wrapper = mount(WeatherPanel, { props: { city: '新加坡' } })
+    await flushPromises()
+
+    await wrapper.get('.weather-authorize').trigger('click')
+    wrapper.unmount()
+    authorization.resolve(true)
+    await flushPromises()
+
+    expect(request).toHaveBeenCalledWith({ origins: [...weatherHostPermissions] })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('allows a new city search to cancel a stalled request', async () => {
     const fetchMock = vi.fn()
       .mockImplementationOnce(waitForAbort)

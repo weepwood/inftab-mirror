@@ -45,6 +45,7 @@ let requestVersion = 0
 let activeRequest: AbortController | undefined
 let internallySelectedCity = ''
 const requestTimeoutMs = 15_000
+let isActive = false
 
 const today = computed(() => forecast.value?.daily.time[0])
 
@@ -146,10 +147,13 @@ async function searchCity() {
 }
 
 async function authorizeWeather() {
+  if (!isActive || requestingPermission.value) return
   requestingPermission.value = true
   error.value = ''
   try {
-    if (await requestWeatherPermission()) {
+    const granted = await requestWeatherPermission()
+    if (!isActive) return
+    if (granted) {
       permissionRequired.value = false
       await searchCity()
     } else {
@@ -157,10 +161,12 @@ async function authorizeWeather() {
       error.value = '尚未获得天气访问权限。'
     }
   } catch (cause) {
-    permissionRequired.value = true
-    error.value = cause instanceof Error ? cause.message : '天气访问授权失败，请重试。'
+    if (isActive) {
+      permissionRequired.value = true
+      error.value = cause instanceof Error ? cause.message : '天气访问授权失败，请重试。'
+    }
   } finally {
-    requestingPermission.value = false
+    if (isActive) requestingPermission.value = false
   }
 }
 
@@ -245,9 +251,13 @@ function formatWeekday(date: string) {
   return new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(new Date(`${date}T12:00:00`))
 }
 
-onMounted(searchCity)
+onMounted(() => {
+  isActive = true
+  void searchCity()
+})
 onBeforeUnmount(() => {
   requestVersion += 1
+  isActive = false
   activeRequest?.abort()
 })
 </script>
