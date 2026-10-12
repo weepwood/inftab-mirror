@@ -292,6 +292,24 @@ test('exports in-memory edits after browser storage rejects a save', async ({ pa
   expect(backup.todos).toContainEqual(expect.objectContaining({ title: 'Recover this unsaved note' }))
 })
 
+test('names backup downloads with the local date near UTC midnight', async ({ browser }) => {
+  const context = await browser.newContext({ timezoneId: 'Asia/Shanghai' })
+  try {
+    const page = await context.newPage()
+    await page.clock.install({ time: new Date('2026-10-12T16:30:00.000Z') })
+    await page.goto('/')
+    await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+
+    const downloadPromise = page.waitForEvent('download')
+    await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '导出 JSON 备份' }).click()
+    const download = await downloadPromise
+
+    expect(download.suggestedFilename()).toBe('inftab-backup-2026-10-13.json')
+  } finally {
+    await context.close()
+  }
+})
+
 test('backup import preview lists habits and home workspaces before restoring data', async ({ page }) => {
   const backup = {
     format: 'inftab-workspace',

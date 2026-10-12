@@ -11,6 +11,7 @@ import { launcherItems } from './data/defaults'
 import { maxImageUploadBytes } from './data/imageLimits'
 import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
+import { toLocalDateKey } from './data/calendar'
 import { normalizeWebUrl } from './data/urls'
 import type { BrowserTabCandidate } from './data/browserTabs'
 import { getPanelListeners, getPanelProps, launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelId, type PanelPluginContext } from './plugins/registry'
@@ -764,7 +765,7 @@ function downloadBackup() {
     const url = URL.createObjectURL(new Blob([contents], { type: 'application/json' }))
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = `inftab-backup-${new Date().toISOString().slice(0, 10)}.json`
+    anchor.download = `inftab-backup-${toLocalDateKey(new Date())}.json`
     anchor.style.display = 'none'
     document.body.appendChild(anchor)
     anchor.click()
