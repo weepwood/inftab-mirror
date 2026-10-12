@@ -1,11 +1,20 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+const pageErrorsByPage = new WeakMap<Page, string[]>()
 
 test.beforeEach(async ({ page }) => {
+  const pageErrors: string[] = []
+  pageErrorsByPage.set(page, pageErrors)
+  page.on('pageerror', (error) => pageErrors.push(error.message))
   await page.route('https://geocoding-api.open-meteo.com/**', (route) => route.fulfill({ json: { results: [] } }))
   await page.route('https://api.open-meteo.com/**', (route) => route.fulfill({ json: {} }))
   await page.goto('/')
   await page.evaluate(() => localStorage.clear())
   await page.reload()
+})
+
+test.afterEach(async ({ page }) => {
+  expect(pageErrorsByPage.get(page) ?? []).toEqual([])
 })
 
 test('stable browsers load the homepage and quick translation flow', async ({ page }) => {

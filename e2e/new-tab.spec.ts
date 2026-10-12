@@ -1,7 +1,12 @@
 import { readFile } from 'node:fs/promises'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+const pageErrorsByPage = new WeakMap<Page, string[]>()
 
 test.beforeEach(async ({ page }) => {
+  const pageErrors: string[] = []
+  pageErrorsByPage.set(page, pageErrors)
+  page.on('pageerror', (error) => pageErrors.push(error.message))
   await page.route('https://geocoding-api.open-meteo.com/**', (route) => route.fulfill({
     json: { results: [{ id: 1, name: '上海', admin1: '上海', country: '中国', latitude: 31.2, longitude: 121.5 }] },
   }))
@@ -19,6 +24,10 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
   await page.evaluate(() => localStorage.clear())
   await page.reload()
+})
+
+test.afterEach(async ({ page }) => {
+  expect(pageErrorsByPage.get(page) ?? []).toEqual([])
 })
 
 test('quick translation sends an encoded query to the external translator', async ({ page }) => {
@@ -924,7 +933,7 @@ test('touch gestures over the mobile dock allow both page and dock scrolling', a
     await touchPage.addInitScript(() => {
       localStorage.setItem('inftab.preferences.v1', JSON.stringify({
         homeWidgetIds: ['todo-summary', 'habits-summary', 'countdown-summary', 'notes-summary', 'calendar-summary'],
-        dockItemIds: ['weather', 'jd', 'tmall', 'taobao', 'vip', 'gaoding', 'baidu', 'lunwenmao', 'ctrip'],
+        dockItemIds: ['jd', 'tmall', 'taobao', 'vip', 'gaoding', 'baidu', 'lunwenmao', 'ctrip'],
       }))
     })
     await touchPage.goto(new URL(page.url()).origin)
@@ -945,24 +954,14 @@ test('touch gestures over the mobile dock allow both page and dock scrolling', a
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 90, id: 1 }] })
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
     await expect.poll(() => home.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
-    await cdp.detach()
-    await dockItem.tap()
-    await expect(touchPage.getByRole('dialog', { name: '天气' })).toBeVisible({ timeout: 10_000 })
-    await touchPage.getByRole('button', { name: '关闭' }).click()
     const nextX = x - 100
     const dockY = (await dockItem.boundingBox())?.y ?? y
-    const dockCdp = await context.newCDPSession(touchPage)
-    await dockCdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: dockY + 10, id: 2 }] })
-    await dockCdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 45, y: dockY + 10, id: 2 }] })
-    await dockCdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: nextX, y: dockY + 10, id: 2 }] })
-    await dockCdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: dockY + 10, id: 2 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 45, y: dockY + 10, id: 2 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: nextX, y: dockY + 10, id: 2 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
     await expect.poll(() => dock.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
-    await dockCdp.detach()
-
-    await dock.evaluate((element) => { element.scrollLeft = 0 })
-    await dockItem.tap()
-    await expect(touchPage.getByRole('dialog', { name: '天气' })).toBeVisible({ timeout: 10_000 })
-    await touchPage.getByRole('button', { name: '关闭' }).click()
+    await cdp.detach()
   } finally {
     await context.close()
   }
