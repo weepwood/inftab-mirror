@@ -729,6 +729,76 @@ test('simultaneous list additions in separate tabs are both retained', async ({ 
   await secondTab.close()
 })
 
+test('simultaneous shortcut creations preserve launcher order and workspace membership', async ({ page }) => {
+  const secondTab = await page.context().newPage()
+  await secondTab.goto('/')
+  await Promise.all([
+    page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click(),
+    secondTab.locator('.home-actions').getByRole('button', { name: '打开设置' }).click(),
+  ])
+  await Promise.all([
+    page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: /添加快捷入口/ }).click(),
+    secondTab.getByRole('dialog', { name: '设置' }).getByRole('button', { name: /添加快捷入口/ }).click(),
+  ])
+
+  const firstDialog = page.locator('.shortcut-dialog')
+  const secondDialog = secondTab.locator('.shortcut-dialog')
+  await Promise.all([
+    firstDialog.getByPlaceholder('例如：GitHub').fill('First tab shortcut'),
+    secondDialog.getByPlaceholder('例如：GitHub').fill('Second tab shortcut'),
+  ])
+  await Promise.all([
+    firstDialog.getByPlaceholder('https://example.com').fill('https://first.example/'),
+    secondDialog.getByPlaceholder('https://example.com').fill('https://second.example/'),
+  ])
+  await Promise.all([
+    firstDialog.getByRole('button', { name: '保存' }).click(),
+    secondDialog.getByRole('button', { name: '保存' }).click(),
+  ])
+
+  const shortcuts = () => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]') as { id: string; title: string }[])
+  await expect.poll(async () => (await shortcuts()).filter((item) => item.title.endsWith('tab shortcut')).map((item) => item.title).sort())
+    .toEqual(['First tab shortcut', 'Second tab shortcut'])
+  const readSyncState = () => page.evaluate(() => ({
+    shortcuts: JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]') as { id: string; title: string }[],
+    order: JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]') as string[],
+    workspaces: JSON.parse(localStorage.getItem('inftab.home-workspaces.v1') ?? '[]') as { id: string; itemIds: string[] }[],
+  }))
+  await expect.poll(async () => {
+    const state = await readSyncState()
+    const activeItems = state.workspaces.find((workspace) => workspace.id === 'default')?.itemIds ?? []
+    return state.shortcuts.filter((item) => item.title.endsWith('tab shortcut'))
+      .every((item) => state.order.includes(item.id) && activeItems.includes(item.id))
+  }).toBe(true)
+  const syncState = await readSyncState()
+  const added = syncState.shortcuts.filter((item) => item.title.endsWith('tab shortcut'))
+  const activeItems = syncState.workspaces.find((workspace) => workspace.id === 'default')?.itemIds ?? []
+  const missingMemberships = added.flatMap((item) => {
+    const missing = [
+      ...(!syncState.order.includes(item.id) ? ['launcher order'] : []),
+      ...(!activeItems.includes(item.id) ? ['active workspace'] : []),
+    ]
+    return missing.length ? [{ title: item.title, missing }] : []
+  })
+  expect(missingMemberships).toEqual([])
+
+  await Promise.all([
+    page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click(),
+    secondTab.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click(),
+  ])
+  await secondTab.keyboard.press('Control+f')
+  const search = secondTab.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })
+  await search.fill('First tab shortcut')
+  await expect(secondTab.getByRole('option', { name: /First tab shortcut/ })).toBeVisible()
+  await search.fill('Second tab shortcut')
+  await expect(secondTab.getByRole('option', { name: /Second tab shortcut/ })).toBeVisible()
+  await secondTab.reload()
+  await secondTab.keyboard.press('Control+f')
+  await secondTab.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Second tab shortcut')
+  await expect(secondTab.getByRole('option', { name: /Second tab shortcut/ })).toBeVisible()
+  await secondTab.close()
+})
+
 test('simultaneous widget selections in separate tabs are combined', async ({ page }) => {
   const secondTab = await page.context().newPage()
   await secondTab.goto('/')

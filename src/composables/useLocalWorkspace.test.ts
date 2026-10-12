@@ -68,6 +68,29 @@ describe('useLocalWorkspace default shortcut URL migration', () => {
 })
 
 describe('useLocalWorkspace launcher ordering', () => {
+  it('restores launcher order when the order update arrives before its shortcut record', async () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const shortcut = { id: 'out-of-order-shortcut', title: 'Out of order', url: 'https://example.com/', color: '#abc', mark: 'O' }
+    const originalOrder = [...workspace.launcherOrder.value]
+    const originalShortcuts = [...workspace.shortcuts.value]
+    const orderKey = 'inftab.launcher-order.v1'
+    const shortcutsKey = 'inftab.shortcuts.v1'
+    const orderBefore = JSON.stringify(originalOrder)
+    const shortcutsBefore = JSON.stringify(originalShortcuts)
+    const orderAfter = JSON.stringify([...originalOrder, shortcut.id])
+    const shortcutsAfter = JSON.stringify([...originalShortcuts, shortcut])
+
+    localStorage.setItem(orderKey, orderAfter)
+    window.dispatchEvent(new StorageEvent('storage', { key: orderKey, oldValue: orderBefore, newValue: orderAfter }))
+    await vi.waitFor(() => expect(workspace.launcherOrder.value).not.toContain(shortcut.id))
+
+    localStorage.setItem(shortcutsKey, shortcutsAfter)
+    window.dispatchEvent(new StorageEvent('storage', { key: shortcutsKey, oldValue: shortcutsBefore, newValue: shortcutsAfter }))
+    await vi.waitFor(() => expect(workspace.shortcuts.value).toContainEqual(shortcut))
+    await vi.waitFor(() => expect(workspace.launcherOrder.value).toContain(shortcut.id))
+  })
+
   it('preserves hidden launcher positions while reordering visible items', () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
@@ -316,13 +339,16 @@ describe('useLocalWorkspace bulk shortcut import', () => {
     expect(workspace.addShortcuts([one, { ...one, url: 'https://different.example/' }])).toBe(false)
     expect(workspace.addShortcuts([{ ...one, id: existingShortcut.id }])).toBe(false)
     expect(workspace.shortcuts.value).toEqual(beforeShortcuts)
+    expect(workspace.launcherOrder.value).toEqual(beforeOrder)
+    expect(workspace.homeWorkspaces.value).toEqual(beforeMembership)
     workspace.shortcuts.value = Array.from({ length: 499 }, (_, index) => ({
       id: 'at-capacity-' + index, title: 'Shortcut ' + index, url: `https://capacity-${index}.example/`, color: '#abc', mark: 'S',
     }))
     const fullBefore = [...workspace.shortcuts.value]
+    const fullOrderBefore = [...workspace.launcherOrder.value]
     expect(workspace.addShortcuts([one, { ...one, id: 'last' }])).toBe(false)
     expect(workspace.shortcuts.value).toEqual(fullBefore)
-    expect(workspace.launcherOrder.value).toEqual(beforeOrder)
+    expect(workspace.launcherOrder.value).toEqual(fullOrderBefore)
     expect(workspace.homeWorkspaces.value).toEqual(beforeMembership)
   })
 })

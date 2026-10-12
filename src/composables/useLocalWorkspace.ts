@@ -95,6 +95,9 @@ export function useLocalWorkspace() {
     const cleanFolders = sanitizeFolders(folders.value, shortcuts.value)
     if (JSON.stringify(cleanFolders) !== JSON.stringify(folders.value)) folders.value = cleanFolders
 
+    const cleanLauncherOrder = sanitizeLauncherOrder(launcherOrder.value, shortcuts.value, folders.value)
+    if (JSON.stringify(cleanLauncherOrder) !== JSON.stringify(launcherOrder.value)) launcherOrder.value = cleanLauncherOrder
+
     const validDockIds = new Set([
       ...launcherItems.filter((item) => item.action && item.id !== 'settings').map((item) => item.id),
       ...shortcuts.value.map((shortcut) => shortcut.id),
@@ -200,7 +203,7 @@ export function useLocalWorkspace() {
     const sanitized = sanitizeShortcuts(next)
     if (!sanitized.some((item) => item.id === shortcut.id)) return false
     shortcuts.value = sanitized
-    if (!exists) launcherOrder.value = [...launcherOrder.value, shortcut.id]
+    if (!exists && !launcherOrder.value.includes(shortcut.id)) launcherOrder.value = [...launcherOrder.value, shortcut.id]
     updateWorkspaceLauncherMembership(shortcut.id, workspaceId)
     return true
   }
@@ -222,7 +225,7 @@ export function useLocalWorkspace() {
     if (next.length !== shortcuts.value.length + items.length) return false
 
     shortcuts.value = next
-    launcherOrder.value = [...launcherOrder.value, ...items.map((item) => item.id)]
+    launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...items.map((item) => item.id)], shortcuts.value, folders.value)
     homeWorkspaces.value = homeWorkspaces.value.map((workspace) => workspace.id === workspaceId
       ? { ...workspace, itemIds: [...new Set([...workspace.itemIds, ...items.map((item) => item.id)])] }
       : workspace)
