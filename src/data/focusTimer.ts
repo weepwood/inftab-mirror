@@ -31,8 +31,9 @@ export function advanceFocusTimer(state: FocusTimerState, now: number): FocusTim
 }
 
 export function startFocusTimer(state: FocusTimerState, now: number): FocusTimerState {
-  if (state.endsAt !== null) return state
-  const ready = state.remainingMs > 0 ? state : nextPhase(state)
+  const current = advanceFocusTimer(state, now)
+  if (current.endsAt !== null) return current
+  const ready = current.remainingMs > 0 ? current : nextPhase(current)
   return { ...ready, endsAt: now + ready.remainingMs }
 }
 

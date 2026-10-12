@@ -31,6 +31,18 @@ describe('focus timer state', () => {
     expect(advanceFocusTimer(afterThree, now).phase).toBe('long-break')
   })
 
+  it('starts the next phase when starting an already expired session', () => {
+    const now = 1_800_000_000_000
+    const expired = { ...startFocusTimer(defaultFocusTimerState, now), endsAt: now }
+
+    expect(startFocusTimer(expired, now + 1)).toMatchObject({
+      phase: 'short-break',
+      completedSessions: 1,
+      endsAt: now + 1 + 5 * 60_000,
+      remainingMs: 5 * 60_000,
+    })
+  })
+
   it('sanitizes corrupted values and clamps an unreasonably distant deadline', () => {
     const now = 1_800_000_000_000
     const state = sanitizeFocusTimerState({
