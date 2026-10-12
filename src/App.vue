@@ -135,6 +135,7 @@ let destructiveActionFocusTarget: HTMLElement | undefined
 const searchBar = ref<{ focusSearch: () => void; showTranslationError: () => void }>()
 const sidePanel = ref<HTMLElement>()
 const shortcutDialogElement = ref<HTMLFormElement>()
+const shortcutTitleInput = ref<HTMLInputElement>()
 const folderDialogOpen = ref(false)
 const activeFolder = ref<ShortcutFolder>()
 const folderSaveError = ref('')
@@ -382,9 +383,11 @@ watch(activePanel, async (panel, previousPanel) => {
 watch(shortcutDialog, async (isOpen) => {
   if (isOpen) {
     await nextTick()
-    shortcutDialogElement.value?.querySelector<HTMLElement>(
-      'button:not([disabled]), input:not([disabled]):not([type="hidden"]):not(.visually-hidden), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
-    )?.focus()
+    const prefersTouch = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
+    const initialFocus = prefersTouch
+      ? shortcutDialogElement.value?.querySelector<HTMLElement>('button[aria-label="关闭"]')
+      : shortcutTitleInput.value
+    initialFocus?.focus()
     return
   }
   const target = shortcutDialogReturnFocusTarget
@@ -1080,7 +1083,7 @@ onBeforeUnmount(() => {
     <div v-if="shortcutDialog" class="modal-backdrop" @click.self="shortcutDialog = false">
       <form ref="shortcutDialogElement" class="shortcut-dialog" role="dialog" aria-modal="true" aria-labelledby="shortcut-dialog-title" @keydown="handleShortcutDialogKeydown" @submit.prevent="saveShortcut">
         <header><div><h2 id="shortcut-dialog-title">{{ editingId ? '编辑快捷入口' : '添加快捷入口' }}</h2><p>名称和网址可以随时修改</p></div><button type="button" aria-label="关闭" @click="shortcutDialog = false"><X :size="19" /></button></header>
-        <label>名称<input v-model="shortcutTitle" autofocus required maxlength="24" placeholder="例如：GitHub" /></label>
+        <label>名称<input ref="shortcutTitleInput" v-model="shortcutTitle" required maxlength="24" placeholder="例如：GitHub" /></label>
         <label>所属工作区<select v-model="shortcutWorkspaceId"><option v-for="workspace in homeWorkspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></select></label>
         <p v-if="shortcutLimitReached" class="backup-error" role="status">最多只能保存 500 个快捷入口。</p>
         <BrowserTabImport v-if="canImportBrowserTabs" @select="fillShortcutFromBrowserTab" />

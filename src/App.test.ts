@@ -1028,4 +1028,20 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('设置')
     expect(document.activeElement).toBe(wrapper.get('.import-backup-button').element)
   })
+
+  it('focuses the shortcut name on desktop and avoids opening a mobile keyboard', async () => {
+    await mountApp()
+    await openLauncher('settings')
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await flushPromises()
+
+    expect(document.activeElement).toBe(wrapper.get('.shortcut-dialog input[placeholder="例如：GitHub"]').element)
+    await wrapper.get('.shortcut-dialog button[aria-label="关闭"]').trigger('click')
+
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await flushPromises()
+
+    expect(document.activeElement).toBe(wrapper.get('.shortcut-dialog button[aria-label="关闭"]').element)
+  })
 })

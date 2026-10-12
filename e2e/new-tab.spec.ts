@@ -120,18 +120,46 @@ test('shortcut dialog traps keyboard focus, exposes dialog semantics, and restor
   await addShortcut.click()
 
   const dialog = page.getByRole('dialog', { name: '添加快捷入口' })
-  const first = dialog.getByRole('button', { name: '关闭' })
+  const close = dialog.getByRole('button', { name: '关闭' })
+  const name = dialog.getByPlaceholder('例如：GitHub')
   const last = dialog.getByRole('button', { name: '保存' })
   await expect(dialog).toBeVisible()
-  await expect(first).toBeFocused()
+  await expect(name).toBeFocused()
   await expect(dialog.locator('input[type="file"]')).toHaveAttribute('tabindex', '-1')
+  await page.keyboard.press('Shift+Tab')
+  await expect(close).toBeFocused()
   await page.keyboard.press('Shift+Tab')
   await expect(last).toBeFocused()
   await page.keyboard.press('Tab')
-  await expect(first).toBeFocused()
+  await expect(close).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(addShortcut).toBeFocused()
+})
+
+test('touch shortcut dialog does not auto-focus a text field', async ({ page }) => {
+  await page.addInitScript(() => {
+    const originalMatchMedia = window.matchMedia.bind(window)
+    window.matchMedia = (query) => query === '(pointer: coarse)'
+      ? {
+          matches: true,
+          media: query,
+          onchange: null,
+          addListener: () => undefined,
+          removeListener: () => undefined,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+          dispatchEvent: () => true,
+        } as unknown as MediaQueryList
+      : originalMatchMedia(query)
+  })
+  await page.reload()
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: /添加快捷入口/ }).click()
+
+  const dialog = page.getByRole('dialog', { name: '添加快捷入口' })
+  await expect(dialog.getByRole('button', { name: '关闭' })).toBeFocused()
+  await expect(dialog.getByPlaceholder('例如：GitHub')).not.toBeFocused()
 })
 
 test('minimal mode keeps search available and restores the homepage with Escape', async ({ page }) => {
