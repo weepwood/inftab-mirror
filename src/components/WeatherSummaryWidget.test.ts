@@ -69,6 +69,26 @@ describe('WeatherSummaryWidget', () => {
     expect(wrapper.text()).toContain('上海 21°')
   })
 
+  it('does not start a weather request when authorization resolves after the widget is removed', async () => {
+    const authorization = deferred<boolean>()
+    const contains = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true)
+    const request = vi.fn().mockReturnValue(authorization.promise)
+    const fetchMock = vi.fn()
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, permissions: { contains, request } })
+    vi.stubGlobal('fetch', fetchMock)
+    wrapper = mount(WeatherSummaryWidget, { props: { city: '上海' } })
+    await flushPromises()
+
+    await wrapper.get('.weather-summary-authorize').trigger('click')
+    wrapper.unmount()
+    wrapper = undefined
+    authorization.resolve(true)
+    await flushPromises()
+
+    expect(request).toHaveBeenCalledWith({ origins: [...weatherHostPermissions] })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('loads the selected city and refreshes when the tab returns after data becomes stale', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-12T12:00:00'))

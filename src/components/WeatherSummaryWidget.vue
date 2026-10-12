@@ -25,6 +25,7 @@ let requestVersion = 0
 let activeRequest: AbortController | undefined
 let lastUpdatedAt = 0
 const refreshInterval = 15 * 60 * 1000
+let isActive = false
 
 async function refreshWeather() {
   const version = ++requestVersion
@@ -63,20 +64,25 @@ async function refreshWeather() {
 }
 
 async function authorizeWeather() {
+  if (!isActive || requestingPermission.value) return
   requestingPermission.value = true
   error.value = ''
   try {
-    if (await requestWeatherPermission()) {
+    const granted = await requestWeatherPermission()
+    if (!isActive) return
+    if (granted) {
       await refreshWeather()
     } else {
       permissionRequired.value = true
       error.value = '尚未获得天气访问权限。'
     }
   } catch (cause) {
-    permissionRequired.value = true
-    error.value = cause instanceof Error ? cause.message : '天气访问授权失败，请重试。'
+    if (isActive) {
+      permissionRequired.value = true
+      error.value = cause instanceof Error ? cause.message : '天气访问授权失败，请重试。'
+    }
   } finally {
-    requestingPermission.value = false
+    if (isActive) requestingPermission.value = false
   }
 }
 
@@ -91,11 +97,13 @@ watch(() => props.city, () => {
   void refreshWeather()
 })
 onMounted(() => {
+  isActive = true
   window.addEventListener('focus', refreshIfStale)
   document.addEventListener('visibilitychange', refreshIfStale)
   void refreshWeather()
 })
 onBeforeUnmount(() => {
+  isActive = false
   requestVersion += 1
   activeRequest?.abort()
   window.removeEventListener('focus', refreshIfStale)
