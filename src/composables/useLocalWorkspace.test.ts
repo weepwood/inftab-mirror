@@ -31,6 +31,22 @@ describe('useLocalWorkspace default shortcut migration', () => {
     expect(workspace.shortcuts.value.find((item) => item.id === 'infinitytab')?.icon).toBe('bc545d7b32d3dc84c3041ca092fb2689.png')
     expect(workspace.shortcuts.value.find((item) => item.id === 'jd')?.icon).toBe('data:image/png;base64,custom')
   })
+
+  it('clears migration-only shortcut references when another tab clears local storage', async () => {
+    localStorage.setItem('inftab.shortcuts.v1', JSON.stringify([
+      { id: 'legacy-custom-link', title: 'Legacy link', url: 'https://example.com/', color: '#abc', mark: 'L' },
+    ]))
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    expect(workspace.homeWorkspaces.value[0]?.itemIds).toContain('legacy-custom-link')
+
+    localStorage.clear()
+    window.dispatchEvent(new StorageEvent('storage', { key: null, oldValue: null, newValue: null }))
+    await vi.waitFor(() => expect(workspace.shortcuts.value.some((shortcut) => shortcut.id === 'legacy-custom-link')).toBe(false))
+
+    expect(workspace.homeWorkspaces.value[0]?.itemIds).not.toContain('legacy-custom-link')
+    expect(workspace.homeWorkspaces.value[0]?.id).toBe('default')
+  })
 })
 
 describe('useLocalWorkspace default shortcut URL migration', () => {

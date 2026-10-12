@@ -20,6 +20,7 @@ export function useLocalWorkspace() {
     'inftab.home-workspaces.v1',
     [defaultHomeWorkspace([...launcherOrder.value, ...shortcuts.value.map((item) => item.id), ...folders.value.map((item) => item.id)])],
     (value) => sanitizeHomeWorkspaces(value, launcherOrder.value, builtInLauncherIds),
+    { clearFallback: [defaultHomeWorkspace(defaultLauncherOrder)] },
   )
   const activeHomeWorkspaceId = useStoredState<string>(
     'inftab.active-home-workspace.v1',

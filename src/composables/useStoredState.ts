@@ -3,9 +3,11 @@ import { sanitizeStoredValue } from '../data/sanitize'
 
 export const storageWriteErrorEvent = 'inftab:storage-write-error'
 
-export interface StoredStateOptions {
+export interface StoredStateOptions<T = unknown> {
   /** Keep the incoming value intact for state where external changes should always win. */
   mergeConcurrentChanges?: boolean
+  /** Use a clean default when another tab clears the entire local storage area. */
+  clearFallback?: T
 }
 
 let concurrentStateModule: Promise<typeof import('./concurrentState')> | undefined
@@ -22,7 +24,7 @@ export function useStoredState<T>(
   key: string,
   fallback: T,
   normalize: (value: unknown) => T = (value) => sanitizeStoredValue(value, fallback),
-  options: StoredStateOptions = {},
+  options: StoredStateOptions<T> = {},
 ): Ref<T> {
   let initial = structuredClone(fallback)
   try {
@@ -80,9 +82,11 @@ export function useStoredState<T>(
     persistTimer = undefined
     let externalValue: T
     try {
-      externalValue = event.newValue === null
-        ? structuredClone(fallback)
-        : normalize(JSON.parse(event.newValue))
+      externalValue = event.key === null
+        ? normalize(structuredClone(options.clearFallback ?? fallback))
+        : event.newValue === null
+          ? structuredClone(fallback)
+          : normalize(JSON.parse(event.newValue))
     } catch {
       externalValue = structuredClone(fallback)
     }
