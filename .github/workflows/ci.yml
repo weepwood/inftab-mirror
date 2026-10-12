@@ -26,10 +26,12 @@ jobs:
         run: npm ci
       - name: Run regression tests
         run: npm test
-      - name: Install Chromium for browser tests
-        run: npx playwright install --with-deps chromium
+      - name: Install Chromium and stable Chrome and Edge
+        run: npx playwright install --with-deps chromium chrome msedge
       - name: Run browser end-to-end tests
         run: npm run test:e2e
+      - name: Verify stable Chrome and Edge websites
+        run: npm run test:e2e:stable
       - name: Build, enforce bundle budgets, and test the production preview
         run: npm run test:e2e:production
       - name: Load and test the packaged browser extension

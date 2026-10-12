@@ -27,11 +27,12 @@ npm test
 Run the browser-level user-flow checks with:
 
 ```sh
-npx playwright install chromium
+npx playwright install chromium chrome msedge
 npm run test:e2e
+npm run test:e2e:stable
 ```
 
-The end-to-end suite covers shortcut creation and persistence, keyboard launcher search, panel open/close, widget add/reorder/remove and persistence, settings persistence, and narrow-screen overflow. GitHub Actions runs the unit, website browser, production preview, and packaged-extension suites for pull requests and before publishing to Pages; browser reports and failure traces are retained as workflow artifacts.
+The default end-to-end suite covers shortcut creation and persistence, keyboard launcher search, panel open/close, widget add/reorder/remove and persistence, settings persistence, and narrow-screen overflow. `test:e2e:stable` builds the production site, then runs focused homepage, translation, responsive-layout, and shortcut-persistence checks in installed stable Chrome and Edge channels. GitHub Actions runs these website checks, the production preview, and the packaged-extension suite for pull requests and before publishing to Pages; browser reports and failure traces are retained as workflow artifacts.
 
 To run the same user flows against the production build and its lazy-loaded assets, run:
 

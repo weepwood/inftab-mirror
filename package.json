@@ -11,6 +11,7 @@
     "test": "vitest run && node scripts/check-default-assets.mjs",
     "test:e2e": "playwright test",
     "test:e2e:production": "npm run build && playwright test --config playwright.production.config.ts",
+    "test:e2e:stable": "npm run build && playwright test --config playwright.stable.config.ts",
     "test:e2e:extension": "npm run check && npm run build && playwright test --config playwright.extension.config.ts"
   },
   "dependencies": {
