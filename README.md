@@ -41,7 +41,7 @@ npm run test:e2e:production
 
 This command builds the app first, then starts Vite's production preview server for Playwright.
 
-To load the built package as a real Manifest V3 extension in an isolated Chromium profile and verify the new-tab override and optional-permission defaults, run:
+To load the built package as a real Manifest V3 extension in an isolated Chromium profile and verify the new-tab override, shortcut persistence, and optional-permission defaults, run:
 
 ```sh
 npm run test:e2e:extension

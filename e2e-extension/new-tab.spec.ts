@@ -48,6 +48,35 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
     expect(extensionState[1]).toBe(3)
     expect(extensionState[2]).toBe(false)
     expect(extensionState[3]).toBe(false)
+
+    await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+    await page.getByRole('button', { name: /添加快捷入口/ }).click()
+    const dialog = page.locator('.shortcut-dialog')
+    await dialog.getByPlaceholder('例如：GitHub').fill('Extension E2E')
+    await dialog.getByPlaceholder('https://example.com').fill('https://extension.example/')
+    await dialog.getByRole('button', { name: '保存' }).click()
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('inftab.shortcuts.v1'))).toContain('Extension E2E')
+    await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+
+    await page.keyboard.press('Control+f')
+    const localSearch = page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })
+    await localSearch.fill('Extension E2E')
+    await expect(page.getByRole('option', { name: /Extension E2E/ })).toBeVisible()
+    await page.reload()
+    await page.keyboard.press('Control+f')
+    await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Extension E2E')
+    await expect(page.getByRole('option', { name: /Extension E2E/ })).toBeVisible()
+
+    const optionalPermissions = await page.evaluate(() => {
+      const permissions = (window as unknown as {
+        chrome: { permissions: { contains: (details: { permissions: string[] }) => Promise<boolean> } }
+      }).chrome.permissions
+      return Promise.all([
+        permissions.contains({ permissions: ['bookmarks'] }),
+        permissions.contains({ permissions: ['history'] }),
+      ])
+    })
+    expect(optionalPermissions).toEqual([false, false])
     expect(pageErrors).toEqual([])
   } finally {
     await context?.close()
