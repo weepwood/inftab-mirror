@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { ArrowLeft, House, Menu, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
@@ -18,10 +18,26 @@ import { maxDockItems, type HomeWidgetId, type LauncherItem, type Shortcut, type
 
 type Panel = PanelId | null
 
-const HomeWidgetShelf = defineAsyncComponent(() => import('./components/HomeWidgetShelf.vue'))
-const HomeDock = defineAsyncComponent(() => import('./components/HomeDock.vue'))
-const FolderDialog = defineAsyncComponent(() => import('./components/FolderDialog.vue'))
-const ConfirmDialog = defineAsyncComponent(() => import('./components/ConfirmDialog.vue'))
+const HomeWidgetShelf = lazyPluginComponent(
+  () => import('./components/HomeWidgetShelf.vue'),
+  '正在加载首页组件…',
+  '首页组件暂时无法加载。',
+)
+const HomeDock = lazyPluginComponent(
+  () => import('./components/HomeDock.vue'),
+  '正在加载常驻 Dock…',
+  '常驻 Dock 暂时无法加载。',
+)
+const FolderDialog = lazyPluginComponent(
+  () => import('./components/FolderDialog.vue'),
+  '正在加载文件夹…',
+  '文件夹暂时无法加载，请重试。',
+)
+const ConfirmDialog = lazyPluginComponent(
+  () => import('./components/ConfirmDialog.vue'),
+  '正在加载确认对话框…',
+  '确认对话框暂时无法加载，请重试。',
+)
 const HomeWorkspaceTabs = lazyPluginComponent(
   () => import('./components/HomeWorkspaceTabs.vue'),
   '正在加载工作区…',

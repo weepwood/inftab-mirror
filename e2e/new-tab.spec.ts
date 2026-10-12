@@ -394,6 +394,24 @@ test('every home widget plugin loads together without a runtime error', async ({
   expect(pageErrors).toEqual([])
 })
 
+test('retries a transient homepage widget chunk failure', async ({ page }) => {
+  let chunkRequests = 0
+  await page.route(/\/HomeWidgetShelf-[^/]+\.js(?:\?.*)?$/, async (route) => {
+    chunkRequests += 1
+    if (chunkRequests === 1) await route.abort('failed')
+    else await route.continue()
+  })
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    const preferences = JSON.parse(localStorage.getItem(key) ?? '{}')
+    localStorage.setItem(key, JSON.stringify({ ...preferences, homeWidgetIds: ['todo-summary'] }))
+  })
+  await page.reload()
+
+  await expect(page.locator('[data-widget-id="todo-summary"]')).toBeVisible()
+  expect(chunkRequests).toBeGreaterThanOrEqual(2)
+})
+
 test('launcher search shortcut works while the homepage search bar is hidden', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByLabel('显示搜索栏').uncheck()
