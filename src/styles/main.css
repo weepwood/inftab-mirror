@@ -45,9 +45,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .home-widget-card { min-width: 0; min-height: 112px; overflow: hidden; border: 1px solid rgba(255, 255, 255, .7); border-radius: 14px; padding: 10px 12px; background: rgba(255, 255, 255, .9); color: #303640; box-shadow: 0 8px 26px rgba(12, 20, 24, .16); backdrop-filter: blur(14px); transition: transform .16s, box-shadow .16s, opacity .16s; }
 .home-widget-card-wide { grid-column: span 2; }
 .home-widget-card.dragging { opacity: .48; transform: scale(.98); }
-.home-widget-header { min-height: 25px; display: flex; align-items: center; gap: 3px; cursor: grab; }
-.home-widget-header:active { cursor: grabbing; }
-.home-widget-grip { flex: 0 0 auto; color: #89919c; }
+.home-widget-header { min-height: 25px; display: flex; align-items: center; gap: 3px; }
+.home-widget-grip { width: 20px; height: 25px; flex: 0 0 auto; display: grid; place-items: center; border: 0; border-radius: 5px; padding: 0; background: transparent; color: #89919c; cursor: grab; }
+.home-widget-grip:active { cursor: grabbing; }
+.home-widget-grip:hover { background: rgba(76, 93, 116, .12); color: #26313e; }
 .home-widget-title { min-width: 0; flex: 1; overflow: hidden; border: 0; padding: 3px 4px; background: transparent; color: inherit; font-size: 12px; font-weight: 700; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .home-widget-title-static { cursor: inherit; }
 .home-widget-order, .home-widget-remove { width: 25px; height: 25px; flex: 0 0 auto; display: grid; place-items: center; border: 0; border-radius: 6px; padding: 0; background: transparent; color: #69727e; cursor: pointer; }

@@ -591,7 +591,7 @@ test('home widgets open their panel, reorder, and can be removed', async ({ page
   await page.getByRole('button', { name: '将待办概览下移' }).click()
   await expect(widgetTitles).toHaveText(['倒计时', '待办概览'])
   await expect(page.locator('.home-widget-shelf .visually-hidden[role="status"]')).toHaveText('待办概览已移到第2个位置。')
-  await page.locator('[data-widget-id="todo-summary"] .home-widget-header')
+  await page.locator('[data-widget-id="todo-summary"] .home-widget-grip')
     .dragTo(page.locator('[data-widget-id="countdown-summary"]'))
   await expect(widgetTitles).toHaveText(['待办概览', '倒计时'])
   await expect(page.locator('.home-widget-shelf .visually-hidden[role="status"]')).toHaveText('待办概览已移到第1个位置。')

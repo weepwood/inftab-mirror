@@ -67,8 +67,10 @@ function moveWidget(index: number, direction: -1 | 1) {
       @drop="dropWidget($event, index)"
       @dragend="draggingIndex = null"
     >
-      <header class="home-widget-header" draggable="true" @dragstart="startDrag($event, index)">
-        <GripVertical :size="15" aria-hidden="true" class="home-widget-grip" />
+      <header class="home-widget-header">
+        <button class="home-widget-grip" type="button" draggable="true" :aria-label="`拖动${props.plugins[id].title}排序`" @dragstart="startDrag($event, index)">
+          <GripVertical :size="15" aria-hidden="true" />
+        </button>
         <button v-if="props.plugins[id].panel" class="home-widget-title" type="button" :aria-label="`打开${props.plugins[id].title}`" @click="openWidget(id)">
           {{ props.plugins[id].title }}
         </button>

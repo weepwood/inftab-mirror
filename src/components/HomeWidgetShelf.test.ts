@@ -15,6 +15,25 @@ afterEach(() => {
 })
 
 describe('home widget shelf plugin activation', () => {
+  it('limits pointer dragging to an accessible handle and keeps controls outside it', () => {
+    const context: HomeWidgetContext = { todos: [], habits: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海', focusTimer: defaultFocusTimerState }
+    wrapper = mount(HomeWidgetShelf, {
+      props: {
+        widgetIds: ['todo-summary'],
+        widgetSizes: { 'todo-summary': 'standard', 'habits-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard', 'weather-summary': 'standard', 'focus-timer-summary': 'standard', 'bookmarks-summary': 'standard', 'history-summary': 'standard' },
+        context,
+      },
+    })
+
+    const handle = wrapper.get('.home-widget-grip')
+    expect(handle.element.tagName).toBe('BUTTON')
+    expect(handle.attributes('draggable')).toBe('true')
+    expect(handle.attributes('aria-label')).toBe('拖动待办概览排序')
+    expect(wrapper.get('.home-widget-header').attributes('draggable')).toBeUndefined()
+    expect(wrapper.get('.home-widget-order').attributes('draggable')).toBeUndefined()
+    expect(wrapper.get('.home-widget-remove').attributes('draggable')).toBeUndefined()
+  })
+
   it('renders a standalone widget title without a fake panel action', async () => {
     const plugins = {
       ...homeWidgetPlugins,
