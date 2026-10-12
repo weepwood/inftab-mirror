@@ -505,12 +505,15 @@ test('every home widget plugin loads together without a runtime error', async ({
 })
 
 test('news widget loads only after enabling it and labels the feed and article source', async ({ page }) => {
-  await page.route('https://hacker-news.firebaseio.com/v0/**', (route) => route.fulfill({
-    contentType: 'application/json',
-    body: route.request().url().endsWith('/topstories.json')
-      ? JSON.stringify([9101])
-      : JSON.stringify({ id: 9101, type: 'story', title: 'Opt-in news story', url: 'https://source.example/news', score: 42, descendants: 9 }),
-  }))
+  let offline = false
+  await page.route('https://hacker-news.firebaseio.com/v0/**', (route) => offline
+    ? route.abort('internetdisconnected')
+    : route.fulfill({
+      contentType: 'application/json',
+      body: route.request().url().endsWith('/topstories.json')
+        ? JSON.stringify([9101])
+        : JSON.stringify({ id: 9101, type: 'story', title: 'Opt-in news story', url: 'https://source.example/news', score: 42, descendants: 9 }),
+    }))
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const settings = page.getByRole('dialog', { name: '设置' })
   await settings.getByLabel('显示热门资讯小组件').check()
@@ -521,6 +524,14 @@ test('news widget loads only after enabling it and labels the feed and article s
   await expect(widget.locator('.news-summary-attribution')).toContainText('Hacker News')
   await expect(widget.locator('.news-summary-list small')).toContainText('source.example · 42 分 · 9 条讨论')
   await expect(widget.locator('.news-summary-list a')).toHaveAttribute('href', 'https://source.example/news')
+
+  offline = true
+  await widget.getByRole('button', { name: '刷新资讯' }).click()
+  await expect(widget).toContainText('资讯网络请求失败')
+  await expect(widget).toContainText('Opt-in news story')
+  await page.reload()
+  await expect(page.locator('[data-widget-id="news-summary"]')).toContainText('Opt-in news story')
+  await expect(page.locator('[data-widget-id="news-summary"]')).toContainText('最近更新')
 })
 
 test('retries a transient homepage widget chunk failure', async ({ page }) => {

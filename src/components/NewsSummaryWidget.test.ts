@@ -2,7 +2,7 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import NewsSummaryWidget from './NewsSummaryWidget.vue'
-import { hackerNewsHostPermission } from '../data/hackerNews'
+import { hackerNewsHostPermission, writeCachedHackerNewsFeed } from '../data/hackerNews'
 
 let wrapper: VueWrapper | undefined
 
@@ -11,6 +11,7 @@ afterEach(() => {
   wrapper = undefined
   vi.unstubAllGlobals()
   vi.useRealTimers()
+  localStorage.clear()
 })
 
 function response(value: unknown, ok = true): Response {
@@ -57,6 +58,31 @@ describe('NewsSummaryWidget', () => {
 
     expect(request).toHaveBeenCalledWith({ origins: [hackerNewsHostPermission] })
     expect(fetcher).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows the last locally cached feed while offline without requesting extension access', async () => {
+    writeCachedHackerNewsFeed([{
+      id: 88,
+      title: 'Saved for offline reading',
+      url: 'https://cached.example/story',
+      source: 'cached.example',
+      points: 9,
+      comments: 2,
+    }], Date.parse('2026-10-11T08:30:00Z'))
+    const fetcher = vi.fn()
+    const contains = vi.fn().mockResolvedValue(false)
+    const request = vi.fn()
+    vi.stubGlobal('chrome', { runtime: { id: 'c'.repeat(32) }, permissions: { contains, request } })
+    vi.stubGlobal('fetch', fetcher)
+    wrapper = mount(NewsSummaryWidget)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Saved for offline reading')
+    expect(wrapper.text()).toContain('cached.example · 9 分 · 2 条讨论')
+    expect(wrapper.text()).toContain('最近更新')
+    expect(wrapper.text()).toContain('需要单独授权网络访问')
+    expect(fetcher).not.toHaveBeenCalled()
+    expect(request).not.toHaveBeenCalled()
   })
 
   it('preserves the last successful feed after an offline refresh and can recover', async () => {

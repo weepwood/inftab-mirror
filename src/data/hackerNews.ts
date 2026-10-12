@@ -1,6 +1,7 @@
 import { normalizeWebUrl } from './urls'
 
 export const hackerNewsHostPermission = 'https://hacker-news.firebaseio.com/*'
+export const hackerNewsCacheKey = 'inftab.hacker-news-cache.v1'
 
 export interface HackerNewsStory {
   id: number
@@ -9,6 +10,11 @@ export interface HackerNewsStory {
   source: string
   points: number
   comments: number
+}
+
+export interface HackerNewsFeedCache {
+  stories: HackerNewsStory[]
+  updatedAt: number
 }
 
 interface ChromePermissionsApi {
@@ -59,10 +65,75 @@ function parseStory(value: unknown): HackerNewsStory | undefined {
   }
 }
 
+function parseCachedStory(value: unknown): HackerNewsStory | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined
+  const item = value as Record<string, unknown>
+  if (!Number.isSafeInteger(item.id) || (item.id as number) <= 0 || typeof item.title !== 'string') return undefined
+  const title = item.title.trim().slice(0, 240)
+  const url = normalizeWebUrl(item.url)
+  if (!title || !url) return undefined
+  const host = new URL(url).hostname
+  return {
+    id: item.id as number,
+    title,
+    url,
+    source: host === 'news.ycombinator.com' ? 'Hacker News' : host,
+    points: typeof item.points === 'number' && Number.isFinite(item.points) ? Math.max(0, Math.floor(item.points)) : 0,
+    comments: typeof item.comments === 'number' && Number.isFinite(item.comments) ? Math.max(0, Math.floor(item.comments)) : 0,
+  }
+}
+
+export function readCachedHackerNewsFeed(storage: Pick<Storage, 'getItem'> = localStorage): HackerNewsFeedCache | undefined {
+  try {
+    const raw = storage.getItem(hackerNewsCacheKey)
+    if (!raw) return undefined
+    const cache: unknown = JSON.parse(raw)
+    if (typeof cache !== 'object' || cache === null || Array.isArray(cache)) return undefined
+    const value = cache as Record<string, unknown>
+    if (value.version !== 1 || !Number.isSafeInteger(value.updatedAt) || (value.updatedAt as number) <= 0 || !Array.isArray(value.stories)) return undefined
+    const stories = value.stories.slice(0, 5).flatMap((story) => {
+      const parsed = parseCachedStory(story)
+      return parsed ? [parsed] : []
+    })
+    const uniqueStories = [...new Map(stories.map((story) => [story.id, story])).values()]
+    return { stories: uniqueStories, updatedAt: value.updatedAt as number }
+  } catch {
+    return undefined
+  }
+}
+
+export function writeCachedHackerNewsFeed(
+  stories: HackerNewsStory[],
+  updatedAt = Date.now(),
+  storage: Pick<Storage, 'setItem'> = localStorage,
+): boolean {
+  try {
+    const safeStories = stories.slice(0, 5).flatMap((story) => {
+      const parsed = parseCachedStory(story)
+      return parsed ? [parsed] : []
+    })
+    storage.setItem(hackerNewsCacheKey, JSON.stringify({ version: 1, stories: safeStories, updatedAt }))
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function getJson(url: string, signal: AbortSignal, fetcher: typeof fetch): Promise<unknown> {
-  const response = await fetcher(url, { signal, credentials: 'omit', referrerPolicy: 'no-referrer' })
+  let response: Response
+  try {
+    response = await fetcher(url, { signal, credentials: 'omit', referrerPolicy: 'no-referrer' })
+  } catch (error) {
+    if (signal.aborted) throw error
+    throw new Error('资讯网络请求失败，请检查网络后重试。')
+  }
   if (!response.ok) throw new Error('资讯服务暂时不可用，请检查网络后重试。')
-  return response.json()
+  try {
+    return await response.json()
+  } catch (error) {
+    if (signal.aborted) throw error
+    throw new Error('资讯数据无法解析，请稍后重试。')
+  }
 }
 
 export async function fetchHackerNewsStories(signal: AbortSignal, fetcher: typeof fetch = fetch): Promise<HackerNewsStory[]> {

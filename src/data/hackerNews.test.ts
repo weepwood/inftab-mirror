@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchHackerNewsStories, hasHackerNewsPermission, hackerNewsHostPermission, requestHackerNewsPermission } from './hackerNews'
+import { fetchHackerNewsStories, hasHackerNewsPermission, hackerNewsCacheKey, hackerNewsHostPermission, readCachedHackerNewsFeed, requestHackerNewsPermission, writeCachedHackerNewsFeed } from './hackerNews'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -46,6 +46,12 @@ describe('Hacker News feed', () => {
       .rejects.toThrow('资讯服务暂时不可用')
     await expect(fetchHackerNewsStories(new AbortController().signal, vi.fn().mockResolvedValue(jsonResponse(null))))
       .rejects.toThrow('资讯数据格式无法识别')
+    await expect(fetchHackerNewsStories(new AbortController().signal, vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))))
+      .rejects.toThrow('资讯网络请求失败')
+    await expect(fetchHackerNewsStories(new AbortController().signal, vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => { throw new SyntaxError('Unexpected token') },
+    } as unknown as Response))).rejects.toThrow('资讯数据无法解析')
   })
 
   it('requests extension host access only through an explicit permission call', async () => {
@@ -65,5 +71,30 @@ describe('Hacker News feed', () => {
 
     await expect(hasHackerNewsPermission()).resolves.toBe(true)
     await expect(requestHackerNewsPermission()).resolves.toBe(true)
+  })
+
+  it('stores and safely validates a small offline cache', () => {
+    const values = new Map<string, string>()
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    }
+    const stories = Array.from({ length: 6 }, (_, index) => ({
+      id: index + 1,
+      title: `Story ${index + 1}`,
+      url: index === 0 ? 'javascript:alert(1)' : `https://example-${index}.org/story`,
+      source: 'untrusted.example',
+      points: 12,
+      comments: 4,
+    }))
+
+    expect(writeCachedHackerNewsFeed(stories, 1_800_000_000_000, storage)).toBe(true)
+    expect(readCachedHackerNewsFeed(storage)).toEqual({
+      updatedAt: 1_800_000_000_000,
+      stories: stories.slice(1, 5).map((story) => ({ ...story, source: new URL(story.url).hostname })),
+    })
+    values.set(hackerNewsCacheKey, '{broken')
+    expect(readCachedHackerNewsFeed(storage)).toBeUndefined()
+    expect(writeCachedHackerNewsFeed(stories, Date.now(), { setItem: () => { throw new Error('quota') } })).toBe(false)
   })
 })

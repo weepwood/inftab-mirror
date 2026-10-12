@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { ExternalLink, RefreshCw } from '@lucide/vue'
-import { fetchHackerNewsStories, hasHackerNewsPermission, requestHackerNewsPermission, type HackerNewsStory } from '../data/hackerNews'
+import { fetchHackerNewsStories, hasHackerNewsPermission, readCachedHackerNewsFeed, requestHackerNewsPermission, writeCachedHackerNewsFeed, type HackerNewsStory } from '../data/hackerNews'
 
 const stories = ref<HackerNewsStory[]>([])
 const loading = ref(false)
 const requestingPermission = ref(false)
 const permissionChecking = ref(true)
 const permissionGranted = ref(false)
+const lastUpdatedAt = ref(0)
 const error = ref('')
 let activeRequest: AbortController | undefined
 let timeout: number | undefined
-let lastUpdatedAt = 0
 let isActive = false
 
 async function loadStories() {
@@ -25,7 +25,8 @@ async function loadStories() {
   timeout = requestTimeout
   try {
     stories.value = await fetchHackerNewsStories(controller.signal)
-    lastUpdatedAt = Date.now()
+    lastUpdatedAt.value = Date.now()
+    writeCachedHackerNewsFeed(stories.value, lastUpdatedAt.value)
   } catch (cause) {
     if (controller.signal.aborted && !timedOut) return
     error.value = timedOut
@@ -78,11 +79,20 @@ async function authorizeAndLoad() {
 
 function refreshIfStale() {
   if (isActive && !loading.value && permissionGranted.value && document.visibilityState === 'visible'
-    && Date.now() - lastUpdatedAt >= 15 * 60 * 1000) void refreshStories()
+    && Date.now() - lastUpdatedAt.value >= 15 * 60 * 1000) void refreshStories()
 }
 
 onMounted(async () => {
   isActive = true
+  try {
+    const cachedFeed = readCachedHackerNewsFeed()
+    if (cachedFeed) {
+      stories.value = cachedFeed.stories
+      lastUpdatedAt.value = cachedFeed.updatedAt
+    }
+  } catch {
+    // The live feed remains available when browser storage is blocked.
+  }
   let hasPermission = false
   try {
     hasPermission = await hasHackerNewsPermission()
@@ -113,7 +123,9 @@ onBeforeUnmount(() => {
     <p v-if="permissionChecking" class="home-widget-empty" role="status">正在检查资讯权限…</p>
     <p v-else-if="!permissionGranted" class="home-widget-empty" role="status">在扩展中启用资讯需要单独授权网络访问。</p>
     <p v-else-if="loading && !stories.length" class="home-widget-empty" role="status">正在加载热门资讯…</p>
+    <p v-if="loading && stories.length" class="news-summary-updated" role="status">正在更新资讯，显示的是上次缓存的内容。</p>
     <p v-if="error" class="news-summary-error" role="alert">{{ error }}</p>
+    <p v-if="lastUpdatedAt && stories.length" class="news-summary-updated">最近更新：{{ new Date(lastUpdatedAt).toLocaleString() }}</p>
     <ul v-if="stories.length" class="news-summary-list" aria-label="Hacker News 热门故事">
       <li v-for="story in stories" :key="story.id">
         <a :href="story.url" target="_blank" rel="noopener noreferrer" :title="story.title">
