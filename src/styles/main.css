@@ -262,6 +262,8 @@ select { background-color: #fff; color: #343a40; }
 .bookmark-permission small { max-width: 290px; font-size: 12px; line-height: 1.6; }
 .browser-bookmark-list { display: grid; align-content: start; gap: 3px; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
 .browser-bookmark-list li { min-width: 0; min-height: 39px; content-visibility: auto; contain-intrinsic-size: auto 39px; }
+.browser-bookmark-list .bookmark-list-more { display: grid; justify-items: center; gap: 2px; padding: 8px 0; }
+.bookmark-list-more p { margin: 0; color: #718093; font-size: 12px; }
 .browser-bookmark-entry { display: flex; align-items: center; gap: 4px; min-width: 0; border-radius: 8px; }
 .browser-bookmark-folder, .browser-bookmark-link { width: 100%; min-height: 39px; display: flex; align-items: center; gap: 9px; padding: 7px 9px; border: 0; border-radius: 8px; background: transparent; color: #3f4852; font: inherit; text-align: left; text-decoration: none; }
 .browser-bookmark-entry .browser-bookmark-link { width: auto; min-width: 0; flex: 1; }
@@ -676,6 +678,7 @@ select { background-color: #fff; color: #343a40; }
 .theme-dark .settings-subheading,
 .theme-dark .local-hint,
 .theme-dark .panel-footnote,
+.theme-dark .bookmark-list-more p,
 .theme-dark .backup-description,
 .theme-dark .backup-preview,
 .theme-dark .wallpaper-note,

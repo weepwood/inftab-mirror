@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Bookmark, ChevronDown, ChevronRight, ExternalLink, Folder, Plus } from '@lucide/vue'
 import {
   canAccessBrowserBookmarks,
@@ -41,6 +41,7 @@ const tree = ref<BrowserBookmarkNode[]>([])
 const bookmarkCandidatesById = ref(new Map<string, BookmarkShortcutCandidate>())
 const expandedIds = ref(new Set<string>())
 const selectedIds = ref(new Set<string>())
+const visibleRowCount = ref(100)
 const importMessage = ref('')
 let stopListening: (() => void) | undefined
 let stopWatchingPermission: (() => void) | undefined
@@ -96,12 +97,15 @@ const rows = computed(() => {
 })
 
 const visibleBookmarkRows = computed(() => rows.value.filter((row) => !row.isFolder && row.url))
+const displayedRows = computed(() => rows.value.slice(0, visibleRowCount.value))
 const selectedCandidates = computed(() => {
   return [...selectedIds.value].flatMap((id) => {
     const candidate = bookmarkCandidatesById.value.get(id)
     return candidate ? [candidate] : []
   })
 })
+
+watch([query, tree], () => { visibleRowCount.value = 100 })
 
 async function refreshBookmarks() {
   const sequence = ++refreshSequence
@@ -226,6 +230,10 @@ function clearSelectedBookmarks() {
   importMessage.value = ''
 }
 
+function showMoreBookmarkRows() {
+  visibleRowCount.value += 100
+}
+
 function importSelectedBookmarks() {
   if (!selectedCandidates.value.length) return
   if (selectedCandidates.value.length > props.availableSlots) {
@@ -292,7 +300,7 @@ onBeforeUnmount(() => {
       <p>{{ query ? '没有匹配的书签' : '浏览器中还没有可显示的书签' }}</p>
     </div>
     <ul v-if="permissionGranted && rows.length" class="browser-bookmark-list" aria-label="浏览器书签">
-      <li v-for="row in rows" :key="row.id" :style="{ paddingLeft: (10 + row.depth * 16) + 'px' }">
+      <li v-for="row in displayedRows" :key="row.id" :style="{ paddingLeft: (10 + row.depth * 16) + 'px' }">
         <button
           v-if="row.isFolder && row.hasChildren"
           class="browser-bookmark-folder"
@@ -323,6 +331,10 @@ onBeforeUnmount(() => {
             <Plus :size="16" />
           </button>
         </div>
+      </li>
+      <li v-if="displayedRows.length < rows.length" class="bookmark-list-more">
+        <p role="status" aria-live="polite">已显示 {{ displayedRows.length.toLocaleString('zh-CN') }} / {{ rows.length.toLocaleString('zh-CN') }} 条书签记录</p>
+        <button class="text-button" type="button" @click="showMoreBookmarkRows">继续显示书签</button>
       </li>
     </ul>
   </div>

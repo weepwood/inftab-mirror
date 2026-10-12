@@ -97,9 +97,18 @@ describe('BookmarksPanel', () => {
     wrapper = mount(BookmarksPanel, { props: { availableSlots: 500, importBookmarks: vi.fn() } })
     await flushPromises()
 
-    expect(wrapper.findAll('.browser-bookmark-list > li')).toHaveLength(1_001)
+    expect(wrapper.findAll('.browser-bookmark-list > li')).toHaveLength(101)
+    expect(wrapper.findAll('.browser-bookmark-link')).toHaveLength(99)
+    expect(wrapper.get('[role="status"]').text()).toBe('已显示 100 / 1,001 条书签记录')
+    await wrapper.get('.bookmark-list-more button').trigger('click')
+    expect(wrapper.findAll('.browser-bookmark-link')).toHaveLength(199)
+    for (let batch = 1; batch < 10; batch += 1) {
+      await wrapper.get('.bookmark-list-more button').trigger('click')
+    }
     expect(wrapper.findAll('.browser-bookmark-link')).toHaveLength(1_000)
+    expect(wrapper.find('.bookmark-list-more').exists()).toBe(false)
     await wrapper.get('input[aria-label="筛选浏览器书签"]').setValue('Site 999')
+    expect(wrapper.findAll('.browser-bookmark-list > li')).toHaveLength(2)
     expect(wrapper.findAll('.browser-bookmark-link').map((link) => link.text())).toEqual(['Site 999'])
   })
 
