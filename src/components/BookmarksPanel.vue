@@ -38,6 +38,7 @@ const requestingPermission = ref(false)
 const error = ref('')
 const query = ref('')
 const tree = ref<BrowserBookmarkNode[]>([])
+const bookmarkCandidatesById = ref(new Map<string, BookmarkShortcutCandidate>())
 const expandedIds = ref(new Set<string>())
 const selectedIds = ref(new Set<string>())
 const importMessage = ref('')
@@ -48,34 +49,58 @@ let permissionSequence = 0
 
 const rows = computed(() => {
   const cleanQuery = query.value.trim().toLocaleLowerCase()
-  function visit(node: BrowserBookmarkNode, depth: number): BookmarkRow[] {
+  const subtreeMatches = new Map<string, boolean>()
+  if (cleanQuery) {
+    const matchStack = tree.value.flatMap((root) => [...(root.children ?? [])].reverse().map((node) => ({ node, visited: false })))
+    while (matchStack.length) {
+      const entry = matchStack.pop()!
+      const children = entry.node.children
+      if (children !== undefined && !entry.visited) {
+        matchStack.push({ node: entry.node, visited: true })
+        for (let index = children.length - 1; index >= 0; index -= 1) {
+          matchStack.push({ node: children[index]!, visited: false })
+        }
+        continue
+      }
+      if (children !== undefined) {
+        subtreeMatches.set(entry.node.id, entry.node.title.toLocaleLowerCase().includes(cleanQuery)
+          || children.some((child) => subtreeMatches.get(child.id) === true))
+        continue
+      }
+      const url = normalizeWebUrl(entry.node.url)
+      subtreeMatches.set(entry.node.id, Boolean(url && (entry.node.title + ' ' + url).toLocaleLowerCase().includes(cleanQuery)))
+    }
+  }
+
+  const result: BookmarkRow[] = []
+  const stack = tree.value.flatMap((root) => [...(root.children ?? [])].reverse().map((node) => ({ node, depth: 0 })))
+  while (stack.length) {
+    const { node, depth } = stack.pop()!
     const children = node.children ?? []
     if (node.children !== undefined) {
-      const matchingChildren = children.flatMap((child) => visit(child, depth + 1))
-      const folderMatches = Boolean(cleanQuery && node.title.toLocaleLowerCase().includes(cleanQuery))
-      if (cleanQuery && !folderMatches && !matchingChildren.length) return []
+      if (cleanQuery && !subtreeMatches.get(node.id)) continue
       const expanded = Boolean(children.length && (cleanQuery || expandedIds.value.has(node.id)))
-      const row: BookmarkRow = { id: node.id, title: node.title || '未命名文件夹', depth, isFolder: true, hasChildren: children.length > 0, expanded }
-      return [row, ...(expanded ? matchingChildren : [])]
+      result.push({ id: node.id, title: node.title || '未命名文件夹', depth, isFolder: true, hasChildren: children.length > 0, expanded })
+      if (expanded) {
+        for (let index = children.length - 1; index >= 0; index -= 1) {
+          stack.push({ node: children[index]!, depth: depth + 1 })
+        }
+      }
+      continue
     }
     const url = normalizeWebUrl(node.url)
-    if (!url || (cleanQuery && !(node.title + ' ' + url).toLocaleLowerCase().includes(cleanQuery))) return []
-    return [{ id: node.id, title: node.title || url, depth, url, isFolder: false, hasChildren: false, expanded: false }]
+    if (!url || (cleanQuery && !subtreeMatches.get(node.id))) continue
+    result.push({ id: node.id, title: node.title || url, depth, url, isFolder: false, hasChildren: false, expanded: false })
   }
-  return tree.value.flatMap((root) => (root.children ?? []).flatMap((node) => visit(node, 0)))
+  return result
 })
 
 const visibleBookmarkRows = computed(() => rows.value.filter((row) => !row.isFolder && row.url))
 const selectedCandidates = computed(() => {
-  const selected = new Set(selectedIds.value)
-  function collect(nodes: BrowserBookmarkNode[]): BookmarkShortcutCandidate[] {
-    return nodes.flatMap((node) => {
-      if (node.children) return collect(node.children)
-      const url = normalizeWebUrl(node.url)
-      return selected.has(node.id) && url ? [{ title: node.title || url, url }] : []
-    })
-  }
-  return collect(tree.value)
+  return [...selectedIds.value].flatMap((id) => {
+    const candidate = bookmarkCandidatesById.value.get(id)
+    return candidate ? [candidate] : []
+  })
 })
 
 async function refreshBookmarks() {
@@ -87,13 +112,23 @@ async function refreshBookmarks() {
     if (sequence !== refreshSequence) return
     tree.value = nextTree
     const validIds = new Set<string>()
-    function collectIds(nodes: BrowserBookmarkNode[]) {
-      for (const node of nodes) {
-        if (node.children) collectIds(node.children)
-        else if (normalizeWebUrl(node.url)) validIds.add(node.id)
+    const candidatesById = new Map<string, BookmarkShortcutCandidate>()
+    const stack = [...nextTree].reverse()
+    while (stack.length) {
+      const node = stack.pop()!
+      if (node.children !== undefined) {
+        for (let index = node.children.length - 1; index >= 0; index -= 1) {
+          stack.push(node.children[index]!)
+        }
+      } else {
+        const url = normalizeWebUrl(node.url)
+        if (url) {
+          validIds.add(node.id)
+          candidatesById.set(node.id, { title: node.title || url, url })
+        }
       }
     }
-    collectIds(nextTree)
+    bookmarkCandidatesById.value = candidatesById
     selectedIds.value = new Set([...selectedIds.value].filter((id) => validIds.has(id)))
     const rootFolders = new Set(nextTree.flatMap((root) => (root.children ?? []).map((node) => node.id)))
     expandedIds.value = new Set([...expandedIds.value, ...rootFolders])
@@ -122,6 +157,7 @@ async function syncBookmarkPermission() {
       stopListening?.()
       stopListening = undefined
       tree.value = []
+      bookmarkCandidatesById.value = new Map()
       selectedIds.value = new Set()
       loading.value = false
       error.value = ''

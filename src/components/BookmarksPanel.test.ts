@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { BrowserBookmarkNode } from '../types'
 import BookmarksPanel from './BookmarksPanel.vue'
 
 function deferred<T>() {
@@ -100,6 +101,29 @@ describe('BookmarksPanel', () => {
     expect(wrapper.findAll('.browser-bookmark-link')).toHaveLength(1_000)
     await wrapper.get('input[aria-label="筛选浏览器书签"]').setValue('Site 999')
     expect(wrapper.findAll('.browser-bookmark-link').map((link) => link.text())).toEqual(['Site 999'])
+  })
+
+  it('searches deeply nested folders without overflowing the call stack', async () => {
+    const bookmarkChange = { addListener: vi.fn(), removeListener: vi.fn() }
+    let nested: BrowserBookmarkNode = { id: 'deep-link', title: 'Deep link', url: 'https://deep.example/' }
+    for (let index = 2_500; index > 0; index -= 1) {
+      nested = { id: `folder-${index}`, title: `Folder ${index}`, children: [nested] }
+    }
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains: vi.fn().mockResolvedValue(true), request: vi.fn() },
+      bookmarks: {
+        getTree: vi.fn().mockResolvedValue([{ id: '0', title: '', children: [nested] }]),
+        onCreated: bookmarkChange,
+      },
+    })
+    wrapper = mount(BookmarksPanel, { props: { availableSlots: 500, importBookmarks: vi.fn() } })
+    await flushPromises()
+
+    await wrapper.get('input[aria-label="筛选浏览器书签"]').setValue('no matching bookmark')
+
+    expect(wrapper.text()).toContain('没有匹配的书签')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })
 
   it('limits selection to available slots and reports capacity changes before importing', async () => {
