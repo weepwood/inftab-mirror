@@ -46,8 +46,8 @@ if (JSON.stringify(hostPermissions) !== JSON.stringify(allowedHosts)) {
 for (const permissionField of ['permissions', 'optional_permissions']) {
   const permissions = manifest[permissionField]
   if (permissionField === 'optional_permissions') {
-    if (!Array.isArray(permissions) || JSON.stringify(permissions) !== JSON.stringify(['bookmarks', 'clipboardWrite', 'history'])) {
-      fail('optional_permissions must contain only the opt-in bookmarks, clipboard, and browsing history features.')
+    if (!Array.isArray(permissions) || JSON.stringify(permissions) !== JSON.stringify(['bookmarks', 'clipboardWrite', 'history', 'tabs'])) {
+      fail('optional_permissions must contain only the opt-in bookmarks, clipboard, browsing history, and current-window tab import features.')
     }
     continue
   }

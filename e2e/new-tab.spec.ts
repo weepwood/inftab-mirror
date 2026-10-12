@@ -27,6 +27,7 @@ test('creates a shortcut and keeps it after reloading the new tab', async ({ pag
   await page.getByRole('button', { name: /添加快捷入口/ }).click()
 
   const dialog = page.locator('.shortcut-dialog')
+  await expect(dialog.getByRole('button', { name: '从打开的标签页导入' })).toHaveCount(0)
   await dialog.getByPlaceholder('例如：GitHub').fill('E2E Example')
   await dialog.getByPlaceholder('https://example.com').fill('https://example.org/path')
   await dialog.getByRole('button', { name: '保存' }).click()

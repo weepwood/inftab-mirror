@@ -13,6 +13,7 @@ import { maxImageUploadBytes } from './data/imageLimits'
 import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
 import { normalizeWebUrl } from './data/urls'
+import type { BrowserTabCandidate } from './data/browserTabs'
 import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelId, type PanelPluginContext } from './plugins/registry'
 import { maxDockItems, type HomeWidgetId, type LauncherItem, type Shortcut, type ShortcutFolder } from './types'
 
@@ -37,6 +38,11 @@ const ConfirmDialog = lazyPluginComponent(
   () => import('./components/ConfirmDialog.vue'),
   '正在加载确认对话框…',
   '确认对话框暂时无法加载，请重试。',
+)
+const BrowserTabImport = lazyPluginComponent(
+  () => import('./components/BrowserTabImport.vue'),
+  '正在加载标签页导入…',
+  '标签页导入暂时无法加载，请重试。',
 )
 const HomeWorkspaceTabs = lazyPluginComponent(
   () => import('./components/HomeWorkspaceTabs.vue'),
@@ -131,6 +137,7 @@ const shortcutSaveError = ref('')
 const shortcutIconFile = ref<HTMLInputElement>()
 const shortcutIconError = ref('')
 const savingShortcut = ref(false)
+const canImportBrowserTabs = location.protocol === 'chrome-extension:'
 const viewport = ref({ width: window.innerWidth, height: window.innerHeight })
 const pageSize = computed(() => preferences.value.columns * preferences.value.rows)
 const activeHomeWorkspace = computed(() => homeWorkspaces.value.find((workspace) => workspace.id === activeHomeWorkspaceId.value) ?? homeWorkspaces.value[0]!)
@@ -537,6 +544,11 @@ function openShortcutDialog(item?: LauncherItem) {
   shortcutIconError.value = ''
   if (shortcutIconFile.value) shortcutIconFile.value.value = ''
   shortcutDialog.value = true
+}
+function fillShortcutFromBrowserTab(tab: BrowserTabCandidate) {
+  shortcutTitle.value = tab.title.slice(0, 24)
+  shortcutUrl.value = tab.url
+  shortcutUrlError.value = ''
 }
 
 async function loadShortcutIconFile(event: Event) {
@@ -968,6 +980,7 @@ onBeforeUnmount(() => {
         <label>名称<input v-model="shortcutTitle" autofocus required maxlength="24" placeholder="例如：GitHub" /></label>
         <label>所属工作区<select v-model="shortcutWorkspaceId"><option v-for="workspace in homeWorkspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></select></label>
         <p v-if="shortcutLimitReached" class="backup-error" role="status">最多只能保存 500 个快捷入口。</p>
+        <BrowserTabImport v-if="canImportBrowserTabs" @select="fillShortcutFromBrowserTab" />
         <label>网址<input v-model="shortcutUrl" required maxlength="2048" placeholder="https://example.com" @input="shortcutUrlError = ''" /></label>
         <p v-if="shortcutUrlError" class="backup-error" role="alert">{{ shortcutUrlError }}</p>
         <p v-if="shortcutSaveError" class="backup-error" role="alert">{{ shortcutSaveError }}</p>
