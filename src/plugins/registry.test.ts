@@ -1,11 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultPreferences, launcherItems } from '../data/defaults'
-import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelPluginContext } from './registry'
+import { getPanelContextForPlugin, getPanelListeners, getPanelProps, launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelContextById, type PanelPluginContext } from './registry'
 import { availableHomeWidgetIds, availablePanelIds, type PanelId } from './ids'
-import { homeWidgetPlugins, type HomeWidgetContext } from './widgetRegistry'
+import { getHomeWidgetContextForPlugin, getHomeWidgetProps, homeWidgetPlugins, type HomeWidgetContext, type HomeWidgetContextById } from './widgetRegistry'
 import { defaultFocusTimerState } from '../data/focusTimer'
 
 afterEach(() => vi.useRealTimers())
+
+// @ts-expect-error Panels with no declared state must reject accidental context growth.
+const invalidEmptyPanelContext: PanelContextById['history'] = { todos: [] }
+// @ts-expect-error Standalone widgets with no declared state must reject accidental context growth.
+const invalidEmptyWidgetContext: HomeWidgetContextById['calendar-summary'] = { todos: [] }
+void invalidEmptyPanelContext
+void invalidEmptyWidgetContext
 
 function createPanelContext(): PanelPluginContext {
   return {
@@ -81,6 +88,20 @@ const expectedPanelAdapters = {
   weather: { props: ['city'], events: ['update:city'] },
 } satisfies Record<PanelId, { props: string[]; events: string[] }>
 
+const expectedPanelContextKeys = {
+  bookmarks: ['openShortcutFromBookmark', 'importBookmarks', 'availableShortcutSlots'],
+  history: [],
+  calculator: [],
+  calendar: [],
+  settings: ['preferences', 'backupExportError', 'customSearchEngines', 'updatePreferences', 'resetPreferences', 'openShortcut', 'openFolder', 'exportBackup', 'importBackup', 'addCustomSearchEngine', 'removeCustomSearchEngine'],
+  todos: ['todos', 'addTodo', 'toggleTodo', 'updateTodo', 'removeTodo', 'clearCompletedTodos'],
+  habits: ['habits', 'addHabit', 'updateHabit', 'toggleHabitToday', 'removeHabit'],
+  'focus-timer': ['focusTimer', 'startFocusTimer', 'pauseFocusTimer', 'resetFocusTimer', 'setFocusDuration'],
+  notes: ['notes', 'activeNoteId', 'addNote', 'selectNote', 'updateNote', 'removeNote'],
+  countdowns: ['countdowns', 'addCountdown', 'updateCountdown', 'removeCountdown'],
+  weather: ['weatherCity', 'updateWeatherCity'],
+} satisfies Record<PanelId, string[]>
+
 const expectedWidgetProps = {
   'todo-summary': ['items'],
   'habits-summary': ['items'],
@@ -89,6 +110,18 @@ const expectedWidgetProps = {
   'calendar-summary': [],
   'weather-summary': ['city'],
   'focus-timer-summary': ['state'],
+  'bookmarks-summary': [],
+  'history-summary': [],
+} satisfies Record<typeof availableHomeWidgetIds[number], string[]>
+
+const expectedWidgetContextKeys = {
+  'todo-summary': ['todos'],
+  'habits-summary': ['habits'],
+  'countdown-summary': ['countdowns'],
+  'notes-summary': ['notes', 'activeNoteId'],
+  'calendar-summary': [],
+  'weather-summary': ['weatherCity'],
+  'focus-timer-summary': ['focusTimer'],
   'bookmarks-summary': [],
   'history-summary': [],
 } satisfies Record<typeof availableHomeWidgetIds[number], string[]>
@@ -118,8 +151,15 @@ describe('built-in panel plugin registry', () => {
     const context = createPanelContext()
 
     for (const id of availablePanelIds) {
-      expect(Object.keys(panelPlugins[id].props(context)).sort(), `${id} props`).toEqual([...expectedPanelAdapters[id].props].sort())
-      expect(Object.keys(panelPlugins[id].listeners(context)).sort(), `${id} events`).toEqual([...expectedPanelAdapters[id].events].sort())
+      expect(Object.keys(getPanelProps(id, context)).sort(), `${id} props`).toEqual([...expectedPanelAdapters[id].props].sort())
+      expect(Object.keys(getPanelListeners(id, context)).sort(), `${id} events`).toEqual([...expectedPanelAdapters[id].events].sort())
+    }
+  })
+
+  it('passes each built-in panel only its declared context at runtime', () => {
+    const context = createPanelContext()
+    for (const id of availablePanelIds) {
+      expect(Object.keys(getPanelContextForPlugin(id, context)).sort(), `${id} context`).toEqual([...expectedPanelContextKeys[id]].sort())
     }
   })
 
@@ -142,7 +182,13 @@ describe('built-in panel plugin registry', () => {
 
   it('keeps every homepage widget adapter aligned with its registered props contract', () => {
     for (const id of availableHomeWidgetIds) {
-      expect(Object.keys(homeWidgetPlugins[id].props(homeWidgetContext)).sort(), `${id} props`).toEqual([...expectedWidgetProps[id]].sort())
+      expect(Object.keys(getHomeWidgetProps(id, homeWidgetContext)).sort(), `${id} props`).toEqual([...expectedWidgetProps[id]].sort())
+    }
+  })
+
+  it('passes each homepage widget only its declared context at runtime', () => {
+    for (const id of availableHomeWidgetIds) {
+      expect(Object.keys(getHomeWidgetContextForPlugin(id, homeWidgetContext)).sort(), `${id} context`).toEqual([...expectedWidgetContextKeys[id]].sort())
     }
   })
 
@@ -155,12 +201,12 @@ describe('built-in panel plugin registry', () => {
 
   it('connects the optional browser bookmark widget to the permission-aware panel', () => {
     expect(homeWidgetPlugins['bookmarks-summary'].panel).toBe('bookmarks')
-    expect(homeWidgetPlugins['bookmarks-summary'].props(homeWidgetContext)).toEqual({})
+    expect(getHomeWidgetProps('bookmarks-summary', homeWidgetContext)).toEqual({})
   })
 
   it('connects the optional history widget to its panel', () => {
     expect(homeWidgetPlugins['history-summary'].panel).toBe('history')
-    expect(homeWidgetPlugins['history-summary'].props(homeWidgetContext)).toEqual({})
+    expect(getHomeWidgetProps('history-summary', homeWidgetContext)).toEqual({})
   })
 
   it('routes the legacy wallpaper shortcut to settings', () => {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ArrowDown, ArrowUp, GripVertical, X } from '@lucide/vue'
-import { homeWidgetPlugins, type HomeWidgetContext, type HomeWidgetPluginRegistry } from '../plugins/widgetRegistry'
+import { getHomeWidgetProps, homeWidgetPlugins, type HomeWidgetContext, type HomeWidgetPluginRegistry } from '../plugins/widgetRegistry'
 import type { PanelId } from '../plugins/registry'
 import type { HomeWidgetId, HomeWidgetSize } from '../types'
 
@@ -80,7 +80,7 @@ function moveWidget(index: number, direction: -1 | 1) {
         <button class="home-widget-size" type="button" :aria-label="widgetSizes[id] === 'wide' ? `将${props.plugins[id].title}恢复标准宽度` : `将${props.plugins[id].title}加宽`" @click="emit('resize', id, widgetSizes[id] === 'wide' ? 'standard' : 'wide')">{{ widgetSizes[id] === 'wide' ? '标准' : '加宽' }}</button>
         <button class="home-widget-remove" type="button" :aria-label="`移除${props.plugins[id].title}`" @click="emit('remove', id)"><X :size="15" /></button>
       </header>
-      <component :is="props.plugins[id].component" v-bind="props.plugins[id].props(context)" />
+      <component :is="props.plugins[id].component" v-bind="getHomeWidgetProps(id, context, props.plugins)" />
     </article>
   </section>
 </template>

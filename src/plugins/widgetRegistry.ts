@@ -16,7 +16,7 @@ export interface HomeWidgetContext {
 }
 
 type NoProps = Record<string, never>
-type NoContext = Record<never, never>
+type NoContext = Record<string, never>
 
 export interface HomeWidgetContextById {
   'todo-summary': Pick<HomeWidgetContext, 'todos'>
@@ -121,3 +121,33 @@ export const homeWidgetPlugins = {
     props: (_context) => ({}),
   },
 } satisfies HomeWidgetPluginRegistry
+
+type HomeWidgetContextAdapterRegistry = {
+  [Id in HomeWidgetId]: (context: HomeWidgetContext) => HomeWidgetContextById[Id]
+}
+
+const homeWidgetContextAdapters = {
+  'todo-summary': (context) => ({ todos: context.todos }),
+  'habits-summary': (context) => ({ habits: context.habits }),
+  'countdown-summary': (context) => ({ countdowns: context.countdowns }),
+  'notes-summary': (context) => ({ notes: context.notes, activeNoteId: context.activeNoteId }),
+  'calendar-summary': () => ({}),
+  'weather-summary': (context) => ({ weatherCity: context.weatherCity }),
+  'focus-timer-summary': (context) => ({ focusTimer: context.focusTimer }),
+  'bookmarks-summary': () => ({}),
+  'history-summary': () => ({}),
+} satisfies HomeWidgetContextAdapterRegistry
+
+export function getHomeWidgetContextForPlugin<Id extends HomeWidgetId>(id: Id, context: HomeWidgetContext): HomeWidgetContextById[Id] {
+  return homeWidgetContextAdapters[id](context) as HomeWidgetContextById[Id]
+}
+
+export function getHomeWidgetProps<Id extends HomeWidgetId>(
+  id: Id,
+  context: HomeWidgetContext,
+  plugins: HomeWidgetPluginRegistry = homeWidgetPlugins,
+): HomeWidgetPropsById[Id] {
+  const plugin = plugins[id] as HomeWidgetPlugin<Id>
+  const pluginContext = getHomeWidgetContextForPlugin(id, context)
+  return plugin.props(pluginContext)
+}

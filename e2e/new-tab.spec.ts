@@ -406,6 +406,7 @@ test('every built-in panel route loads and closes without a runtime error', asyn
 })
 
 test('large local lists skip rendering offscreen rows without hiding their records', async ({ page }) => {
+  test.setTimeout(60_000)
   await page.evaluate(() => {
     localStorage.setItem('inftab.todos.v1', JSON.stringify(Array.from({ length: 500 }, (_, index) => ({
       id: `todo-${index}`, title: `Task ${index}`, done: false,

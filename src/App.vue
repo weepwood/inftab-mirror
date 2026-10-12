@@ -13,7 +13,7 @@ import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
 import { normalizeWebUrl } from './data/urls'
 import type { BrowserTabCandidate } from './data/browserTabs'
-import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelId, type PanelPluginContext } from './plugins/registry'
+import { getPanelListeners, getPanelProps, launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelId, type PanelPluginContext } from './plugins/registry'
 import { maxDockItems, type HomeWidgetId, type LauncherItem, type Shortcut, type ShortcutFolder } from './types'
 
 type Panel = PanelId | null
@@ -273,8 +273,8 @@ const panelContext = computed<PanelPluginContext>(() => ({
 }))
 const activePanelPlugin = computed(() => activePanel.value ? panelPlugins[activePanel.value] : undefined)
 const activePanelComponent = computed<Component | undefined>(() => activePanelPlugin.value?.component)
-const activePanelProps = computed<Record<string, unknown>>(() => activePanelPlugin.value?.props(panelContext.value) ?? {})
-const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanelPlugin.value?.listeners(panelContext.value) ?? {})
+const activePanelProps = computed<Record<string, unknown>>(() => activePanel.value ? getPanelProps(activePanel.value, panelContext.value) : {})
+const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanel.value ? getPanelListeners(activePanel.value, panelContext.value) : {})
 const homeWidgetContext = computed(() => ({ todos: todos.value, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
 const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0)
 const shortHomeScrollEnabled = computed(() => !minimalMode.value && (showHomeWidgets.value || homeDockItems.value.length > 0) && viewport.value.height <= 560)

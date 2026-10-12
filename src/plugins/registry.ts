@@ -74,7 +74,7 @@ export interface PanelPluginContext {
 }
 
 type NoProps = Record<string, never>
-type NoContext = Record<never, never>
+type NoContext = Record<string, never>
 
 export interface PanelContextById {
   bookmarks: Pick<PanelPluginContext, 'openShortcutFromBookmark' | 'importBookmarks' | 'availableShortcutSlots'>
@@ -279,3 +279,84 @@ export const panelPlugins = {
     listeners: (context) => ({ 'update:city': context.updateWeatherCity }),
   },
 } satisfies PanelPluginRegistry
+
+type PanelContextAdapterRegistry = {
+  [Id in PanelId]: (context: PanelPluginContext) => PanelContextById[Id]
+}
+
+const panelContextAdapters = {
+  bookmarks: (context) => ({
+    openShortcutFromBookmark: context.openShortcutFromBookmark,
+    importBookmarks: context.importBookmarks,
+    availableShortcutSlots: context.availableShortcutSlots,
+  }),
+  history: () => ({}),
+  calculator: () => ({}),
+  calendar: () => ({}),
+  settings: (context) => ({
+    preferences: context.preferences,
+    backupExportError: context.backupExportError,
+    customSearchEngines: context.customSearchEngines,
+    updatePreferences: context.updatePreferences,
+    resetPreferences: context.resetPreferences,
+    openShortcut: context.openShortcut,
+    openFolder: context.openFolder,
+    exportBackup: context.exportBackup,
+    importBackup: context.importBackup,
+    addCustomSearchEngine: context.addCustomSearchEngine,
+    removeCustomSearchEngine: context.removeCustomSearchEngine,
+  }),
+  todos: (context) => ({
+    todos: context.todos,
+    addTodo: context.addTodo,
+    toggleTodo: context.toggleTodo,
+    updateTodo: context.updateTodo,
+    removeTodo: context.removeTodo,
+    clearCompletedTodos: context.clearCompletedTodos,
+  }),
+  habits: (context) => ({
+    habits: context.habits,
+    addHabit: context.addHabit,
+    updateHabit: context.updateHabit,
+    toggleHabitToday: context.toggleHabitToday,
+    removeHabit: context.removeHabit,
+  }),
+  'focus-timer': (context) => ({
+    focusTimer: context.focusTimer,
+    startFocusTimer: context.startFocusTimer,
+    pauseFocusTimer: context.pauseFocusTimer,
+    resetFocusTimer: context.resetFocusTimer,
+    setFocusDuration: context.setFocusDuration,
+  }),
+  notes: (context) => ({
+    notes: context.notes,
+    activeNoteId: context.activeNoteId,
+    addNote: context.addNote,
+    selectNote: context.selectNote,
+    updateNote: context.updateNote,
+    removeNote: context.removeNote,
+  }),
+  countdowns: (context) => ({
+    countdowns: context.countdowns,
+    addCountdown: context.addCountdown,
+    updateCountdown: context.updateCountdown,
+    removeCountdown: context.removeCountdown,
+  }),
+  weather: (context) => ({ weatherCity: context.weatherCity, updateWeatherCity: context.updateWeatherCity }),
+} satisfies PanelContextAdapterRegistry
+
+export function getPanelContextForPlugin<Id extends PanelId>(id: Id, context: PanelPluginContext): PanelContextById[Id] {
+  return panelContextAdapters[id](context) as PanelContextById[Id]
+}
+
+export function getPanelProps<Id extends PanelId>(id: Id, context: PanelPluginContext): PanelPropsById[Id] {
+  const plugin = panelPlugins[id] as unknown as PanelPlugin<Id>
+  const pluginContext = getPanelContextForPlugin(id, context)
+  return plugin.props(pluginContext)
+}
+
+export function getPanelListeners<Id extends PanelId>(id: Id, context: PanelPluginContext): PanelEventsById[Id] {
+  const plugin = panelPlugins[id] as unknown as PanelPlugin<Id>
+  const pluginContext = getPanelContextForPlugin(id, context)
+  return plugin.listeners(pluginContext)
+}
