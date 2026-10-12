@@ -14,6 +14,12 @@ const historyApi = vi.hoisted(() => ({
 
 vi.mock('../data/browserHistory', () => historyApi)
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => { resolve = done })
+  return { promise, resolve }
+}
+
 afterEach(() => {
   vi.useRealTimers()
   vi.restoreAllMocks()
@@ -96,5 +102,64 @@ describe('browser history panel', () => {
     expect(wrapper.text()).toContain('Recovered page')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     wrapper.unmount()
+  })
+
+  it('ignores an older history result as soon as the query changes', async () => {
+    vi.useFakeTimers()
+    const previousSearch = deferred<Awaited<ReturnType<typeof historyApi.searchBrowserHistory>>>()
+    const nextSearch = deferred<Awaited<ReturnType<typeof historyApi.searchBrowserHistory>>>()
+    historyApi.hasBrowserHistoryPermission.mockResolvedValue(true)
+    historyApi.searchBrowserHistory.mockReturnValueOnce(previousSearch.promise).mockReturnValueOnce(nextSearch.promise)
+    const mounted = mount(HistoryPanel)
+    await flushPromises()
+
+    await mounted.get('input[aria-label="搜索浏览历史"]').setValue('new query')
+    previousSearch.resolve([
+      { id: 'old', title: 'Old query result', url: 'https://old.example/', lastVisitTime: 1_700_000_000_000, visitCount: 1 },
+    ])
+    await flushPromises()
+    expect(mounted.text()).not.toContain('Old query result')
+    expect(mounted.find('[role="status"]').exists()).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(180)
+    await flushPromises()
+    expect(historyApi.searchBrowserHistory).toHaveBeenLastCalledWith('new query')
+    nextSearch.resolve([
+      { id: 'new', title: 'New query result', url: 'https://new.example/', lastVisitTime: 1_700_000_000_001, visitCount: 1 },
+    ])
+    await flushPromises()
+
+    expect(mounted.text()).toContain('New query result')
+    expect(mounted.text()).not.toContain('Old query result')
+    expect(mounted.find('[role="status"]').exists()).toBe(false)
+  })
+
+  it('clears the previous query results while the next search is debounced', async () => {
+    vi.useFakeTimers()
+    const nextSearch = deferred<Awaited<ReturnType<typeof historyApi.searchBrowserHistory>>>()
+    historyApi.hasBrowserHistoryPermission.mockResolvedValue(true)
+    historyApi.searchBrowserHistory
+      .mockResolvedValueOnce([
+        { id: 'previous', title: 'Previous result', url: 'https://previous.example/', lastVisitTime: 1_700_000_000_000, visitCount: 1 },
+      ])
+      .mockReturnValueOnce(nextSearch.promise)
+    const mounted = mount(HistoryPanel)
+    await flushPromises()
+    expect(mounted.text()).toContain('Previous result')
+
+    await mounted.get('input[aria-label="搜索浏览历史"]').setValue('new query')
+    expect(mounted.text()).not.toContain('Previous result')
+    expect(mounted.find('[aria-busy="true"]').exists()).toBe(true)
+    expect(mounted.get('[role="status"]').text()).toContain('正在读取浏览历史')
+
+    await vi.advanceTimersByTimeAsync(180)
+    await flushPromises()
+    nextSearch.resolve([
+      { id: 'current', title: 'Current result', url: 'https://current.example/', lastVisitTime: 1_700_000_000_001, visitCount: 1 },
+    ])
+    await flushPromises()
+
+    expect(mounted.text()).toContain('Current result')
+    expect(mounted.text()).not.toContain('Previous result')
   })
 })

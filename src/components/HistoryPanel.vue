@@ -92,7 +92,12 @@ function retry() {
 }
 
 watch(query, () => {
+  refreshSequence += 1
   if (refreshTimer) clearTimeout(refreshTimer)
+  entries.value = []
+  error.value = ''
+  loading.value = permissionGranted.value
+  if (!permissionGranted.value) return
   refreshTimer = setTimeout(() => {
     refreshTimer = undefined
     if (permissionGranted.value) void refreshHistory()
@@ -127,11 +132,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="browser-history-content">
+  <div class="browser-history-content" :aria-busy="loading">
     <label v-if="permissionGranted" class="field-label history-search">搜索浏览历史
       <span><Search :size="15" /><input v-model="query" type="search" aria-label="搜索浏览历史" placeholder="输入标题或网址" /></span>
     </label>
-
     <div v-if="!supported" class="empty-state">
       <History :size="30" />
       <p>此功能需要浏览器扩展</p>
@@ -145,7 +149,8 @@ onBeforeUnmount(() => {
         {{ requestingPermission ? '正在请求权限…' : '启用浏览历史' }}
       </button>
     </div>
-    <div v-else-if="loading && !entries.length" class="empty-state"><p>正在读取浏览历史…</p></div>
+    <div v-else-if="loading && !entries.length" class="empty-state"><p role="status">正在读取浏览历史…</p></div>
+    <p v-else-if="loading && entries.length" class="panel-footnote" role="status">正在更新浏览历史…</p>
     <p v-if="error" class="backup-error" role="alert">{{ error }} <button class="history-retry" type="button" @click="retry">重试</button></p>
     <div v-if="permissionGranted && !loading && !entries.length && !error" class="empty-state">
       <Clock3 :size="27" />
