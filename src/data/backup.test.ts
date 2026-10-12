@@ -99,6 +99,27 @@ describe('workspace backups', () => {
     expect(() => parseWorkspaceBackup(backup({ homeWorkspaces: Array.from({ length: 21 }, (_, index) => ({ id: `space-${index}`, name: `Space ${index}`, itemIds: [] })) }))).toThrow(/主页工作区数量无效/)
   })
 
+  it('rejects a malformed workspace instead of orphaning its custom launchers', () => {
+    expect(() => parseWorkspaceBackup(backup({
+      homeWorkspaces: [
+        { id: 'default', name: '主页', itemIds: ['weather'] },
+        { id: 'work', name: '工作', itemIds: 'custom' },
+      ],
+      activeHomeWorkspaceId: 'default',
+    }))).toThrow(/工作区结构无效/)
+  })
+
+  it('rejects duplicate workspace IDs before one can be silently discarded', () => {
+    const workspace = { id: 'work', name: '工作', itemIds: ['custom'] }
+    expect(() => parseWorkspaceBackup(backup({
+      homeWorkspaces: [
+        { id: 'default', name: '主页', itemIds: [] },
+        workspace,
+        workspace,
+      ],
+    }))).toThrow(/重复的工作区 ID/)
+  })
+
   it('rejects duplicate and unsafe shortcut data instead of silently losing it', () => {
     const duplicated = backup({
       shortcuts: [

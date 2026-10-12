@@ -138,7 +138,17 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     throw new Error('备份包含无法识别的 Dock 入口。')
   }
   const preferences = sanitizePreferences(rawPreferences)
-  if (value.homeWorkspaces !== undefined) validateArray(value.homeWorkspaces, '主页工作区', maxHomeWorkspaces)
+  if (value.homeWorkspaces !== undefined) {
+    validateArray(value.homeWorkspaces, '主页工作区', maxHomeWorkspaces)
+    const workspaceIds = new Set<string>()
+    for (const workspace of value.homeWorkspaces) {
+      if (!isRecord(workspace) || typeof workspace.id !== 'string' || !workspace.id.length || workspace.id.length > 128 || !Array.isArray(workspace.itemIds)) {
+        throw new Error('备份中的工作区结构无效，无法安全恢复入口归属。')
+      }
+      if (workspaceIds.has(workspace.id)) throw new Error('备份中包含重复的工作区 ID。')
+      workspaceIds.add(workspace.id)
+    }
+  }
   if (value.activeHomeWorkspaceId !== undefined && typeof value.activeHomeWorkspaceId !== 'string') {
     throw new Error('备份中的当前工作区无效。')
   }
