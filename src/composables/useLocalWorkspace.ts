@@ -6,6 +6,7 @@ import { isValidCalendarDate } from '../data/countdown'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
 import { isValidCustomSearchTemplate } from '../data/search'
 import { defaultFocusTimerState, sanitizeFocusTimerState } from '../data/focusTimerState'
+import { defaultHomeWorkspace, defaultHomeWorkspaceId, maxHomeWorkspaceNameLength, maxHomeWorkspaces, sanitizeActiveHomeWorkspaceId, sanitizeHomeWorkspaces, type HomeWorkspace } from '../data/homeWorkspaces'
 import type { CountdownItem, CountdownRecurrence, CustomSearchEngine, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
 
 export function useLocalWorkspace() {
@@ -13,6 +14,21 @@ export function useLocalWorkspace() {
   const shortcuts = useStoredState<Shortcut[]>('inftab.shortcuts.v1', defaultShortcuts, sanitizeShortcuts)
   const folders = useStoredState<ShortcutFolder[]>('inftab.folders.v1', [], (value) => sanitizeFolders(value, shortcuts.value))
   const launcherOrder = useStoredState<string[]>('inftab.launcher-order.v1', defaultLauncherOrder, (value) => sanitizeLauncherOrder(value, shortcuts.value, folders.value))
+  const builtInLauncherIds = launcherItems.map((item) => item.id)
+  const homeWorkspaces = useStoredState<HomeWorkspace[]>(
+    'inftab.home-workspaces.v1',
+    [defaultHomeWorkspace([...launcherOrder.value, ...shortcuts.value.map((item) => item.id), ...folders.value.map((item) => item.id)])],
+    (value) => sanitizeHomeWorkspaces(value, launcherOrder.value, builtInLauncherIds),
+  )
+  const activeHomeWorkspaceId = useStoredState<string>(
+    'inftab.active-home-workspace.v1',
+    defaultHomeWorkspaceId,
+    (value) => sanitizeActiveHomeWorkspaceId(value, homeWorkspaces.value),
+  )
+  watch(homeWorkspaces, () => {
+    const validId = sanitizeActiveHomeWorkspaceId(activeHomeWorkspaceId.value, homeWorkspaces.value)
+    if (validId !== activeHomeWorkspaceId.value) activeHomeWorkspaceId.value = validId
+  }, { flush: 'sync' })
   const todos = useStoredState<TodoItem[]>('inftab.todos.v1', [], sanitizeTodos)
   const countdowns = useStoredState<CountdownItem[]>('inftab.countdowns.v1', [], sanitizeCountdowns)
   const notes = useStoredState<Note[]>('inftab.notes.v1', [], sanitizeNotes)
@@ -101,7 +117,51 @@ export function useLocalWorkspace() {
     return defaults ? { ...defaults, ...shortcut, icon, url } : shortcut
   })
 
-  function saveShortcut(shortcut: Shortcut): boolean {
+  function updateWorkspaceLauncherMembership(id: string, workspaceId: string) {
+    if (!homeWorkspaces.value.some((workspace) => workspace.id === workspaceId)) return false
+    homeWorkspaces.value = homeWorkspaces.value.map((workspace) => ({
+      ...workspace,
+      itemIds: workspace.id === workspaceId
+        ? [...new Set([...workspace.itemIds, id])]
+        : workspace.itemIds.filter((itemId) => itemId !== id),
+    }))
+    return true
+  }
+
+  function createHomeWorkspace(name: string): string | undefined {
+    if (homeWorkspaces.value.length >= maxHomeWorkspaces) return undefined
+    const cleanName = name.trim().slice(0, maxHomeWorkspaceNameLength)
+    if (!cleanName || homeWorkspaces.value.some((workspace) => workspace.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase())) return undefined
+    const id = crypto.randomUUID()
+    homeWorkspaces.value = [...homeWorkspaces.value, { id, name: cleanName, itemIds: [...builtInLauncherIds] }]
+    activeHomeWorkspaceId.value = id
+    return id
+  }
+
+  function renameHomeWorkspace(id: string, name: string): boolean {
+    const cleanName = name.trim().slice(0, maxHomeWorkspaceNameLength)
+    if (!cleanName || homeWorkspaces.value.some((workspace) => workspace.id !== id && workspace.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase())) return false
+    const exists = homeWorkspaces.value.some((workspace) => workspace.id === id)
+    if (!exists) return false
+    homeWorkspaces.value = homeWorkspaces.value.map((workspace) => workspace.id === id ? { ...workspace, name: cleanName } : workspace)
+    return true
+  }
+
+  function removeHomeWorkspace(id: string): boolean {
+    if (id === defaultHomeWorkspaceId || !homeWorkspaces.value.some((workspace) => workspace.id === id)) return false
+    const removed = homeWorkspaces.value.find((workspace) => workspace.id === id)!
+    const defaultItems = removed.itemIds.filter((itemId) => !builtInLauncherIds.includes(itemId))
+    homeWorkspaces.value = homeWorkspaces.value
+      .filter((workspace) => workspace.id !== id)
+      .map((workspace) => workspace.id === defaultHomeWorkspaceId
+        ? { ...workspace, itemIds: [...new Set([...workspace.itemIds, ...defaultItems])] }
+        : workspace)
+    if (activeHomeWorkspaceId.value === id) activeHomeWorkspaceId.value = defaultHomeWorkspaceId
+    return true
+  }
+
+  function saveShortcut(shortcut: Shortcut, workspaceId = activeHomeWorkspaceId.value): boolean {
+    if (!homeWorkspaces.value.some((workspace) => workspace.id === workspaceId)) return false
     const exists = shortcuts.value.some((item) => item.id === shortcut.id)
     const next = exists
       ? shortcuts.value.map((item) => item.id === shortcut.id ? shortcut : item)
@@ -110,11 +170,16 @@ export function useLocalWorkspace() {
     if (!sanitized.some((item) => item.id === shortcut.id)) return false
     shortcuts.value = sanitized
     if (!exists) launcherOrder.value = [...launcherOrder.value, shortcut.id]
+    updateWorkspaceLauncherMembership(shortcut.id, workspaceId)
     return true
   }
 
   function removeShortcut(id: string) {
     shortcuts.value = shortcuts.value.filter((shortcut) => shortcut.id !== id)
+    homeWorkspaces.value = homeWorkspaces.value.map((workspace) => ({
+      ...workspace,
+      itemIds: workspace.itemIds.filter((itemId) => itemId !== id),
+    }))
     folders.value = sanitizeFolders(folders.value.map((folder) => ({
       ...folder,
       shortcutIds: folder.shortcutIds.filter((shortcutId) => shortcutId !== id),
@@ -123,7 +188,8 @@ export function useLocalWorkspace() {
     preferences.value = sanitizePreferences({ ...preferences.value, dockItemIds: preferences.value.dockItemIds.filter((itemId) => itemId !== id) })
   }
 
-  function saveFolder(folder: ShortcutFolder): boolean {
+  function saveFolder(folder: ShortcutFolder, workspaceId = activeHomeWorkspaceId.value): boolean {
+    if (!homeWorkspaces.value.some((workspace) => workspace.id === workspaceId)) return false
     const exists = folders.value.some((item) => item.id === folder.id)
     const next = exists
       ? folders.value.map((item) => item.id === folder.id ? folder : item)
@@ -132,11 +198,16 @@ export function useLocalWorkspace() {
     if (!sanitized.some((item) => item.id === folder.id)) return false
     folders.value = sanitized
     launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...(exists ? [] : [folder.id])], shortcuts.value, folders.value)
+    updateWorkspaceLauncherMembership(folder.id, workspaceId)
     return true
   }
 
   function removeFolder(id: string) {
     folders.value = folders.value.filter((folder) => folder.id !== id)
+    homeWorkspaces.value = homeWorkspaces.value.map((workspace) => ({
+      ...workspace,
+      itemIds: workspace.itemIds.filter((itemId) => itemId !== id),
+    }))
     launcherOrder.value = sanitizeLauncherOrder(launcherOrder.value.filter((itemId) => itemId !== id), shortcuts.value, folders.value)
     preferences.value = sanitizePreferences({ ...preferences.value, dockItemIds: preferences.value.dockItemIds.filter((itemId) => itemId !== id) })
   }
@@ -272,11 +343,16 @@ export function useLocalWorkspace() {
       focusTimer: focusTimer.value,
       activeNoteId: activeNoteId.value,
       weatherCity: weatherCity.value,
+      homeWorkspaces: homeWorkspaces.value,
+      activeHomeWorkspaceId: activeHomeWorkspaceId.value,
     }
     return JSON.parse(JSON.stringify(snapshot)) as WorkspaceBackup
   }
 
   function restoreBackup(backup: WorkspaceBackup, mode: 'merge' | 'replace'): string | undefined {
+    if (backup.homeWorkspaces && backup.homeWorkspaces.length > maxHomeWorkspaces) {
+      return `导入失败：主页工作区超过数量上限（最多 ${maxHomeWorkspaces} 组），未导入任何数据。`
+    }
     const importedShortcuts = sanitizeShortcuts(backup.shortcuts)
     const importedFolders = sanitizeFolders(backup.folders, importedShortcuts)
     const importedTodos = sanitizeTodos(backup.todos)
@@ -295,6 +371,18 @@ export function useLocalWorkspace() {
       weatherCity.value = sanitizeWeatherCity(backup.weatherCity)
       focusTimer.value = backup.focusTimer ? sanitizeFocusTimerState(backup.focusTimer) : structuredClone(defaultFocusTimerState)
       preferences.value = sanitizePreferences(backup.preferences)
+      const allowedWorkspaceItemIds = new Set([
+        ...builtInLauncherIds,
+        ...importedShortcuts.map((item) => item.id),
+        ...importedFolders.map((item) => item.id),
+      ])
+      homeWorkspaces.value = sanitizeHomeWorkspaces(
+        backup.homeWorkspaces ?? [defaultHomeWorkspace(backup.launcherOrder)],
+        backup.launcherOrder,
+        builtInLauncherIds,
+        allowedWorkspaceItemIds,
+      )
+      activeHomeWorkspaceId.value = sanitizeActiveHomeWorkspaceId(backup.activeHomeWorkspaceId, homeWorkspaces.value)
       if (preferences.value.engine.startsWith('custom:')
         && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
         preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
@@ -324,9 +412,45 @@ export function useLocalWorkspace() {
     if (overLimitSections.length) {
       return `合并失败：${overLimitSections.join('、')}将超过数量上限，未导入任何数据。请先整理现有内容，或选择覆盖导入。`
     }
+    const mergedShortcutItems = sanitizeShortcuts(mergeById(shortcuts.value, importedShortcuts))
+    const mergedFolderItems = sanitizeFolders(mergeById(folders.value, importedFolders), mergedShortcutItems)
+    const allowedWorkspaceItemIds = new Set([
+      ...builtInLauncherIds,
+      ...mergedShortcutItems.map((item) => item.id),
+      ...mergedFolderItems.map((item) => item.id),
+    ])
+    const incomingWorkspaces = sanitizeHomeWorkspaces(
+      backup.homeWorkspaces ?? [defaultHomeWorkspace(backup.launcherOrder)],
+      backup.launcherOrder,
+      builtInLauncherIds,
+      allowedWorkspaceItemIds,
+    )
+    const mergedWorkspaceIds = new Set([
+      ...homeWorkspaces.value.map((workspace) => workspace.id),
+      ...incomingWorkspaces.map((workspace) => workspace.id),
+    ])
+    if (mergedWorkspaceIds.size > maxHomeWorkspaces) {
+      return `合并失败：主页工作区将超过数量上限（最多 ${maxHomeWorkspaces} 组），未导入任何数据。`
+    }
     customSearchEngines.value = sanitizeCustomSearchEngines(mergeById(customSearchEngines.value, importedCustomSearchEngines))
-    shortcuts.value = sanitizeShortcuts(mergeById(shortcuts.value, importedShortcuts))
-    folders.value = sanitizeFolders(mergeById(folders.value, importedFolders), shortcuts.value)
+    shortcuts.value = mergedShortcutItems
+    folders.value = mergedFolderItems
+    const incomingWorkspaceById = new Map(incomingWorkspaces.map((workspace) => [workspace.id, workspace]))
+    const existingWorkspaceIds = new Set(homeWorkspaces.value.map((workspace) => workspace.id))
+    const mergedWorkspaces = homeWorkspaces.value.map((existing) => {
+      const incoming = incomingWorkspaceById.get(existing.id)
+      return incoming
+        ? { ...incoming, itemIds: [...new Set([...existing.itemIds, ...incoming.itemIds])] }
+        : existing
+    })
+    for (const incoming of incomingWorkspaces) {
+      if (!existingWorkspaceIds.has(incoming.id)) mergedWorkspaces.push(incoming)
+    }
+    const importedActiveWorkspaceId = incomingWorkspaceById.has(backup.activeHomeWorkspaceId ?? '')
+      ? backup.activeHomeWorkspaceId
+      : activeHomeWorkspaceId.value
+    homeWorkspaces.value = sanitizeHomeWorkspaces(mergedWorkspaces, launcherOrder.value, builtInLauncherIds, allowedWorkspaceItemIds)
+    activeHomeWorkspaceId.value = sanitizeActiveHomeWorkspaceId(importedActiveWorkspaceId, homeWorkspaces.value)
     launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...backup.launcherOrder], shortcuts.value, folders.value)
     todos.value = sanitizeTodos(mergeById(todos.value, importedTodos))
     countdowns.value = sanitizeCountdowns(mergeById(countdowns.value, importedCountdowns))
@@ -348,6 +472,8 @@ export function useLocalWorkspace() {
     shortcuts,
     folders,
     launcherOrder,
+    homeWorkspaces,
+    activeHomeWorkspaceId,
     todos,
     countdowns,
     notes,
@@ -359,6 +485,9 @@ export function useLocalWorkspace() {
     removeShortcut,
     saveFolder,
     removeFolder,
+    createHomeWorkspace,
+    renameHomeWorkspace,
+    removeHomeWorkspace,
     reorderLauncherItems,
     setVisibleLauncherOrder,
     addTodo,

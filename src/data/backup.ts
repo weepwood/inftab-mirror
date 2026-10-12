@@ -3,6 +3,7 @@ import { launcherItems } from './defaults'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
 import { maxWallpaperDataUrlLength } from './imageLimits'
 import { sanitizeFocusTimerState, type FocusTimerState } from './focusTimerState'
+import { defaultHomeWorkspace, maxHomeWorkspaces, sanitizeActiveHomeWorkspaceId, sanitizeHomeWorkspaces, type HomeWorkspace } from './homeWorkspaces'
 
 export interface WorkspaceBackup {
   format: 'inftab-workspace'
@@ -19,6 +20,8 @@ export interface WorkspaceBackup {
   weatherCity: string
   customSearchEngines?: CustomSearchEngine[]
   focusTimer?: FocusTimerState
+  homeWorkspaces?: HomeWorkspace[]
+  activeHomeWorkspaceId?: string
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -95,6 +98,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   if (!value.launcherOrder.every((id) => typeof id === 'string' && id.length <= 128)) {
     throw new Error('备份中的入口排序包含无效数据。')
   }
+  const rawLauncherOrder = value.launcherOrder as string[]
 
   const shortcuts = sanitizeShortcuts(value.shortcuts)
   const folders = sanitizeFolders(rawFolders, shortcuts)
@@ -127,6 +131,21 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     throw new Error('备份包含无法识别的 Dock 入口。')
   }
   const preferences = sanitizePreferences(rawPreferences)
+  if (value.homeWorkspaces !== undefined) validateArray(value.homeWorkspaces, '主页工作区', maxHomeWorkspaces)
+  if (value.activeHomeWorkspaceId !== undefined && typeof value.activeHomeWorkspaceId !== 'string') {
+    throw new Error('备份中的当前工作区无效。')
+  }
+  const allowedWorkspaceItemIds = new Set([
+    ...launcherItems.map((launcher) => launcher.id),
+    ...shortcuts.map((shortcut) => shortcut.id),
+    ...folders.map((folder) => folder.id),
+  ])
+  const homeWorkspaces = sanitizeHomeWorkspaces(
+    value.homeWorkspaces ?? [defaultHomeWorkspace([...rawLauncherOrder, ...shortcuts.map((shortcut) => shortcut.id), ...folders.map((folder) => folder.id)])],
+    rawLauncherOrder,
+    launcherItems.map((launcher) => launcher.id),
+    allowedWorkspaceItemIds,
+  )
 
   return {
     format: 'inftab-workspace',
@@ -143,6 +162,8 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     weatherCity: sanitizeWeatherCity(value.weatherCity),
     customSearchEngines,
     ...(value.focusTimer === undefined ? {} : { focusTimer: sanitizeFocusTimerState(value.focusTimer) }),
+    homeWorkspaces,
+    activeHomeWorkspaceId: sanitizeActiveHomeWorkspaceId(value.activeHomeWorkspaceId, homeWorkspaces),
   }
 }
 

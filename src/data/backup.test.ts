@@ -30,6 +30,37 @@ describe('workspace backups', () => {
     expect(parsed.activeNoteId).toBe('note-1')
   })
 
+  it('migrates older backups into one homepage containing their valid launchers', () => {
+    const parsed = parseWorkspaceBackup(backup({
+      folders: [{ id: 'folder-work', title: 'Work', shortcutIds: ['custom'], color: '#abc', mark: 'W' }],
+    }))
+    expect(parsed.homeWorkspaces).toHaveLength(1)
+    expect(parsed.homeWorkspaces?.[0]?.itemIds).toEqual(expect.arrayContaining(['weather', 'custom', 'folder-work']))
+    expect(parsed.activeHomeWorkspaceId).toBe(parsed.homeWorkspaces?.[0]?.id)
+  })
+
+  it('filters unknown workspace entries while preserving valid workspace metadata', () => {
+    const parsed = parseWorkspaceBackup(backup({
+      launcherOrder: ['weather', 'custom', 'folder-work'],
+      folders: [{ id: 'folder-work', title: 'Work', shortcutIds: ['custom'], color: '#abc', mark: 'W' }],
+      homeWorkspaces: [
+        { id: 'default', name: '主页', itemIds: ['custom', 'folder-work', 'missing'] },
+        { id: 'games', name: '游戏', itemIds: ['custom', 'missing'] },
+      ],
+      activeHomeWorkspaceId: 'games',
+    }))
+    expect(parsed.homeWorkspaces?.find((item) => item.id === 'default')?.itemIds).toContain('folder-work')
+    expect(parsed.homeWorkspaces?.every((workspace) => !workspace.itemIds.includes('missing'))).toBe(true)
+    expect(parsed.activeHomeWorkspaceId).toBe('games')
+  })
+
+  it('repairs invalid active workspace references and rejects malformed workspace containers', () => {
+    const parsed = parseWorkspaceBackup(backup({ activeHomeWorkspaceId: 'absent' }))
+    expect(parsed.activeHomeWorkspaceId).toBe(parsed.homeWorkspaces?.[0]?.id)
+    expect(() => parseWorkspaceBackup(backup({ homeWorkspaces: 'invalid' }))).toThrow(/主页工作区/)
+    expect(() => parseWorkspaceBackup(backup({ homeWorkspaces: Array.from({ length: 21 }, (_, index) => ({ id: `space-${index}`, name: `Space ${index}`, itemIds: [] })) }))).toThrow(/主页工作区数量无效/)
+  })
+
   it('rejects duplicate and unsafe shortcut data instead of silently losing it', () => {
     const duplicated = backup({
       shortcuts: [

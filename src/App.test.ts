@@ -92,7 +92,10 @@ describe('new-tab keyboard launcher ordering', () => {
 
     const order = JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]') as string[]
     expect(order.indexOf('weather')).toBe(order.indexOf('countdowns') + 1)
-    expect(wrapper.get('[role="status"]').text()).toContain('已将天气移动到第2个位置')
+    await vi.waitFor(() => {
+      const status = wrapper!.findAll('[role="status"]').find((item) => item.text().includes('已将天气移动到第2个位置'))
+      expect(status?.text()).toContain('已将天气移动到第2个位置')
+    })
   })
 })
 
@@ -107,8 +110,8 @@ describe('new-tab short viewport layout', () => {
       const homeStyle = wrapper.get('main.home').attributes('style') ?? ''
       const fittedIconSize = Number(homeStyle.match(/--fit-icon-size: ([\d.]+)px/)?.[1])
 
-      expect(fittedIconSize).toBeCloseTo(35.67, 1)
-      expect(homeStyle).toContain('--shortcut-gap-y: 20px')
+      expect(fittedIconSize).toBeCloseTo(31, 1)
+      expect(homeStyle).toContain('--shortcut-gap-y: 4px')
     } finally {
       if (heightDescriptor) Object.defineProperty(window, 'innerHeight', heightDescriptor)
       if (widthDescriptor) Object.defineProperty(window, 'innerWidth', widthDescriptor)

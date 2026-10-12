@@ -70,6 +70,84 @@ describe('useLocalWorkspace launcher ordering', () => {
   })
 })
 
+describe('useLocalWorkspace home workspaces', () => {
+  it('creates isolated launcher groups and returns removed workspace links to the homepage', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const defaultWorkspace = workspace.homeWorkspaces.value[0]!
+    const isolatedId = workspace.createHomeWorkspace('工作学习')!
+    const link = { id: 'workspace-link', title: 'Private link', url: 'https://example.com/', color: '#abc', mark: 'P' }
+
+    expect(workspace.homeWorkspaces.value.find((item) => item.id === isolatedId)?.itemIds).not.toContain(link.id)
+    expect(workspace.saveShortcut(link)).toBe(true)
+    expect(workspace.homeWorkspaces.value.find((item) => item.id === isolatedId)?.itemIds).toContain(link.id)
+    expect(workspace.homeWorkspaces.value.find((item) => item.id === defaultWorkspace.id)?.itemIds).not.toContain(link.id)
+    expect(workspace.removeHomeWorkspace(isolatedId)).toBe(true)
+    expect(workspace.homeWorkspaces.value.find((item) => item.id === defaultWorkspace.id)?.itemIds).toContain(link.id)
+    expect(workspace.activeHomeWorkspaceId.value).toBe(defaultWorkspace.id)
+  })
+
+  it('round-trips workspace tabs through backup and migrates an older backup', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const id = workspace.createHomeWorkspace('娱乐')!
+    const link = { id: 'entertainment-link', title: 'Games', url: 'https://games.example/', color: '#abc', mark: 'G' }
+    workspace.saveShortcut(link)
+    const backup = parseWorkspaceBackup(workspace.createBackup())
+
+    expect(backup.activeHomeWorkspaceId).toBe(id)
+    expect(backup.homeWorkspaces?.find((item) => item.id === id)?.itemIds).toContain(link.id)
+    workspace.removeHomeWorkspace(id)
+    workspace.restoreBackup(backup, 'replace')
+    expect(workspace.activeHomeWorkspaceId.value).toBe(id)
+    expect(workspace.homeWorkspaces.value.find((item) => item.id === id)?.itemIds).toContain(link.id)
+
+    const olderBackup = { ...backup }
+    delete olderBackup.homeWorkspaces
+    delete olderBackup.activeHomeWorkspaceId
+    workspace.restoreBackup(parseWorkspaceBackup(olderBackup), 'replace')
+    expect(workspace.homeWorkspaces.value).toHaveLength(1)
+    expect(workspace.homeWorkspaces.value[0]?.itemIds).toContain(link.id)
+  })
+
+  it('merges imported workspace groups without dropping the current active group', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const currentId = workspace.createHomeWorkspace('本机工作区')!
+    const backup = workspace.createBackup()
+    backup.shortcuts = [...backup.shortcuts, { id: 'remote-link', title: 'Remote', url: 'https://remote.example/', color: '#abc', mark: 'R' }]
+    backup.launcherOrder = [...backup.launcherOrder, 'remote-link']
+    backup.homeWorkspaces = [
+      { id: 'default', name: '主页', itemIds: [] },
+      { id: 'remote-space', name: '远程工作区', itemIds: ['remote-link'] },
+    ]
+    backup.activeHomeWorkspaceId = 'missing-workspace'
+
+    expect(workspace.restoreBackup(backup, 'merge')).toBeUndefined()
+    expect(workspace.homeWorkspaces.value.map((item) => item.id)).toContain(currentId)
+    expect(workspace.homeWorkspaces.value.map((item) => item.id)).toContain('remote-space')
+    expect(workspace.activeHomeWorkspaceId.value).toBe(currentId)
+    expect(workspace.homeWorkspaces.value.find((item) => item.id === 'remote-space')?.itemIds).toContain('remote-link')
+  })
+
+  it('rejects workspace overflow merges before changing any local data', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    for (let index = 1; index < 20; index += 1) workspace.createHomeWorkspace(`本机 ${index}`)
+    const backup = workspace.createBackup()
+    backup.homeWorkspaces = [
+      { id: 'default', name: '主页', itemIds: [] },
+      ...Array.from({ length: 19 }, (_, index) => ({ id: `remote-space-${index}`, name: `远程 ${index}`, itemIds: [] })),
+    ]
+    backup.activeHomeWorkspaceId = 'missing-workspace'
+    const previousShortcutIds = workspace.shortcuts.value.map((item) => item.id)
+
+    expect(workspace.restoreBackup(backup, 'merge')).toMatch(/工作区将超过数量上限/)
+    expect(workspace.homeWorkspaces.value).toHaveLength(20)
+    expect(workspace.shortcuts.value.map((item) => item.id)).toEqual(previousShortcutIds)
+  })
+})
+
 describe('useLocalWorkspace focus timer', () => {
   it('shares timer actions with panels and includes the state in backups', async () => {
     scope = effectScope()

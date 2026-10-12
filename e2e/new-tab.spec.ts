@@ -41,6 +41,47 @@ test('creates a shortcut and keeps it after reloading the new tab', async ({ pag
   await expect(page.getByRole('button', { name: '打开E2E Example' })).toBeVisible()
 })
 
+test('workspace tabs isolate shortcuts and persist the active workspace', async ({ page }) => {
+  await page.getByRole('button', { name: '新建工作区' }).click()
+  await expect(page.getByRole('tab', { name: '工作区 1' })).toHaveAttribute('aria-selected', 'true')
+
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByRole('button', { name: /添加快捷入口/ }).click()
+  const dialog = page.locator('.shortcut-dialog')
+  await dialog.getByPlaceholder('例如：GitHub').fill('Workspace only')
+  await dialog.getByPlaceholder('https://example.com').fill('https://workspace.example/')
+  await dialog.getByRole('button', { name: '保存' }).click()
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+
+  await page.keyboard.press('Control+f')
+  const localSearch = page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })
+  await localSearch.fill('Workspace only')
+  await expect(page.getByRole('option', { name: /Workspace only/ })).toBeVisible()
+
+  await page.getByRole('tab', { name: '主页' }).click()
+  await localSearch.fill('Workspace only')
+  await expect(page.locator('.local-search-empty')).toContainText('没有匹配的快捷入口')
+
+  await page.getByRole('tab', { name: '工作区 1' }).click()
+  await page.reload()
+  await expect(page.getByRole('tab', { name: '工作区 1' })).toHaveAttribute('aria-selected', 'true')
+  await page.keyboard.press('Control+f')
+  await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Workspace only')
+  await expect(page.getByRole('option', { name: /Workspace only/ })).toBeVisible()
+
+  await page.getByRole('button', { name: '重命名当前工作区' }).click()
+  const workspaceName = page.getByRole('textbox', { name: '工作区名称' })
+  await workspaceName.fill('娱乐')
+  await workspaceName.press('Enter')
+  await expect(page.getByRole('tab', { name: '娱乐' })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('button', { name: '删除当前工作区' }).click()
+  const confirmation = page.getByRole('alertdialog', { name: '删除工作区？' })
+  await expect(confirmation).toContainText('会移回“主页”')
+  await confirmation.getByRole('button', { name: '确认删除' }).click()
+  await expect(page.getByRole('tab', { name: '主页' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('option', { name: /Workspace only/ })).toBeVisible()
+})
+
 test('search submits an encoded query to the selected engine and category', async ({ page }) => {
   await page.evaluate(() => {
     const key = 'inftab.preferences.v1'

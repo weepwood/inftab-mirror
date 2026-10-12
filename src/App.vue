@@ -5,6 +5,7 @@ import { ArrowLeft, House, Menu, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
 import ClockWidget from './components/ClockWidget.vue'
 import ShortcutGrid from './components/ShortcutGrid.vue'
+import { lazyPluginComponent } from './plugins/asyncComponent'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent } from './composables/useStoredState'
 import { launcherItems } from './data/defaults'
@@ -21,6 +22,11 @@ const HomeWidgetShelf = defineAsyncComponent(() => import('./components/HomeWidg
 const HomeDock = defineAsyncComponent(() => import('./components/HomeDock.vue'))
 const FolderDialog = defineAsyncComponent(() => import('./components/FolderDialog.vue'))
 const ConfirmDialog = defineAsyncComponent(() => import('./components/ConfirmDialog.vue'))
+const HomeWorkspaceTabs = lazyPluginComponent(
+  () => import('./components/HomeWorkspaceTabs.vue'),
+  '正在加载工作区…',
+  '工作区暂时无法加载。',
+)
 
 const baseUrl = import.meta.env.BASE_URL
 const {
@@ -28,6 +34,8 @@ const {
   shortcuts,
   folders,
   launcherOrder,
+  homeWorkspaces,
+  activeHomeWorkspaceId,
   todos,
   countdowns,
   notes,
@@ -39,6 +47,9 @@ const {
   removeShortcut: removeShortcutData,
   saveFolder: saveFolderData,
   removeFolder: removeFolderData,
+  createHomeWorkspace,
+  renameHomeWorkspace,
+  removeHomeWorkspace,
   reorderLauncherItems: reorderLauncherOrder,
   setVisibleLauncherOrder,
   addTodo,
@@ -85,6 +96,7 @@ const activeFolder = ref<ShortcutFolder>()
 const folderSaveError = ref('')
 const shortcutDialog = ref(false)
 const editingId = ref('')
+const shortcutWorkspaceId = ref('default')
 const shortcutTitle = ref('')
 const shortcutUrl = ref('https://')
 const shortcutColor = ref('#3d82f6')
@@ -97,6 +109,8 @@ const shortcutIconError = ref('')
 const savingShortcut = ref(false)
 const viewport = ref({ width: window.innerWidth, height: window.innerHeight })
 const pageSize = computed(() => preferences.value.columns * preferences.value.rows)
+const activeHomeWorkspace = computed(() => homeWorkspaces.value.find((workspace) => workspace.id === activeHomeWorkspaceId.value) ?? homeWorkspaces.value[0]!)
+const activeHomeWorkspaceItemIds = computed(() => new Set(activeHomeWorkspace.value?.itemIds ?? []))
 const shortcutLimitReached = computed(() => !editingId.value && shortcuts.value.length >= 500)
 const folderLimitReached = computed(() => !activeFolder.value && folders.value.length >= 500)
 let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
@@ -131,7 +145,8 @@ const availableLauncherItems = computed<LauncherItem[]>(() => {
   return items.sort((left, right) => (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER))
 })
 const folderedShortcutIds = computed(() => new Set(folders.value.flatMap((folder) => folder.shortcutIds)))
-const allLauncherItems = computed(() => availableLauncherItems.value.filter((item) => !preferences.value.hiddenLauncherIds.includes(item.id)
+const allLauncherItems = computed(() => availableLauncherItems.value.filter((item) => activeHomeWorkspaceItemIds.value.has(item.id)
+  && !preferences.value.hiddenLauncherIds.includes(item.id)
   && (!item.shortcut || !folderedShortcutIds.value.has(item.id))))
 const homeDockItems = computed(() => preferences.value.dockItemIds.flatMap((id) => {
   const item = availableLauncherItems.value.find((candidate) => candidate.id === id)
@@ -140,8 +155,11 @@ const homeDockItems = computed(() => preferences.value.dockItemIds.flatMap((id) 
 const unavailableFolderShortcutIds = computed(() => folders.value
   .filter((folder) => folder.id !== activeFolder.value?.id)
   .flatMap((folder) => folder.shortcutIds))
+const folderEditorShortcuts = computed(() => shortcuts.value.filter((shortcut) => activeHomeWorkspaceItemIds.value.has(shortcut.id)
+  || activeFolder.value?.shortcutIds.includes(shortcut.id)))
 const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
 const pageNavigation = computed(() => getPageNavigation(pageCount.value, currentPage.value))
+watch(activeHomeWorkspaceId, () => { currentPage.value = 0 })
 const localSearchMatches = computed(() => {
   const needle = query.value.trim().toLowerCase()
   if (!needle) return []
@@ -234,11 +252,12 @@ const fitMetrics = computed(() => {
   const paginationHeight = pageCount.value > 1 ? (veryShortHeight ? 31 : compactHeight ? 37 : mobile ? 43 : 48) : 0
   const nameHeight = preferences.value.showNames ? (smallMobile ? 13 : 17) + 7 : 0
   const footerClearance = veryShortHeight ? 24 : 38
+  const workspaceTabsClearance = 46
   const dockClearance = homeDockItems.value.length ? 76 : 0
   const widgetClearance = showHomeWidgets.value && !shortHomeScrollEnabled.value
     ? homeWidgetRows.value * 112 + Math.max(0, homeWidgetRows.value - 1) * 12 + 22
     : 0
-  const available = height - topPadding - widgetClearance - dockClearance - tabHeight - searchHeight - gridTopGap - paginationHeight - footerClearance - rows * nameHeight
+  const available = height - topPadding - widgetClearance - dockClearance - workspaceTabsClearance - tabHeight - searchHeight - gridTopGap - paginationHeight - footerClearance - rows * nameHeight
   const requestedGap = Math.min(preferences.value.gridGapY, smallMobile ? 20 : mobile ? 24 : preferences.value.gridGapY)
   const fittedGap = rows > 1 ? Math.min(requestedGap, Math.max(4, (available - rows * 32) / (rows - 1))) : requestedGap
   const fittedIcon = Math.max(28, Math.min(preferences.value.iconSize, (available - (rows - 1) * fittedGap) / rows))
@@ -349,6 +368,23 @@ function openFolderEditor(folder?: ShortcutFolder) {
   folderDialogOpen.value = true
 }
 
+function addHomeWorkspace() {
+  const names = new Set(homeWorkspaces.value.map((workspace) => workspace.name.toLocaleLowerCase()))
+  let index = 1
+  while (names.has(`工作区 ${index}`.toLocaleLowerCase())) index += 1
+  createHomeWorkspace(`工作区 ${index}`)
+}
+
+function requestHomeWorkspaceRemoval(id: string) {
+  const workspace = homeWorkspaces.value.find((item) => item.id === id)
+  if (!workspace) return
+  requestDestructiveAction(
+    '删除工作区？',
+    `“${workspace.name}”中的快捷入口和文件夹会移回“主页”，不会被删除。`,
+    () => removeHomeWorkspace(id),
+  )
+}
+
 function closeFolderDialog() {
   folderDialogOpen.value = false
   activeFolder.value = undefined
@@ -440,6 +476,9 @@ function openFolderShortcuts(items: Shortcut[]) {
 
 function openShortcutDialog(item?: LauncherItem) {
   editingId.value = item?.shortcut?.id ?? ''
+  shortcutWorkspaceId.value = item?.shortcut
+    ? homeWorkspaces.value.find((workspace) => workspace.itemIds.includes(item.shortcut!.id))?.id ?? activeHomeWorkspaceId.value
+    : activeHomeWorkspaceId.value
   shortcutTitle.value = item?.shortcut?.title ?? ''
   shortcutUrl.value = item?.shortcut?.url ?? 'https://'
   shortcutUrlError.value = ''
@@ -512,7 +551,7 @@ async function saveShortcut() {
     mark: shortcutMark.value.trim() || title.slice(0, 2),
     icon: icon || undefined,
   }
-  if (!saveShortcutData(next)) {
+  if (!saveShortcutData(next, shortcutWorkspaceId.value)) {
     shortcutSaveError.value = '最多只能保存 500 个快捷入口。'
     return
   }
@@ -759,6 +798,14 @@ onBeforeUnmount(() => {
         @reorder="reorderHomeWidgets"
         @resize="resizeHomeWidget"
       />
+      <HomeWorkspaceTabs
+        :workspaces="homeWorkspaces"
+        :active-id="activeHomeWorkspaceId"
+        @select="activeHomeWorkspaceId = $event"
+        @create="addHomeWorkspace"
+        @rename="renameHomeWorkspace"
+        @remove="requestHomeWorkspaceRemoval"
+      />
       <SearchBar
         ref="searchBar"
         v-if="preferences.showSearchBar || localSearchMode"
@@ -843,7 +890,7 @@ onBeforeUnmount(() => {
     <FolderDialog
       v-if="folderDialogOpen"
       :folder="activeFolder"
-      :shortcuts="shortcuts"
+      :shortcuts="folderEditorShortcuts"
       :unavailable-shortcut-ids="unavailableFolderShortcutIds"
       :save-error="folderSaveError"
       :limit-reached="folderLimitReached"
@@ -858,6 +905,7 @@ onBeforeUnmount(() => {
       <form class="shortcut-dialog" @submit.prevent="saveShortcut">
         <header><div><h2>{{ editingId ? '编辑快捷入口' : '添加快捷入口' }}</h2><p>名称和网址可以随时修改</p></div><button type="button" aria-label="关闭" @click="shortcutDialog = false"><X :size="19" /></button></header>
         <label>名称<input v-model="shortcutTitle" autofocus required maxlength="24" placeholder="例如：GitHub" /></label>
+        <label>所属工作区<select v-model="shortcutWorkspaceId"><option v-for="workspace in homeWorkspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></select></label>
         <p v-if="shortcutLimitReached" class="backup-error" role="status">最多只能保存 500 个快捷入口。</p>
         <label>网址<input v-model="shortcutUrl" required maxlength="2048" placeholder="https://example.com" @input="shortcutUrlError = ''" /></label>
         <p v-if="shortcutUrlError" class="backup-error" role="alert">{{ shortcutUrlError }}</p>

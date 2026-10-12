@@ -6,8 +6,8 @@ import { fileURLToPath } from 'node:url'
 const outputDirectory = fileURLToPath(new URL('../dist/', import.meta.url))
 const budgets = {
   javascriptGzip: 128 * 1024,
-  // Allows the shared focus timer state while keeping the entry under 61.5 KiB.
-  javascriptEntryGzip: 61.5 * 1024,
+  // Allows the shared focus timer and workspace switching state while keeping the entry under 64 KiB.
+  javascriptEntryGzip: 64 * 1024,
   cssGzip: 64 * 1024,
   totalOutput: 4 * 1024 * 1024,
 }
