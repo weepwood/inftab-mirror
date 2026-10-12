@@ -51,7 +51,6 @@ const templates: Record<EngineId, Record<SearchMode, string>> = {
     map: 'https://ditu.so.com/?k={query}',
   },
 }
-
 export function isValidCustomSearchTemplate(template: string) {
   if (typeof template !== 'string' || template.length > 500 || !template.includes('{query}')) return false
   try {
@@ -88,7 +87,7 @@ function toWellFormedUnicode(value: string) {
   return result
 }
 
-function encodeQuery(value: string) {
+export function encodeQuery(value: string) {
   try {
     return encodeURIComponent(value)
   } catch {

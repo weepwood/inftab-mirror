@@ -21,6 +21,17 @@ test.beforeEach(async ({ page }) => {
   await page.reload()
 })
 
+test('quick translation sends an encoded query to the external translator', async ({ page }) => {
+  await page.route('https://translate.google.com/**', (route) => route.fulfill({
+    contentType: 'text/html',
+    body: '<title>Translation test</title>',
+  }))
+  await page.getByRole('searchbox', { name: '输入并搜索' }).fill('hello & 世界')
+  await page.getByRole('button', { name: '翻译成简体中文' }).click()
+  await expect(page).toHaveURL(/translate\.google\.com\/\?sl=auto&tl=zh-CN&text=hello%20%26%20%E4%B8%96%E7%95%8C&op=translate/)
+  await expect(page).toHaveTitle('Translation test')
+})
+
 test('creates a shortcut and keeps it after reloading the new tab', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Infinity 新标签页' })).toBeVisible()
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()

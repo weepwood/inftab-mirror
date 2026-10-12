@@ -12,6 +12,20 @@ afterEach(() => {
 })
 
 describe('SearchBar keyboard navigation', () => {
+  it('offers quick translation only when there is a query and outside local search', async () => {
+    wrapper = mount(SearchBar, {
+      props: { modelValue: '', engine: 'baidu', mode: 'html', visibleModes: [] },
+    })
+    expect((wrapper.get('.quick-translate').element as HTMLButtonElement).disabled).toBe(true)
+    await wrapper.setProps({ modelValue: 'hello' })
+    expect((wrapper.get('.quick-translate').element as HTMLButtonElement).disabled).toBe(false)
+    await wrapper.get('.quick-translate').trigger('click')
+    expect(wrapper.emitted('translate')).toHaveLength(1)
+
+    await wrapper.setProps({ localSearch: true })
+    expect(wrapper.find('.quick-translate').exists()).toBe(false)
+  })
+
   it('shows localized search categories while retaining stable mode IDs', async () => {
     wrapper = mount(SearchBar, {
       props: { modelValue: '', engine: 'baidu', mode: 'html', visibleModes: ['html', 'photos', 'news', 'videos', 'map'] },

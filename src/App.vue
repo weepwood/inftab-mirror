@@ -382,6 +382,13 @@ function submitSearch() {
   if (destination) window.location.assign(destination)
 }
 
+async function submitTranslation() {
+  if (localSearchMode.value) return
+  const { buildTranslationUrl } = await import('./data/translation')
+  const destination = buildTranslationUrl(query.value)
+  if (destination) window.location.assign(destination)
+}
+
 function openLocalSearchResult(item: LauncherItem) {
   localSearchMode.value = false
   query.value = ''
@@ -889,6 +896,7 @@ onBeforeUnmount(() => {
         :dark-theme="effectiveTheme === 'dark'"
         :local-search="localSearchMode"
         @search="submitSearch"
+        @translate="submitTranslation"
       >
         <template #local-results>
           <div v-if="query.trim()" class="local-search-results" role="listbox" aria-label="快捷入口搜索结果">

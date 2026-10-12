@@ -19,6 +19,7 @@ const emit = defineEmits<{
   'update:engine': [value: SearchEngineSelection]
   'update:mode': [value: SearchMode]
   search: []
+  translate: []
 }>()
 
 const showEngines = ref(false)
@@ -176,6 +177,7 @@ defineExpose({ focusSearch })
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
         @keydown="handleLocalSearchKeydown"
       />
+      <button v-if="!localSearch" class="quick-translate" type="button" :disabled="!modelValue.trim()" aria-label="翻译成简体中文" title="翻译成简体中文" @click="emit('translate')">译</button>
       <button class="submit-search" type="submit" :aria-label="localSearch ? '打开第一个匹配的快捷入口' : '搜索'"><Search :size="18" /></button>
     </form>
     <slot v-if="localSearch" name="local-results" />
