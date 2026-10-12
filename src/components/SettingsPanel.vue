@@ -311,7 +311,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       </div>
       <p v-if="importError" class="backup-error" role="alert">{{ importError }}</p>
       <p v-if="exportError" class="backup-error" role="alert">{{ exportError }}</p>
-      <p class="backup-description">备份包含快捷入口、自定义搜索引擎、待办、笔记、天气城市和页面设置。</p>
+      <p class="backup-description">备份包含快捷入口、文件夹、主页工作区、待办、习惯、纪念日、笔记、自定义搜索引擎、专注计时状态和页面设置；浏览器书签与历史不包含在内。</p>
     </section>
     <p class="local-hint">设置保存在这台设备的浏览器中。</p>
 
@@ -322,10 +322,13 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
         <ul class="backup-counts">
           <li>{{ pendingBackup.shortcuts.length }} 个快捷入口</li>
           <li>{{ pendingBackup.folders.length }} 个文件夹</li>
+          <li>{{ pendingBackup.homeWorkspaces?.length ?? 1 }} 个主页工作区</li>
           <li>{{ pendingBackup.todos.length }} 条待办</li>
+          <li>{{ pendingBackup.habits?.length ?? 0 }} 个习惯</li>
           <li>{{ pendingBackup.countdowns.length }} 个纪念日</li>
           <li>{{ pendingBackup.notes.length }} 条笔记</li>
           <li>{{ pendingBackup.customSearchEngines?.length ?? 0 }} 个自定义搜索引擎</li>
+          <li v-if="pendingBackup.focusTimer">包含专注计时状态</li>
         </ul>
         <p class="backup-warning">覆盖会替换当前浏览器中的数据；合并会保留现有项目并按 ID 更新重合内容。</p>
         <footer>

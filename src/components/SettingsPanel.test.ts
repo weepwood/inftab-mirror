@@ -2,6 +2,7 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultPreferences } from '../data/defaults'
+import { defaultFocusTimerState } from '../data/focusTimerState'
 import SettingsPanel from './SettingsPanel.vue'
 
 let wrapper: VueWrapper | undefined
@@ -145,5 +146,45 @@ describe('SettingsPanel custom search engines', () => {
     })
     await wrapper.get('[aria-label=\"删除搜索引擎Wiki\"]').trigger('click')
     expect(wrapper.emitted('removeSearchEngine')?.at(-1)).toEqual(['wiki'])
+  })
+})
+
+describe('SettingsPanel backup preview', () => {
+  it('shows the complete backup scope and previews habits and workspaces', async () => {
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+    expect(wrapper.get('.backup-description').text()).toContain('习惯')
+    expect(wrapper.get('.backup-description').text()).toContain('浏览器书签与历史不包含在内')
+
+    const backup = {
+      format: 'inftab-workspace',
+      version: 1,
+      exportedAt: '2026-10-12T00:00:00.000Z',
+      preferences: { ...defaultPreferences },
+      shortcuts: [],
+      folders: [],
+      launcherOrder: [],
+      todos: [],
+      habits: [{ id: 'read', title: '阅读', completedDates: [] }],
+      countdowns: [],
+      notes: [],
+      activeNoteId: '',
+      weatherCity: '上海',
+      customSearchEngines: [],
+      focusTimer: defaultFocusTimerState,
+      homeWorkspaces: [
+        { id: 'default', name: '主页', itemIds: [] },
+        { id: 'work', name: '工作', itemIds: [] },
+      ],
+      activeHomeWorkspaceId: 'default',
+    }
+    const file = new File([JSON.stringify(backup)], 'workspace.json', { type: 'application/json' })
+    const input = wrapper.get('input[accept="application/json,.json"]')
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [file] })
+    await input.trigger('change')
+    await flushPromises()
+
+    expect(wrapper.get('[role="dialog"][aria-labelledby="backup-title"]').text()).toContain('2 个主页工作区')
+    expect(wrapper.get('[role="dialog"][aria-labelledby="backup-title"]').text()).toContain('1 个习惯')
+    expect(wrapper.get('[role="dialog"][aria-labelledby="backup-title"]').text()).toContain('包含专注计时状态')
   })
 })

@@ -175,6 +175,40 @@ test('exports in-memory edits after browser storage rejects a save', async ({ pa
   expect(backup.todos).toContainEqual(expect.objectContaining({ title: 'Recover this unsaved note' }))
 })
 
+test('backup import preview lists habits and home workspaces before restoring data', async ({ page }) => {
+  const backup = {
+    format: 'inftab-workspace',
+    version: 1,
+    exportedAt: '2026-10-12T00:00:00.000Z',
+    preferences: {
+      engine: 'baidu', mode: 'html', wallpaper: '/wallpapers/forest.webp', customWallpaper: '',
+      shade: 0.2, iconSize: 96, columns: 6, showNames: true, iconRadius: 50,
+    },
+    shortcuts: [], folders: [], launcherOrder: [], todos: [],
+    habits: [{ id: 'read', title: '阅读', completedDates: ['2026-10-12'] }],
+    countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海', customSearchEngines: [],
+    focusTimer: { phase: 'focus', focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, completedSessions: 0, remainingMs: 1_500_000, endsAt: null },
+    homeWorkspaces: [
+      { id: 'default', name: '主页', itemIds: [] },
+      { id: 'work', name: '工作', itemIds: [] },
+    ],
+    activeHomeWorkspaceId: 'default',
+  }
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.locator('input[accept="application/json,.json"]').setInputFiles({
+    name: 'workspace.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(backup)),
+  })
+
+  const preview = page.getByRole('dialog', { name: '恢复本地备份' })
+  await expect(preview).toContainText('2 个主页工作区')
+  await expect(preview).toContainText('1 个习惯')
+  await expect(preview).toContainText('包含专注计时状态')
+  await preview.getByRole('button', { name: '取消', exact: true }).click()
+  expect(await page.evaluate(() => localStorage.getItem('inftab.habits.v1'))).toBeNull()
+})
+
 test('shortcut deletion can be cancelled and requires confirmation', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByRole('button', { name: /添加快捷入口/ }).click()
