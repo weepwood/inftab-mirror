@@ -52,6 +52,27 @@ describe('browser tab import control', () => {
     expect(wrapper.emitted('select')).toBeUndefined()
   })
 
+  it('does not read tabs if the import dialog closes before permission is granted', async () => {
+    let resolvePermission!: (granted: boolean) => void
+    const request = vi.fn(() => new Promise<boolean>((resolve) => { resolvePermission = resolve }))
+    const query = vi.fn().mockResolvedValue([{ id: 4, title: 'Current page', url: 'https://current.example/' }])
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { request },
+      tabs: { query },
+    })
+    wrapper = mount(BrowserTabImport)
+
+    await wrapper.get('button').trigger('click')
+    expect(request).toHaveBeenCalledWith({ permissions: ['tabs'] })
+    wrapper.unmount()
+    wrapper = undefined
+    resolvePermission(true)
+    await flushPromises()
+
+    expect(query).not.toHaveBeenCalled()
+  })
+
   it('loads most-visited websites only after requesting the optional topSites permission', async () => {
     const request = vi.fn().mockResolvedValue(true)
     const get = vi.fn().mockResolvedValue([

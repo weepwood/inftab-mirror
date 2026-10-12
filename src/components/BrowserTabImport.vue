@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { requestBrowserTabsPermission, requestMostVisitedSitesPermission } from '../data/browserTabPermissions'
 import { getCurrentWindowTabCandidates, getMostVisitedSiteCandidates, type BrowserTabCandidate } from '../data/browserTabs'
 
@@ -8,6 +8,8 @@ const candidates = ref<BrowserTabCandidate[]>([])
 const selectedId = ref('')
 const error = ref('')
 const loading = ref(false)
+let requestSequence = 0
+let isActive = true
 
 async function loadCandidates(
   requestPermission: () => Promise<boolean>,
@@ -16,6 +18,7 @@ async function loadCandidates(
   emptyMessage: string,
 ) {
   if (loading.value) return
+  const sequence = ++requestSequence
   loading.value = true
   error.value = ''
   candidates.value = []
@@ -24,17 +27,20 @@ async function loadCandidates(
     // Start the optional permission request in this click handler so Chrome
     // can associate it with the user's explicit action.
     const granted = await requestPermission()
+    if (!isActive || sequence !== requestSequence) return
     if (!granted) {
       error.value = deniedMessage
       return
     }
-    candidates.value = await load()
+    const nextCandidates = await load()
+    if (!isActive || sequence !== requestSequence) return
+    candidates.value = nextCandidates
     selectedId.value = candidates.value[0]?.id ?? ''
     if (candidates.value.length === 0) error.value = emptyMessage
   } catch {
-    error.value = '读取浏览器网站失败，请重试或手动填写网址。'
+    if (isActive && sequence === requestSequence) error.value = '读取浏览器网站失败，请重试或手动填写网址。'
   } finally {
-    loading.value = false
+    if (isActive && sequence === requestSequence) loading.value = false
   }
 }
 
@@ -60,6 +66,11 @@ function importSelectedTab() {
   const candidate = candidates.value.find((tab) => tab.id === selectedId.value)
   if (candidate) emit('select', candidate)
 }
+
+onBeforeUnmount(() => {
+  isActive = false
+  requestSequence += 1
+})
 </script>
 
 <template>
