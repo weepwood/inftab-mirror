@@ -218,6 +218,34 @@ test('every built-in panel route loads and closes without a runtime error', asyn
   expect(panelErrors).toEqual([])
 })
 
+test('every home widget plugin loads together without a runtime error', async ({ page }) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
+  const widgetIds = [
+    'todo-summary',
+    'countdown-summary',
+    'notes-summary',
+    'calendar-summary',
+    'weather-summary',
+    'focus-timer-summary',
+    'bookmarks-summary',
+    'history-summary',
+  ]
+  await page.evaluate((ids) => {
+    const key = 'inftab.preferences.v1'
+    const preferences = JSON.parse(localStorage.getItem(key) ?? '{}')
+    localStorage.setItem(key, JSON.stringify({ ...preferences, homeWidgetIds: ids }))
+  }, widgetIds)
+  await page.reload()
+
+  const shelf = page.getByRole('region', { name: '首页小组件' })
+  await expect(shelf.locator('.home-widget-card')).toHaveCount(widgetIds.length)
+  await expect(shelf.locator('.panel-loading')).toHaveCount(0)
+  await expect.poll(() => shelf.locator('.home-widget-card').evaluateAll((cards) => cards.map((card) => card.getAttribute('data-widget-id'))))
+    .toEqual(widgetIds)
+  expect(pageErrors).toEqual([])
+})
+
 test('launcher search shortcut works while the homepage search bar is hidden', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByLabel('显示搜索栏').uncheck()
