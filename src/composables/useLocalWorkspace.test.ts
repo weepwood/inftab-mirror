@@ -281,6 +281,20 @@ describe('useLocalWorkspace focus timer', () => {
     expect(workspace.focusTimer.value).toEqual(backup.focusTimer)
   })
 
+  it('applies a duration change before a start action dispatched immediately after it', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-12T04:00:00.000Z'))
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+
+    const changeDuration = workspace.setFocusDuration(50)
+    const startTimer = workspace.startFocusTimer()
+    await Promise.all([changeDuration, startTimer])
+
+    expect(workspace.focusTimer.value.focusMinutes).toBe(50)
+    expect(workspace.focusTimer.value.endsAt! - Date.now()).toBe(50 * 60_000)
+  })
+
   it('defaults the timer when replacing from an older backup without timer data', () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!

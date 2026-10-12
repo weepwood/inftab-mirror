@@ -47,29 +47,44 @@ export function useLocalWorkspace() {
   const weatherCity = useStoredState<string>('inftab.weather-city.v1', previousWeatherCity, sanitizeWeatherCity)
   const focusTimer = useStoredState('inftab.focus-timer.v1', defaultFocusTimerState, sanitizeFocusTimerState, { mergeConcurrentChanges: false })
 
-  async function startFocusTimer() {
-    const { startFocusTimer: start } = await import('../data/focusTimer')
-    focusTimer.value = start(focusTimer.value, Date.now())
+  let focusTimerActionQueue = Promise.resolve()
+  function enqueueFocusTimerAction(action: (helpers: typeof import('../data/focusTimer')) => void) {
+    const nextAction = focusTimerActionQueue.then(async () => {
+      const helpers = await import('../data/focusTimer')
+      action(helpers)
+    })
+    focusTimerActionQueue = nextAction.catch(() => undefined)
+    return nextAction
   }
 
-  async function pauseFocusTimer() {
-    const { pauseFocusTimer: pause } = await import('../data/focusTimer')
-    focusTimer.value = pause(focusTimer.value, Date.now())
+  function startFocusTimer() {
+    return enqueueFocusTimerAction(({ startFocusTimer: start }) => {
+      focusTimer.value = start(focusTimer.value, Date.now())
+    })
   }
 
-  async function resetFocusTimer() {
-    const { resetFocusTimer: reset } = await import('../data/focusTimer')
-    focusTimer.value = reset(focusTimer.value)
+  function pauseFocusTimer() {
+    return enqueueFocusTimerAction(({ pauseFocusTimer: pause }) => {
+      focusTimer.value = pause(focusTimer.value, Date.now())
+    })
   }
 
-  async function setFocusDuration(minutes: number) {
-    const { setFocusDuration } = await import('../data/focusTimer')
-    focusTimer.value = setFocusDuration(focusTimer.value, minutes)
+  function resetFocusTimer() {
+    return enqueueFocusTimerAction(({ resetFocusTimer: reset }) => {
+      focusTimer.value = reset(focusTimer.value)
+    })
   }
 
-  async function tickFocusTimer(now = Date.now()) {
-    const { advanceFocusTimer } = await import('../data/focusTimer')
-    focusTimer.value = advanceFocusTimer(focusTimer.value, now)
+  function setFocusDuration(minutes: number) {
+    return enqueueFocusTimerAction(({ setFocusDuration: updateDuration }) => {
+      focusTimer.value = updateDuration(focusTimer.value, minutes)
+    })
+  }
+
+  function tickFocusTimer(now = Date.now()) {
+    return enqueueFocusTimerAction(({ advanceFocusTimer }) => {
+      focusTimer.value = advanceFocusTimer(focusTimer.value, now)
+    })
   }
 
   watch([shortcuts, folders], () => {
