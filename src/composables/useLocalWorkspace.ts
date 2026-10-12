@@ -5,7 +5,7 @@ import { defaultLauncherOrder, defaultPreferences, defaultShortcuts, launcherIte
 import type { WorkspaceBackup } from '../data/backup'
 import { mergeById } from '../data/mergeById'
 import { isValidCalendarDate } from '../data/countdown'
-import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeHabits, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
+import { isValidLauncherColor, sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeHabits, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
 import { isValidCustomSearchTemplate } from '../data/search'
 import { defaultFocusTimerState, sanitizeFocusTimerState } from '../data/focusTimerState'
 import { defaultHomeWorkspace, defaultHomeWorkspaceId, maxHomeWorkspaceNameLength, maxHomeWorkspaces, sanitizeActiveHomeWorkspaceId, sanitizeHomeWorkspaces, type HomeWorkspace } from '../data/homeWorkspaces'
@@ -221,7 +221,7 @@ export function useLocalWorkspace() {
   }
 
   function saveShortcut(shortcut: Shortcut, workspaceId = activeHomeWorkspaceId.value): boolean {
-    if (!homeWorkspaces.value.some((workspace) => workspace.id === workspaceId)) return false
+    if (!homeWorkspaces.value.some((workspace) => workspace.id === workspaceId) || !isValidLauncherColor(shortcut.color)) return false
     const exists = shortcuts.value.some((item) => item.id === shortcut.id)
     const next = exists
       ? shortcuts.value.map((item) => item.id === shortcut.id ? shortcut : item)
@@ -273,7 +273,7 @@ export function useLocalWorkspace() {
   }
 
   function saveFolder(folder: ShortcutFolder, workspaceId = activeHomeWorkspaceId.value): boolean {
-    if (!homeWorkspaces.value.some((workspace) => workspace.id === workspaceId)) return false
+    if (!homeWorkspaces.value.some((workspace) => workspace.id === workspaceId) || !isValidLauncherColor(folder.color)) return false
     const exists = folders.value.some((item) => item.id === folder.id)
     const next = exists
       ? folders.value.map((item) => item.id === folder.id ? folder : item)

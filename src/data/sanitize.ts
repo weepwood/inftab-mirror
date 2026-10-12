@@ -10,9 +10,11 @@ const engines = new Set(['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yaho
 const searchModes = new Set<SearchMode>(['html', 'photos', 'news', 'videos', 'map'])
 const transitionEffects = new Set(['slide', 'particles', 'trails'])
 const customEngineId = /^[\w-]{1,128}$/
-const palette = /^#[\da-f]{3,8}$/i
+const palette = /^#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$/i
+const fallbackShortcutColor = '#3d82f6'
+const fallbackFolderColor = '#4176e8'
 const reservedLauncherIds = new Set(launcherItems.map((item) => item.id))
-const gradientColor = '(?:#[\\da-f]{3,8}|[a-z]{1,32}|(?:rgb|hsl)a?\\([\\d.%\\s,/+-]+\\))'
+const gradientColor = '(?:#(?:[\\da-f]{3}|[\\da-f]{4}|[\\da-f]{6}|[\\da-f]{8})|[a-z]{1,32}|(?:rgb|hsl)a?\\([\\d.%\\s,/+-]+\\))'
 const gradientStop = `${gradientColor}(?:\\s+\\d+(?:\\.\\d+)?%)?`
 const gradientDirection = '(?:(?:\\d+(?:\\.\\d+)?deg|to (?:top|right|bottom|left)(?: (?:top|right|bottom|left))?)\\s*,\\s*)?'
 const safeLinearGradient = new RegExp(`^linear-gradient\\(\\s*${gradientDirection}${gradientStop}(?:\\s*,\\s*${gradientStop})+\\s*\\)$`, 'i')
@@ -27,6 +29,14 @@ function boundedNumber(value: unknown, fallback: number, min: number, max: numbe
 
 function boundedText(value: unknown, fallback: string, maxLength: number) {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : fallback
+}
+
+function sanitizePaletteColor(value: unknown, fallback: string) {
+  return isValidLauncherColor(value) ? value : fallback
+}
+
+export function isValidLauncherColor(value: unknown): value is string {
+  return typeof value === 'string' && palette.test(value)
 }
 
 export function sanitizePreferences(value: unknown): Preferences {
@@ -150,7 +160,7 @@ function sanitizeShortcutIcon(value: unknown): string | undefined {
 export function sanitizeShortcuts(value: unknown): Shortcut[] {
   return uniqueRecords(value, (item) => {
     const url = normalizeWebUrl(item.url)
-    if (!validId(item.id) || reservedLauncherIds.has(item.id) || typeof item.title !== 'string' || typeof item.color !== 'string' || !palette.test(item.color)
+    if (!validId(item.id) || reservedLauncherIds.has(item.id) || typeof item.title !== 'string'
       || typeof item.mark !== 'string' || !url) return undefined
     const title = item.title.trim().slice(0, 80)
     if (!title) return undefined
@@ -158,7 +168,7 @@ export function sanitizeShortcuts(value: unknown): Shortcut[] {
       id: item.id,
       title,
       url,
-      color: item.color,
+      color: sanitizePaletteColor(item.color, fallbackShortcutColor),
       mark: item.mark.trim().slice(0, 12),
       icon: sanitizeShortcutIcon(item.icon),
     }
@@ -180,7 +190,6 @@ export function sanitizeFolders(
     const item = candidate
     if (!validId(item.id) || seenFolderIds.has(item.id) || reservedLauncherIds.has(item.id) || shortcutIds.has(item.id)
       || typeof item.title !== 'string' || !item.title.trim()
-      || typeof item.color !== 'string' || !palette.test(item.color)
       || typeof item.mark !== 'string' || !Array.isArray(item.shortcutIds) || item.shortcutIds.length > 500
       || !item.shortcutIds.every((id) => typeof id === 'string' && id.length <= 128)) continue
     const members = item.shortcutIds.filter((id): id is string => (options.preserveUnknownShortcuts || shortcutIds.has(id)) && !claimedShortcutIds.has(id))
@@ -189,7 +198,7 @@ export function sanitizeFolders(
     result.push({
       id: item.id,
       title: item.title.trim().slice(0, 80),
-      color: item.color,
+      color: sanitizePaletteColor(item.color, fallbackFolderColor),
       mark: item.mark.trim().slice(0, 12),
       shortcutIds: [...new Set(members)],
     })

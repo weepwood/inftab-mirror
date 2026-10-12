@@ -77,6 +77,29 @@ describe('local state sanitization', () => {
     expect(sanitizeShortcuts([{ id: 'bundled', title: 'Bundled', url: 'https://example.com', color: '#abc', mark: 'B', icon: 'site-icon.png' }])[0]?.icon).toBe('site-icon.png')
   })
 
+  it('keeps launchers when imported colors are invalid and accepts only CSS hex lengths', () => {
+    const validHexColors = ['#abc', '#abcd', '#abcdef', '#abcdef12']
+    const shortcuts = sanitizeShortcuts([
+      ...validHexColors.map((color, index) => ({ id: `valid-${index}`, title: 'Valid', url: 'https://example.com', color, mark: 'V' })),
+      { id: 'five-digits', title: 'Five digits', url: 'https://five.example', color: '#12345', mark: 'F' },
+      { id: 'seven-digits', title: 'Seven digits', url: 'https://seven.example', color: '#1234567', mark: 'S' },
+      { id: 'unsafe-color', title: 'Unsafe color', url: 'https://unsafe.example', color: 'url(https://tracker.example)', mark: 'U' },
+    ])
+    const folders = sanitizeFolders([
+      { id: 'invalid-folder-color', title: 'Imported folder', shortcutIds: [], color: '#12345', mark: 'I' },
+    ], shortcuts)
+
+    expect(shortcuts.map((shortcut) => shortcut.color)).toEqual([
+      ...validHexColors,
+      '#3d82f6',
+      '#3d82f6',
+      '#3d82f6',
+    ])
+    expect(folders).toEqual([{
+      id: 'invalid-folder-color', title: 'Imported folder', shortcutIds: [], color: '#4176e8', mark: 'I',
+    }])
+  })
+
   it('keeps a shortcut when its optional icon is unsafe and strips protocol-relative image URLs', () => {
     const shortcuts = sanitizeShortcuts([
       { id: 'scheme-relative', title: 'Link', url: 'https://example.com', color: '#abc', mark: 'L', icon: '//tracker.example/pixel' },
@@ -142,6 +165,7 @@ describe('local state sanitization', () => {
     expect(sanitizePreferences({ customWallpaper: localWallpaper }).customWallpaper).toBe(localWallpaper)
     expect(sanitizePreferences({ customWallpaper: 'data:image/png;base64,YWJj' }).customWallpaper).toBe('data:image/png;base64,YWJj')
     expect(sanitizePreferences({ customWallpaper: 'data:image/svg+xml;base64,PHN2Zz4=' }).customWallpaper).toBe('')
+    expect(sanitizePreferences({ customWallpaper: 'linear-gradient(#12345, #abcdef)' }).customWallpaper).toBe('')
     expect(sanitizePreferences({ customWallpaper: `data:image/webp;base64,${'a'.repeat(2_000_001)}` }).customWallpaper).toHaveLength(0)
   })
 
