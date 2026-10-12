@@ -19,6 +19,22 @@ test('stable browsers load the homepage and quick translation flow', async ({ pa
   await expect(page).toHaveURL(/translate\.google\.com\/\?sl=auto&tl=zh-CN&text=stable%20browser&op=translate/)
 })
 
+test('stable browsers preserve Tab focus when leaving the search engine menu', async ({ page }) => {
+  const picker = page.getByRole('button', { name: '当前搜索引擎：Baidu' })
+  const search = page.getByRole('searchbox', { name: '输入并搜索' })
+
+  await picker.click()
+  await expect(page.getByRole('option', { name: /Baidu/ })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(page.locator('.engine-menu')).toHaveCount(0)
+  await expect(search).toBeFocused()
+
+  await picker.click()
+  await page.keyboard.press('Shift+Tab')
+  await expect(page.locator('.engine-menu')).toHaveCount(0)
+  await expect(picker).toBeFocused()
+})
+
 test('stable browsers persist a new shortcut after reload at a narrow viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
