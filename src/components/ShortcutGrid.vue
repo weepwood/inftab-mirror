@@ -338,6 +338,23 @@ function handleTrackTransitionEnd(event: TransitionEvent) {
 
 watch(() => props.currentPage, (pageIndex, previousPage) => {
   if (pageIndex === previousPage) return
+  const focusedButton = document.activeElement instanceof HTMLElement
+    ? document.activeElement.closest<HTMLElement>('.shortcut-open')
+    : null
+  const focusedItemId = focusedButton?.closest<HTMLElement>('[data-item-id]')?.dataset.itemId
+  const focusedItemIndex = focusedItemId ? props.items.findIndex((item) => item.id === focusedItemId) : -1
+  if (focusedItemIndex >= 0 && props.items.length > 0) {
+    const slot = focusedItemIndex % pageSize.value
+    const targetIndex = Math.min(pageIndex * pageSize.value + slot, props.items.length - 1)
+    const targetId = props.items[targetIndex]?.id
+    if (targetId) void nextTick(() => {
+      const buttons = Array.from(gridViewport.value?.querySelectorAll<HTMLElement>('.shortcut-open') ?? [])
+      const targetButton = buttons
+        .find((button) => button.closest<HTMLElement>('[data-item-id]')?.dataset.itemId === targetId
+          && button.closest('.shortcut-page[aria-hidden="false"]'))
+      targetButton?.focus()
+    })
+  }
   cancelTransitionTimers()
   if (rebaseFrame) {
     cancelAnimationFrame(rebaseFrame)

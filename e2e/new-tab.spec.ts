@@ -74,6 +74,23 @@ test('search engine menu keeps Tab focus in the search controls', async ({ page 
   await expect(picker).toBeFocused()
 })
 
+test('keyboard page turns keep focus on the corresponding shortcut', async ({ page }) => {
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    const preferences = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<string, unknown>
+    localStorage.setItem(key, JSON.stringify({ ...preferences, columns: 2, rows: 1, pageTransitionEffect: 'slide' }))
+  })
+  await page.reload()
+
+  const activePage = page.locator('.shortcut-page[aria-hidden="false"]')
+  const secondShortcut = activePage.locator('.shortcut-open').nth(1)
+  await secondShortcut.focus()
+  await page.keyboard.press('ArrowRight')
+
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
+  await expect(page.locator('.shortcut-page[aria-hidden="false"] .shortcut-open').nth(1)).toBeFocused()
+})
+
 test('recovers the shortcut grid after its chunk fails and manual retry succeeds', async ({ page }) => {
   let chunkRequests = 0
   const pageErrors: string[] = []

@@ -158,6 +158,19 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
       return permissions.contains({ origins: ['https://hacker-news.firebaseio.com/*'] })
     })
     expect(newsPermission).toBe(false)
+
+    await page.evaluate(() => {
+      const key = 'inftab.preferences.v1'
+      const preferences = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<string, unknown>
+      localStorage.setItem(key, JSON.stringify({ ...preferences, columns: 2, rows: 1, pageTransitionEffect: 'slide' }))
+    })
+    await page.reload()
+    const activePage = page.locator('.shortcut-page[aria-hidden="false"]')
+    await activePage.locator('.shortcut-open').nth(1).focus()
+    await page.keyboard.press('ArrowRight')
+    await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
+    await expect(page.locator('.shortcut-page[aria-hidden="false"] .shortcut-open').nth(1)).toBeFocused()
+
     expect(pageErrors).toEqual([])
   } finally {
     await context?.close()

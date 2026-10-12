@@ -25,6 +25,40 @@ afterEach(() => {
 })
 
 describe('ShortcutGrid page cycling', () => {
+  it('keeps keyboard focus on the matching slot after a page turn', async () => {
+    installAnimationEnvironment()
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items: Array.from({ length: 5 }, (_, index) => ({ ...items[index % items.length]!, id: `focus-${index}` })),
+        columns: 2,
+        rows: 1,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 0,
+        transitionDirection: 1,
+        transitionEffect: 'slide',
+        transitionDuration: 0,
+      },
+      attachTo: document.body,
+    })
+
+    const firstButton = wrapper.get('[data-item-id="focus-1"] .shortcut-open').element as HTMLElement
+    firstButton.focus()
+    await wrapper.setProps({ currentPage: 1 })
+    await flushPromises()
+    expect(document.activeElement).toBe(wrapper.get('[data-item-id="focus-3"] .shortcut-open').element)
+    expect(document.activeElement?.closest('.shortcut-page[aria-hidden="false"]')).not.toBeNull()
+
+    const thirdButton = wrapper.get('[data-item-id="focus-3"] .shortcut-open').element as HTMLElement
+    thirdButton.focus()
+    await wrapper.setProps({ currentPage: 2 })
+    await flushPromises()
+    expect(document.activeElement).toBe(wrapper.get('[data-item-id="focus-4"] .shortcut-open').element)
+    expect(document.activeElement?.closest('.shortcut-page[aria-hidden="false"]')).not.toBeNull()
+    wrapper.unmount()
+  })
+
   it('falls back from a broken icon and retries when its URL changes', async () => {
     installAnimationEnvironment()
     const shortcut: LauncherItem = { ...items[0]!, icon: 'https://icons.example/broken.png' }
