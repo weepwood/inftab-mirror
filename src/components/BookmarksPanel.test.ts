@@ -102,6 +102,33 @@ describe('BookmarksPanel', () => {
     expect(importBookmarks).toHaveBeenCalledWith([{ title: 'One', url: 'https://one.example/' }])
   })
 
+  it('lets users clear hidden selections if another tab reduces the available capacity', async () => {
+    const bookmarkChange = { addListener: vi.fn(), removeListener: vi.fn() }
+    const getTree = vi.fn().mockResolvedValue([{ id: '0', title: '', children: [
+      { id: 'one', title: 'One', url: 'https://one.example/' },
+      { id: 'two', title: 'Two', url: 'https://two.example/' },
+    ] }])
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains: vi.fn().mockResolvedValue(true), request: vi.fn() },
+      bookmarks: { getTree, onCreated: bookmarkChange },
+    })
+    wrapper = mount(BookmarksPanel, { props: { availableSlots: 2, importBookmarks: vi.fn() } })
+    await flushPromises()
+    await wrapper.get('button').trigger('click')
+    await wrapper.get('[aria-label="选择One"]').setValue(true)
+    await wrapper.get('[aria-label="选择Two"]').setValue(true)
+    await wrapper.get('input[aria-label="筛选浏览器书签"]').setValue('One')
+    await wrapper.setProps({ availableSlots: 1 })
+
+    expect(wrapper.findAll('.browser-bookmark-link').map((link) => link.text())).toEqual(['One'])
+    expect(wrapper.get('.bookmark-bulk-actions .button-primary').element).toHaveProperty('disabled', true)
+    await wrapper.get('[aria-label="清空书签选择"]').trigger('click')
+
+    expect(wrapper.text()).toContain('已选 0 / 可添加 1')
+    expect(wrapper.get('.bookmark-bulk-actions .button-primary').element).toHaveProperty('disabled', true)
+  })
+
   it('clears the visible bookmark data when permission is revoked while open', async () => {
     const permissionRemoved = {
       listeners: new Set<(...args: unknown[]) => void>(),

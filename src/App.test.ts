@@ -192,10 +192,14 @@ describe('new-tab wallpaper rotation', () => {
       wallpaperRotation: 'hourly',
       wallpaperRotationLastAt: now,
     }))
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout')
     wrapper = mount(App, { attachTo: document.body })
     await nextTick()
     await flushPromises()
     expect(wrapper.get('main.home').attributes('style')).toContain('forest.webp')
+    await vi.waitFor(() => {
+      expect(setTimeoutSpy.mock.calls.some(([, delay]) => typeof delay === 'number' && delay > 60 * 60 * 1000 - 1_000 && delay <= 60 * 60 * 1000)).toBe(true)
+    })
 
     await vi.advanceTimersByTimeAsync(60 * 60 * 1000)
     await nextTick()

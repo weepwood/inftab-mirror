@@ -185,6 +185,11 @@ function toggleVisibleBookmarks() {
   importMessage.value = ''
 }
 
+function clearSelectedBookmarks() {
+  selectedIds.value = new Set()
+  importMessage.value = ''
+}
+
 function importSelectedBookmarks() {
   if (!selectedCandidates.value.length) return
   if (selectedCandidates.value.length > props.availableSlots) {
@@ -224,6 +229,7 @@ onBeforeUnmount(() => {
       <button class="text-button" type="button" @click="toggleVisibleBookmarks">
         {{ visibleBookmarkRows.length > 0 && visibleBookmarkRows.every((row) => selectedIds.has(row.id)) ? '取消选择当前结果' : '选择当前结果' }}
       </button>
+      <button v-if="selectedIds.size" class="text-button" type="button" aria-label="清空书签选择" @click="clearSelectedBookmarks">清空选择</button>
       <button class="button-primary" type="button" :disabled="!selectedCandidates.length || selectedCandidates.length > availableSlots" @click="importSelectedBookmarks">
         添加所选书签
       </button>
