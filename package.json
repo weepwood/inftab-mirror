@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "check": "vue-tsc --noEmit",
     "test": "vitest run && node scripts/check-default-assets.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:production": "npm run build && playwright test --config playwright.production.config.ts"
   },
   "dependencies": {
     "@lucide/vue": "^1.55.0",
