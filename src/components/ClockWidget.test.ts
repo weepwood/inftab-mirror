@@ -24,4 +24,17 @@ describe('ClockWidget', () => {
     await vi.advanceTimersByTimeAsync(60_000)
     expect(wrapper.get('time').text()).toContain('08:06')
   })
+
+  it('refreshes immediately when the browser window regains focus', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 9, 12, 8, 5, 0))
+    wrapper = mount(ClockWidget, { attachTo: document.body })
+    await wrapper.vm.$nextTick()
+    vi.setSystemTime(new Date(2026, 9, 12, 9, 47, 0))
+
+    window.dispatchEvent(new Event('focus'))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('time').text()).toContain('09:47')
+  })
 })

@@ -18,10 +18,12 @@ function refresh() {
 onMounted(() => {
   refresh()
   refreshTimer = window.setInterval(refresh, 60_000)
+  window.addEventListener('focus', refresh)
   document.addEventListener('visibilitychange', refresh)
 })
 onBeforeUnmount(() => {
   if (refreshTimer !== undefined) window.clearInterval(refreshTimer)
+  window.removeEventListener('focus', refresh)
   document.removeEventListener('visibilitychange', refresh)
 })
 </script>
