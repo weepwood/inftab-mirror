@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { effectScope } from 'vue'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseWorkspaceBackup } from '../data/backup'
 import { defaultFocusTimerState, startFocusTimer } from '../data/focusTimer'
 import { useLocalWorkspace } from './useLocalWorkspace'
@@ -8,6 +8,7 @@ import { useLocalWorkspace } from './useLocalWorkspace'
 let scope: ReturnType<typeof effectScope> | undefined
 
 afterEach(() => {
+  vi.useRealTimers()
   scope?.stop()
   scope = undefined
   localStorage.clear()
@@ -128,6 +129,30 @@ describe('useLocalWorkspace home workspaces', () => {
     expect(workspace.homeWorkspaces.value.map((item) => item.id)).toContain('remote-space')
     expect(workspace.activeHomeWorkspaceId.value).toBe(currentId)
     expect(workspace.homeWorkspaces.value.find((item) => item.id === 'remote-space')?.itemIds).toContain('remote-link')
+  })
+
+  it('keeps locally and remotely created workspaces when both tabs edit at once', async () => {
+    vi.useFakeTimers()
+    const storageKey = 'inftab.home-workspaces.v1'
+    const initial = JSON.stringify([{ id: 'default', name: '主页', itemIds: [] }])
+    localStorage.setItem(storageKey, initial)
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const localId = workspace.createHomeWorkspace('本机新建')!
+    const external = JSON.stringify([
+      { id: 'default', name: '主页', itemIds: [] },
+      { id: 'remote-space', name: '另一标签页', itemIds: [] },
+    ])
+    localStorage.setItem(storageKey, external)
+
+    window.dispatchEvent(new StorageEvent('storage', { key: storageKey, oldValue: initial, newValue: external }))
+
+    expect(workspace.homeWorkspaces.value.map((item) => item.id)).toContain(localId)
+    expect(workspace.homeWorkspaces.value.map((item) => item.id)).toContain('remote-space')
+    await vi.advanceTimersByTimeAsync(180)
+    expect(JSON.parse(localStorage.getItem(storageKey) ?? '[]').map((item: { id: string }) => item.id)).toEqual(
+      expect.arrayContaining([localId, 'remote-space']),
+    )
   })
 
   it('rejects workspace overflow merges before changing any local data', () => {

@@ -465,6 +465,24 @@ test('simultaneous widget selections in separate tabs are combined', async ({ pa
   await secondTab.close()
 })
 
+test('simultaneous workspace creation in separate tabs preserves both workspaces', async ({ page, context }) => {
+  const secondTab = await context.newPage()
+  await secondTab.goto('/')
+  await Promise.all([
+    page.getByRole('button', { name: '新建工作区' }).click(),
+    secondTab.getByRole('button', { name: '新建工作区' }).click(),
+  ])
+
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.home-workspaces.v1') ?? '[]')))
+    .toHaveLength(3)
+  await expect.poll(() => page.evaluate(() => new Set(
+    (JSON.parse(localStorage.getItem('inftab.home-workspaces.v1') ?? '[]') as { name: string }[]).map((item) => item.name.toLocaleLowerCase()),
+  ).size)).toBe(3)
+  await expect(page.getByRole('tab')).toHaveCount(3)
+  await expect(secondTab.getByRole('tab')).toHaveCount(3)
+  await secondTab.close()
+})
+
 test('home widgets open their panel, reorder, and can be removed', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByLabel('显示待办概览小组件').check()
