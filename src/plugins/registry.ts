@@ -153,6 +153,7 @@ export interface PanelEventsById {
 }
 
 export interface PanelPlugin<Id extends PanelId = PanelId> {
+  context: (context: PanelPluginContext) => PanelContextById[Id]
   title: string
   description: string
   component: Component
@@ -168,6 +169,11 @@ function lazyPanel(loader: () => Promise<{ default: Component }>) {
 
 export const panelPlugins = {
   bookmarks: {
+    context: (context) => ({
+      openShortcutFromBookmark: context.openShortcutFromBookmark,
+      importBookmarks: context.importBookmarks,
+      availableShortcutSlots: context.availableShortcutSlots,
+    }),
     title: '浏览器书签',
     description: '查看当前浏览器中保存的书签',
     component: lazyPanel(() => import('../components/BookmarksPanel.vue')),
@@ -175,6 +181,7 @@ export const panelPlugins = {
     listeners: (context) => ({ addShortcut: context.openShortcutFromBookmark }),
   },
   history: {
+    context: () => ({}),
     title: '浏览历史',
     description: '搜索当前浏览器的访问记录',
     component: lazyPanel(() => import('../components/HistoryPanel.vue')),
@@ -182,6 +189,7 @@ export const panelPlugins = {
     listeners: (_context) => ({}),
   },
   calculator: {
+    context: () => ({}),
     title: '计算器',
     description: '离线进行四则运算',
     component: lazyPanel(() => import('../components/CalculatorPanel.vue')),
@@ -189,6 +197,7 @@ export const panelPlugins = {
     listeners: (_context) => ({}),
   },
   calendar: {
+    context: () => ({}),
     title: '日历',
     description: '查看日期和星期',
     component: lazyPanel(() => import('../components/CalendarPanel.vue')),
@@ -196,6 +205,19 @@ export const panelPlugins = {
     listeners: (_context) => ({}),
   },
   settings: {
+    context: (context) => ({
+      preferences: context.preferences,
+      backupExportError: context.backupExportError,
+      customSearchEngines: context.customSearchEngines,
+      updatePreferences: context.updatePreferences,
+      resetPreferences: context.resetPreferences,
+      openShortcut: context.openShortcut,
+      openFolder: context.openFolder,
+      exportBackup: context.exportBackup,
+      importBackup: context.importBackup,
+      addCustomSearchEngine: context.addCustomSearchEngine,
+      removeCustomSearchEngine: context.removeCustomSearchEngine,
+    }),
     title: '设置',
     description: '按自己的习惯调整新标签页',
     component: lazyPanel(() => import('../components/SettingsPanel.vue')),
@@ -212,6 +234,14 @@ export const panelPlugins = {
     }),
   },
   todos: {
+    context: (context) => ({
+      todos: context.todos,
+      addTodo: context.addTodo,
+      toggleTodo: context.toggleTodo,
+      updateTodo: context.updateTodo,
+      removeTodo: context.removeTodo,
+      clearCompletedTodos: context.clearCompletedTodos,
+    }),
     title: '待办事项',
     description: '内容会自动保存在本地',
     component: lazyPanel(() => import('../components/TodoPanel.vue')),
@@ -225,6 +255,13 @@ export const panelPlugins = {
     }),
   },
   habits: {
+    context: (context) => ({
+      habits: context.habits,
+      addHabit: context.addHabit,
+      updateHabit: context.updateHabit,
+      toggleHabitToday: context.toggleHabitToday,
+      removeHabit: context.removeHabit,
+    }),
     title: '习惯打卡',
     description: '记录每天坚持的小习惯',
     component: lazyPanel(() => import('../components/HabitsPanel.vue')),
@@ -237,6 +274,13 @@ export const panelPlugins = {
     }),
   },
   'focus-timer': {
+    context: (context) => ({
+      focusTimer: context.focusTimer,
+      startFocusTimer: context.startFocusTimer,
+      pauseFocusTimer: context.pauseFocusTimer,
+      resetFocusTimer: context.resetFocusTimer,
+      setFocusDuration: context.setFocusDuration,
+    }),
     title: '专注计时',
     description: '专注一段时间，再给自己片刻休息',
     component: lazyPanel(() => import('../components/FocusTimerPanel.vue')),
@@ -249,6 +293,14 @@ export const panelPlugins = {
     }),
   },
   notes: {
+    context: (context) => ({
+      notes: context.notes,
+      activeNoteId: context.activeNoteId,
+      addNote: context.addNote,
+      selectNote: context.selectNote,
+      updateNote: context.updateNote,
+      removeNote: context.removeNote,
+    }),
     title: '笔记',
     description: '内容会自动保存在本地',
     component: lazyPanel(() => import('../components/NotesPanel.vue')),
@@ -261,6 +313,12 @@ export const panelPlugins = {
     }),
   },
   countdowns: {
+    context: (context) => ({
+      countdowns: context.countdowns,
+      addCountdown: context.addCountdown,
+      updateCountdown: context.updateCountdown,
+      removeCountdown: context.removeCountdown,
+    }),
     title: '纪念日与倒计时',
     description: '内容会自动保存在本地',
     component: lazyPanel(() => import('../components/CountdownPanel.vue')),
@@ -272,6 +330,7 @@ export const panelPlugins = {
     }),
   },
   weather: {
+    context: (context) => ({ weatherCity: context.weatherCity, updateWeatherCity: context.updateWeatherCity }),
     title: '天气',
     description: '内容会自动保存在本地',
     component: lazyPanel(() => import('../components/WeatherPanel.vue')),
@@ -280,73 +339,9 @@ export const panelPlugins = {
   },
 } satisfies PanelPluginRegistry
 
-type PanelContextAdapterRegistry = {
-  [Id in PanelId]: (context: PanelPluginContext) => PanelContextById[Id]
-}
-
-const panelContextAdapters = {
-  bookmarks: (context) => ({
-    openShortcutFromBookmark: context.openShortcutFromBookmark,
-    importBookmarks: context.importBookmarks,
-    availableShortcutSlots: context.availableShortcutSlots,
-  }),
-  history: () => ({}),
-  calculator: () => ({}),
-  calendar: () => ({}),
-  settings: (context) => ({
-    preferences: context.preferences,
-    backupExportError: context.backupExportError,
-    customSearchEngines: context.customSearchEngines,
-    updatePreferences: context.updatePreferences,
-    resetPreferences: context.resetPreferences,
-    openShortcut: context.openShortcut,
-    openFolder: context.openFolder,
-    exportBackup: context.exportBackup,
-    importBackup: context.importBackup,
-    addCustomSearchEngine: context.addCustomSearchEngine,
-    removeCustomSearchEngine: context.removeCustomSearchEngine,
-  }),
-  todos: (context) => ({
-    todos: context.todos,
-    addTodo: context.addTodo,
-    toggleTodo: context.toggleTodo,
-    updateTodo: context.updateTodo,
-    removeTodo: context.removeTodo,
-    clearCompletedTodos: context.clearCompletedTodos,
-  }),
-  habits: (context) => ({
-    habits: context.habits,
-    addHabit: context.addHabit,
-    updateHabit: context.updateHabit,
-    toggleHabitToday: context.toggleHabitToday,
-    removeHabit: context.removeHabit,
-  }),
-  'focus-timer': (context) => ({
-    focusTimer: context.focusTimer,
-    startFocusTimer: context.startFocusTimer,
-    pauseFocusTimer: context.pauseFocusTimer,
-    resetFocusTimer: context.resetFocusTimer,
-    setFocusDuration: context.setFocusDuration,
-  }),
-  notes: (context) => ({
-    notes: context.notes,
-    activeNoteId: context.activeNoteId,
-    addNote: context.addNote,
-    selectNote: context.selectNote,
-    updateNote: context.updateNote,
-    removeNote: context.removeNote,
-  }),
-  countdowns: (context) => ({
-    countdowns: context.countdowns,
-    addCountdown: context.addCountdown,
-    updateCountdown: context.updateCountdown,
-    removeCountdown: context.removeCountdown,
-  }),
-  weather: (context) => ({ weatherCity: context.weatherCity, updateWeatherCity: context.updateWeatherCity }),
-} satisfies PanelContextAdapterRegistry
-
 export function getPanelContextForPlugin<Id extends PanelId>(id: Id, context: PanelPluginContext): PanelContextById[Id] {
-  return panelContextAdapters[id](context) as PanelContextById[Id]
+  const plugin = panelPlugins[id] as unknown as PanelPlugin<Id>
+  return plugin.context(context)
 }
 
 export function getPanelProps<Id extends PanelId>(id: Id, context: PanelPluginContext): PanelPropsById[Id] {

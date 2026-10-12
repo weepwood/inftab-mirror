@@ -38,6 +38,7 @@ describe('home widget shelf plugin activation', () => {
     const plugins = {
       ...homeWidgetPlugins,
       'todo-summary': {
+        context: (context: HomeWidgetContext) => ({ todos: context.todos }),
         title: '独立组件',
         description: '无需单独面板',
         component: defineComponent({ render: () => h('p', '组件内容') }),

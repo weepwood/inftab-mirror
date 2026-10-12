@@ -144,6 +144,7 @@ describe('built-in panel plugin registry', () => {
       expect(plugin.title, `${id} title`).toBeTruthy()
       expect(plugin.description, `${id} description`).toBeTruthy()
       expect(plugin.component, `${id} component`).toBeTruthy()
+      expect(typeof plugin.context, `${id} context adapter`).toBe('function')
       expect(typeof plugin.props, `${id} props adapter`).toBe('function')
       expect(typeof plugin.listeners, `${id} event adapter`).toBe('function')
     }
@@ -173,6 +174,7 @@ describe('built-in panel plugin registry', () => {
       expect(widget.description, `${id} description`).toBeTruthy()
       if ('panel' in widget && widget.panel) expect(panelPlugins[widget.panel], `${id} panel`).toBeTruthy()
       expect(widget.component, `${id} component`).toBeTruthy()
+      expect(typeof widget.context, `${id} context adapter`).toBe('function')
       expect(typeof widget.props, `${id} props adapter`).toBe('function')
     }
   })

@@ -2,12 +2,12 @@
 
 当前插件注册表用于组织仓库内受信任的功能模块，不会加载远程 JavaScript。新增模块时保持按需加载，并让数据校验、备份和交互测试跟上功能实现。
 
-面板 adapter 的最小状态/操作上下文、属性和事件参数类型集中在 `src/plugins/registry.ts` 的 `PanelContextById`、`PanelPropsById`、`PanelEventsById`；首页小组件对应定义在 `src/plugins/widgetRegistry.ts` 的 `HomeWidgetContextById`、`HomeWidgetPropsById`。注册适配器时，TypeScript 会按 ID 限制其可访问的上下文并检查返回值。为新模块只暴露它实际需要的状态和操作。若更改组件契约，同步更新这些类型和 `src/plugins/registry.test.ts` 中的键名断言，并为实际组件交互保留端到端回归。`npm run check` 会执行插件测试的静态类型检查。
+面板 adapter 的最小状态/操作上下文、属性和事件参数类型集中在 `src/plugins/registry.ts` 的 `PanelContextById`、`PanelPropsById`、`PanelEventsById`；首页小组件对应定义在 `src/plugins/widgetRegistry.ts` 的 `HomeWidgetContextById`、`HomeWidgetPropsById`。每个注册项将 `context`、`props` 和事件适配器与组件元数据放在同一处，TypeScript 会按 ID 限制可访问的上下文并检查返回值。为新模块只暴露它实际需要的状态和操作。若更改组件契约，同步更新这些类型和 `src/plugins/registry.test.ts` 中的键名断言，并为实际组件交互保留端到端回归。`npm run check` 会执行插件测试的静态类型检查。
 
 ## 新增工具面板
 
 1. 在 `src/plugins/ids.ts` 的 `availablePanelIds` 中加入稳定、唯一的 ID。
-2. 在 `src/plugins/registry.ts` 的 `panelPlugins` 中新增同 ID 的定义，提供标题、说明、异步组件、属性适配器和事件适配器。通过文件内的 `lazyPanel(() => import('…'))` 注册面板；它调用 `src/plugins/asyncComponent.ts` 的 `lazyPluginComponent`，统一提供加载状态、失败提示和重试。不要把面板组件静态引入首页，也不要绕过该包装器。
+2. 在 `src/plugins/registry.ts` 的 `panelPlugins` 中新增同 ID 的定义，提供最小 `context` 适配器、标题、说明、异步组件、属性适配器和事件适配器。通过文件内的 `lazyPanel(() => import('…'))` 注册面板；它调用 `src/plugins/asyncComponent.ts` 的 `lazyPluginComponent`，统一提供加载状态、失败提示和重试。不要把面板组件静态引入首页，也不要绕过该包装器。
 3. 如果面板由内置快捷入口打开，在 `src/data/defaults.ts` 为入口设置 `action`，并在 `launcherPanelRoutes` 加入路由。路由只能指向已登记的面板。
 4. 只通过 `PanelPluginContext` 暴露面板需要的操作；避免让页面组件直接依赖 `App.vue` 内部状态。
 5. 在 `src/plugins/registry.test.ts` 覆盖 ID、路由、元数据和事件适配器，并为模块自身的数据处理和完整用户流程添加测试。
@@ -15,7 +15,7 @@
 ## 新增首页小组件
 
 1. 在 `src/plugins/ids.ts` 的 `availableHomeWidgetIds` 中加入稳定、唯一的 ID。
-2. 在 `src/plugins/widgetRegistry.ts` 用同 ID 注册标题、说明、可选的关联面板、异步组件和上下文属性适配器。通过文件内的 `lazyWidget(() => import('…'))` 注册组件；该包装器同样使用 `lazyPluginComponent`，为组件保留一致的加载和重试反馈。
+2. 在 `src/plugins/widgetRegistry.ts` 用同 ID 注册最小 `context` 适配器、标题、说明、可选的关联面板、异步组件和属性适配器。通过文件内的 `lazyWidget(() => import('…'))` 注册组件；该包装器同样使用 `lazyPluginComponent`，为组件保留一致的加载和重试反馈。
 3. 在 `src/components/` 新建小组件。若需要详情视图，在注册信息中填写关联面板，标题会打开它；独立小组件省略 `panel`，标题显示为非操作文本。首页排序和移除由组件架统一处理。
 4. 调整 `src/data/sanitize.ts` 与 `src/data/backup.ts` 的兼容逻辑（若 ID 由清单自动接受则仍需验证备份行为），确认旧备份缺少此项时仍能正常导入。
 5. 为小组件显示、打开面板、排序、移除、窄视口布局和备份往返添加覆盖。

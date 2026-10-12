@@ -45,6 +45,7 @@ export interface HomeWidgetPropsById {
 }
 
 export type HomeWidgetPlugin<Id extends HomeWidgetId = HomeWidgetId> = {
+  context: (context: HomeWidgetContext) => HomeWidgetContextById[Id]
   title: string
   description: string
   panel?: PanelId
@@ -60,6 +61,7 @@ function lazyWidget(loader: () => Promise<{ default: Component }>) {
 
 export const homeWidgetPlugins = {
   'todo-summary': {
+    context: (context) => ({ todos: context.todos }),
     title: '待办概览',
     description: '显示未完成事项和最近任务',
     panel: 'todos',
@@ -67,6 +69,7 @@ export const homeWidgetPlugins = {
     props: (context) => ({ items: context.todos }),
   },
   'habits-summary': {
+    context: (context) => ({ habits: context.habits }),
     title: '习惯打卡',
     description: '查看今天已完成的习惯',
     panel: 'habits',
@@ -74,6 +77,7 @@ export const homeWidgetPlugins = {
     props: (context) => ({ items: context.habits }),
   },
   'countdown-summary': {
+    context: (context) => ({ countdowns: context.countdowns }),
     title: '倒计时',
     description: '显示最近的纪念日或重要日期',
     panel: 'countdowns',
@@ -81,6 +85,7 @@ export const homeWidgetPlugins = {
     props: (context) => ({ items: context.countdowns }),
   },
   'notes-summary': {
+    context: (context) => ({ notes: context.notes, activeNoteId: context.activeNoteId }),
     title: '便签',
     description: '在首页预览最近编辑的笔记',
     panel: 'notes',
@@ -88,6 +93,7 @@ export const homeWidgetPlugins = {
     props: (context) => ({ notes: context.notes, activeId: context.activeNoteId }),
   },
   'calendar-summary': {
+    context: () => ({}),
     title: '月历',
     description: '在首页查看本月日期和今天',
     panel: 'calendar',
@@ -95,6 +101,7 @@ export const homeWidgetPlugins = {
     props: (_context) => ({}),
   },
   'weather-summary': {
+    context: (context) => ({ weatherCity: context.weatherCity }),
     title: '天气',
     description: '在首页查看当前城市天气',
     panel: 'weather',
@@ -102,6 +109,7 @@ export const homeWidgetPlugins = {
     props: (context) => ({ city: context.weatherCity }),
   },
   'focus-timer-summary': {
+    context: (context) => ({ focusTimer: context.focusTimer }),
     title: '专注计时',
     description: '在首页查看专注或休息计时状态',
     panel: 'focus-timer',
@@ -109,6 +117,7 @@ export const homeWidgetPlugins = {
     props: (context) => ({ state: context.focusTimer }),
   },
   'bookmarks-summary': {
+    context: () => ({}),
     title: '书签概览',
     description: '在首页快速打开浏览器书签中的前几项',
     panel: 'bookmarks',
@@ -116,6 +125,7 @@ export const homeWidgetPlugins = {
     props: (_context) => ({}),
   },
   'history-summary': {
+    context: () => ({}),
     title: '最近访问',
     description: '在首页快速打开最近访问的网页',
     panel: 'history',
@@ -123,6 +133,7 @@ export const homeWidgetPlugins = {
     props: (_context) => ({}),
   },
   'news-summary': {
+    context: () => ({}),
     title: '热门资讯',
     description: '查看 Hacker News 热门技术资讯；启用后按需联网',
     component: lazyWidget(() => import('../components/NewsSummaryWidget.vue')),
@@ -130,25 +141,9 @@ export const homeWidgetPlugins = {
   },
 } satisfies HomeWidgetPluginRegistry
 
-type HomeWidgetContextAdapterRegistry = {
-  [Id in HomeWidgetId]: (context: HomeWidgetContext) => HomeWidgetContextById[Id]
-}
-
-const homeWidgetContextAdapters = {
-  'todo-summary': (context) => ({ todos: context.todos }),
-  'habits-summary': (context) => ({ habits: context.habits }),
-  'countdown-summary': (context) => ({ countdowns: context.countdowns }),
-  'notes-summary': (context) => ({ notes: context.notes, activeNoteId: context.activeNoteId }),
-  'calendar-summary': () => ({}),
-  'weather-summary': (context) => ({ weatherCity: context.weatherCity }),
-  'focus-timer-summary': (context) => ({ focusTimer: context.focusTimer }),
-  'bookmarks-summary': () => ({}),
-  'history-summary': () => ({}),
-  'news-summary': () => ({}),
-} satisfies HomeWidgetContextAdapterRegistry
-
 export function getHomeWidgetContextForPlugin<Id extends HomeWidgetId>(id: Id, context: HomeWidgetContext): HomeWidgetContextById[Id] {
-  return homeWidgetContextAdapters[id](context) as HomeWidgetContextById[Id]
+  const plugin = homeWidgetPlugins[id] as unknown as HomeWidgetPlugin<Id>
+  return plugin.context(context)
 }
 
 export function getHomeWidgetProps<Id extends HomeWidgetId>(
