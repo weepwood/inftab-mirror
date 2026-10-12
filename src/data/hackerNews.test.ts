@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchHackerNewsStories, hasHackerNewsPermission, hackerNewsCacheKey, hackerNewsHostPermission, readCachedHackerNewsFeed, requestHackerNewsPermission, writeCachedHackerNewsFeed } from './hackerNews'
+import { fetchHackerNewsStories, hasHackerNewsPermission, hackerNewsCacheKey, hackerNewsHostPermission, readCachedHackerNewsFeed, requestHackerNewsPermission, subscribeToHackerNewsPermissionChanges, writeCachedHackerNewsFeed } from './hackerNews'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -64,6 +64,31 @@ describe('Hacker News feed', () => {
     expect(request).not.toHaveBeenCalled()
     await expect(requestHackerNewsPermission()).resolves.toBe(true)
     expect(request).toHaveBeenCalledWith({ origins: [hackerNewsHostPermission] })
+  })
+
+  it('subscribes only to changes for the Hacker News host and cleans up listeners', () => {
+    const createEvent = () => {
+      const listeners = new Set<(details: { origins?: string[] }) => void>()
+      return {
+        addListener: vi.fn((listener: (details: { origins?: string[] }) => void) => listeners.add(listener)),
+        removeListener: vi.fn((listener: (details: { origins?: string[] }) => void) => listeners.delete(listener)),
+        fire: (origins: string[]) => listeners.forEach((listener) => listener({ origins })),
+      }
+    }
+    const onAdded = createEvent()
+    const onRemoved = createEvent()
+    vi.stubGlobal('chrome', { runtime: { id: 'a'.repeat(32) }, permissions: { onAdded, onRemoved } })
+    const listener = vi.fn()
+
+    const unsubscribe = subscribeToHackerNewsPermissionChanges(listener)
+    onAdded.fire(['https://unrelated.example/*'])
+    expect(listener).not.toHaveBeenCalled()
+    onAdded.fire([hackerNewsHostPermission])
+    onRemoved.fire([hackerNewsHostPermission])
+    expect(listener).toHaveBeenCalledTimes(2)
+    unsubscribe()
+    expect(onAdded.removeListener).toHaveBeenCalledOnce()
+    expect(onRemoved.removeListener).toHaveBeenCalledOnce()
   })
 
   it('does not require extension permission on the website', async () => {

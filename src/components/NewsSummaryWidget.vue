@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { ExternalLink, RefreshCw } from '@lucide/vue'
-import { fetchHackerNewsStories, hasHackerNewsPermission, readCachedHackerNewsFeed, requestHackerNewsPermission, writeCachedHackerNewsFeed, type HackerNewsStory } from '../data/hackerNews'
+import { fetchHackerNewsStories, hasHackerNewsPermission, readCachedHackerNewsFeed, requestHackerNewsPermission, subscribeToHackerNewsPermissionChanges, writeCachedHackerNewsFeed, type HackerNewsStory } from '../data/hackerNews'
 
 const stories = ref<HackerNewsStory[]>([])
 const loading = ref(false)
@@ -13,6 +13,8 @@ const error = ref('')
 let activeRequest: AbortController | undefined
 let timeout: number | undefined
 let isActive = false
+let stopWatchingPermission: (() => void) | undefined
+let permissionCheckSequence = 0
 
 async function loadStories() {
   activeRequest?.abort()
@@ -43,33 +45,43 @@ async function loadStories() {
 }
 
 async function refreshStories() {
+  const sequence = ++permissionCheckSequence
+  const previouslyGranted = permissionGranted.value
+  let hasPermission = false
   try {
-    permissionGranted.value = await hasHackerNewsPermission()
+    hasPermission = await hasHackerNewsPermission()
   } catch {
-    permissionGranted.value = false
+    hasPermission = false
   }
-  if (!isActive) return
+  if (!isActive || sequence !== permissionCheckSequence) return
+  permissionGranted.value = hasPermission
+  permissionChecking.value = false
   if (!permissionGranted.value) {
-    error.value = '资讯需要访问 Hacker News 数据服务的可选权限。'
+    activeRequest?.abort()
+    error.value = previouslyGranted
+      ? '资讯访问权限已关闭，当前保留本地缓存。'
+      : '资讯需要访问 Hacker News 数据服务的可选权限。'
     return
   }
+  error.value = ''
   await loadStories()
 }
 
 async function authorizeAndLoad() {
   if (requestingPermission.value) return
+  const sequence = ++permissionCheckSequence
   requestingPermission.value = true
   error.value = ''
   try {
     const granted = await requestHackerNewsPermission()
-    if (!isActive) return
+    if (!isActive || sequence !== permissionCheckSequence) return
     permissionGranted.value = granted
   } catch {
-    if (isActive) permissionGranted.value = false
+    if (isActive && sequence === permissionCheckSequence) permissionGranted.value = false
   } finally {
     if (isActive) requestingPermission.value = false
   }
-  if (!isActive) return
+  if (!isActive || sequence !== permissionCheckSequence) return
   if (!permissionGranted.value) {
     error.value = '未获得资讯访问权限；你仍可正常使用搜索和快捷入口。'
     return
@@ -84,6 +96,7 @@ function refreshIfStale() {
 
 onMounted(async () => {
   isActive = true
+  stopWatchingPermission = subscribeToHackerNewsPermissionChanges(() => { void refreshStories() })
   try {
     const cachedFeed = readCachedHackerNewsFeed()
     if (cachedFeed) {
@@ -93,16 +106,7 @@ onMounted(async () => {
   } catch {
     // The live feed remains available when browser storage is blocked.
   }
-  let hasPermission = false
-  try {
-    hasPermission = await hasHackerNewsPermission()
-  } catch {
-    hasPermission = false
-  }
-  if (!isActive) return
-  permissionChecking.value = false
-  permissionGranted.value = hasPermission
-  if (hasPermission) await loadStories()
+  await refreshStories()
   if (!isActive) return
   window.addEventListener('focus', refreshIfStale)
   document.addEventListener('visibilitychange', refreshIfStale)
@@ -110,8 +114,10 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   isActive = false
+  permissionCheckSequence += 1
   activeRequest?.abort()
   if (timeout !== undefined) window.clearTimeout(timeout)
+  stopWatchingPermission?.()
   window.removeEventListener('focus', refreshIfStale)
   document.removeEventListener('visibilitychange', refreshIfStale)
 })

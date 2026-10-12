@@ -60,6 +60,70 @@ describe('NewsSummaryWidget', () => {
     expect(fetcher).toHaveBeenCalledTimes(2)
   })
 
+  it('stops refreshing when the extension host permission is revoked while mounted', async () => {
+    let pendingSignal: AbortSignal | undefined
+    let topRequestCount = 0
+    const fetcher = vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
+      if (String(input).endsWith('/topstories.json')) {
+        topRequestCount += 1
+        if (topRequestCount === 1) return Promise.resolve(response([101]))
+        pendingSignal = options?.signal ?? undefined
+        return new Promise<Response>((_resolve, reject) => {
+          const abort = () => reject(new DOMException('Aborted', 'AbortError'))
+          if (pendingSignal?.aborted) abort()
+          else pendingSignal?.addEventListener('abort', abort, { once: true })
+        })
+      }
+      return Promise.resolve(response({ id: 101, type: 'story', title: 'Browser performance research', url: 'https://example.org/research', score: 28, descendants: 7 }))
+    })
+    const contains = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    const permissionListeners = new Set<(details: { origins?: string[] }) => void>()
+    const onRemoved = {
+      addListener: vi.fn((listener: (details: { origins?: string[] }) => void) => permissionListeners.add(listener)),
+      removeListener: vi.fn((listener: (details: { origins?: string[] }) => void) => permissionListeners.delete(listener)),
+    }
+    vi.stubGlobal('chrome', { runtime: { id: 'd'.repeat(32) }, permissions: { contains, request: vi.fn(), onRemoved } })
+    vi.stubGlobal('fetch', fetcher)
+    wrapper = mount(NewsSummaryWidget)
+    await vi.waitFor(() => expect(wrapper!.text()).toContain('Browser performance research'))
+
+    await wrapper.get('.news-summary-refresh').trigger('click')
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3))
+    permissionListeners.forEach((listener) => listener({ origins: [hackerNewsHostPermission] }))
+    await vi.waitFor(() => expect(wrapper!.text()).toContain('资讯访问权限已关闭'))
+
+    expect(wrapper.text()).toContain('Browser performance research')
+    expect(fetcher).toHaveBeenCalledTimes(3)
+    expect(pendingSignal?.aborted).toBe(true)
+    expect(onRemoved.removeListener).not.toHaveBeenCalled()
+    wrapper.unmount()
+    wrapper = undefined
+    expect(onRemoved.removeListener).toHaveBeenCalledOnce()
+  })
+
+  it('ignores an old permission check that finishes after the host permission was revoked', async () => {
+    let resolveInitialCheck!: (granted: boolean) => void
+    const initialCheck = new Promise<boolean>((resolve) => { resolveInitialCheck = resolve })
+    const contains = vi.fn().mockReturnValueOnce(initialCheck).mockResolvedValueOnce(false)
+    const permissionListeners = new Set<(details: { origins?: string[] }) => void>()
+    const onRemoved = {
+      addListener: vi.fn((listener: (details: { origins?: string[] }) => void) => permissionListeners.add(listener)),
+      removeListener: vi.fn((listener: (details: { origins?: string[] }) => void) => permissionListeners.delete(listener)),
+    }
+    const fetcher = vi.fn()
+    vi.stubGlobal('chrome', { runtime: { id: 'e'.repeat(32) }, permissions: { contains, request: vi.fn(), onRemoved } })
+    vi.stubGlobal('fetch', fetcher)
+    wrapper = mount(NewsSummaryWidget)
+
+    permissionListeners.forEach((listener) => listener({ origins: [hackerNewsHostPermission] }))
+    await vi.waitFor(() => expect(wrapper!.get('.news-summary-refresh').text()).toContain('授权并加载'))
+    resolveInitialCheck(true)
+    await flushPromises()
+
+    expect(wrapper.get('.news-summary-refresh').text()).toContain('授权并加载')
+    expect(fetcher).not.toHaveBeenCalled()
+  })
+
   it('shows the last locally cached feed while offline without requesting extension access', async () => {
     writeCachedHackerNewsFeed([{
       id: 88,
