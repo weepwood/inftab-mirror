@@ -94,7 +94,22 @@ const incomingPage = ref<number>()
 const physicalPage = ref(props.transitionEffect === 'particles' ? props.currentPage : centeredPhysicalPage())
 const trackOffsetPx = ref(0)
 const resettingTrack = ref(false)
-let pointer: { id: number; type: string; x: number; y: number; clientX: number; clientY: number; sourceId: string; targetId: string; dockTargetId?: string; dragging: boolean; hold?: number } | undefined
+let pointer: {
+  id: number
+  type: string
+  x: number
+  y: number
+  clientX: number
+  clientY: number
+  sourceId: string
+  targetId: string
+  dockTargetId?: string
+  dragging: boolean
+  scrolling: boolean
+  scrollContainer?: HTMLElement
+  scrollStartTop: number
+  hold?: number
+} | undefined
 let suppressClick = false
 let suppressClickTimer = 0
 let edgeTimer: number | undefined
@@ -403,7 +418,23 @@ function startDrag() {
 
 function onPointerDown(event: PointerEvent, item: LauncherItem) {
   if (event.button !== 0 || (event.target instanceof Element && event.target.closest('.shortcut-context-menu'))) return
-  pointer = { id: event.pointerId, type: event.pointerType, x: event.clientX, y: event.clientY, clientX: event.clientX, clientY: event.clientY, sourceId: item.id, targetId: item.id, dragging: false }
+  const scrollContainer = event.currentTarget instanceof HTMLElement
+    ? event.currentTarget.closest<HTMLElement>('.home.home-scrollable') ?? undefined
+    : undefined
+  pointer = {
+    id: event.pointerId,
+    type: event.pointerType,
+    x: event.clientX,
+    y: event.clientY,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    sourceId: item.id,
+    targetId: item.id,
+    dragging: false,
+    scrolling: false,
+    scrollContainer,
+    scrollStartTop: scrollContainer?.scrollTop ?? 0,
+  }
   if (event.pointerType === 'touch') {
     pointer.hold = window.setTimeout(startDrag, 360)
   }
@@ -418,18 +449,30 @@ function onPointerMove(event: PointerEvent) {
   pointer.clientY = event.clientY
   const deltaX = event.clientX - pointer.x
   const deltaY = event.clientY - pointer.y
-  if (pointer.type === 'touch' && !pointer.dragging) {
+  if (pointer.type === 'touch' && !pointer.dragging && !pointer.scrolling) {
     if (Math.abs(deltaX) > 18 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
       if (pointer.hold) window.clearTimeout(pointer.hold)
       pointer.hold = undefined
       return
     }
-    if (Math.abs(deltaX) + Math.abs(deltaY) > 10) {
+    if (pointer.scrollContainer && Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX) * 1.2) {
       if (pointer.hold) window.clearTimeout(pointer.hold)
       pointer.hold = undefined
-      startDrag()
+      pointer.scrolling = true
     }
-  } else if (!pointer.dragging && Math.hypot(deltaX, deltaY) > 7) {
+    if (Math.abs(deltaX) + Math.abs(deltaY) > 10) {
+      if (pointer.scrolling) {
+        event.preventDefault()
+        pointer.scrollContainer!.scrollTop = pointer.scrollStartTop - deltaY
+        return
+      }
+      if (!pointer.scrollContainer) {
+        if (pointer.hold) window.clearTimeout(pointer.hold)
+        pointer.hold = undefined
+        startDrag()
+      }
+    }
+  } else if (!pointer.dragging && !pointer.scrolling && Math.hypot(deltaX, deltaY) > 7) {
     startDrag()
   }
   if (!pointer.dragging) return
@@ -482,7 +525,9 @@ function onPointerUp(event: PointerEvent) {
   if (!pointer || event.pointerId !== pointer.id) return
   const deltaX = event.clientX - pointer.x
   const deltaY = event.clientY - pointer.y
-  if (pointer.dragging && document.elementFromPoint(event.clientX, event.clientY)?.closest('.home-dock')) {
+  if (pointer.scrolling) {
+    suppressNextClick()
+  } else if (pointer.dragging && document.elementFromPoint(event.clientX, event.clientY)?.closest('.home-dock')) {
     const sourceId = pointer.sourceId
     const title = props.items.find((item) => item.id === sourceId)?.title ?? '入口'
     const alreadyDocked = props.dockItemIds?.includes(sourceId) ?? false

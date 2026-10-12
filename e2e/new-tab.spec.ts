@@ -811,6 +811,62 @@ test('enabled home widgets remain visible and scrollable in a short viewport', a
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', activePage ?? '')
 })
 
+test('touch scrolling over shortcuts scrolls a short homepage without starting a drag', async ({ browser, page }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 480 },
+    isMobile: true,
+    hasTouch: true,
+  })
+  try {
+    const touchPage = await context.newPage()
+    await touchPage.addInitScript(() => {
+      localStorage.setItem('inftab.preferences.v1', JSON.stringify({ homeWidgetIds: ['todo-summary'] }))
+    })
+    await touchPage.goto(new URL(page.url()).origin)
+    const home = touchPage.locator('.home.home-scrollable')
+    const shortcut = touchPage.locator('.shortcut-open').first()
+    await expect(home).toBeVisible()
+    await expect.poll(() => home.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
+
+    const bounds = await shortcut.boundingBox()
+    if (!bounds) throw new Error('The first shortcut is not visible for the touch scroll check.')
+    const x = bounds.x + bounds.width / 2
+    const y = bounds.y + bounds.height / 2
+    const cdp = await context.newCDPSession(touchPage)
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 40, id: 1 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 80, id: 1 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+
+    await expect.poll(() => home.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+    await expect(home.locator('.shortcut-cell.dragging')).toHaveCount(0)
+
+    const source = touchPage.locator('.shortcut-cell[data-item-id="weather"] .shortcut-open')
+    const target = touchPage.locator('.shortcut-cell[data-item-id="calendar"] .shortcut-open')
+    await source.scrollIntoViewIfNeeded()
+    const sourceBounds = await source.boundingBox()
+    const targetBounds = await target.boundingBox()
+    if (!sourceBounds || !targetBounds) throw new Error('The touch sorting targets are not visible.')
+    const initialOrder = await touchPage.evaluate(() => JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]') as string[])
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: sourceBounds.x + sourceBounds.width / 2, y: sourceBounds.y + sourceBounds.height / 2, id: 2 }],
+    })
+    await touchPage.waitForTimeout(420)
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: targetBounds.x + targetBounds.width / 2, y: targetBounds.y + targetBounds.height / 2, id: 2 }],
+    })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await expect.poll(async () => touchPage.evaluate(() => JSON.parse(localStorage.getItem('inftab.launcher-order.v1') ?? '[]') as string[]))
+      .not.toEqual(initialOrder)
+
+    await cdp.detach()
+  } finally {
+    await context.close()
+  }
+})
+
 test('calendar home widget can be enabled and opens the interactive calendar panel', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByLabel('显示月历小组件').check()
