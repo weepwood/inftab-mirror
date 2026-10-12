@@ -77,6 +77,18 @@ describe('local state sanitization', () => {
     expect(sanitizeShortcuts([{ id: 'bundled', title: 'Bundled', url: 'https://example.com', color: '#abc', mark: 'B', icon: 'site-icon.png' }])[0]?.icon).toBe('site-icon.png')
   })
 
+  it('keeps a shortcut when its optional icon is unsafe and strips protocol-relative image URLs', () => {
+    const shortcuts = sanitizeShortcuts([
+      { id: 'scheme-relative', title: 'Link', url: 'https://example.com', color: '#abc', mark: 'L', icon: '//tracker.example/pixel' },
+      { id: 'unsafe-icon', title: 'Other link', url: 'https://other.example', color: '#abc', mark: 'O', icon: 'javascript:alert(1)' },
+    ])
+
+    expect(shortcuts).toEqual([
+      { id: 'scheme-relative', title: 'Link', url: 'https://example.com/', color: '#abc', mark: 'L', icon: undefined },
+      { id: 'unsafe-icon', title: 'Other link', url: 'https://other.example/', color: '#abc', mark: 'O', icon: undefined },
+    ])
+  })
+
   it('reserves built-in launcher ids for built-in entries', () => {
     expect(sanitizeShortcuts([
       { id: 'weather', title: 'Replacement', url: 'https://example.com', color: '#abc', mark: 'R' },

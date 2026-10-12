@@ -136,20 +136,22 @@ function validId(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= 128
 }
 
-function validIcon(value: unknown): value is string | undefined {
-  if (value === undefined || value === '') return true
-  return typeof value === 'string'
-    && value.length <= 3_000_000
-    // Icons bundled with the archived project are often stored as a bare filename
-    // (for example `cee009...png`), while uploaded icons may be data URLs.
-    && (/^(https?:\/\/|\/|[\w.-]+(?:\/[\w.-]+)*\/?$|data:image\/(png|jpeg|webp|gif);base64,)/i.test(value))
+function sanitizeShortcutIcon(value: unknown): string | undefined {
+  if (value === undefined || value === '') return undefined
+  if (typeof value !== 'string' || value.length > 3_000_000 || value.startsWith('//')) return undefined
+  if (/^https?:\/\//i.test(value)) return normalizeWebUrl(value)
+  // Icons bundled with the archived project are often stored as a bare filename
+  // (for example `cee009...png`), while uploaded icons may be data URLs.
+  return /^(?:\/(?!\/)|[\w.-]+(?:\/[\w.-]+)*\/?$|data:image\/(png|jpeg|webp|gif);base64,)/i.test(value)
+    ? value
+    : undefined
 }
 
 export function sanitizeShortcuts(value: unknown): Shortcut[] {
   return uniqueRecords(value, (item) => {
     const url = normalizeWebUrl(item.url)
     if (!validId(item.id) || reservedLauncherIds.has(item.id) || typeof item.title !== 'string' || typeof item.color !== 'string' || !palette.test(item.color)
-      || typeof item.mark !== 'string' || !url || !validIcon(item.icon)) return undefined
+      || typeof item.mark !== 'string' || !url) return undefined
     const title = item.title.trim().slice(0, 80)
     if (!title) return undefined
     return {
@@ -158,7 +160,7 @@ export function sanitizeShortcuts(value: unknown): Shortcut[] {
       url,
       color: item.color,
       mark: item.mark.trim().slice(0, 12),
-      icon: typeof item.icon === 'string' && item.icon ? item.icon : undefined,
+      icon: sanitizeShortcutIcon(item.icon),
     }
   })
 }

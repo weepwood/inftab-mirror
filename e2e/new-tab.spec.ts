@@ -678,6 +678,29 @@ test('unsafe wallpaper CSS from browser storage cannot trigger a hidden remote i
   expect(remoteRequests).toEqual([])
 })
 
+test('protocol-relative shortcut icons from browser storage cannot trigger remote image requests', async ({ page }) => {
+  const remoteRequests: string[] = []
+  await page.route('**/pixel', async (route) => {
+    remoteRequests.push(route.request().url())
+    await route.abort()
+  })
+  await page.addInitScript(() => {
+    localStorage.setItem('inftab.shortcuts.v1', JSON.stringify([{
+      id: 'imported-icon',
+      title: 'Imported link',
+      url: 'https://example.com/',
+      color: '#abc',
+      mark: 'I',
+      icon: '//tracker.example/pixel',
+    }]))
+  })
+  await page.goto('/')
+
+  await expect(page.locator('main.home')).toBeVisible()
+  await expect(page.locator('img.shortcut-picture[src*="tracker.example"]')).toHaveCount(0)
+  expect(remoteRequests).toEqual([])
+})
+
 test('settings changes synchronize between open tabs', async ({ page }) => {
   const secondTab = await page.context().newPage()
   await secondTab.goto('/')

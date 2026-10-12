@@ -671,6 +671,34 @@ describe('new-tab keyboard search', () => {
     }))
   })
 
+  it('normalizes protocol-relative shortcut icon URLs before downloading them on the website', async () => {
+    const bitmap = { width: 192, height: 192, close: vi.fn() }
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(bitmap))
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D)
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => callback(new Blob(['webp-icon'], { type: 'image/webp' })))
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(['remote-icon'], { type: 'image/png' }),
+    } as Response)
+    await mountApp()
+    await openLauncher('settings')
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await wrapper.get('input[placeholder="例如：GitHub"]').setValue('Example')
+    await wrapper.get('input[placeholder="https://example.com"]').setValue('https://example.com')
+    await wrapper.get('.shortcut-dialog input[placeholder="素材文件名、图片网址或 Base64"]').setValue('//images.example/icon.png')
+    await wrapper.get('.shortcut-dialog').trigger('submit')
+
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledWith('https://images.example/icon.png'))
+    await vi.waitFor(() => expect(bitmap.close).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(wrapper.find('.shortcut-dialog').exists()).toBe(false))
+    await flushLocalStorageWrites()
+    await vi.waitFor(() => expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]')).toContainEqual(expect.objectContaining({
+      title: 'Example',
+      icon: expect.stringMatching(/^data:image\/webp;base64,/),
+    })))
+    expect(bitmap.close).toHaveBeenCalledOnce()
+  })
+
   it('restores a fresh copy of default preferences', async () => {
     await mountApp()
     await openLauncher('settings')

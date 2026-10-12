@@ -43,6 +43,21 @@ describe('workspace backups', () => {
     expect(parsed.preferences.customWallpaper).toBe('')
   })
 
+  it('preserves shortcut data while stripping protocol-relative icon URLs from imported backups', () => {
+    const parsed = parseWorkspaceBackup(backup({
+      shortcuts: [{ id: 'custom', title: 'Custom', url: 'https://example.com', color: '#abc', mark: 'C', icon: '//tracker.example/pixel' }],
+    }))
+
+    expect(parsed.shortcuts).toEqual([{
+      id: 'custom',
+      title: 'Custom',
+      url: 'https://example.com/',
+      color: '#abc',
+      mark: 'C',
+      icon: undefined,
+    }])
+  })
+
   it('validates and migrates local habit records in backups', () => {
     const parsed = parseWorkspaceBackup(backup({
       habits: [{ id: 'read', title: ' 阅读 ', completedDates: ['2026-10-12'] }],

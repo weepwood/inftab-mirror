@@ -654,6 +654,14 @@ async function saveShortcut() {
   shortcutUrlError.value = ''
   let icon = shortcutIcon.value.trim()
   shortcutIconError.value = ''
+  if (/^(?:https?:)?\/\//i.test(icon)) {
+    const normalizedIcon = normalizeWebUrl(icon)
+    if (!normalizedIcon) {
+      shortcutIconError.value = '请输入有效的 HTTP 或 HTTPS 图片网址。'
+      return
+    }
+    icon = normalizedIcon
+  }
   // Extension pages have narrowly scoped host permissions for weather only.
   // Keep user supplied remote icons as image URLs instead of requesting broad host access.
   if (/^https?:\/\//i.test(icon) && location.protocol !== 'chrome-extension:') {
