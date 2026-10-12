@@ -84,6 +84,7 @@ const displayPages = computed(() => {
 const contextItem = ref<LauncherItem>()
 const contextPosition = ref({ left: 0, top: 0 })
 const moveAnnouncement = ref('')
+const failedIconUrls = ref(new Map<string, string>())
 let contextMenuTrigger: HTMLElement | undefined
 const draggingId = ref('')
 const dragPosition = ref({ x: 0, y: 0 })
@@ -409,6 +410,12 @@ watch(() => [pages.value.length, props.transitionEffect] as const, () => {
   })
 }, { flush: 'post' })
 
+watch(() => props.items.map((item) => [item.id, item.icon] as const), (icons) => {
+  const currentIcons = new Map(icons.filter(([, icon]) => icon).map(([id, icon]) => [id, icon!]))
+  const failed = new Map([...failedIconUrls.value].filter(([id, url]) => currentIcons.get(id) === url))
+  if (failed.size !== failedIconUrls.value.size) failedIconUrls.value = failed
+})
+
 function startDrag() {
   if (!pointer || pointer.dragging) return
   pointer.dragging = true
@@ -632,6 +639,17 @@ function openItem(event: MouseEvent, item: LauncherItem) {
   emit('open', item)
 }
 
+function hasUsableIcon(item: LauncherItem) {
+  return Boolean(item.icon && failedIconUrls.value.get(item.id) !== item.icon)
+}
+
+function handleIconError(item: LauncherItem) {
+  if (!item.icon) return
+  const failed = new Map(failedIconUrls.value)
+  failed.set(item.id, item.icon)
+  failedIconUrls.value = failed
+}
+
 function editContextItem() {
   if (contextItem.value) emit('edit', contextItem.value)
   closeContextMenu(true)
@@ -709,7 +727,7 @@ onBeforeUnmount(() => {
       :style="{ left: `${dragPosition.x}px`, top: `${dragPosition.y}px`, '--shortcut-size': `${iconSize}px`, '--shortcut-radius': `${iconRadius}px` }"
     >
       <span class="shortcut-icon" :class="{ builtin: draggedItem.action }" :style="{ backgroundColor: draggedItem.color }">
-        <img v-if="draggedItem.icon" class="shortcut-picture" :src="draggedItem.icon" alt="" draggable="false" />
+        <img v-if="hasUsableIcon(draggedItem)" class="shortcut-picture" :src="draggedItem.icon" alt="" draggable="false" @error="handleIconError(draggedItem)" />
         <component v-else-if="draggedItem.action && itemIcons[draggedItem.action]" :is="itemIcons[draggedItem.action]" :size="35" :stroke-width="2.6" />
         <Folder v-else-if="draggedItem.folder" :size="35" :stroke-width="2.2" />
         <span v-else class="shortcut-mark">{{ draggedItem.mark }}</span>
@@ -764,7 +782,7 @@ onBeforeUnmount(() => {
           >
             <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" aria-describedby="launcher-reorder-hint" aria-keyshortcuts="Shift+ArrowLeft Shift+ArrowRight" :aria-haspopup="item.folder ? 'dialog' : item.shortcut ? 'menu' : undefined" @click="openItem($event, item)" @keydown="handleShortcutKeydown($event, item)">
               <span class="shortcut-icon" :class="{ builtin: item.action }" :style="{ backgroundColor: item.color }">
-                <img v-if="item.icon" class="shortcut-picture" :src="item.icon" alt="" draggable="false" />
+                <img v-if="hasUsableIcon(item)" class="shortcut-picture" :src="item.icon" alt="" draggable="false" @error="handleIconError(item)" />
                 <component v-else-if="item.action && itemIcons[item.action]" :is="itemIcons[item.action]" :size="35" :stroke-width="2.6" />
                 <Folder v-else-if="item.folder" :size="35" :stroke-width="2.2" />
                 <span v-else class="shortcut-mark">{{ item.mark }}</span>

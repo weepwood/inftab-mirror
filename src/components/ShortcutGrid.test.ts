@@ -25,6 +25,37 @@ afterEach(() => {
 })
 
 describe('ShortcutGrid page cycling', () => {
+  it('falls back from a broken icon and retries when its URL changes', async () => {
+    installAnimationEnvironment()
+    const shortcut: LauncherItem = { ...items[0]!, icon: 'https://icons.example/broken.png' }
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items: [shortcut],
+        columns: 2,
+        rows: 1,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 0,
+        transitionDirection: 1,
+        transitionEffect: 'slide',
+        transitionDuration: 0,
+      },
+    })
+
+    await wrapper.get('.shortcut-picture').trigger('error')
+    expect(wrapper.find('.shortcut-picture').exists()).toBe(false)
+    expect(wrapper.get('.shortcut-icon .shortcut-mark').text()).toBe(shortcut.mark)
+
+    await wrapper.setProps({ items: [{ ...shortcut, icon: 'https://icons.example/recovered.png' }] })
+    expect(wrapper.get('.shortcut-picture').attributes('src')).toBe('https://icons.example/recovered.png')
+
+    await wrapper.setProps({ items: [] })
+    await wrapper.setProps({ items: [shortcut] })
+    expect(wrapper.get('.shortcut-picture').attributes('src')).toBe(shortcut.icon)
+    wrapper.unmount()
+  })
+
   it('skips configured page effects when reduced motion is requested', async () => {
     installAnimationEnvironment()
     vi.stubGlobal('matchMedia', () => ({ matches: true, addListener: () => {}, removeEventListener: () => {} }))
