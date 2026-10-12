@@ -412,6 +412,32 @@ test('backup import preview lists habits and home workspaces before restoring da
   expect(await page.evaluate(() => localStorage.getItem('inftab.habits.v1'))).toBeNull()
 })
 
+test('backup import explains shortcut and folder ID collisions before preview', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settings = page.getByRole('dialog', { name: '设置' })
+  const downloadPromise = page.waitForEvent('download')
+  await settings.getByRole('button', { name: '导出 JSON 备份' }).click()
+  const download = await downloadPromise
+  const path = await download.path()
+  expect(path).not.toBeNull()
+  const backup = JSON.parse(await readFile(path!, 'utf8')) as {
+    shortcuts: { id: string; title: string; url: string; color: string; mark: string }[]
+    folders: { id: string; title: string; shortcutIds: string[]; color: string; mark: string }[]
+  }
+  const duplicateId = `collision-${Date.now()}`
+  backup.shortcuts.push({ id: duplicateId, title: 'Collision', url: 'https://collision.example/', color: '#abc', mark: 'C' })
+  backup.folders.push({ id: duplicateId, title: 'Collision', shortcutIds: [], color: '#369', mark: 'F' })
+
+  await settings.locator('input[accept="application/json,.json"]').setInputFiles({
+    name: 'conflicting-workspace.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(backup)),
+  })
+
+  await expect(settings.getByRole('alert')).toContainText('快捷入口与文件夹使用了相同的入口 ID')
+  await expect(page.getByRole('dialog', { name: '恢复本地备份' })).toHaveCount(0)
+})
+
 test('shortcut deletion can be cancelled and requires confirmation', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByRole('button', { name: /添加快捷入口/ }).click()

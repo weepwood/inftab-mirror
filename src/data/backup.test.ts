@@ -120,6 +120,12 @@ describe('workspace backups', () => {
     }))).toThrow(/重复或无法识别/)
   })
 
+  it('explains when a backup reuses one launcher ID for a shortcut and folder', () => {
+    expect(() => parseWorkspaceBackup(backup({
+      folders: [{ id: 'custom', title: 'Work', shortcutIds: ['custom'], color: '#369', mark: 'W' }],
+    }))).toThrow(/快捷入口与文件夹使用了相同的入口 ID/)
+  })
+
   it('imports version-one backups without folders and filters stale folder members', () => {
     expect(parseWorkspaceBackup(backup()).folders).toEqual([])
     expect(parseWorkspaceBackup(backup()).countdowns).toEqual([])

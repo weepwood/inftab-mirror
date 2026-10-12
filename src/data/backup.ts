@@ -103,6 +103,10 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   const rawLauncherOrder = value.launcherOrder as string[]
 
   const shortcuts = sanitizeShortcuts(value.shortcuts)
+  const shortcutIds = new Set(shortcuts.map((shortcut) => shortcut.id))
+  if (rawFolders.some((folder) => isRecord(folder) && typeof folder.id === 'string' && shortcutIds.has(folder.id))) {
+    throw new Error('备份中的快捷入口与文件夹使用了相同的入口 ID。')
+  }
   const folders = sanitizeFolders(rawFolders, shortcuts)
   const todos = sanitizeTodos(value.todos)
   const habits = sanitizeHabits(rawHabits)
