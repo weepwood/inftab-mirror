@@ -43,7 +43,7 @@ test('creates a shortcut and keeps it after reloading the new tab', async ({ pag
 
 test('workspace tabs isolate shortcuts and persist the active workspace', async ({ page }) => {
   await page.getByRole('button', { name: '新建工作区' }).click()
-  await expect(page.getByRole('button', { name: '工作区 1' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: '工作区 1', exact: true })).toHaveAttribute('aria-pressed', 'true')
 
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByRole('button', { name: /添加快捷入口/ }).click()
@@ -64,15 +64,15 @@ test('workspace tabs isolate shortcuts and persist the active workspace', async 
   await localSearch.fill('Workspace only')
   await expect(page.getByRole('option', { name: /Workspace only/ })).toBeVisible()
 
-  await page.getByRole('button', { name: '主页' }).click()
+  await page.getByRole('button', { name: '主页', exact: true }).click()
   await expect(dock).toHaveCount(0)
   await localSearch.fill('Workspace only')
   await expect(page.locator('.local-search-empty')).toContainText('没有匹配的快捷入口')
 
-  await page.getByRole('button', { name: '工作区 1' }).click()
+  await page.getByRole('button', { name: '工作区 1', exact: true }).click()
   await expect(dock.getByRole('button', { name: '打开Workspace only' })).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('button', { name: '工作区 1' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: '工作区 1', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await page.keyboard.press('Control+f')
   await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Workspace only')
   await expect(page.getByRole('option', { name: /Workspace only/ })).toBeVisible()
@@ -82,14 +82,28 @@ test('workspace tabs isolate shortcuts and persist the active workspace', async 
   const workspaceName = page.getByRole('textbox', { name: '工作区名称' })
   await workspaceName.fill('娱乐')
   await workspaceName.press('Enter')
-  await expect(page.getByRole('button', { name: '娱乐' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: '娱乐', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: '删除当前工作区' }).click()
   const confirmation = page.getByRole('alertdialog', { name: '删除工作区？' })
   await expect(confirmation).toContainText('会移回“主页”')
   await confirmation.getByRole('button', { name: '确认删除' }).click()
-  await expect(page.getByRole('button', { name: '主页' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: '主页', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('option', { name: /Workspace only/ })).toBeVisible()
   await expect(page.getByRole('navigation', { name: '常驻 Dock' }).getByRole('button', { name: '打开Workspace only' })).toBeVisible()
+})
+
+test('workspace tabs can be reordered without moving the homepage and persist their order', async ({ page }) => {
+  await page.getByRole('button', { name: '新建工作区' }).click()
+  await page.getByRole('button', { name: '新建工作区' }).click()
+  await expect(page.locator('.home-workspace-tab')).toHaveText(['主页', '工作区 1', '工作区 2'])
+
+  await page.getByRole('button', { name: '将工作区 2左移' }).click()
+
+  await expect(page.locator('.home-workspace-tab')).toHaveText(['主页', '工作区 2', '工作区 1'])
+  await expect(page.getByRole('button', { name: '工作区 2', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: '将工作区 2左移' })).toBeDisabled()
+  await page.reload()
+  await expect(page.locator('.home-workspace-tab')).toHaveText(['主页', '工作区 2', '工作区 1'])
 })
 
 test('search submits an encoded query to the selected engine and category', async ({ page }) => {

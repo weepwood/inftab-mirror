@@ -49,6 +49,7 @@ const {
   removeFolder: removeFolderData,
   createHomeWorkspace,
   renameHomeWorkspace,
+  moveHomeWorkspace,
   removeHomeWorkspace,
   reorderLauncherItems: reorderLauncherOrder,
   setVisibleLauncherOrder,
@@ -805,6 +806,7 @@ onBeforeUnmount(() => {
         @select="activeHomeWorkspaceId = $event"
         @create="addHomeWorkspace"
         @rename="renameHomeWorkspace"
+        @move="moveHomeWorkspace"
         @remove="requestHomeWorkspaceRemoval"
       />
       <SearchBar

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref } from 'vue'
-import { Check, Plus, Pencil, Trash2, X } from '@lucide/vue'
+import { ArrowLeft, ArrowRight, Check, Plus, Pencil, Trash2, X } from '@lucide/vue'
 import { defaultHomeWorkspaceId, maxHomeWorkspaces, maxHomeWorkspaceNameLength, type HomeWorkspace } from '../data/homeWorkspaces'
 
 const props = defineProps<{
@@ -11,6 +11,7 @@ const emit = defineEmits<{
   select: [id: string]
   create: []
   rename: [id: string, name: string]
+  move: [id: string, direction: -1 | 1]
   remove: [id: string]
 }>()
 const editing = ref(false)
@@ -19,6 +20,7 @@ const nameError = ref('')
 const nameInput = ref<HTMLInputElement>()
 const tablist = ref<HTMLDivElement>()
 const activeWorkspace = () => props.workspaces.find((workspace) => workspace.id === props.activeId) ?? props.workspaces[0]
+const activeWorkspaceIndex = () => props.workspaces.findIndex((workspace) => workspace.id === props.activeId)
 
 function beginRename() {
   const workspace = activeWorkspace()
@@ -86,6 +88,8 @@ function handleTabKeydown(event: KeyboardEvent, index: number) {
 
     <div v-else class="home-workspace-actions">
       <button type="button" class="home-workspace-action" aria-label="新建工作区" :disabled="workspaces.length >= maxHomeWorkspaces" @click="emit('create')"><Plus :size="15" /></button>
+      <button type="button" class="home-workspace-action" :aria-label="`将${activeWorkspace()?.name ?? '当前工作区'}左移`" :disabled="activeWorkspaceIndex() <= 1" @click="emit('move', activeId, -1)"><ArrowLeft :size="14" /></button>
+      <button type="button" class="home-workspace-action" :aria-label="`将${activeWorkspace()?.name ?? '当前工作区'}右移`" :disabled="activeWorkspaceIndex() <= 0 || activeWorkspaceIndex() >= workspaces.length - 1" @click="emit('move', activeId, 1)"><ArrowRight :size="14" /></button>
       <button type="button" class="home-workspace-action" aria-label="重命名当前工作区" @click="beginRename"><Pencil :size="14" /></button>
       <button type="button" class="home-workspace-action" aria-label="删除当前工作区" :disabled="activeId === defaultHomeWorkspaceId" @click="emit('remove', activeId)"><Trash2 :size="14" /></button>
     </div>

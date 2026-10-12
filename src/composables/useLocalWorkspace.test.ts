@@ -111,6 +111,20 @@ describe('useLocalWorkspace home workspaces', () => {
     expect(workspace.homeWorkspaces.value[0]?.itemIds).toContain(link.id)
   })
 
+  it('reorders workspace tabs while keeping the homepage first and the active group unchanged', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const firstId = workspace.createHomeWorkspace('第一个')!
+    const secondId = workspace.createHomeWorkspace('第二个')!
+
+    expect(workspace.moveHomeWorkspace(firstId, -1)).toBe(false)
+    expect(workspace.moveHomeWorkspace('default', 1)).toBe(false)
+    expect(workspace.moveHomeWorkspace(firstId, 1)).toBe(true)
+    expect(workspace.homeWorkspaces.value.map((item) => item.id)).toEqual(['default', secondId, firstId])
+    expect(workspace.activeHomeWorkspaceId.value).toBe(secondId)
+    expect(workspace.moveHomeWorkspace(firstId, 1)).toBe(false)
+  })
+
   it('merges imported workspace groups without dropping the current active group', () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!

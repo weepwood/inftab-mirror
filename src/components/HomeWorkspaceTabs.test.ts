@@ -14,6 +14,7 @@ afterEach(() => {
 const workspaces = [
   { id: 'default', name: '主页', itemIds: [] },
   { id: 'reading-list', name: '阅读', itemIds: [] },
+  { id: 'notes', name: '笔记', itemIds: [] },
 ]
 
 describe('HomeWorkspaceTabs', () => {
@@ -36,5 +37,18 @@ describe('HomeWorkspaceTabs', () => {
 
     expect(wrapper.emitted('select')).toEqual([['reading-list']])
     expect(document.activeElement).toBe(next.element)
+  })
+
+  it('emits a workspace move request from the accessible reorder control', async () => {
+    wrapper = mount(HomeWorkspaceTabs, { props: { workspaces, activeId: 'notes' } })
+
+    await wrapper.get('[aria-label="将笔记左移"]').trigger('click')
+
+    expect(wrapper.emitted('move')).toEqual([['notes', -1]])
+    expect(wrapper.get('[aria-label="将笔记左移"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[aria-label="将笔记右移"]').attributes('disabled')).toBeDefined()
+    await wrapper.setProps({ activeId: 'default' })
+    expect(wrapper.get('[aria-label="将主页左移"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[aria-label="将主页右移"]').attributes('disabled')).toBeDefined()
   })
 })

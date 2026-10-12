@@ -147,6 +147,18 @@ export function useLocalWorkspace() {
     return true
   }
 
+  function moveHomeWorkspace(id: string, direction: -1 | 1): boolean {
+    const index = homeWorkspaces.value.findIndex((workspace) => workspace.id === id)
+    const nextIndex = index + direction
+    if (index <= 0 || nextIndex <= 0 || nextIndex >= homeWorkspaces.value.length) return false
+    const next = [...homeWorkspaces.value]
+    const [workspace] = next.splice(index, 1)
+    if (!workspace) return false
+    next.splice(nextIndex, 0, workspace)
+    homeWorkspaces.value = next
+    return true
+  }
+
   function removeHomeWorkspace(id: string): boolean {
     if (id === defaultHomeWorkspaceId || !homeWorkspaces.value.some((workspace) => workspace.id === id)) return false
     const removed = homeWorkspaces.value.find((workspace) => workspace.id === id)!
@@ -487,6 +499,7 @@ export function useLocalWorkspace() {
     removeFolder,
     createHomeWorkspace,
     renameHomeWorkspace,
+    moveHomeWorkspace,
     removeHomeWorkspace,
     reorderLauncherItems,
     setVisibleLauncherOrder,
