@@ -81,6 +81,33 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
     await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Extension E2E')
     await expect(page.getByRole('option', { name: /Extension E2E/ })).toBeVisible()
 
+    await page.keyboard.press('Escape')
+    await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+    await page.getByRole('button', { name: '新建文件夹' }).click()
+    const folderEditor = page.getByRole('dialog', { name: '新建文件夹' })
+    await folderEditor.getByLabel('文件夹名称').fill('扩展工作')
+    await folderEditor.getByRole('checkbox', { name: /Extension E2E/ }).check()
+    await folderEditor.getByRole('button', { name: '保存文件夹' }).click()
+    await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+    await page.evaluate(() => {
+      Object.defineProperty(window, '__openedShortcutUrls', { configurable: true, value: [] as string[] })
+      Object.defineProperty(window, 'open', {
+        configurable: true,
+        value: (url: string) => {
+          (window as unknown as Window & { __openedShortcutUrls: string[] }).__openedShortcutUrls.push(url)
+          return null
+        },
+      })
+    })
+    await page.keyboard.press('Control+f')
+    const folderSearch = page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })
+    await folderSearch.fill('extension.example')
+    const folderResult = page.getByRole('option', { name: /扩展工作 · Extension E2E/ })
+    await expect(folderResult).toBeVisible()
+    await folderResult.click()
+    await expect.poll(() => page.evaluate(() => (window as unknown as Window & { __openedShortcutUrls: string[] }).__openedShortcutUrls))
+      .toEqual(['https://extension.example/'])
+
     await page.locator('[data-item-id="habits"] .shortcut-open').click()
     const habitsPanel = page.getByRole('dialog', { name: '习惯打卡' })
     await habitsPanel.getByRole('textbox', { name: '添加一个习惯' }).fill('Extension walk')
