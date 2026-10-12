@@ -689,12 +689,8 @@ async function saveShortcut() {
   if (/^https?:\/\//i.test(icon) && location.protocol !== 'chrome-extension:') {
     savingShortcut.value = true
     try {
-      const response = await fetch(icon)
-      if (!response.ok) throw new Error(`图标下载失败（HTTP ${response.status}）。`)
-      const blob = await response.blob()
-      if (blob.size > 10 * 1024 * 1024) throw new Error('图标图片不能超过 10 MB。')
-      const { compressImageBlob } = await import('./data/images')
-      icon = await compressImageBlob(blob, 192)
+      const { fetchAndCompressImage } = await import('./data/images')
+      icon = await fetchAndCompressImage(icon, 192)
     } catch (error) {
       shortcutIconError.value = error instanceof Error && !error.message.includes('Failed to fetch')
         ? error.message

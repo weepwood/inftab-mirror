@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { compressImageBlob, fitImageDimensions, maxImagePixels, maxImageUploadBytes } from './images'
+import { compressImageBlob, fetchAndCompressImage, fitImageDimensions, maxImagePixels, maxImageUploadBytes } from './images'
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
@@ -26,6 +27,62 @@ describe('local image compression', () => {
     expect(dataUrl).toMatch(/^data:image\/webp;base64,/)
     expect(drawImage).toHaveBeenCalledWith(bitmap, 0, 0, 1920, 960)
     expect(bitmap.close).toHaveBeenCalledOnce()
+  })
+
+  it('downloads shortcut images without credentials or referrer, then compresses them locally', async () => {
+    const bitmap = { width: 192, height: 192, close: vi.fn() }
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(bitmap))
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D)
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => callback(new Blob(['webp'], { type: 'image/webp' })))
+    const image = new Blob(['source'], { type: 'image/png' })
+    const fetcher = vi.fn().mockResolvedValue(new Response(image, { headers: { 'content-type': 'image/png' } }))
+
+    const dataUrl = await fetchAndCompressImage('https://images.example/icon.png', 192, fetcher)
+
+    expect(dataUrl).toMatch(/^data:image\/webp;base64,/)
+    expect(fetcher).toHaveBeenCalledWith('https://images.example/icon.png', expect.objectContaining({
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+      signal: expect.any(AbortSignal),
+    }))
+    expect(bitmap.close).toHaveBeenCalledOnce()
+  })
+
+  it('rejects oversized remote image responses before decoding them', async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(null, {
+      headers: { 'content-length': String(maxImageUploadBytes + 1) },
+    }))
+
+    await expect(fetchAndCompressImage('https://images.example/large.png', 192, fetcher)).rejects.toThrow(/10 MB/)
+    expect(fetcher).toHaveBeenCalledOnce()
+  })
+
+  it('stops reading an oversized streamed image even without a content-length header', async () => {
+    const createBitmap = vi.fn()
+    vi.stubGlobal('createImageBitmap', createBitmap)
+    const body = new ReadableStream<Uint8Array>({
+      start: (controller) => {
+        controller.enqueue(new Uint8Array(maxImageUploadBytes + 1))
+        controller.close()
+      },
+    })
+    const fetcher = vi.fn().mockResolvedValue(new Response(body, { headers: { 'content-type': 'image/png' } }))
+
+    await expect(fetchAndCompressImage('https://images.example/stream.png', 192, fetcher)).rejects.toThrow(/10 MB/)
+    expect(createBitmap).not.toHaveBeenCalled()
+  })
+
+  it('aborts a stalled remote image request and reports a timeout', async () => {
+    vi.useFakeTimers()
+    const fetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+    }))
+
+    const request = fetchAndCompressImage('https://images.example/slow.png', 192, fetcher)
+    const timedOut = expect(request).rejects.toThrow(/超时/)
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    await timedOut
   })
 
   it('rejects unsupported types, oversized files, and excessive pixel dimensions', async () => {

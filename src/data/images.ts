@@ -13,6 +13,74 @@ export function fitImageDimensions(width: number, height: number, maxDimension: 
   }
 }
 
+async function readBoundedImageResponse(response: Response): Promise<Blob> {
+  const contentLength = Number(response.headers.get('content-length'))
+  if (Number.isFinite(contentLength) && contentLength > maxImageUploadBytes) {
+    throw new Error('图片不能超过 10 MB。')
+  }
+  if (!response.body) {
+    const blob = await response.blob()
+    if (blob.size > maxImageUploadBytes) throw new Error('图片不能超过 10 MB。')
+    return blob
+  }
+
+  const reader = response.body.getReader()
+  const chunks: BlobPart[] = []
+  let segment = new Uint8Array(64 * 1024)
+  let segmentLength = 0
+  let size = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      if (size > maxImageUploadBytes) {
+        await reader.cancel().catch(() => undefined)
+        throw new Error('图片不能超过 10 MB。')
+      }
+      let offset = 0
+      while (offset < value.byteLength) {
+        const copied = Math.min(segment.byteLength - segmentLength, value.byteLength - offset)
+        segment.set(value.subarray(offset, offset + copied), segmentLength)
+        segmentLength += copied
+        offset += copied
+        if (segmentLength === segment.byteLength) {
+          chunks.push(segment.buffer)
+          segment = new Uint8Array(64 * 1024)
+          segmentLength = 0
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  if (segmentLength) chunks.push(segment.slice(0, segmentLength).buffer)
+  const contentType = response.headers.get('content-type')?.split(';', 1)[0]?.trim() ?? ''
+  return new Blob(chunks, { type: contentType })
+}
+
+export async function fetchAndCompressImage(url: string, maxDimension: number, fetcher: typeof fetch = fetch): Promise<string> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10_000)
+  let blob: Blob
+  try {
+    const response = await fetcher(url, {
+      signal: controller.signal,
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+    })
+    if (!response.ok) throw new Error(`图标下载失败（HTTP ${response.status}）。`)
+    blob = await readBoundedImageResponse(response)
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('图标下载超时，请检查网络后重试。')
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
+  return compressImageBlob(blob, maxDimension)
+}
+
 export async function compressImageBlob(blob: Blob, maxDimension: number, maxOutputBytes = 1_500_000): Promise<string> {
   if (!/^image\/(png|jpeg|webp|gif)$/i.test(blob.type)) throw new Error('请选择 PNG、JPG、WebP 或 GIF 图片。')
   if (blob.size > maxImageUploadBytes) throw new Error('图片不能超过 10 MB。')

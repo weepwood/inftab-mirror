@@ -676,9 +676,12 @@ describe('new-tab keyboard search', () => {
     vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(bitmap))
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D)
     vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => callback(new Blob(['webp-icon'], { type: 'image/webp' })))
+    const remoteIcon = new TextEncoder().encode('remote-icon')
     const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
-      blob: async () => new Blob(['remote-icon'], { type: 'image/png' }),
+      status: 200,
+      headers: new Headers({ 'content-type': 'image/png', 'content-length': String(remoteIcon.byteLength) }),
+      body: new ReadableStream({ start: (controller) => { controller.enqueue(remoteIcon); controller.close() } }),
     } as Response)
     await mountApp()
     await openLauncher('settings')
@@ -688,7 +691,10 @@ describe('new-tab keyboard search', () => {
     await wrapper.get('.shortcut-dialog input[placeholder="素材文件名、图片网址或 Base64"]').setValue('//images.example/icon.png')
     await wrapper.get('.shortcut-dialog').trigger('submit')
 
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledWith('https://images.example/icon.png'))
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledWith('https://images.example/icon.png', expect.objectContaining({
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+    })))
     await vi.waitFor(() => expect(bitmap.close).toHaveBeenCalledOnce())
     await vi.waitFor(() => expect(wrapper.find('.shortcut-dialog').exists()).toBe(false))
     await flushLocalStorageWrites()
@@ -697,6 +703,28 @@ describe('new-tab keyboard search', () => {
       icon: expect.stringMatching(/^data:image\/webp;base64,/),
     })))
     expect(bitmap.close).toHaveBeenCalledOnce()
+  })
+
+  it('restores shortcut controls after a remote icon request times out', async () => {
+    await mountApp()
+    await openLauncher('settings')
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await wrapper.get('input[placeholder="例如：GitHub"]').setValue('Example')
+    await wrapper.get('input[placeholder="https://example.com"]').setValue('https://example.com')
+    await wrapper.get('.shortcut-dialog input[placeholder="素材文件名、图片网址或 Base64"]').setValue('https://images.example/slow.png')
+    vi.useFakeTimers()
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+    }))
+
+    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await flushPromises()
+    expect(wrapper.get('.shortcut-dialog button[type="submit"]').element).toHaveProperty('disabled', true)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await flushPromises()
+
+    expect(wrapper.get('.shortcut-dialog').text()).toContain('图标下载超时')
+    expect(wrapper.get('.shortcut-dialog button[type="submit"]').element).toHaveProperty('disabled', false)
   })
 
   it('restores a fresh copy of default preferences', async () => {
