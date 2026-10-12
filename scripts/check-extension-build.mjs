@@ -50,8 +50,8 @@ if (JSON.stringify(optionalHostPermissions) !== JSON.stringify(['https://hacker-
 for (const permissionField of ['permissions', 'optional_permissions']) {
   const permissions = manifest[permissionField]
   if (permissionField === 'optional_permissions') {
-    if (!Array.isArray(permissions) || JSON.stringify(permissions) !== JSON.stringify(['bookmarks', 'clipboardWrite', 'history', 'tabs'])) {
-      fail('optional_permissions must contain only the opt-in bookmarks, clipboard, browsing history, and current-window tab import features.')
+    if (!Array.isArray(permissions) || JSON.stringify(permissions) !== JSON.stringify(['bookmarks', 'clipboardWrite', 'history', 'tabs', 'topSites'])) {
+      fail('optional_permissions must contain only the opt-in bookmarks, clipboard, browsing history, current-window tabs, and most-visited sites features.')
     }
     continue
   }

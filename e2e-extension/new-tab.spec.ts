@@ -53,6 +53,7 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
         chromeApi?.permissions?.contains({ permissions: ['bookmarks'] }) ?? true,
         chromeApi?.permissions?.contains({ permissions: ['history'] }) ?? true,
         chromeApi?.permissions?.contains({ permissions: ['tabs'] }) ?? true,
+        chromeApi?.permissions?.contains({ permissions: ['topSites'] }) ?? true,
       ])
     })
 
@@ -61,11 +62,13 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
     expect(extensionState[2]).toBe(false)
     expect(extensionState[3]).toBe(false)
     expect(extensionState[4]).toBe(false)
+    expect(extensionState[5]).toBe(false)
 
     await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
     await page.getByRole('button', { name: /添加快捷入口/ }).click()
     const dialog = page.locator('.shortcut-dialog')
     await expect(dialog.getByRole('button', { name: '从打开的标签页导入' })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: '从常用网站导入' })).toBeVisible()
     await dialog.getByPlaceholder('例如：GitHub').fill('Extension E2E')
     await dialog.getByPlaceholder('https://example.com').fill('https://extension.example/')
     await dialog.getByRole('button', { name: '保存' }).click()
@@ -132,9 +135,10 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
         permissions.contains({ permissions: ['bookmarks'] }),
         permissions.contains({ permissions: ['history'] }),
         permissions.contains({ permissions: ['tabs'] }),
+        permissions.contains({ permissions: ['topSites'] }),
       ])
     })
-    expect(optionalPermissions).toEqual([false, false, false])
+    expect(optionalPermissions).toEqual([false, false, false, false])
 
     await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
     const extensionSettings = page.getByRole('dialog', { name: '设置' })

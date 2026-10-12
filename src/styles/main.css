@@ -459,6 +459,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .shortcut-dialog label { display: block; margin: 13px 0; color: #5d646c; font-size: 12px; }
 .shortcut-dialog label input:not([type='color']), .shortcut-dialog label select { width: 100%; height: 40px; display: block; margin-top: 7px; padding: 0 11px; border: 1px solid #e3e6ea; border-radius: 8px; background: #fff; color: #32373d; font-size: 13px; }
 .browser-tab-import { display: grid; gap: 7px; margin: 12px 0; }
+.browser-tab-import-actions { display: flex; flex-wrap: wrap; gap: 7px; }
 .browser-tab-import > span { color: #9299a1; font-size: 11px; line-height: 1.5; }
 .browser-tab-import label { margin: 0; }
 .browser-tab-import button { justify-self: start; }

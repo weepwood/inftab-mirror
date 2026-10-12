@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getCurrentWindowTabCandidates } from './browserTabs'
+import { getCurrentWindowTabCandidates, getMostVisitedSiteCandidates } from './browserTabs'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -26,5 +26,28 @@ describe('browser tab candidates', () => {
   it('rejects when the extension tabs API is unavailable', async () => {
     vi.stubGlobal('chrome', { runtime: { id: 'extension-id' } })
     await expect(getCurrentWindowTabCandidates()).rejects.toThrow('浏览器标签页功能当前不可用。')
+  })
+
+  it('normalizes and deduplicates top sites while rejecting unsafe URLs', async () => {
+    const get = vi.fn().mockResolvedValue([
+      { title: 'Docs', url: 'https://docs.example/path' },
+      { title: 'Duplicate after normalization', url: 'https://docs.example/path' },
+      { title: '', url: 'http://fallback.example:80/path' },
+      { title: 'Unsafe', url: 'javascript:alert(1)' },
+      { title: 'Credentials', url: 'https://user:pass@private.example/' },
+      { title: 'Internal', url: 'chrome://settings/' },
+    ])
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, topSites: { get } })
+
+    await expect(getMostVisitedSiteCandidates()).resolves.toEqual([
+      { id: 'top-site-0', title: 'Docs', url: 'https://docs.example/path', hostname: 'docs.example' },
+      { id: 'top-site-2', title: 'fallback.example', url: 'http://fallback.example/path', hostname: 'fallback.example' },
+    ])
+    expect(get).toHaveBeenCalledOnce()
+  })
+
+  it('rejects when the extension top-sites API is unavailable', async () => {
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' } })
+    await expect(getMostVisitedSiteCandidates()).rejects.toThrow('浏览器常用网站功能当前不可用。')
   })
 })

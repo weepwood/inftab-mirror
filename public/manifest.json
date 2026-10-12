@@ -10,7 +10,8 @@
     "bookmarks",
     "clipboardWrite",
     "history",
-    "tabs"
+    "tabs",
+    "topSites"
   ],
   "host_permissions": [
     "https://api.open-meteo.com/*",
