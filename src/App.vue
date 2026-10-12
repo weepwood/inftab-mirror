@@ -837,6 +837,7 @@ function handleKeydown(event: KeyboardEvent) {
   }
   const target = event.target instanceof HTMLElement ? event.target : null
   const editingText = target?.matches('input, textarea, [contenteditable="true"]') ?? false
+  const navigatingComposite = Boolean(target?.closest('[role="menu"], [role="listbox"]'))
   const localSearchShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f'
   if (localSearchShortcut && (!editingText || target?.closest('.search-area'))
     && !activePanel.value && !shortcutDialog.value && !folderDialogOpen.value) {
@@ -854,8 +855,8 @@ function handleKeydown(event: KeyboardEvent) {
     searchBar.value.focusSearch()
     return
   }
-  if (event.key === 'ArrowRight' && !editingText && !localSearchMode.value && !minimalMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(1)
-  if (event.key === 'ArrowLeft' && !editingText && !localSearchMode.value && !minimalMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(-1)
+  if (event.key === 'ArrowRight' && !editingText && !navigatingComposite && !localSearchMode.value && !minimalMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(1)
+  if (event.key === 'ArrowLeft' && !editingText && !navigatingComposite && !localSearchMode.value && !minimalMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(-1)
 }
 
 function toggleMinimalMode() {

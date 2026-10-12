@@ -74,6 +74,29 @@ test('search engine menu keeps Tab focus in the search controls', async ({ page 
   await expect(picker).toBeFocused()
 })
 
+test('horizontal arrows in composite menus do not turn the homepage', async ({ page }) => {
+  const currentPage = page.locator('.page-dot[aria-current="page"]')
+  const initialPage = await currentPage.getAttribute('aria-label')
+
+  const enginePicker = page.getByRole('button', { name: '当前搜索引擎：Baidu' })
+  await enginePicker.click()
+  const engineOption = page.getByRole('option', { name: /Baidu/ })
+  await engineOption.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(currentPage).toHaveAttribute('aria-label', initialPage!)
+  await expect(engineOption).toBeFocused()
+  await page.keyboard.press('Escape')
+
+  const shortcut = page.locator('.shortcut-page[aria-hidden="false"] [data-item-id="jd"] .shortcut-open')
+  await shortcut.focus()
+  await page.keyboard.press('Shift+F10')
+  const menuItem = page.getByRole('menuitem').first()
+  await expect(menuItem).toBeFocused()
+  await page.keyboard.press('ArrowLeft')
+  await expect(currentPage).toHaveAttribute('aria-label', initialPage!)
+  await expect(menuItem).toBeFocused()
+})
+
 test('keyboard page turns keep focus on the corresponding shortcut', async ({ page }) => {
   await page.evaluate(() => {
     const key = 'inftab.preferences.v1'
