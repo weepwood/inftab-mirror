@@ -12,6 +12,10 @@ function pointerEvent(type: string, values: Record<string, unknown>) {
   return Object.assign(new Event(type, { bubbles: true, cancelable: true }), values)
 }
 
+function touchClick(pointerId: number) {
+  return Object.assign(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }), { pointerId, pointerType: 'touch' })
+}
+
 function beginTouchGesture() {
   wrapper!.get('.home-dock').element.dispatchEvent(pointerEvent('pointerdown', {
     pointerId: 1, pointerType: 'touch', button: 0, clientX: 100, clientY: 100,
@@ -42,7 +46,7 @@ describe('HomeDock touch gestures', () => {
     window.dispatchEvent(pointerEvent('pointerup', { pointerId: 1 }))
     await Promise.resolve()
 
-    wrapper.get('.home-dock-item').element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }))
+    wrapper.get('.home-dock-item').element.dispatchEvent(touchClick(1))
 
     expect(wrapper.emitted('open')).toBeUndefined()
   })
@@ -59,7 +63,7 @@ describe('HomeDock touch gestures', () => {
       pointerId: 2, pointerType: 'touch', button: 0, clientX: 100, clientY: 100,
     }))
     window.dispatchEvent(pointerEvent('pointerup', { pointerId: 2 }))
-    wrapper.get('.home-dock-item').element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }))
+    wrapper.get('.home-dock-item').element.dispatchEvent(touchClick(2))
 
     expect(wrapper.emitted('open')).toHaveLength(1)
   })

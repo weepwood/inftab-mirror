@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { X } from '@lucide/vue'
 import type { LauncherItem } from '../types'
 
@@ -20,13 +20,19 @@ interface DockTouchGesture {
 let gesture: DockTouchGesture | undefined
 let suppressClickTimer: ReturnType<typeof setTimeout> | undefined
 let suppressClick = false
+let suppressedClickPointerId: number | undefined
 
 function clearSuppressedClick() {
   suppressClick = false
+  suppressedClickPointerId = undefined
   if (suppressClickTimer !== undefined) {
     clearTimeout(suppressClickTimer)
     suppressClickTimer = undefined
   }
+}
+
+function clearSuppressedClickOnPointerDown() {
+  clearSuppressedClick()
 }
 
 function cleanGestureListeners() {
@@ -36,7 +42,6 @@ function cleanGestureListeners() {
 }
 
 function startDockGesture(event: PointerEvent) {
-  clearSuppressedClick()
   if (event.pointerType !== 'touch' || event.button !== 0 || !dock.value) return
   gesture = {
     pointerId: event.pointerId,
@@ -72,6 +77,7 @@ function finishDockGesture(event: PointerEvent) {
   cleanGestureListeners()
   if (!moved) return
   suppressClick = true
+  suppressedClickPointerId = event.pointerId
   if (suppressClickTimer !== undefined) clearTimeout(suppressClickTimer)
   suppressClickTimer = setTimeout(clearSuppressedClick, 500)
 }
@@ -88,12 +94,22 @@ function preventGestureClick(event: MouseEvent) {
     return
   }
   if (!suppressClick) return
+  const pointerId = 'pointerId' in event && typeof event.pointerId === 'number' ? event.pointerId : undefined
+  if (pointerId !== undefined && pointerId !== suppressedClickPointerId) {
+    clearSuppressedClick()
+    return
+  }
   event.preventDefault()
   event.stopPropagation()
   clearSuppressedClick()
 }
 
+onMounted(() => {
+  window.addEventListener('pointerdown', clearSuppressedClickOnPointerDown, true)
+})
+
 onBeforeUnmount(() => {
+  window.removeEventListener('pointerdown', clearSuppressedClickOnPointerDown, true)
   cleanGestureListeners()
   clearSuppressedClick()
 })
