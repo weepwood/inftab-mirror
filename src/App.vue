@@ -17,6 +17,10 @@ import { getPanelListeners, getPanelProps, launcherPanelRoutes, panelPlugins, sh
 import { maxDockItems, type HomeWidgetId, type LauncherItem, type Shortcut, type ShortcutFolder } from './types'
 
 type Panel = PanelId | null
+interface LocalSearchMatch {
+  item: LauncherItem
+  folderTitle?: string
+}
 
 const ShortcutGrid = lazyPluginComponent(
   () => import('./components/ShortcutGrid.vue'),
@@ -196,11 +200,20 @@ const folderEditorShortcuts = computed(() => shortcuts.value.filter((shortcut) =
 const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
 const pageNavigation = computed(() => getPageNavigation(pageCount.value, currentPage.value))
 watch(activeHomeWorkspaceId, () => { currentPage.value = 0 })
-const localSearchMatches = computed(() => {
+const localSearchMatches = computed<LocalSearchMatch[]>(() => {
   const needle = query.value.trim().toLowerCase()
   if (!needle) return []
-  return allLauncherItems.value.filter((item) => item.title.toLowerCase().includes(needle)
-    || item.shortcut?.url.toLowerCase().includes(needle)).slice(0, 8)
+  const matches: LocalSearchMatch[] = allLauncherItems.value.map((item) => ({ item }))
+  for (const folder of folders.value) {
+    if (!activeHomeWorkspaceItemIds.value.has(folder.id)) continue
+    for (const shortcutId of folder.shortcutIds) {
+      const item = availableLauncherItems.value.find((candidate) => candidate.id === shortcutId && candidate.shortcut)
+      if (item) matches.push({ item, folderTitle: folder.title })
+    }
+  }
+  return matches.filter(({ item, folderTitle }) => item.title.toLowerCase().includes(needle)
+    || item.shortcut?.url.toLowerCase().includes(needle)
+    || folderTitle?.toLowerCase().includes(needle)).slice(0, 8)
 })
 let panelReturnFocusTarget: HTMLElement | undefined
 let systemThemeQuery: MediaQueryList | undefined
@@ -379,7 +392,7 @@ function handlePanelKeydown(event: KeyboardEvent) {
 function submitSearch() {
   if (localSearchMode.value) {
     const [firstMatch] = localSearchMatches.value
-    if (firstMatch) openLocalSearchResult(firstMatch)
+    if (firstMatch) openLocalSearchResult(firstMatch.item)
     return
   }
   const destination = buildSearchUrl(preferences.value.engine, preferences.value.mode, query.value, customSearchEngines.value)
@@ -910,16 +923,16 @@ onBeforeUnmount(() => {
           <div v-if="query.trim()" class="local-search-results" role="listbox" aria-label="快捷入口搜索结果">
             <p v-if="!localSearchMatches.length" class="local-search-empty" role="status">没有匹配的快捷入口</p>
             <button
-              v-for="item in localSearchMatches"
-              :key="item.id"
+              v-for="match in localSearchMatches"
+              :key="match.item.id"
               type="button"
               role="option"
               class="local-search-result"
-              @click="openLocalSearchResult(item)"
+              @click="openLocalSearchResult(match.item)"
               @keydown="handleLocalSearchResultKeydown"
             >
-              <span class="local-search-result-title">{{ item.title }}</span>
-              <span v-if="item.shortcut" class="local-search-result-url">{{ item.shortcut.url }}</span>
+              <span class="local-search-result-title">{{ match.folderTitle ? `${match.folderTitle} · ${match.item.title}` : match.item.title }}</span>
+              <span v-if="match.item.shortcut" class="local-search-result-url">{{ match.item.shortcut.url }}</span>
             </button>
           </div>
         </template>

@@ -983,6 +983,36 @@ test('lazy folder editor creates and opens a folder with selected shortcuts', as
   await expect(folder).toContainText('天猫精选')
 })
 
+test('keyboard launcher search finds and opens a shortcut stored inside a folder', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByRole('button', { name: '新建文件夹' }).click()
+  const editor = page.getByRole('dialog', { name: '新建文件夹' })
+  await editor.getByLabel('文件夹名称').fill('工作')
+  await editor.getByRole('checkbox', { name: /京东商城/ }).check()
+  await editor.getByRole('button', { name: '保存文件夹' }).click()
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+
+  await page.evaluate(() => {
+    Object.defineProperty(window, '__openedShortcutUrls', { configurable: true, value: [] as string[] })
+    Object.defineProperty(window, 'open', {
+      configurable: true,
+      value: (url: string) => {
+        (window as Window & { __openedShortcutUrls: string[] }).__openedShortcutUrls.push(url)
+        return null
+      },
+    })
+  })
+  await page.keyboard.press('Control+f')
+  const search = page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })
+  await search.fill('jd.com')
+  const result = page.getByRole('option', { name: /工作 · 京东商城/ })
+  await expect(result).toBeVisible()
+  await result.click()
+
+  await expect.poll(() => page.evaluate(() => (window as Window & { __openedShortcutUrls: string[] }).__openedShortcutUrls))
+    .toEqual(['https://www.jd.com/'])
+})
+
 test('pinned dock launchers stay available across pages and reloads', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByLabel('固定天气到 Dock').check()
