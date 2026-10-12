@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { launcherItems } from '../data/defaults'
-import { launcherPanelRoutes, panelPlugins, retryPanelLoad, shortcutPanelRoutes } from './registry'
+import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes } from './registry'
 import { availableHomeWidgetIds, availablePanelIds } from './ids'
 import { homeWidgetPlugins } from './widgetRegistry'
 import { defaultFocusTimerState } from '../data/focusTimer'
@@ -71,26 +71,5 @@ describe('built-in panel plugin registry', () => {
 
     listeners.addShortcut?.('Vue Docs', 'https://vuejs.org/')
     expect(addShortcut).toHaveBeenCalledWith('Vue Docs', 'https://vuejs.org/')
-  })
-
-  it('retries a failed panel chunk twice before showing the error state', () => {
-    vi.useFakeTimers()
-    const retry = vi.fn()
-    const fail = vi.fn()
-    const error = new Error('Failed to fetch dynamically imported module')
-
-    retryPanelLoad(error, retry, fail, 1)
-    vi.advanceTimersByTime(249)
-    expect(retry).not.toHaveBeenCalled()
-    vi.advanceTimersByTime(1)
-    expect(retry).toHaveBeenCalledOnce()
-    expect(fail).not.toHaveBeenCalled()
-
-    retryPanelLoad(error, retry, fail, 2)
-    vi.advanceTimersByTime(500)
-    expect(retry).toHaveBeenCalledTimes(2)
-
-    retryPanelLoad(error, retry, fail, 3)
-    expect(fail).toHaveBeenCalledOnce()
   })
 })

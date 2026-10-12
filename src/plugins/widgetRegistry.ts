@@ -1,8 +1,9 @@
-import { defineAsyncComponent, h, type Component } from 'vue'
+import type { Component } from 'vue'
 import type { CountdownItem, Note, TodoItem } from '../types'
 import type { FocusTimerState } from '../data/focusTimer'
 import type { PanelId } from './ids'
 import type { HomeWidgetId } from './ids'
+import { lazyPluginComponent } from './asyncComponent'
 
 export interface HomeWidgetContext {
   todos: TodoItem[]
@@ -23,24 +24,8 @@ export interface HomeWidgetPlugin {
 
 export type HomeWidgetPluginRegistry = Record<HomeWidgetId, HomeWidgetPlugin>
 
-const widgetLoadingComponent: Component = {
-  render: () => h('p', { class: 'panel-loading', role: 'status' }, '正在加载小组件…'),
-}
-const widgetErrorComponent: Component = {
-  render: () => h('p', { class: 'panel-loading', role: 'alert' }, '小组件加载失败，请刷新页面后重试。'),
-}
-
 function lazyWidget(loader: () => Promise<{ default: Component }>) {
-  return defineAsyncComponent({
-    loader,
-    loadingComponent: widgetLoadingComponent,
-    errorComponent: widgetErrorComponent,
-    delay: 0,
-    onError(_error, retry, fail, attempts) {
-      if (attempts >= 3) fail()
-      else setTimeout(retry, attempts * 250)
-    },
-  })
+  return lazyPluginComponent(loader, '正在加载小组件…', '小组件加载失败，请重试。')
 }
 
 export const homeWidgetPlugins = {

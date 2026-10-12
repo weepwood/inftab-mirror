@@ -1,8 +1,9 @@
-import { defineAsyncComponent, h, type Component } from 'vue'
+import type { Component } from 'vue'
 import type { WorkspaceBackup } from '../data/backup'
 import type { CountdownItem, CustomSearchEngine, Note, Preferences, TodoItem } from '../types'
 import type { FocusTimerState } from '../data/focusTimer'
 import type { PanelId } from './ids'
+import { lazyPluginComponent } from './asyncComponent'
 
 export type { PanelId } from './ids'
 
@@ -72,29 +73,8 @@ export interface PanelPlugin {
   listeners: (context: PanelPluginContext) => Record<string, (...args: never[]) => void>
 }
 
-const panelLoadingComponent: Component = {
-  render: () => h('p', { class: 'panel-loading', role: 'status' }, '正在加载面板…'),
-}
-const panelErrorComponent: Component = {
-  render: () => h('p', { class: 'panel-loading', role: 'alert' }, '面板加载失败，请刷新页面后重试。'),
-}
-
 function lazyPanel(loader: () => Promise<{ default: Component }>) {
-  return defineAsyncComponent({
-    loader,
-    loadingComponent: panelLoadingComponent,
-    errorComponent: panelErrorComponent,
-    delay: 0,
-    onError: retryPanelLoad,
-  })
-}
-
-export function retryPanelLoad(_error: Error, retry: () => void, fail: () => void, attempts: number) {
-  if (attempts >= 3) {
-    fail()
-    return
-  }
-  setTimeout(retry, attempts * 250)
+  return lazyPluginComponent(loader, '正在加载面板…', '面板加载失败，请重试。')
 }
 
 export const panelPlugins = {
