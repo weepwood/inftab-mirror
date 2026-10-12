@@ -271,6 +271,7 @@ describe('ShortcutGrid page cycling', () => {
     trigger.focus()
     await wrapper.get('.shortcut-open').trigger('keydown', { key: 'F10', shiftKey: true })
     await flushPromises()
+    await vi.waitFor(() => expect(wrapper.find('[role="menuitem"]').exists()).toBe(true))
     expect(document.activeElement).toBe(wrapper.get('[role="menuitem"]').element)
 
     const moveDown = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })
@@ -314,6 +315,7 @@ describe('ShortcutGrid keyboard reordering', () => {
     const trigger = wrapper.get('.shortcut-open')
     await trigger.trigger('keydown', { key: 'F10', shiftKey: true })
     await flushPromises()
+    await vi.waitFor(() => expect(wrapper.find('[role="menuitem"]').exists()).toBe(true))
     await wrapper.findAll('[role="menuitem"]')[0]!.trigger('keydown', { key: 'ArrowDown' })
     const copyAction = wrapper.findAll('[role="menuitem"]').find((item) => item.text().includes('复制网址'))!
     expect(document.activeElement).toBe(copyAction.element)
@@ -350,6 +352,7 @@ describe('ShortcutGrid keyboard reordering', () => {
     })
 
     await wrapper.get('.shortcut-open').trigger('keydown', { key: 'F10', shiftKey: true })
+    await vi.waitFor(() => expect(wrapper.find('[role="menuitem"]').exists()).toBe(true))
     await wrapper.findAll('[role="menuitem"]').find((item) => item.text().includes('复制网址'))!.trigger('click')
     await flushPromises()
 

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Bookmark, CalendarDays, Calculator, CloudSun, Copy, Folder, History, Image, ListTodo, PartyPopper, Pencil, Pin, Settings, StickyNote, Trash2 } from '@lucide/vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Bookmark, CalendarDays, Calculator, CloudSun, Folder, History, Image, ListTodo, PartyPopper, Settings, StickyNote } from '@lucide/vue'
 import type { Component } from 'vue'
 import { maxDockItems, type LauncherItem, type PageTransitionEffect } from '../types'
+
+const ShortcutContextMenu = defineAsyncComponent(() => import('./ShortcutContextMenu.vue'))
 
 const props = defineProps<{
   items: LauncherItem[]
@@ -80,8 +82,6 @@ const displayPages = computed(() => {
   })).flat()
 })
 const contextItem = ref<LauncherItem>()
-const contextMenu = ref<HTMLElement>()
-const contextMenuIndex = ref(0)
 const contextPosition = ref({ left: 0, top: 0 })
 const moveAnnouncement = ref('')
 let contextMenuTrigger: HTMLElement | undefined
@@ -561,9 +561,7 @@ function showContextMenu(item: LauncherItem, x: number, y: number, trigger: HTML
     top: Math.max(8, Math.min(y, window.innerHeight - height - 8)),
   }
   contextMenuTrigger = trigger
-  contextMenuIndex.value = 0
   contextItem.value = item
-  void nextTick(() => contextMenu.value?.querySelector<HTMLElement>('[role="menuitem"]')?.focus())
 }
 
 function closeContextMenu(restoreFocus = false) {
@@ -575,25 +573,6 @@ function closeContextMenu(restoreFocus = false) {
 
 function handleWindowClick() {
   closeContextMenu()
-}
-
-function handleContextMenuKeydown(event: KeyboardEvent) {
-  const menuItems = [...(contextMenu.value?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])]
-  if (!menuItems.length) return
-  let nextIndex = contextMenuIndex.value
-  if (event.key === 'ArrowDown') nextIndex = (nextIndex + 1) % menuItems.length
-  else if (event.key === 'ArrowUp') nextIndex = (nextIndex - 1 + menuItems.length) % menuItems.length
-  else if (event.key === 'Home') nextIndex = 0
-  else if (event.key === 'End') nextIndex = menuItems.length - 1
-  else return
-  event.preventDefault()
-  contextMenuIndex.value = nextIndex
-  menuItems[nextIndex]?.focus()
-}
-
-function handleContextMenuFocusOut(event: FocusEvent) {
-  const nextTarget = event.relatedTarget
-  if (!(nextTarget instanceof Node) || !contextMenu.value?.contains(nextTarget)) closeContextMenu()
 }
 
 function openItem(event: MouseEvent, item: LauncherItem) {
@@ -608,20 +587,17 @@ function openItem(event: MouseEvent, item: LauncherItem) {
   emit('open', item)
 }
 
-function editContextItem(event: MouseEvent) {
-  event.stopPropagation()
+function editContextItem() {
   if (contextItem.value) emit('edit', contextItem.value)
   closeContextMenu(true)
 }
 
-function removeContextItem(event: MouseEvent) {
-  event.stopPropagation()
+function removeContextItem() {
   if (contextItem.value) emit('remove', contextItem.value)
   closeContextMenu(true)
 }
 
-function toggleDockContextItem(event: MouseEvent) {
-  event.stopPropagation()
+function toggleDockContextItem() {
   const item = contextItem.value
   if (!item) return
   const dockItemIds = props.dockItemIds ?? []
@@ -637,8 +613,7 @@ function toggleDockContextItem(event: MouseEvent) {
   closeContextMenu(true)
 }
 
-async function copyContextItem(event: MouseEvent) {
-  event.stopPropagation()
+async function copyContextItem() {
   const shortcut = contextItem.value?.shortcut
   if (!shortcut) return
   try {
@@ -757,20 +732,17 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div
+    <ShortcutContextMenu
       v-if="contextItem"
-      ref="contextMenu"
-      class="shortcut-context-menu"
-      role="menu"
-      :style="{ left: `${contextPosition.left}px`, top: `${contextPosition.top}px` }"
-      @click.stop
-      @keydown="handleContextMenuKeydown"
-      @focusout="handleContextMenuFocusOut"
-    >
-      <button type="button" role="menuitem" :tabindex="contextMenuIndex === 0 ? 0 : -1" @click="editContextItem"><Pencil :size="14" /> 编辑{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
-      <button v-if="contextItem.shortcut" type="button" role="menuitem" :tabindex="contextMenuIndex === 1 ? 0 : -1" @click="copyContextItem"><Copy :size="14" /> 复制网址</button>
-      <button type="button" role="menuitem" :tabindex="contextMenuIndex === (contextItem.shortcut ? 2 : 1) ? 0 : -1" :disabled="!dockItemIds?.includes(contextItem.id) && (dockItemIds?.length ?? 0) >= maxDockItems" @click="toggleDockContextItem"><Pin :size="14" /> {{ dockItemIds?.includes(contextItem.id) ? '从 Dock 移除' : '固定到 Dock' }}</button>
-      <button type="button" role="menuitem" class="danger" :tabindex="contextMenuIndex === (contextItem.shortcut ? 3 : 2) ? 0 : -1" @click="removeContextItem"><Trash2 :size="14" /> 删除{{ contextItem.folder ? '文件夹' : '快捷入口' }}</button>
-    </div>
+      :key="contextItem.id"
+      :item="contextItem"
+      :dock-item-ids="dockItemIds ?? []"
+      :position="contextPosition"
+      @close="closeContextMenu()"
+      @edit="editContextItem"
+      @copy="copyContextItem"
+      @toggle-dock="toggleDockContextItem"
+      @remove="removeContextItem"
+    />
   </div>
 </template>
