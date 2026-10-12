@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { mount, type VueWrapper } from '@vue/test-utils'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import SearchBar from './SearchBar.vue'
 
 let wrapper: VueWrapper | undefined
@@ -84,6 +84,45 @@ describe('SearchBar keyboard navigation', () => {
     await wrapper.vm.$nextTick()
     expect(document.querySelector('.engine-menu')).toBeNull()
     expect(document.activeElement).toBe(picker.element)
+  })
+
+  it('keeps the engine menu anchored when the page scrolls or the viewport resizes', async () => {
+    const addListener = vi.spyOn(window, 'addEventListener')
+    const removeListener = vi.spyOn(window, 'removeEventListener')
+    wrapper = mount(SearchBar, {
+      attachTo: document.body,
+      props: { modelValue: '', engine: 'baidu', mode: 'html', visibleModes: [] },
+    })
+    const bounds = { left: 20, bottom: 70, top: 16, right: 320, width: 300, height: 54, x: 20, y: 16, toJSON: () => ({}) }
+    const getBounds = vi.spyOn(wrapper.get('.search-box').element, 'getBoundingClientRect').mockReturnValue(bounds)
+    await wrapper.get('.engine-picker').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(addListener).toHaveBeenCalledWith('scroll', expect.any(Function), true)
+    const menu = document.querySelector<HTMLElement>('.engine-menu')!
+    expect(menu.style.top).toBe('78px')
+    expect(menu.style.left).toBe('28px')
+
+    getBounds.mockReturnValue({ ...bounds, left: 46, bottom: 122, x: 46, y: 68 })
+    window.dispatchEvent(new Event('scroll'))
+    await wrapper.vm.$nextTick()
+    expect(menu.style.top).toBe('130px')
+    expect(menu.style.left).toBe('54px')
+
+    getBounds.mockReturnValue({ ...bounds, left: 12, bottom: 96, x: 12, y: 42 })
+    window.dispatchEvent(new Event('resize'))
+    await wrapper.vm.$nextTick()
+    expect(menu.style.top).toBe('104px')
+    expect(menu.style.left).toBe('20px')
+
+    await wrapper.get('.engine-picker').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(removeListener).toHaveBeenCalledWith('scroll', expect.any(Function), true)
+
+    await wrapper.get('.engine-picker').trigger('click')
+    await wrapper.vm.$nextTick()
+    wrapper.unmount()
+    wrapper = undefined
+    expect(removeListener.mock.calls.filter(([type]) => type === 'scroll')).toHaveLength(2)
   })
 
   it('closes the engine listbox on Tab and preserves logical forward and reverse focus order', async () => {

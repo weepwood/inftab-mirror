@@ -50,13 +50,17 @@ function showTranslationError() {
   translationError.value = true
 }
 
+function updateEngineMenuPosition() {
+  const bounds = searchBox.value?.getBoundingClientRect()
+  if (bounds) engineMenuPosition.value = { top: bounds.bottom + 8, left: bounds.left + 8 }
+}
+
 function toggleEngines() {
   if (showEngines.value) {
     showEngines.value = false
     return
   }
-  const bounds = searchBox.value?.getBoundingClientRect()
-  if (bounds) engineMenuPosition.value = { top: bounds.bottom + 8, left: bounds.left + 8 }
+  updateEngineMenuPosition()
   showEngines.value = true
   void nextTick(() => focusSelectedEngine())
 }
@@ -142,9 +146,20 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', closeOnOutsidePointer)
   window.removeEventListener('keydown', closeOnEscape)
+  window.removeEventListener('resize', updateEngineMenuPosition)
+  window.removeEventListener('scroll', updateEngineMenuPosition, true)
 })
 watch(() => props.localSearch, (enabled) => {
   if (enabled) closeEngineMenu()
+})
+watch(showEngines, (isOpen) => {
+  if (isOpen) {
+    window.addEventListener('resize', updateEngineMenuPosition)
+    window.addEventListener('scroll', updateEngineMenuPosition, true)
+  } else {
+    window.removeEventListener('resize', updateEngineMenuPosition)
+    window.removeEventListener('scroll', updateEngineMenuPosition, true)
+  }
 })
 
 defineExpose({ focusSearch, showTranslationError })
