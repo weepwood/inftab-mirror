@@ -2,7 +2,7 @@
 import { defineComponent, h } from 'vue'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { lazyPluginComponent } from './asyncComponent'
+import { lazyPluginComponent, retryAsyncLoad } from './asyncComponent'
 
 let wrapper: VueWrapper | undefined
 
@@ -13,6 +13,27 @@ afterEach(() => {
 })
 
 describe('lazy plugin component loading', () => {
+  it('retries transient async module failures and rejects after the final attempt', async () => {
+    vi.useFakeTimers()
+    const loader = vi.fn()
+      .mockRejectedValueOnce(new Error('temporary chunk failure'))
+      .mockRejectedValueOnce(new Error('temporary chunk failure'))
+      .mockResolvedValue('loaded')
+
+    const result = retryAsyncLoad(loader)
+    await vi.advanceTimersByTimeAsync(250)
+    await vi.advanceTimersByTimeAsync(500)
+    await expect(result).resolves.toBe('loaded')
+    expect(loader).toHaveBeenCalledTimes(3)
+
+    const failingLoader = vi.fn(async () => { throw new Error('chunk unavailable') })
+    const failure = expect(retryAsyncLoad(failingLoader)).rejects.toThrow('chunk unavailable')
+    await vi.advanceTimersByTimeAsync(250)
+    await vi.advanceTimersByTimeAsync(500)
+    await failure
+    expect(failingLoader).toHaveBeenCalledTimes(3)
+  })
+
   it('cancels a scheduled chunk retry when its wrapper unmounts', async () => {
     vi.useFakeTimers()
     const loader = vi.fn(async () => { throw new Error('chunk unavailable') })

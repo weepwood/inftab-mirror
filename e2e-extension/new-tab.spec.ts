@@ -28,6 +28,17 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
     await expect(page).toHaveURL(/^chrome-extension:\/\/[a-p]{32}\/index\.html/)
     await expect(page.getByRole('heading', { name: 'Infinity 新标签页' })).toBeVisible()
 
+    await page.route('https://translate.google.com/**', (route) => route.fulfill({
+      contentType: 'text/html',
+      body: '<title>Translation test</title>',
+    }))
+    await page.getByRole('searchbox', { name: '输入并搜索' }).fill('extension & hello')
+    await page.getByRole('button', { name: '翻译成简体中文' }).click()
+    await expect(page).toHaveURL(/translate\.google\.com\/\?sl=auto&tl=zh-CN&text=extension%20%26%20hello&op=translate/)
+    await page.goto('chrome://newtab/')
+    await expect(page).toHaveURL(/^chrome-extension:\/\/[a-p]{32}\/index\.html/)
+    await expect(page.getByRole('heading', { name: 'Infinity 新标签页' })).toBeVisible()
+
     const extensionState = await page.evaluate(() => {
       const chromeApi = (window as unknown as {
         chrome?: {

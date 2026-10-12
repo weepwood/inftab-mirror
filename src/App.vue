@@ -5,7 +5,7 @@ import { ArrowLeft, House, Menu, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
 import ClockWidget from './components/ClockWidget.vue'
 import ShortcutGrid from './components/ShortcutGrid.vue'
-import { lazyPluginComponent } from './plugins/asyncComponent'
+import { lazyPluginComponent, retryAsyncLoad } from './plugins/asyncComponent'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent } from './composables/useStoredState'
 import { launcherItems } from './data/defaults'
@@ -119,7 +119,7 @@ const backupExportError = ref('')
 const storageError = ref('')
 const pendingDestructiveAction = ref<{ title: string; description: string; confirmLabel?: string; run: () => void }>()
 let destructiveActionFocusTarget: HTMLElement | undefined
-const searchBar = ref<{ focusSearch: () => void }>()
+const searchBar = ref<{ focusSearch: () => void; showTranslationError: () => void }>()
 const sidePanel = ref<HTMLElement>()
 const folderDialogOpen = ref(false)
 const activeFolder = ref<ShortcutFolder>()
@@ -384,9 +384,13 @@ function submitSearch() {
 
 async function submitTranslation() {
   if (localSearchMode.value) return
-  const { buildTranslationUrl } = await import('./data/translation')
-  const destination = buildTranslationUrl(query.value)
-  if (destination) window.location.assign(destination)
+  try {
+    const { buildTranslationUrl } = await retryAsyncLoad(() => import('./data/translation'))
+    const destination = buildTranslationUrl(query.value)
+    if (destination) window.location.assign(destination)
+  } catch {
+    searchBar.value?.showTranslationError()
+  }
 }
 
 function openLocalSearchResult(item: LauncherItem) {

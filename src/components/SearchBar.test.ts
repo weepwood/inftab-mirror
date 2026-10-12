@@ -21,6 +21,11 @@ describe('SearchBar keyboard navigation', () => {
     expect((wrapper.get('.quick-translate').element as HTMLButtonElement).disabled).toBe(false)
     await wrapper.get('.quick-translate').trigger('click')
     expect(wrapper.emitted('translate')).toHaveLength(1)
+    wrapper.vm.$.exposed?.showTranslationError()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[role="status"]').text()).toContain('暂时无法加载')
+    await wrapper.get('.quick-translate').trigger('click')
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
 
     await wrapper.setProps({ localSearch: true })
     expect(wrapper.find('.quick-translate').exists()).toBe(false)

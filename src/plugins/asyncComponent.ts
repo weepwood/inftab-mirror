@@ -1,5 +1,17 @@
 import { defineAsyncComponent, defineComponent, h, onBeforeUnmount, shallowRef, type AsyncComponentLoader, type Component, type ShallowRef } from 'vue'
 
+export async function retryAsyncLoad<T>(loader: () => Promise<T>, maxAttempts = 3): Promise<T> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await loader()
+    } catch (error) {
+      if (attempt >= maxAttempts) throw error
+      await new Promise<void>((resolve) => setTimeout(resolve, attempt * 250))
+    }
+  }
+  throw new Error('Async loader exhausted without a result.')
+}
+
 export function lazyPluginComponent(loader: AsyncComponentLoader, loadingMessage: string, failureMessage: string): Component {
   const loadingComponent = defineComponent({
     name: 'PluginChunkLoading',

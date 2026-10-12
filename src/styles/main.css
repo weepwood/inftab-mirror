@@ -139,6 +139,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .submit-search { width: 48px; height: 100%; display: grid; place-items: center; border: 0; border-radius: 0 11px 11px 0; background: #fff; color: #777; cursor: pointer; opacity: 0; transition: opacity .15s; }
 .search-box:focus-within .quick-translate, .search-box:hover .quick-translate, .quick-translate:focus-visible,
 .search-box:focus-within .submit-search, .search-box:hover .submit-search { opacity: 1; }
+.search-action-error { margin: 6px 0 0; color: #fff; font-size: 12px; text-align: center; }
 .engine-menu { position: fixed; z-index: 30; width: 190px; overflow: hidden; border: 1px solid #ececec; border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgba(0, 0, 0, .2); }
 .engine-menu-enter-active, .engine-menu-leave-active { transform-origin: top left; transition: opacity .16s ease, transform .18s cubic-bezier(.2, .75, .25, 1); }
 .engine-menu-enter-from, .engine-menu-leave-to { transform: translateY(-7px) scale(.97); opacity: 0; }

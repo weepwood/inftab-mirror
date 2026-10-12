@@ -23,6 +23,7 @@ const emit = defineEmits<{
 }>()
 
 const showEngines = ref(false)
+const translationError = ref(false)
 const availableEngines = computed(() => [
   ...engines,
   ...props.customEngines.map((item) => ({ id: `custom:${item.id}` as const, label: item.name, mark: item.name.slice(0, 1) })),
@@ -38,6 +39,15 @@ const searchInput = ref<HTMLInputElement>()
 
 function focusSearch() {
   searchInput.value?.focus()
+}
+
+function requestTranslation() {
+  translationError.value = false
+  emit('translate')
+}
+
+function showTranslationError() {
+  translationError.value = true
 }
 
 function toggleEngines() {
@@ -132,7 +142,7 @@ watch(() => props.localSearch, (enabled) => {
   if (enabled) closeEngineMenu()
 })
 
-defineExpose({ focusSearch })
+defineExpose({ focusSearch, showTranslationError })
 </script>
 
 <template>
@@ -177,9 +187,10 @@ defineExpose({ focusSearch })
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
         @keydown="handleLocalSearchKeydown"
       />
-      <button v-if="!localSearch" class="quick-translate" type="button" :disabled="!modelValue.trim()" aria-label="翻译成简体中文" title="翻译成简体中文" @click="emit('translate')">译</button>
+      <button v-if="!localSearch" class="quick-translate" type="button" :disabled="!modelValue.trim()" aria-label="翻译成简体中文" title="翻译成简体中文" @click="requestTranslation">译</button>
       <button class="submit-search" type="submit" :aria-label="localSearch ? '打开第一个匹配的快捷入口' : '搜索'"><Search :size="18" /></button>
     </form>
+    <p v-if="translationError" class="search-action-error" role="status" aria-live="polite">翻译工具暂时无法加载，请重试。</p>
     <slot v-if="localSearch" name="local-results" />
     <Teleport to="body">
       <Transition name="engine-menu">

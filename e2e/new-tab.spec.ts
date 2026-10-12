@@ -22,6 +22,12 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('quick translation sends an encoded query to the external translator', async ({ page }) => {
+  let translationChunkAttempts = 0
+  await page.route('**/assets/translation-*.js', async (route) => {
+    translationChunkAttempts += 1
+    if (translationChunkAttempts === 1) return route.fulfill({ status: 503, body: 'temporary failure' })
+    await route.continue()
+  })
   await page.route('https://translate.google.com/**', (route) => route.fulfill({
     contentType: 'text/html',
     body: '<title>Translation test</title>',
@@ -30,6 +36,17 @@ test('quick translation sends an encoded query to the external translator', asyn
   await page.getByRole('button', { name: '翻译成简体中文' }).click()
   await expect(page).toHaveURL(/translate\.google\.com\/\?sl=auto&tl=zh-CN&text=hello%20%26%20%E4%B8%96%E7%95%8C&op=translate/)
   await expect(page).toHaveTitle('Translation test')
+  expect(translationChunkAttempts).toBe(2)
+})
+
+test('quick translation reports an exhausted chunk load without an unhandled page error', async ({ page }) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
+  await page.route('**/assets/translation-*.js', (route) => route.fulfill({ status: 503, body: 'offline' }))
+  await page.getByRole('searchbox', { name: '输入并搜索' }).fill('hello')
+  await page.getByRole('button', { name: '翻译成简体中文' }).click()
+  await expect(page.getByRole('status').filter({ hasText: '翻译工具暂时无法加载' })).toBeVisible()
+  expect(pageErrors).toEqual([])
 })
 
 test('creates a shortcut and keeps it after reloading the new tab', async ({ page }) => {
