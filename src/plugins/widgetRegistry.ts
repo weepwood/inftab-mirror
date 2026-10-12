@@ -55,7 +55,7 @@ export const homeWidgetPlugins = {
     description: '在首页查看本月日期和今天',
     panel: 'calendar',
     component: lazyWidget(() => import('../components/CalendarSummaryWidget.vue')),
-    props: () => ({}),
+    props: (_context) => ({}),
   },
   'weather-summary': {
     title: '天气',
@@ -76,13 +76,13 @@ export const homeWidgetPlugins = {
     description: '在首页快速打开浏览器书签中的前几项',
     panel: 'bookmarks',
     component: lazyWidget(() => import('../components/BookmarksSummaryWidget.vue')),
-    props: () => ({}),
+    props: (_context) => ({}),
   },
   'history-summary': {
     title: '最近访问',
     description: '在首页快速打开最近访问的网页',
     panel: 'history',
     component: lazyWidget(() => import('../components/HistorySummaryWidget.vue')),
-    props: () => ({}),
+    props: (_context) => ({}),
   },
 } satisfies HomeWidgetPluginRegistry

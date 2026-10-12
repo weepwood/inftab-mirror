@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build && node scripts/check-bundle-size.mjs && node scripts/check-extension-build.mjs",
     "preview": "vite preview",
-    "check": "vue-tsc --noEmit && tsc -p tsconfig.e2e-extension.json",
+    "check": "vue-tsc --noEmit && tsc -p tsconfig.e2e-extension.json && vue-tsc -p tsconfig.plugin-tests.json",
     "test": "vitest run && node scripts/check-default-assets.mjs",
     "test:e2e": "playwright test",
     "test:e2e:production": "npm run build && playwright test --config playwright.production.config.ts",
