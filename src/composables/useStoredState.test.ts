@@ -76,6 +76,33 @@ describe('useStoredState', () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 
+  it('flushes a pending write when the page becomes hidden', () => {
+    vi.useFakeTimers()
+    const storage = installMemoryStorage()
+    const listeners = new Map<string, (event?: Event) => void>()
+    const document = {
+      visibilityState: 'visible',
+      addEventListener: (type: string, listener: (event?: Event) => void) => listeners.set(type, listener),
+      removeEventListener: vi.fn((type: string) => listeners.delete(type)),
+    }
+    vi.stubGlobal('window', {
+      document,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+    const scope = effectScope()
+    const preferences = scope.run(() => useStoredState('prefs.v1', defaultPreferences, sanitizePreferences))!
+
+    preferences.value.columns = 11
+    document.visibilityState = 'hidden'
+    listeners.get('visibilitychange')!()
+
+    expect(JSON.parse(storage.get('prefs.v1') ?? '{}').columns).toBe(11)
+    expect(vi.getTimerCount()).toBe(0)
+    scope.stop()
+    expect(document.removeEventListener).toHaveBeenCalledWith('visibilitychange', expect.any(Function))
+  })
+
   it('keeps defaults isolated and follows changes from another tab', async () => {
     const listeners = new Map<string, (event: StorageEvent) => void>()
     const removeListener = vi.fn((type: string) => listeners.delete(type))

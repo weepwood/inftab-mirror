@@ -149,6 +149,7 @@ export function useStoredState<T>(
 
   const value = ref(initial) as Ref<T>
   const targetWindow = typeof window === 'undefined' ? undefined : window
+  const targetDocument = targetWindow?.document
   let persistTimer: ReturnType<typeof setTimeout> | undefined
   let ignoreNextPersistence = false
   function writeValue(next: T) {
@@ -170,6 +171,9 @@ export function useStoredState<T>(
       persistTimer = undefined
       writeValue(value.value)
     }, 180)
+  }
+  const handleVisibilityChange = () => {
+    if (targetDocument?.visibilityState === 'hidden') flushPendingWrite()
   }
   watch(value, () => {
     if (ignoreNextPersistence) return
@@ -211,9 +215,11 @@ export function useStoredState<T>(
   }
   targetWindow?.addEventListener('storage', handleStorage)
   targetWindow?.addEventListener('pagehide', flushPendingWrite)
+  targetDocument?.addEventListener('visibilitychange', handleVisibilityChange)
   if (targetWindow && getCurrentScope()) onScopeDispose(() => {
     targetWindow.removeEventListener('storage', handleStorage)
     targetWindow.removeEventListener('pagehide', flushPendingWrite)
+    targetDocument?.removeEventListener('visibilitychange', handleVisibilityChange)
     // A scope can be disposed before Vue flushes the watcher or the debounce
     // timer fires. Persist the latest value synchronously so short-lived
     // owners (for example, future plugin panels) cannot silently lose edits.
