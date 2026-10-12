@@ -21,13 +21,22 @@ let gesture: DockTouchGesture | undefined
 let suppressClickTimer: ReturnType<typeof setTimeout> | undefined
 let suppressClick = false
 
+function clearSuppressedClick() {
+  suppressClick = false
+  if (suppressClickTimer !== undefined) {
+    clearTimeout(suppressClickTimer)
+    suppressClickTimer = undefined
+  }
+}
+
 function cleanGestureListeners() {
   window.removeEventListener('pointermove', moveDockGesture)
   window.removeEventListener('pointerup', finishDockGesture)
-  window.removeEventListener('pointercancel', finishDockGesture)
+  window.removeEventListener('pointercancel', cancelDockGesture)
 }
 
 function startDockGesture(event: PointerEvent) {
+  clearSuppressedClick()
   if (event.pointerType !== 'touch' || event.button !== 0 || !dock.value) return
   gesture = {
     pointerId: event.pointerId,
@@ -39,7 +48,7 @@ function startDockGesture(event: PointerEvent) {
   }
   window.addEventListener('pointermove', moveDockGesture, { passive: false })
   window.addEventListener('pointerup', finishDockGesture)
-  window.addEventListener('pointercancel', finishDockGesture)
+  window.addEventListener('pointercancel', cancelDockGesture)
 }
 
 function moveDockGesture(event: PointerEvent) {
@@ -64,24 +73,29 @@ function finishDockGesture(event: PointerEvent) {
   if (!moved) return
   suppressClick = true
   if (suppressClickTimer !== undefined) clearTimeout(suppressClickTimer)
-  suppressClickTimer = setTimeout(() => {
-    suppressClick = false
-    suppressClickTimer = undefined
-  }, 500)
+  suppressClickTimer = setTimeout(clearSuppressedClick, 500)
+}
+
+function cancelDockGesture(event: PointerEvent) {
+  if (!gesture || event.pointerId !== gesture.pointerId) return
+  gesture = undefined
+  cleanGestureListeners()
 }
 
 function preventGestureClick(event: MouseEvent) {
+  if (event.detail === 0) {
+    clearSuppressedClick()
+    return
+  }
   if (!suppressClick) return
   event.preventDefault()
   event.stopPropagation()
-  suppressClick = false
-  if (suppressClickTimer !== undefined) clearTimeout(suppressClickTimer)
-  suppressClickTimer = undefined
+  clearSuppressedClick()
 }
 
 onBeforeUnmount(() => {
   cleanGestureListeners()
-  if (suppressClickTimer !== undefined) clearTimeout(suppressClickTimer)
+  clearSuppressedClick()
 })
 </script>
 
