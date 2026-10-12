@@ -22,7 +22,7 @@ describe('home widget shelf plugin activation', () => {
         title: '独立组件',
         description: '无需单独面板',
         component: defineComponent({ render: () => h('p', '组件内容') }),
-        props: (context: HomeWidgetContext) => ({ items: context.todos }),
+        props: (context: Pick<HomeWidgetContext, 'todos'>) => ({ items: context.todos }),
       },
     } satisfies HomeWidgetPluginRegistry
     const context: HomeWidgetContext = { todos: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海', focusTimer: defaultFocusTimerState }

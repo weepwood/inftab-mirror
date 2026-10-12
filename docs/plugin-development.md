@@ -2,7 +2,7 @@
 
 当前插件注册表用于组织仓库内受信任的功能模块，不会加载远程 JavaScript。新增模块时保持按需加载，并让数据校验、备份和交互测试跟上功能实现。
 
-面板 adapter 的属性和事件参数类型集中在 `src/plugins/registry.ts` 的 `PanelPropsById`、`PanelEventsById`；首页小组件属性类型集中在 `src/plugins/widgetRegistry.ts` 的 `HomeWidgetPropsById`。注册适配器时，TypeScript 会按 ID 检查返回值。若更改组件契约，同步更新这些类型和 `src/plugins/registry.test.ts` 中的键名断言，并为实际组件交互保留端到端回归。`npm run check` 会执行插件测试的静态类型检查。
+面板 adapter 的最小状态/操作上下文、属性和事件参数类型集中在 `src/plugins/registry.ts` 的 `PanelContextById`、`PanelPropsById`、`PanelEventsById`；首页小组件对应定义在 `src/plugins/widgetRegistry.ts` 的 `HomeWidgetContextById`、`HomeWidgetPropsById`。注册适配器时，TypeScript 会按 ID 限制其可访问的上下文并检查返回值。为新模块只暴露它实际需要的状态和操作。若更改组件契约，同步更新这些类型和 `src/plugins/registry.test.ts` 中的键名断言，并为实际组件交互保留端到端回归。`npm run check` 会执行插件测试的静态类型检查。
 
 ## 新增工具面板
 

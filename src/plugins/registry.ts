@@ -66,6 +66,20 @@ export interface PanelPluginContext {
 }
 
 type NoProps = Record<string, never>
+type NoContext = Record<never, never>
+
+export interface PanelContextById {
+  bookmarks: Pick<PanelPluginContext, 'openShortcutFromBookmark'>
+  history: NoContext
+  calculator: NoContext
+  calendar: NoContext
+  settings: Pick<PanelPluginContext, 'preferences' | 'backupExportError' | 'customSearchEngines' | 'updatePreferences' | 'resetPreferences' | 'openShortcut' | 'openFolder' | 'exportBackup' | 'importBackup' | 'addCustomSearchEngine' | 'removeCustomSearchEngine'>
+  todos: Pick<PanelPluginContext, 'todos' | 'addTodo' | 'toggleTodo' | 'updateTodo' | 'removeTodo' | 'clearCompletedTodos'>
+  'focus-timer': Pick<PanelPluginContext, 'focusTimer' | 'startFocusTimer' | 'pauseFocusTimer' | 'resetFocusTimer' | 'setFocusDuration'>
+  notes: Pick<PanelPluginContext, 'notes' | 'activeNoteId' | 'addNote' | 'selectNote' | 'updateNote' | 'removeNote'>
+  countdowns: Pick<PanelPluginContext, 'countdowns' | 'addCountdown' | 'updateCountdown' | 'removeCountdown'>
+  weather: Pick<PanelPluginContext, 'weatherCity' | 'updateWeatherCity'>
+}
 
 export interface PanelPropsById {
   bookmarks: NoProps
@@ -126,8 +140,8 @@ export interface PanelPlugin<Id extends PanelId = PanelId> {
   title: string
   description: string
   component: Component
-  props: (context: PanelPluginContext) => PanelPropsById[Id]
-  listeners: (context: PanelPluginContext) => PanelEventsById[Id]
+  props: (context: PanelContextById[Id]) => PanelPropsById[Id]
+  listeners: (context: PanelContextById[Id]) => PanelEventsById[Id]
 }
 
 export type PanelPluginRegistry = { [Id in PanelId]: PanelPlugin<Id> }

@@ -15,6 +15,18 @@ export interface HomeWidgetContext {
 }
 
 type NoProps = Record<string, never>
+type NoContext = Record<never, never>
+
+export interface HomeWidgetContextById {
+  'todo-summary': Pick<HomeWidgetContext, 'todos'>
+  'countdown-summary': Pick<HomeWidgetContext, 'countdowns'>
+  'notes-summary': Pick<HomeWidgetContext, 'notes' | 'activeNoteId'>
+  'calendar-summary': NoContext
+  'weather-summary': Pick<HomeWidgetContext, 'weatherCity'>
+  'focus-timer-summary': Pick<HomeWidgetContext, 'focusTimer'>
+  'bookmarks-summary': NoContext
+  'history-summary': NoContext
+}
 
 export interface HomeWidgetPropsById {
   'todo-summary': { items: TodoItem[] }
@@ -32,7 +44,7 @@ export type HomeWidgetPlugin<Id extends HomeWidgetId = HomeWidgetId> = {
   description: string
   panel?: PanelId
   component: Component
-  props: (context: HomeWidgetContext) => HomeWidgetPropsById[Id]
+  props: (context: HomeWidgetContextById[Id]) => HomeWidgetPropsById[Id]
 }
 
 export type HomeWidgetPluginRegistry = { [Id in HomeWidgetId]: HomeWidgetPlugin<Id> }
