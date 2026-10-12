@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { mount, type VueWrapper } from '@vue/test-utils'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import CountdownPanel from './CountdownPanel.vue'
 import type { CountdownItem } from '../types'
 
@@ -9,9 +9,25 @@ let wrapper: VueWrapper | undefined
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined
+  vi.useRealTimers()
 })
 
 describe('countdown panel', () => {
+  it('refreshes the countdown date when the page becomes visible after midnight', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 9, 12, 23, 59))
+    wrapper = mount(CountdownPanel, {
+      props: { items: [{ id: 'tomorrow', title: '明日', date: '2026-10-13', recurrence: 'once' }] },
+    })
+    expect(wrapper.get('.countdown-remaining').text()).toBe('还有 1 天')
+
+    vi.setSystemTime(new Date(2026, 9, 13, 0, 1))
+    document.dispatchEvent(new Event('visibilitychange'))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('.countdown-remaining').text()).toBe('今天')
+  })
+
   it('adds a trimmed countdown and resets the form', async () => {
     wrapper = mount(CountdownPanel, { props: { items: [] } })
     await wrapper.get('[aria-label="纪念日名称"]').setValue('  旅行  ')

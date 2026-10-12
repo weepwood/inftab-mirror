@@ -44,10 +44,12 @@ function refreshToday() {
 onMounted(() => {
   dateRefreshTimer = setInterval(refreshToday, 60_000)
   window.addEventListener('focus', refreshToday)
+  document.addEventListener('visibilitychange', refreshToday)
 })
 onBeforeUnmount(() => {
   if (dateRefreshTimer) clearInterval(dateRefreshTimer)
   window.removeEventListener('focus', refreshToday)
+  document.removeEventListener('visibilitychange', refreshToday)
 })
 
 function resetForm() {
