@@ -188,14 +188,24 @@ test('every built-in panel route loads and closes without a runtime error', asyn
   ] as const
 
   for (const [launcherId, title] of routes) {
-    await page.locator(`[data-item-id="${launcherId}"] .shortcut-open`).click()
+    const trigger = page.locator(`[data-item-id="${launcherId}"] .shortcut-open`)
+    await trigger.focus()
+    await trigger.click()
     const panel = page.getByRole('dialog', { name: title })
     await expect(panel).toBeVisible()
     // Loading and terminal chunk-error states share this marker. Requiring it
     // to disappear ensures each lazy component actually mounted.
     await expect(panel.locator('.panel-loading')).toHaveCount(0)
+    const firstFocusable = panel.locator('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])').first()
+    const lastFocusable = panel.locator('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])').last()
+    await expect(firstFocusable).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(lastFocusable).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(firstFocusable).toBeFocused()
     await panel.getByRole('button', { name: '关闭' }).click()
     await expect(panel).toHaveCount(0)
+    await expect(trigger).toBeFocused()
   }
 
   await page.getByRole('button', { name: '下一页' }).click()
