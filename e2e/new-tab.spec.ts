@@ -784,6 +784,23 @@ test('weather home widget shows the current city reading and opens its panel', a
   await expect(page.getByRole('dialog', { name: '天气' })).toBeVisible()
 })
 
+test('weather panel can search for another city after its initial forecast loads', async ({ page }) => {
+  let geocodingAttempts = 0
+  await page.route('https://geocoding-api.open-meteo.com/**', async (route) => {
+    geocodingAttempts += 1
+    const city = geocodingAttempts === 1
+      ? { id: 1, name: '上海', admin1: '上海', country: '中国', latitude: 31.2, longitude: 121.5 }
+      : { id: 2, name: '北京', admin1: '北京', country: '中国', latitude: 39.9, longitude: 116.4 }
+    await route.fulfill({ json: { results: [city] } })
+  })
+  await page.getByRole('button', { name: '打开天气' }).click()
+  const panel = page.getByRole('dialog', { name: '天气' })
+  await expect(panel.locator('.weather-place h3')).toHaveText('上海')
+  await panel.getByRole('textbox', { name: '搜索城市天气' }).fill('北京')
+  await panel.getByRole('button', { name: '搜索城市' }).click()
+  await expect(panel.locator('.weather-place h3')).toHaveText('北京')
+})
+
 test('weather widget keeps its source and the homepage usable while offline, then recovers on retry', async ({ page }) => {
   let geocodingAttempts = 0
   await page.route('https://geocoding-api.open-meteo.com/**', async (route) => {

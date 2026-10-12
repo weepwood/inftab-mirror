@@ -222,7 +222,7 @@ onBeforeUnmount(() => {
   <div class="weather-content">
     <form class="weather-search" @submit.prevent="searchCity">
       <input v-model="query" aria-label="搜索城市天气" placeholder="输入城市名称" />
-      <button type="submit" aria-label="搜索城市" :disabled="loading"><Search :size="17" /></button>
+      <button type="submit" aria-label="搜索城市"><Search :size="17" /></button>
     </form>
 
     <p v-if="loading && !forecast" class="weather-status" role="status">正在获取天气…</p>

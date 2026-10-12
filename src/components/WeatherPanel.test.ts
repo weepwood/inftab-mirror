@@ -49,6 +49,28 @@ afterEach(() => {
 })
 
 describe('WeatherPanel request ordering', () => {
+  it('allows a new city search to cancel a stalled request', async () => {
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(waitForAbort)
+      .mockResolvedValueOnce(response({ results: locations }))
+    vi.stubGlobal('fetch', fetchMock)
+    const wrapper = mount(WeatherPanel, { props: { city: '旧城市' } })
+    await flushPromises()
+    const originalSignal = (fetchMock.mock.calls[0]?.[1] as RequestInit).signal
+
+    await wrapper.get('input').setValue('新加坡')
+    const searchButton = wrapper.get('.weather-search button')
+    expect((searchButton.element as HTMLButtonElement).disabled).toBe(false)
+    await wrapper.get('.weather-search').trigger('submit')
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(originalSignal?.aborted).toBe(true)
+    expect(wrapper.find('.weather-locations').text()).toContain('新加坡东')
+    expect(wrapper.find('.weather-error').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('ignores a slow city search after a newer search has completed', async () => {
     const oldSearch = deferred<Response>()
     const fetchMock = vi.fn()
