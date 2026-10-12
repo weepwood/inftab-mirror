@@ -12,11 +12,18 @@ function weatherResponse(city: string, temperature: number) {
   ]
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => { resolve = done })
+  return { promise, resolve }
+}
+
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined
   vi.useRealTimers()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
 describe('WeatherSummaryWidget', () => {
@@ -61,6 +68,32 @@ describe('WeatherSummaryWidget', () => {
 
     expect(wrapper.text()).toContain('上海 21°')
     expect(wrapper.text()).toContain('天气更新失败，显示上次结果')
+  })
+
+  it('does not restart an in-flight stale refresh when focus and visibility events arrive together', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-12T12:00:00'))
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    const nextLocation = deferred<{ ok: boolean; json: () => Promise<unknown> }>()
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(weatherResponse('上海', 21)[0])
+      .mockResolvedValueOnce(weatherResponse('上海', 21)[1])
+      .mockReturnValueOnce(nextLocation.promise)
+      .mockResolvedValueOnce(weatherResponse('上海', 19)[1])
+    vi.stubGlobal('fetch', fetchMock)
+    wrapper = mount(WeatherSummaryWidget, { attachTo: document.body, props: { city: '上海' } })
+    await flushPromises()
+
+    vi.setSystemTime(new Date('2026-10-12T12:16:00'))
+    window.dispatchEvent(new Event('focus'))
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect((fetchMock.mock.calls[2]?.[1] as RequestInit).signal?.aborted).toBe(false)
+
+    nextLocation.resolve(weatherResponse('上海', 19)[0])
+    await flushPromises()
+    expect(wrapper.text()).toContain('上海 19°')
   })
 
   it('does not show the previous city as current when the new city lookup fails', async () => {

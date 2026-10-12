@@ -47,7 +47,7 @@ async function refreshWeather() {
 }
 
 function refreshIfStale() {
-  if (document.visibilityState === 'visible' && Date.now() - lastUpdatedAt >= refreshInterval) void refreshWeather()
+  if (!loading.value && document.visibilityState === 'visible' && Date.now() - lastUpdatedAt >= refreshInterval) void refreshWeather()
 }
 
 watch(() => props.city, () => {
