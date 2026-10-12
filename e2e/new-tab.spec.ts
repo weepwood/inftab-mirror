@@ -171,6 +171,43 @@ test('keyboard launcher search opens the matching built-in panel', async ({ page
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
+test('every built-in panel route loads and closes without a runtime error', async ({ page }) => {
+  const panelErrors: string[] = []
+  page.on('pageerror', (error) => panelErrors.push(error.message))
+  const routes = [
+    ['weather', '天气'],
+    ['countdowns', '纪念日与倒计时'],
+    ['todos', '待办事项'],
+    ['focus-timer', '专注计时'],
+    ['notes', '笔记'],
+    ['settings', '设置'],
+    ['bookmarks', '浏览器书签'],
+    ['history', '浏览历史'],
+    ['calculator', '计算器'],
+    ['calendar', '日历'],
+  ] as const
+
+  for (const [launcherId, title] of routes) {
+    await page.locator(`[data-item-id="${launcherId}"] .shortcut-open`).click()
+    const panel = page.getByRole('dialog', { name: title })
+    await expect(panel).toBeVisible()
+    // Loading and terminal chunk-error states share this marker. Requiring it
+    // to disappear ensures each lazy component actually mounted.
+    await expect(panel.locator('.panel-loading')).toHaveCount(0)
+    await panel.getByRole('button', { name: '关闭' }).click()
+    await expect(panel).toHaveCount(0)
+  }
+
+  await page.getByRole('button', { name: '下一页' }).click()
+  await page.locator('[data-item-id="wallpapers"] .shortcut-open').click()
+  const wallpaperSettings = page.getByRole('dialog', { name: '设置' })
+  await expect(wallpaperSettings).toBeVisible()
+  await expect(wallpaperSettings.locator('.panel-loading')).toHaveCount(0)
+  await wallpaperSettings.getByRole('button', { name: '关闭' }).click()
+
+  expect(panelErrors).toEqual([])
+})
+
 test('launcher search shortcut works while the homepage search bar is hidden', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByLabel('显示搜索栏').uncheck()
