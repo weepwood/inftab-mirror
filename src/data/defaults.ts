@@ -1,4 +1,5 @@
 import type { EngineId, LauncherItem, Preferences, SearchMode, Shortcut } from '../types'
+import { availableHomeWidgetIds } from '../plugins/ids'
 
 const base = import.meta.env.BASE_URL
 
@@ -7,16 +8,7 @@ export const defaultPreferences: Preferences = {
   hiddenLauncherIds: [],
   dockItemIds: [],
   homeWidgetIds: [],
-  homeWidgetSizes: {
-    'todo-summary': 'standard',
-    'countdown-summary': 'standard',
-    'notes-summary': 'standard',
-    'calendar-summary': 'standard',
-    'weather-summary': 'standard',
-    'focus-timer-summary': 'standard',
-    'bookmarks-summary': 'standard',
-    'history-summary': 'standard',
-  },
+  homeWidgetSizes: Object.fromEntries(availableHomeWidgetIds.map((id) => [id, 'standard'])) as Preferences['homeWidgetSizes'],
   engine: 'baidu',
   mode: 'html',
   visibleSearchModes: [],

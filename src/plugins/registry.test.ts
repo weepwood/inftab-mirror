@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { launcherItems } from '../data/defaults'
+import { defaultPreferences, launcherItems } from '../data/defaults'
 import { launcherPanelRoutes, panelPlugins, shortcutPanelRoutes } from './registry'
 import { availableHomeWidgetIds, availablePanelIds } from './ids'
 import { homeWidgetPlugins } from './widgetRegistry'
@@ -30,6 +30,7 @@ describe('built-in panel plugin registry', () => {
 
   it('keeps every registered home widget connected to a valid panel', () => {
     expect(Object.keys(homeWidgetPlugins).sort()).toEqual([...availableHomeWidgetIds].sort())
+    expect(Object.keys(defaultPreferences.homeWidgetSizes).sort()).toEqual([...availableHomeWidgetIds].sort())
     for (const [id, widget] of Object.entries(homeWidgetPlugins)) {
       expect(widget.title, `${id} title`).toBeTruthy()
       expect(widget.description, `${id} description`).toBeTruthy()
