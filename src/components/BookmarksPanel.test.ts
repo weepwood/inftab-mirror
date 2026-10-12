@@ -80,6 +80,28 @@ describe('BookmarksPanel', () => {
     expect(wrapper.text()).toContain('已导入 1 个快捷入口')
   })
 
+  it('keeps a large expanded bookmark tree searchable', async () => {
+    const bookmarkChange = { addListener: vi.fn(), removeListener: vi.fn() }
+    const bookmarks = Array.from({ length: 1_000 }, (_, index) => ({
+      id: String(index + 2), title: `Site ${index}`, url: `https://site-${index}.example/`,
+    }))
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains: vi.fn().mockResolvedValue(true), request: vi.fn() },
+      bookmarks: {
+        getTree: vi.fn().mockResolvedValue([{ id: '0', title: '', children: [{ id: '1', title: 'Bookmarks Bar', children: bookmarks }] }]),
+        onCreated: bookmarkChange,
+      },
+    })
+    wrapper = mount(BookmarksPanel, { props: { availableSlots: 500, importBookmarks: vi.fn() } })
+    await flushPromises()
+
+    expect(wrapper.findAll('.browser-bookmark-list > li')).toHaveLength(1_001)
+    expect(wrapper.findAll('.browser-bookmark-link')).toHaveLength(1_000)
+    await wrapper.get('input[aria-label="筛选浏览器书签"]').setValue('Site 999')
+    expect(wrapper.findAll('.browser-bookmark-link').map((link) => link.text())).toEqual(['Site 999'])
+  })
+
   it('limits selection to available slots and reports capacity changes before importing', async () => {
     const bookmarkChange = { addListener: vi.fn(), removeListener: vi.fn() }
     const getTree = vi.fn().mockResolvedValue([{ id: '0', title: '', children: [
