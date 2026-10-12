@@ -75,6 +75,29 @@ test('stable browsers persist a new shortcut after reload at a narrow viewport',
   await expect(page.getByRole('option', { name: /Stable Browser/ })).toBeVisible()
 })
 
+test('stable browsers open every shortcut in a folder from one click', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByRole('button', { name: '新建文件夹' }).click()
+  const editor = page.getByRole('dialog', { name: '新建文件夹' })
+  await editor.getByLabel('文件夹名称').fill('批量打开')
+  await editor.getByRole('checkbox', { name: /京东商城/ }).check()
+  await editor.getByRole('checkbox', { name: /天猫精选/ }).check()
+  await editor.getByRole('button', { name: '保存文件夹' }).click()
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+  await page.getByRole('button', { name: '下一页' }).click()
+  await page.getByRole('button', { name: '打开批量打开' }).click()
+  const folder = page.getByRole('dialog', { name: '批量打开' })
+  const openedPages: Page[] = []
+  page.context().on('page', (openedPage) => openedPages.push(openedPage))
+
+  await folder.getByRole('button', { name: '打开全部' }).click()
+  await expect.poll(() => openedPages.length).toBe(2)
+  expect(openedPages.map((openedPage) => openedPage.url()).sort()).toEqual([
+    'https://www.jd.com/',
+    'https://www.tmall.com/',
+  ])
+})
+
 test('stable browsers load the enabled news widget with its source labels', async ({ page }) => {
   await page.route('https://hacker-news.firebaseio.com/v0/**', (route) => route.fulfill({
     contentType: 'application/json',

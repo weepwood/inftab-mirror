@@ -1468,6 +1468,29 @@ test('lazy folder editor creates and opens a folder with selected shortcuts', as
   await expect(folder).toContainText('天猫精选')
 })
 
+test('opening every shortcut in a folder creates a new browser tab for each site', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByRole('button', { name: '新建文件夹' }).click()
+  const editor = page.getByRole('dialog', { name: '新建文件夹' })
+  await editor.getByLabel('文件夹名称').fill('批量打开')
+  await editor.getByRole('checkbox', { name: /京东商城/ }).check()
+  await editor.getByRole('checkbox', { name: /天猫精选/ }).check()
+  await editor.getByRole('button', { name: '保存文件夹' }).click()
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+  await page.getByRole('button', { name: '下一页' }).click()
+  await page.getByRole('button', { name: '打开批量打开' }).click()
+  const folder = page.getByRole('dialog', { name: '批量打开' })
+  const openedPages: Page[] = []
+  page.context().on('page', (openedPage) => openedPages.push(openedPage))
+
+  await folder.getByRole('button', { name: '打开全部' }).click()
+  await expect.poll(() => openedPages.length).toBe(2)
+  expect(openedPages.map((openedPage) => openedPage.url()).sort()).toEqual([
+    'https://www.jd.com/',
+    'https://www.tmall.com/',
+  ])
+})
+
 test('keyboard launcher search finds and opens a shortcut stored inside a folder', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByRole('button', { name: '新建文件夹' }).click()
