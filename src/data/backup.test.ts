@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultPreferences, launcherItems } from './defaults'
-import { mergeById, parseWorkspaceBackup } from './backup'
+import { parseWorkspaceBackup } from './backup'
+import { mergeById } from './mergeById'
 
 function backup(overrides: Record<string, unknown> = {}) {
   return {

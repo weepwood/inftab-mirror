@@ -37,7 +37,6 @@ function validateArray(value: unknown, label: string, limit = maxItems): asserts
     throw new Error(`备份中的${label}数量无效（最多 ${limit} 项）。`)
   }
 }
-
 export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   if (!isRecord(value) || value.format !== 'inftab-workspace' || value.version !== 1) {
     throw new Error('这不是受支持的 Inftab 备份文件。')
@@ -170,10 +169,4 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     homeWorkspaces,
     activeHomeWorkspaceId: sanitizeActiveHomeWorkspaceId(value.activeHomeWorkspaceId, homeWorkspaces),
   }
-}
-
-export function mergeById<T extends { id: string }>(current: T[], incoming: T[]): T[] {
-  const merged = new Map(current.map((item) => [item.id, item]))
-  incoming.forEach((item) => merged.set(item.id, item))
-  return [...merged.values()]
 }

@@ -6,8 +6,8 @@ import { fileURLToPath } from 'node:url'
 const outputDirectory = fileURLToPath(new URL('../dist/', import.meta.url))
 const budgets = {
   javascriptGzip: 128 * 1024,
-  // Preserves room for the shared focus timer and workspace state without pulling the shortcut grid into the entry.
-  javascriptEntryGzip: 60 * 1024,
+  // Keeps the backup parser in the lazy settings chunk and preserves headroom for startup code.
+  javascriptEntryGzip: 58 * 1024,
   cssGzip: 64 * 1024,
   totalOutput: 4 * 1024 * 1024,
 }
@@ -32,6 +32,10 @@ const entryAssets = [
 const javascriptEntryFiles = [...new Set(entryAssets.map((asset) => resolve(outputDirectory, asset.replace(/^\.\//, ''))))]
 if (javascriptEntryFiles.length === 0 || javascriptEntryFiles.some((path) => !files.includes(path))) {
   throw new Error('Unable to resolve the initial JavaScript assets from dist/index.html.')
+}
+const initialJavaScript = javascriptEntryFiles.map((path) => readFileSync(path, 'utf8')).join('\n')
+if (initialJavaScript.includes('这不是受支持的 Inftab 备份文件。')) {
+  throw new Error('Workspace backup parsing must stay in the lazy settings chunk, outside the initial JavaScript.')
 }
 const javascriptEntryGzip = gzipSize(javascriptEntryFiles)
 const cssGzip = gzipSize(cssFiles)
