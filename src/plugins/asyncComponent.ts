@@ -1,4 +1,4 @@
-import { defineAsyncComponent, defineComponent, h, onBeforeUnmount, shallowRef, type AsyncComponentLoader, type Component, type ShallowRef } from 'vue'
+import { defineAsyncComponent, defineComponent, h, onBeforeUnmount, onErrorCaptured, ref, shallowRef, type AsyncComponentLoader, type Component, type ShallowRef } from 'vue'
 
 export async function retryAsyncLoad<T>(loader: () => Promise<T>, maxAttempts = 3): Promise<T> {
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -24,31 +24,55 @@ export function lazyPluginComponent(loader: AsyncComponentLoader, loadingMessage
     setup(_props, { attrs, slots }) {
       let component: ShallowRef<Component>
       let retryTimer: ReturnType<typeof setTimeout> | undefined
+      const runtimeError = ref(false)
+      let asyncLoadFailed = false
+
+      onErrorCaptured((_error, _instance, info) => {
+        if (asyncLoadFailed || info === 'async component loader') return false
+        runtimeError.value = true
+        return false
+      })
 
       onBeforeUnmount(() => {
         if (retryTimer !== undefined) clearTimeout(retryTimer)
       })
 
       function retryManually() {
+        runtimeError.value = false
+        asyncLoadFailed = false
         component.value = createAsyncComponent()
       }
 
+      function errorView(message: string) {
+        return h('div', { class: 'plugin-load-error panel-loading', role: 'alert' }, [
+          h('p', message),
+          h('button', {
+            class: 'text-button plugin-load-retry',
+            type: 'button',
+            'aria-label': '重试加载',
+            onClick: retryManually,
+          }, '重试加载'),
+        ])
+      }
+
       function createAsyncComponent() {
+        const trackedLoader: AsyncComponentLoader = async () => {
+          try {
+            const loaded = await loader()
+            asyncLoadFailed = false
+            return loaded
+          } catch (error) {
+            asyncLoadFailed = true
+            throw error
+          }
+        }
         const errorComponent = defineComponent({
           name: 'PluginChunkLoadError',
-          setup: () => () => h('div', { class: 'plugin-load-error panel-loading', role: 'alert' }, [
-            h('p', failureMessage),
-            h('button', {
-              class: 'text-button plugin-load-retry',
-              type: 'button',
-              'aria-label': '重试加载',
-              onClick: retryManually,
-            }, '重试加载'),
-          ]),
+          setup: () => () => errorView(failureMessage),
         })
 
         return defineAsyncComponent({
-          loader,
+          loader: trackedLoader,
           loadingComponent,
           errorComponent,
           delay: 0,
@@ -67,7 +91,9 @@ export function lazyPluginComponent(loader: AsyncComponentLoader, loadingMessage
       }
 
       component = shallowRef(createAsyncComponent())
-      return () => h(component.value, attrs, slots)
+      return () => runtimeError.value
+        ? errorView('组件运行出错，已暂时隔离。')
+        : h(component.value, attrs, slots)
     },
   })
 }

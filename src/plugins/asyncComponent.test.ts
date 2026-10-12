@@ -73,4 +73,26 @@ describe('lazy plugin component loading', () => {
 
     expect(loader).toHaveBeenCalledTimes(4)
   })
+
+  it('contains plugin runtime errors and recovers when the user retries', async () => {
+    const brokenComponent = defineComponent({ render: () => { throw new Error('plugin render failed') } })
+    const loadedComponent = defineComponent({ setup: () => () => h('p', 'Recovered plugin') })
+    const loader = vi.fn()
+      .mockResolvedValueOnce(brokenComponent)
+      .mockResolvedValueOnce(loadedComponent)
+    const plugin = lazyPluginComponent(loader, 'Loading plugin…', 'Plugin failed to load.')
+    wrapper = mount(defineComponent({
+      setup: () => () => h('section', [h(plugin), h('p', { class: 'sibling' }, 'Other page content')]),
+    }))
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('组件运行出错')
+    expect(wrapper.get('.sibling').text()).toBe('Other page content')
+
+    await wrapper.get('[aria-label="重试加载"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('section').text()).toContain('Recovered plugin')
+    expect(loader).toHaveBeenCalledTimes(2)
+  })
 })
