@@ -125,6 +125,23 @@ describe('useLocalWorkspace home workspaces', () => {
     expect(workspace.moveHomeWorkspace(firstId, 1)).toBe(false)
   })
 
+  it('round-trips the reordered workspace tab order through backups', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const firstId = workspace.createHomeWorkspace('第一个')!
+    const activeId = workspace.createHomeWorkspace('第二个')!
+    expect(workspace.moveHomeWorkspace(firstId, 1)).toBe(true)
+
+    const backup = parseWorkspaceBackup(workspace.createBackup())
+    const expectedOrder = ['default', activeId, firstId]
+    expect(backup.homeWorkspaces?.map((item) => item.id)).toEqual(expectedOrder)
+
+    workspace.restoreBackup(backup, 'replace')
+
+    expect(workspace.homeWorkspaces.value.map((item) => item.id)).toEqual(expectedOrder)
+    expect(workspace.activeHomeWorkspaceId.value).toBe(activeId)
+  })
+
   it('merges imported workspace groups without dropping the current active group', () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
@@ -167,6 +184,31 @@ describe('useLocalWorkspace home workspaces', () => {
     expect(JSON.parse(localStorage.getItem(storageKey) ?? '[]').map((item: { id: string }) => item.id)).toEqual(
       expect.arrayContaining([localId, 'remote-space']),
     )
+  })
+
+  it('merges a remote workspace creation and honors its order during a concurrent local reorder', async () => {
+    vi.useFakeTimers()
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const firstId = workspace.createHomeWorkspace('第一个')!
+    const activeId = workspace.createHomeWorkspace('第二个')!
+    await vi.advanceTimersByTimeAsync(180)
+
+    const storageKey = 'inftab.home-workspaces.v1'
+    const previous = localStorage.getItem(storageKey)!
+    expect(workspace.moveHomeWorkspace(firstId, 1)).toBe(true)
+
+    const externalWorkspaces = JSON.parse(previous) as { id: string; name: string; itemIds: string[] }[]
+    externalWorkspaces.push({ id: 'remote-space', name: '另一标签页', itemIds: [] })
+    const external = JSON.stringify(externalWorkspaces)
+    localStorage.setItem(storageKey, external)
+    window.dispatchEvent(new StorageEvent('storage', { key: storageKey, oldValue: previous, newValue: external }))
+
+    expect(workspace.homeWorkspaces.value.map((item) => item.id)).toEqual(['default', firstId, activeId, 'remote-space'])
+    expect(workspace.activeHomeWorkspaceId.value).toBe(activeId)
+    await vi.advanceTimersByTimeAsync(180)
+    expect(JSON.parse(localStorage.getItem(storageKey) ?? '[]').map((item: { id: string }) => item.id))
+      .toEqual(['default', firstId, activeId, 'remote-space'])
   })
 
   it('merges separate shortcut moves made concurrently in different workspaces', async () => {
