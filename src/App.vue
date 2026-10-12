@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { Component } from 'vue'
 import { ArrowLeft, House, Menu, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
@@ -14,7 +14,8 @@ import { getPageNavigation } from './data/pagination'
 import { toLocalDateKey } from './data/calendar'
 import { normalizeWebUrl } from './data/urls'
 import type { BrowserTabCandidate } from './data/browserTabs'
-import { getPanelListeners, getPanelProps, launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelId, type PanelPluginContext } from './plugins/registry'
+import { launcherPanelRoutes, shortcutPanelRoutes } from './plugins/routes'
+import type { PanelId, PanelPluginContext } from './plugins/registry'
 import { maxDockItems, type HomeWidgetId, type LauncherItem, type Shortcut, type ShortcutFolder } from './types'
 
 type Panel = PanelId | null
@@ -124,6 +125,9 @@ const effectiveTheme = computed(() => preferences.value.themeMode === 'system'
 const currentPage = ref(0)
 const pageDirection = ref(1)
 const activePanel = ref<Panel>(null)
+const panelRegistry = shallowRef<typeof import('./plugins/registry')>()
+const panelRegistryError = ref('')
+let panelRegistryLoading: Promise<void> | undefined
 const backupExportError = ref('')
 const storageError = ref('')
 const pendingDestructiveAction = ref<{ title: string; description: string; confirmLabel?: string; run: () => void }>()
@@ -287,10 +291,14 @@ const panelContext = computed<PanelPluginContext>(() => ({
   resetFocusTimer,
   setFocusDuration,
 }))
-const activePanelPlugin = computed(() => activePanel.value ? panelPlugins[activePanel.value] : undefined)
+const activePanelPlugin = computed(() => activePanel.value ? panelRegistry.value?.panelPlugins[activePanel.value] : undefined)
 const activePanelComponent = computed<Component | undefined>(() => activePanelPlugin.value?.component)
-const activePanelProps = computed<Record<string, unknown>>(() => activePanel.value ? getPanelProps(activePanel.value, panelContext.value) : {})
-const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanel.value ? getPanelListeners(activePanel.value, panelContext.value) : {})
+const activePanelProps = computed<Record<string, unknown>>(() => activePanel.value && panelRegistry.value
+  ? panelRegistry.value.getPanelProps(activePanel.value, panelContext.value)
+  : {})
+const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanel.value && panelRegistry.value
+  ? panelRegistry.value.getPanelListeners(activePanel.value, panelContext.value)
+  : {})
 const homeWidgetContext = computed(() => ({ todos: todos.value, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
 const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0)
 const shortHomeScrollEnabled = computed(() => !minimalMode.value && (showHomeWidgets.value || homeDockItems.value.length > 0) && viewport.value.height <= 560)
@@ -445,12 +453,26 @@ function handleLocalSearchResultKeydown(event: KeyboardEvent) {
   results[nextIndex]?.focus()
 }
 
+function loadPanelRegistry() {
+  if (panelRegistry.value || panelRegistryLoading) return
+  panelRegistryError.value = ''
+  panelRegistryLoading = retryAsyncLoad(() => import('./plugins/registry'))
+    .then((registry) => { panelRegistry.value = registry })
+    .catch(() => { panelRegistryError.value = '面板目录暂时无法加载，请重试。' })
+    .finally(() => { panelRegistryLoading = undefined })
+}
+
+function openPanel(id: PanelId) {
+  activePanel.value = id
+  loadPanelRegistry()
+}
+
 function openItem(item: LauncherItem) {
   if (item.folder) openFolder(item.folder)
-  else if (item.action) activePanel.value = launcherPanelRoutes[item.action]
+  else if (item.action) openPanel(launcherPanelRoutes[item.action])
   else if (item.shortcut) {
     const panel = shortcutPanelRoutes[item.shortcut.id]
-    if (panel) activePanel.value = panel
+    if (panel) openPanel(panel)
     else window.open(item.shortcut.url, '_blank', 'noopener,noreferrer')
   }
 }
@@ -932,7 +954,7 @@ onBeforeUnmount(() => {
     <header class="home-actions">
       <button type="button" class="round-action minimal-mode-toggle" :aria-label="minimalMode ? '退出极简模式' : '进入极简模式'" :aria-pressed="minimalMode" :title="minimalMode ? '退出极简模式' : '进入极简模式'" @click="toggleMinimalMode"><span aria-hidden="true">{{ minimalMode ? '×' : '◉' }}</span></button>
       <button type="button" class="round-action" aria-label="回到首页" @click="goToPage(0)"><House :size="19" /></button>
-      <button type="button" class="round-action" aria-label="打开设置" @click="activePanel = 'settings'"><Menu :size="21" /></button>
+      <button type="button" class="round-action" aria-label="打开设置" @click="openPanel('settings')"><Menu :size="21" /></button>
     </header>
 
     <ClockWidget v-if="preferences.showClock" />
@@ -942,7 +964,7 @@ onBeforeUnmount(() => {
         :widget-ids="preferences.homeWidgetIds"
         :widget-sizes="preferences.homeWidgetSizes"
         :context="homeWidgetContext"
-        @open="activePanel = $event"
+        @open="openPanel"
         @remove="removeHomeWidget"
         @reorder="reorderHomeWidgets"
         @resize="resizeHomeWidget"
@@ -1030,13 +1052,18 @@ onBeforeUnmount(() => {
     <footer class="home-footer">渝ICP备15002199号-1</footer>
 
     <div v-if="activePanel" class="panel-backdrop" @click.self="activePanel = null">
-      <aside ref="sidePanel" class="side-panel" :class="{ 'notes-panel': activePanel === 'notes' }" aria-modal="true" role="dialog" :aria-label="activePanelPlugin?.title" @keydown="handlePanelKeydown">
+      <aside ref="sidePanel" class="side-panel" :class="{ 'notes-panel': activePanel === 'notes' }" aria-modal="true" role="dialog" :aria-label="activePanelPlugin?.title ?? '功能面板'" @keydown="handlePanelKeydown">
         <header class="panel-header">
-          <button v-if="activePanel !== 'settings'" class="back-button" type="button" aria-label="返回设置" @click="activePanel = 'settings'"><ArrowLeft :size="19" /></button>
-          <div><h2>{{ activePanelPlugin?.title }}</h2><p>{{ activePanelPlugin?.description }}</p></div>
+          <button v-if="activePanel !== 'settings'" class="back-button" type="button" aria-label="返回设置" @click="openPanel('settings')"><ArrowLeft :size="19" /></button>
+          <div><h2>{{ activePanelPlugin?.title ?? (panelRegistryError ? '面板加载失败' : '正在加载…') }}</h2><p>{{ activePanelPlugin?.description ?? '' }}</p></div>
           <button class="panel-close" type="button" aria-label="关闭" @click="activePanel = null"><X :size="19" /></button>
         </header>
-        <component :is="activePanelComponent" v-bind="activePanelProps" v-on="activePanelListeners" />
+        <div v-if="panelRegistryError" class="panel-load-error panel-loading" role="alert">
+          <p>{{ panelRegistryError }}</p>
+          <button class="text-button plugin-load-retry" type="button" @click="loadPanelRegistry">重试加载</button>
+        </div>
+        <p v-else-if="!activePanelPlugin" class="panel-loading" role="status">正在加载功能面板…</p>
+        <component v-else :is="activePanelComponent" v-bind="activePanelProps" v-on="activePanelListeners" />
       </aside>
     </div>
 

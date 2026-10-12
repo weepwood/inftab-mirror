@@ -453,6 +453,20 @@ test('every built-in panel route loads and closes without a runtime error', asyn
   expect(panelErrors).toEqual([])
 })
 
+test('loads the panel plugin registry only after a panel is opened', async ({ page }) => {
+  const registryRequests: string[] = []
+  page.on('request', (request) => {
+    if (/\/assets\/registry-[^/]+\.js(?:\?|$)/.test(request.url())) registryRequests.push(request.url())
+  })
+  await page.goto('/')
+  await expect(page.locator('main.home')).toBeVisible()
+  expect(registryRequests).toEqual([])
+
+  await page.locator('header').getByRole('button', { name: '打开设置' }).click()
+  await expect(page.getByRole('dialog', { name: '设置' })).toBeVisible()
+  expect(registryRequests).toHaveLength(1)
+})
+
 test('large local lists skip rendering offscreen rows without hiding their records', async ({ page }) => {
   test.setTimeout(60_000)
   await page.evaluate(() => {
