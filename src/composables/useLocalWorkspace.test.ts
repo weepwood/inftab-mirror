@@ -570,6 +570,33 @@ describe('useLocalWorkspace dock references', () => {
 })
 
 describe('useLocalWorkspace custom search engines', () => {
+  it('keeps a pending custom engine selection when its record arrives in time', async () => {
+    vi.useFakeTimers()
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const engine = { id: 'arrives-later', name: 'Later', template: 'https://example.com/?q={query}' }
+    const key = 'inftab.custom-search-engines.v1'
+
+    workspace.preferences.value.engine = ('custom:' + engine.id) as `custom:${string}`
+    localStorage.setItem(key, JSON.stringify([engine]))
+    window.dispatchEvent(new StorageEvent('storage', { key, oldValue: '[]', newValue: JSON.stringify([engine]) }))
+    await vi.waitFor(() => expect(workspace.customSearchEngines.value).toContainEqual(engine))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(workspace.preferences.value.engine).toBe('custom:' + engine.id)
+  })
+
+  it('repairs a custom engine reference that remains missing after a preference update', async () => {
+    vi.useFakeTimers()
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+
+    workspace.preferences.value.engine = 'custom:missing'
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(workspace.preferences.value.engine).toBe('baidu')
+  })
+
   it('keeps a pending active note when its note-list event arrives later', async () => {
     const existingNote = { id: 'existing-note', title: 'Existing', body: '', updatedAt: 1 }
     const incomingNote = { id: 'incoming-note', title: 'Incoming', body: '', updatedAt: 2 }

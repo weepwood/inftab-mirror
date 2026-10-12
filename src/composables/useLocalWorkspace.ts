@@ -1,5 +1,5 @@
 import { useStoredState } from './useStoredState'
-import { watch } from 'vue'
+import { computed, watch } from 'vue'
 import { watchDeferredReference } from './watchDeferredReference'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts, launcherItems } from '../data/defaults'
 import type { WorkspaceBackup } from '../data/backup'
@@ -128,16 +128,23 @@ export function useLocalWorkspace() {
     }
   }, { flush: 'sync', immediate: true })
 
-  if (preferences.value.engine.startsWith('custom:')
-    && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
-    preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
+  const selectedSearchEngine = computed({
+    get: () => preferences.value.engine,
+    set: (engine: Preferences['engine']) => {
+      preferences.value = sanitizePreferences({ ...preferences.value, engine })
+    },
+  })
+  const isSearchEngineAvailable = (engine: string) => !engine.startsWith('custom:')
+    || customSearchEngines.value.some((item) => 'custom:' + item.id === engine)
+  if (!isSearchEngineAvailable(selectedSearchEngine.value)) {
+    selectedSearchEngine.value = defaultPreferences.engine
   }
-  watch(customSearchEngines, () => {
-    if (preferences.value.engine.startsWith('custom:')
-      && !customSearchEngines.value.some((engine) => 'custom:' + engine.id === preferences.value.engine)) {
-      preferences.value = sanitizePreferences({ ...preferences.value, engine: defaultPreferences.engine })
-    }
-  }, { flush: 'sync' })
+  const reconcileSelectedSearchEngine = watchDeferredReference(
+    selectedSearchEngine,
+    isSearchEngineAvailable,
+    () => defaultPreferences.engine,
+  )
+  watch(customSearchEngines, reconcileSelectedSearchEngine, { flush: 'sync' })
 
   const defaultShortcutById = new Map(defaultShortcuts.map((shortcut) => [shortcut.id, shortcut]))
   const outdatedDefaultIcons: Record<string, string> = {
