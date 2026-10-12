@@ -179,8 +179,8 @@ describe('useLocalWorkspace home workspaces', () => {
 
     window.dispatchEvent(new StorageEvent('storage', { key: storageKey, oldValue: initial, newValue: external }))
 
+    await vi.waitFor(() => expect(workspace.homeWorkspaces.value.map((item) => item.id)).toContain('remote-space'))
     expect(workspace.homeWorkspaces.value.map((item) => item.id)).toContain(localId)
-    expect(workspace.homeWorkspaces.value.map((item) => item.id)).toContain('remote-space')
     await vi.advanceTimersByTimeAsync(180)
     expect(JSON.parse(localStorage.getItem(storageKey) ?? '[]').map((item: { id: string }) => item.id)).toEqual(
       expect.arrayContaining([localId, 'remote-space']),
@@ -205,6 +205,7 @@ describe('useLocalWorkspace home workspaces', () => {
     localStorage.setItem(storageKey, external)
     window.dispatchEvent(new StorageEvent('storage', { key: storageKey, oldValue: previous, newValue: external }))
 
+    await vi.waitFor(() => expect(workspace.homeWorkspaces.value.map((item) => item.id)).toEqual(['default', firstId, activeId, 'remote-space']))
     expect(workspace.homeWorkspaces.value.map((item) => item.id)).toEqual(['default', firstId, activeId, 'remote-space'])
     expect(workspace.activeHomeWorkspaceId.value).toBe(activeId)
     await vi.advanceTimersByTimeAsync(180)
@@ -236,6 +237,10 @@ describe('useLocalWorkspace home workspaces', () => {
     localStorage.setItem(storageKey, external)
     window.dispatchEvent(new StorageEvent('storage', { key: storageKey, oldValue: previous, newValue: external }))
 
+    await vi.waitFor(() => {
+      const itemIds = workspace.homeWorkspaces.value.find((item) => item.id === 'default')?.itemIds ?? []
+      expect(itemIds).toEqual(expect.arrayContaining([firstShortcut.id, secondShortcut.id]))
+    })
     const defaultItems = workspace.homeWorkspaces.value.find((item) => item.id === 'default')?.itemIds ?? []
     expect(defaultItems).toEqual(expect.arrayContaining([firstShortcut.id, secondShortcut.id]))
     expect(workspace.homeWorkspaces.value.find((item) => item.id === firstWorkspaceId)?.itemIds).not.toContain(firstShortcut.id)

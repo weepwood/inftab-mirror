@@ -8,127 +8,14 @@ export interface StoredStateOptions {
   mergeConcurrentChanges?: boolean
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
+let concurrentStateModule: Promise<typeof import('./concurrentState')> | undefined
 
-function valuesEqual(left: unknown, right: unknown) {
-  return Object.is(left, right) || JSON.stringify(left) === JSON.stringify(right)
-}
-
-function isIdentifiedRecord(value: unknown): value is Record<string, unknown> & { id: string } {
-  return isRecord(value) && typeof value.id === 'string'
-}
-
-function insertByReferenceOrder(base: string[], desired: Set<string>, referenceOrders: string[][]) {
-  const result = [...new Set(base.filter((id) => desired.has(id)))]
-  for (const order of referenceOrders) {
-    order.forEach((id, index) => {
-      if (!desired.has(id) || result.includes(id)) return
-      const nextId = order.slice(index + 1).find((candidate) => result.includes(candidate))
-      if (nextId) {
-        result.splice(result.indexOf(nextId), 0, id)
-        return
-      }
-      result.push(id)
-    })
-  }
-  return result
-}
-
-function mergeConcurrentStringArrays(current: string[], previous: string[], external: string[]) {
-  const currentSet = new Set(current)
-  const previousSet = new Set(previous)
-  const externalSet = new Set(external)
-  const desired = new Set(external)
-  for (const id of new Set([...current, ...previous])) {
-    const localChanged = currentSet.has(id) !== previousSet.has(id)
-    const externalChanged = externalSet.has(id) !== previousSet.has(id)
-    if (!localChanged || externalChanged) continue
-    if (currentSet.has(id)) desired.add(id)
-    else desired.delete(id)
-  }
-  const localOrderChanged = !valuesEqual(current, previous)
-  const externalOrderChanged = !valuesEqual(external, previous)
-  const base = localOrderChanged && !externalOrderChanged ? current : external
-  return insertByReferenceOrder(base, desired, [current, external])
-}
-
-function mergeConcurrentIdentifiedArrays(
-  current: Array<Record<string, unknown> & { id: string }>,
-  previous: Array<Record<string, unknown> & { id: string }>,
-  external: Array<Record<string, unknown> & { id: string }>,
-): Array<Record<string, unknown> & { id: string }> {
-  const currentById = new Map(current.map((item) => [item.id, item]))
-  const previousById = new Map(previous.map((item) => [item.id, item]))
-  const externalById = new Map(external.map((item) => [item.id, item]))
-  const mergedById = new Map(externalById)
-  for (const id of new Set([...currentById.keys(), ...previousById.keys()])) {
-    const currentItem = currentById.get(id)
-    const previousItem = previousById.get(id)
-    const externalItem = externalById.get(id)
-    const localChanged = !valuesEqual(currentItem, previousItem)
-    const externalChanged = !valuesEqual(externalItem, previousItem)
-    if (!localChanged) continue
-    if (!currentItem) {
-      if (!externalChanged) mergedById.delete(id)
-    } else if (!previousItem) {
-      if (!externalItem) mergedById.set(id, currentItem)
-    } else if (externalItem) {
-      mergedById.set(id, mergeConcurrentValue(currentItem, previousItem, externalItem) as Record<string, unknown> & { id: string })
-    }
-  }
-  const currentIds = current.map((item) => item.id)
-  const previousIds = previous.map((item) => item.id)
-  const externalIds = external.map((item) => item.id)
-  const localOrderChanged = !valuesEqual(currentIds, previousIds)
-  const externalOrderChanged = !valuesEqual(externalIds, previousIds)
-  const baseIds = localOrderChanged && !externalOrderChanged ? currentIds : externalIds
-  const orderedIds = insertByReferenceOrder(baseIds, new Set(mergedById.keys()), [currentIds, externalIds])
-  return orderedIds.flatMap((id) => {
-    const item = mergedById.get(id)
-    return item ? [item] : []
+function loadConcurrentState() {
+  concurrentStateModule ??= import('./concurrentState').catch((error: unknown) => {
+    concurrentStateModule = undefined
+    throw error
   })
-}
-
-function mergeConcurrentValue(current: unknown, previous: unknown, external: unknown): unknown {
-  if (Array.isArray(current) && Array.isArray(previous) && Array.isArray(external)) {
-    if ([...current, ...previous, ...external].every((item) => typeof item === 'string')) {
-      return mergeConcurrentStringArrays(current as string[], previous as string[], external as string[])
-    }
-    if ([...current, ...previous, ...external].every(isIdentifiedRecord)) {
-      return mergeConcurrentIdentifiedArrays(
-        current as Array<Record<string, unknown> & { id: string }>,
-        previous as Array<Record<string, unknown> & { id: string }>,
-        external as Array<Record<string, unknown> & { id: string }>,
-      )
-    }
-    return external
-  }
-  if (isRecord(current) && isRecord(previous) && isRecord(external)) {
-    const merged: Record<string, unknown> = { ...external }
-    for (const key of new Set([...Object.keys(current), ...Object.keys(previous)])) {
-      const currentHasKey = Object.hasOwn(current, key)
-      const previousHasKey = Object.hasOwn(previous, key)
-      const externalHasKey = Object.hasOwn(external, key)
-      const localChanged = currentHasKey !== previousHasKey || !valuesEqual(current[key], previous[key])
-      const externalChanged = externalHasKey !== previousHasKey || !valuesEqual(external[key], previous[key])
-      if (!localChanged) continue
-      if (!externalChanged) {
-        if (currentHasKey) merged[key] = current[key]
-        else delete merged[key]
-      } else if (currentHasKey && previousHasKey && externalHasKey) {
-        merged[key] = mergeConcurrentValue(current[key], previous[key], external[key])
-      }
-    }
-    return merged
-  }
-  return external
-}
-
-// Preserve local edits when the incoming update leaves them untouched; conflicting values from incoming win.
-function mergeConcurrentEdits<T>(current: T, previous: T, external: T, normalize: (value: unknown) => T): T {
-  return normalize(mergeConcurrentValue(current, previous, external))
+  return concurrentStateModule
 }
 
 export function useStoredState<T>(
@@ -178,9 +65,10 @@ export function useStoredState<T>(
   watch(value, () => {
     if (ignoreNextPersistence) return
     scheduleWrite()
+    if (options.mergeConcurrentChanges !== false) void loadConcurrentState().catch(() => undefined)
   }, { deep: true, flush: 'sync' })
 
-  const handleStorage = (event: StorageEvent) => {
+  const handleStorage = async (event: StorageEvent) => {
     if (event.key !== key && event.key !== null) return
     if (persistTimer !== undefined) clearTimeout(persistTimer)
     persistTimer = undefined
@@ -193,16 +81,29 @@ export function useStoredState<T>(
       externalValue = structuredClone(fallback)
     }
     let nextValue = externalValue
+    let persistMergedValue = false
     if (options.mergeConcurrentChanges !== false && event.key === key
       && (typeof event.oldValue === 'string' || event.oldValue === null)) {
       let previousValue: T
+      let hasPreviousValue = false
       try {
         previousValue = event.oldValue === null
           ? structuredClone(fallback)
           : normalize(JSON.parse(event.oldValue))
-        nextValue = mergeConcurrentEdits(value.value, previousValue, externalValue, normalize)
+        hasPreviousValue = true
       } catch {
-        nextValue = externalValue
+        // Ignore a malformed old value and apply the valid incoming state below.
+      }
+      if (hasPreviousValue && JSON.stringify(value.value) !== JSON.stringify(previousValue!)) {
+        try {
+          const { mergeConcurrentEdits, valuesEqual } = await loadConcurrentState()
+          nextValue = mergeConcurrentEdits(value.value, previousValue!, externalValue, normalize)
+          persistMergedValue = !valuesEqual(nextValue, externalValue)
+        } catch {
+          // Keep this tab's edits if the optional merge chunk cannot be loaded.
+          nextValue = value.value
+          persistMergedValue = JSON.stringify(nextValue) !== JSON.stringify(externalValue)
+        }
       }
     }
     ignoreNextPersistence = true
@@ -211,7 +112,7 @@ export function useStoredState<T>(
     } finally {
       ignoreNextPersistence = false
     }
-    if (!valuesEqual(nextValue, externalValue)) scheduleWrite()
+    if (persistMergedValue) scheduleWrite()
   }
   targetWindow?.addEventListener('storage', handleStorage)
   targetWindow?.addEventListener('pagehide', flushPendingWrite)

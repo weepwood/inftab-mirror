@@ -104,7 +104,7 @@ describe('useStoredState', () => {
   })
 
   it('keeps defaults isolated and follows changes from another tab', async () => {
-    const listeners = new Map<string, (event: StorageEvent) => void>()
+    const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
     const removeListener = vi.fn((type: string) => listeners.delete(type))
     vi.stubGlobal('window', {
       addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener),
@@ -117,7 +117,7 @@ describe('useStoredState', () => {
     await nextTick()
 
     expect(defaultPreferences.columns).toBe(6)
-    listeners.get('storage')!({ key: 'prefs.v1', newValue: JSON.stringify({ columns: 4, engine: 'invalid' }) } as StorageEvent)
+    await listeners.get('storage')!({ key: 'prefs.v1', newValue: JSON.stringify({ columns: 4, engine: 'invalid' }) } as StorageEvent)
     expect(preferences.value.columns).toBe(4)
     expect(preferences.value.engine).toBe(defaultPreferences.engine)
 
@@ -125,14 +125,14 @@ describe('useStoredState', () => {
     expect(removeListener).toHaveBeenCalledWith('storage', expect.any(Function))
   })
 
-  it('resets to cloned defaults when another tab clears storage', () => {
-    const listeners = new Map<string, (event: StorageEvent) => void>()
+  it('resets to cloned defaults when another tab clears storage', async () => {
+    const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
     vi.stubGlobal('window', { addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener), removeEventListener: vi.fn() })
     installMemoryStorage()
     const scope = effectScope()
     const preferences = scope.run(() => useStoredState('prefs.v1', defaultPreferences, sanitizePreferences))!
     preferences.value.columns = 10
-    listeners.get('storage')!({ key: null, newValue: null } as StorageEvent)
+    await listeners.get('storage')!({ key: null, newValue: null } as StorageEvent)
 
     expect(preferences.value.columns).toBe(6)
     expect(defaultPreferences.columns).toBe(6)
@@ -141,7 +141,7 @@ describe('useStoredState', () => {
 
   it('cancels stale writes and does not echo external storage updates', async () => {
     vi.useFakeTimers()
-    const listeners = new Map<string, (event: StorageEvent) => void>()
+    const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
     const values = new Map<string, string>()
     const setItem = vi.fn((key: string, value: string) => values.set(key, value))
     vi.stubGlobal('window', {
@@ -161,7 +161,7 @@ describe('useStoredState', () => {
     const previousValue = JSON.stringify(defaultPreferences)
     const serializedExternalValue = JSON.stringify(externalValue)
     values.set('prefs.v1', serializedExternalValue)
-    listeners.get('storage')!({ key: 'prefs.v1', oldValue: previousValue, newValue: serializedExternalValue } as StorageEvent)
+    await listeners.get('storage')!({ key: 'prefs.v1', oldValue: previousValue, newValue: serializedExternalValue } as StorageEvent)
     await vi.advanceTimersByTimeAsync(180)
 
     expect(preferences.value.columns).toBe(4)
@@ -176,7 +176,7 @@ describe('useStoredState', () => {
     const previousValue = JSON.stringify({ first: 'before', second: 'before' })
     const externalValue = JSON.stringify({ first: 'before', second: 'remote' })
     const values = new Map([['state.v1', previousValue]])
-    const listeners = new Map<string, (event: StorageEvent) => void>()
+    const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
     const setItem = vi.fn((key: string, value: string) => values.set(key, value))
     vi.stubGlobal('window', {
       addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener),
@@ -191,7 +191,7 @@ describe('useStoredState', () => {
     const state = scope.run(() => useStoredState('state.v1', { first: 'before', second: 'before' }))!
     state.value.first = 'local'
     values.set('state.v1', externalValue)
-    listeners.get('storage')!({ key: 'state.v1', oldValue: previousValue, newValue: externalValue } as StorageEvent)
+    await listeners.get('storage')!({ key: 'state.v1', oldValue: previousValue, newValue: externalValue } as StorageEvent)
 
     expect(state.value).toEqual({ first: 'local', second: 'remote' })
     await vi.advanceTimersByTimeAsync(180)
@@ -215,7 +215,7 @@ describe('useStoredState', () => {
     const serializedPrevious = JSON.stringify(previous)
     const serializedExternal = JSON.stringify(external)
     const values = new Map([['state.v1', serializedPrevious]])
-    const listeners = new Map<string, (event: StorageEvent) => void>()
+    const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
     vi.stubGlobal('window', {
       addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener),
       removeEventListener: vi.fn(),
@@ -234,7 +234,7 @@ describe('useStoredState', () => {
     state.value.notes = [{ id: 'note', title: 'Local title', body: 'Before' }]
     state.value.widgetIds = ['keep-widget', 'local-widget']
     values.set('state.v1', serializedExternal)
-    listeners.get('storage')!({ key: 'state.v1', oldValue: serializedPrevious, newValue: serializedExternal } as StorageEvent)
+    await listeners.get('storage')!({ key: 'state.v1', oldValue: serializedPrevious, newValue: serializedExternal } as StorageEvent)
 
     expect(state.value.todos).toEqual([
       { id: 'external', title: 'External' },
