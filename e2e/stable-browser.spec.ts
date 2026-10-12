@@ -50,3 +50,21 @@ test('stable browsers persist a new shortcut after reload at a narrow viewport',
   await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Stable Browser')
   await expect(page.getByRole('option', { name: /Stable Browser/ })).toBeVisible()
 })
+
+test('stable browsers load the enabled news widget with its source labels', async ({ page }) => {
+  await page.route('https://hacker-news.firebaseio.com/v0/**', (route) => route.fulfill({
+    contentType: 'application/json',
+    body: route.request().url().endsWith('/topstories.json')
+      ? JSON.stringify([9201])
+      : JSON.stringify({ id: 9201, type: 'story', title: 'Stable browser news story', url: 'https://stable-source.example/news', score: 11, descendants: 2 }),
+  }))
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settings = page.getByRole('dialog', { name: '设置' })
+  await settings.getByLabel('显示热门资讯小组件').check()
+  await settings.getByRole('button', { name: '关闭' }).click()
+
+  const widget = page.locator('[data-widget-id="news-summary"]')
+  await expect(widget).toContainText('Stable browser news story')
+  await expect(widget.locator('.news-summary-attribution')).toContainText('Hacker News')
+  await expect(widget.locator('.news-summary-list small')).toContainText('stable-source.example · 11 分 · 2 条讨论')
+})

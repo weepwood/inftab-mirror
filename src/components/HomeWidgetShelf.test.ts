@@ -20,7 +20,7 @@ describe('home widget shelf plugin activation', () => {
     wrapper = mount(HomeWidgetShelf, {
       props: {
         widgetIds: ['todo-summary'],
-        widgetSizes: { 'todo-summary': 'standard', 'habits-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard', 'weather-summary': 'standard', 'focus-timer-summary': 'standard', 'bookmarks-summary': 'standard', 'history-summary': 'standard' },
+        widgetSizes: { 'todo-summary': 'standard', 'habits-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard', 'weather-summary': 'standard', 'focus-timer-summary': 'standard', 'bookmarks-summary': 'standard', 'history-summary': 'standard', 'news-summary': 'standard' },
         context,
       },
     })
@@ -48,7 +48,7 @@ describe('home widget shelf plugin activation', () => {
     wrapper = mount(HomeWidgetShelf, {
       props: {
         widgetIds: ['todo-summary'],
-        widgetSizes: { 'todo-summary': 'standard', 'habits-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard', 'weather-summary': 'standard', 'focus-timer-summary': 'standard', 'bookmarks-summary': 'standard', 'history-summary': 'standard' },
+        widgetSizes: { 'todo-summary': 'standard', 'habits-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard', 'weather-summary': 'standard', 'focus-timer-summary': 'standard', 'bookmarks-summary': 'standard', 'history-summary': 'standard', 'news-summary': 'standard' },
         context,
         plugins,
       },

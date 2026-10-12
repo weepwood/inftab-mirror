@@ -1,0 +1,69 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { fetchHackerNewsStories, hasHackerNewsPermission, hackerNewsHostPermission, requestHackerNewsPermission } from './hackerNews'
+
+afterEach(() => vi.unstubAllGlobals())
+
+function jsonResponse(value: unknown, ok = true): Response {
+  return { ok, json: async () => value } as Response
+}
+
+describe('Hacker News feed', () => {
+  it('loads a small ranked feed and labels each story with its source', async () => {
+    const requestOptions: RequestInit[] = []
+    const fetcher = vi.fn(async (input: RequestInfo | URL, options?: RequestInit) => {
+      if (options) requestOptions.push(options)
+      const url = String(input)
+      if (url.endsWith('/topstories.json')) return jsonResponse([11, 12, 12, 13])
+      if (url.endsWith('/11.json')) return jsonResponse({ id: 11, type: 'story', title: '  First story ', url: 'https://news.example/article', score: 32, descendants: 8 })
+      if (url.endsWith('/12.json')) return jsonResponse({ id: 12, type: 'story', title: 'Ask HN without an article URL', score: 4 })
+      return jsonResponse({ id: 13, type: 'job', title: 'Skip non-story items' })
+    })
+
+    await expect(fetchHackerNewsStories(new AbortController().signal, fetcher)).resolves.toEqual([
+      { id: 11, title: 'First story', url: 'https://news.example/article', source: 'news.example', points: 32, comments: 8 },
+      { id: 12, title: 'Ask HN without an article URL', url: 'https://news.ycombinator.com/item?id=12', source: 'Hacker News', points: 4, comments: 0 },
+    ])
+    expect(fetcher).toHaveBeenCalledTimes(4)
+    expect(requestOptions.every((options) => options.credentials === 'omit' && options.referrerPolicy === 'no-referrer')).toBe(true)
+  })
+
+  it('rejects unsafe article URLs and skips deleted or malformed stories', async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/topstories.json')) return jsonResponse([21, 22, 23])
+      if (url.endsWith('/21.json')) return jsonResponse({ id: 21, type: 'story', title: 'Unsafe URL', url: 'javascript:alert(1)' })
+      if (url.endsWith('/22.json')) return jsonResponse({ id: 22, type: 'story', title: 'Deleted', deleted: true })
+      return jsonResponse(null)
+    })
+
+    await expect(fetchHackerNewsStories(new AbortController().signal, fetcher)).resolves.toEqual([
+      { id: 21, title: 'Unsafe URL', url: 'https://news.ycombinator.com/item?id=21', source: 'Hacker News', points: 0, comments: 0 },
+    ])
+  })
+
+  it('fails clearly when the feed endpoint is unavailable or malformed', async () => {
+    await expect(fetchHackerNewsStories(new AbortController().signal, vi.fn().mockResolvedValue(jsonResponse({}, false))))
+      .rejects.toThrow('资讯服务暂时不可用')
+    await expect(fetchHackerNewsStories(new AbortController().signal, vi.fn().mockResolvedValue(jsonResponse(null))))
+      .rejects.toThrow('资讯数据格式无法识别')
+  })
+
+  it('requests extension host access only through an explicit permission call', async () => {
+    const contains = vi.fn().mockResolvedValue(false)
+    const request = vi.fn().mockResolvedValue(true)
+    vi.stubGlobal('chrome', { runtime: { id: 'a'.repeat(32) }, permissions: { contains, request } })
+
+    await expect(hasHackerNewsPermission()).resolves.toBe(false)
+    expect(contains).toHaveBeenCalledWith({ origins: [hackerNewsHostPermission] })
+    expect(request).not.toHaveBeenCalled()
+    await expect(requestHackerNewsPermission()).resolves.toBe(true)
+    expect(request).toHaveBeenCalledWith({ origins: [hackerNewsHostPermission] })
+  })
+
+  it('does not require extension permission on the website', async () => {
+    vi.stubGlobal('chrome', undefined)
+
+    await expect(hasHackerNewsPermission()).resolves.toBe(true)
+    await expect(requestHackerNewsPermission()).resolves.toBe(true)
+  })
+})

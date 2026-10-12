@@ -135,6 +135,19 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
       ])
     })
     expect(optionalPermissions).toEqual([false, false, false])
+
+    await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+    const extensionSettings = page.getByRole('dialog', { name: '设置' })
+    await extensionSettings.getByLabel('显示热门资讯小组件').check()
+    await extensionSettings.getByRole('button', { name: '关闭' }).click()
+    await expect(page.locator('[data-widget-id="news-summary"]')).toContainText('需要单独授权网络访问')
+    const newsPermission = await page.evaluate(() => {
+      const permissions = (window as unknown as {
+        chrome: { permissions: { contains: (details: { origins: string[] }) => Promise<boolean> } }
+      }).chrome.permissions
+      return permissions.contains({ origins: ['https://hacker-news.firebaseio.com/*'] })
+    })
+    expect(newsPermission).toBe(false)
     expect(pageErrors).toEqual([])
   } finally {
     await context?.close()

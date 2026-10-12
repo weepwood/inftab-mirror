@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Inftab New Tab",
   "version": "1.0.0",
-  "description": "A customizable new tab page with shortcuts, folders, notes, tasks, and weather.",
+  "description": "A customizable new tab page with shortcuts, widgets, notes, tasks, weather, and opt-in news.",
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
@@ -15,5 +15,8 @@
   "host_permissions": [
     "https://api.open-meteo.com/*",
     "https://geocoding-api.open-meteo.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://hacker-news.firebaseio.com/*"
   ]
 }

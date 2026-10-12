@@ -43,6 +43,10 @@ const hostPermissions = manifest.host_permissions ?? []
 if (JSON.stringify(hostPermissions) !== JSON.stringify(allowedHosts)) {
   fail(`host_permissions must stay limited to the weather APIs (${allowedHosts.join(', ')}).`)
 }
+const optionalHostPermissions = manifest.optional_host_permissions ?? []
+if (JSON.stringify(optionalHostPermissions) !== JSON.stringify(['https://hacker-news.firebaseio.com/*'])) {
+  fail('optional_host_permissions must contain only the user-enabled Hacker News feed host.')
+}
 for (const permissionField of ['permissions', 'optional_permissions']) {
   const permissions = manifest[permissionField]
   if (permissionField === 'optional_permissions') {
@@ -79,4 +83,4 @@ if (existsSync(htmlPath)) {
   for (const asset of localAssets) resolvePackageFile(asset.slice(2), 'index.html asset')
 }
 
-if (process.exitCode !== 1) console.log('Extension package check passed: Manifest V3, new-tab entry, local assets, weather hosts, and optional bookmarks, clipboard, and browsing history access are valid.')
+if (process.exitCode !== 1) console.log('Extension package check passed: Manifest V3, new-tab entry, local assets, weather hosts, optional Hacker News host access, and optional bookmarks, clipboard, and browsing history access are valid.')

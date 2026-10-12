@@ -112,6 +112,7 @@ const expectedWidgetProps = {
   'focus-timer-summary': ['state'],
   'bookmarks-summary': [],
   'history-summary': [],
+  'news-summary': [],
 } satisfies Record<typeof availableHomeWidgetIds[number], string[]>
 
 const expectedWidgetContextKeys = {
@@ -124,6 +125,7 @@ const expectedWidgetContextKeys = {
   'focus-timer-summary': ['focusTimer'],
   'bookmarks-summary': [],
   'history-summary': [],
+  'news-summary': [],
 } satisfies Record<typeof availableHomeWidgetIds[number], string[]>
 
 describe('built-in panel plugin registry', () => {
@@ -169,7 +171,7 @@ describe('built-in panel plugin registry', () => {
     for (const [id, widget] of Object.entries(homeWidgetPlugins)) {
       expect(widget.title, `${id} title`).toBeTruthy()
       expect(widget.description, `${id} description`).toBeTruthy()
-      if (widget.panel) expect(panelPlugins[widget.panel], `${id} panel`).toBeTruthy()
+      if ('panel' in widget && widget.panel) expect(panelPlugins[widget.panel], `${id} panel`).toBeTruthy()
       expect(widget.component, `${id} component`).toBeTruthy()
       expect(typeof widget.props, `${id} props adapter`).toBe('function')
     }

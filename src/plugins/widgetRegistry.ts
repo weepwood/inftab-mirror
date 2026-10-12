@@ -28,6 +28,7 @@ export interface HomeWidgetContextById {
   'focus-timer-summary': Pick<HomeWidgetContext, 'focusTimer'>
   'bookmarks-summary': NoContext
   'history-summary': NoContext
+  'news-summary': NoContext
 }
 
 export interface HomeWidgetPropsById {
@@ -40,6 +41,7 @@ export interface HomeWidgetPropsById {
   'focus-timer-summary': { state: FocusTimerState }
   'bookmarks-summary': NoProps
   'history-summary': NoProps
+  'news-summary': NoProps
 }
 
 export type HomeWidgetPlugin<Id extends HomeWidgetId = HomeWidgetId> = {
@@ -120,6 +122,12 @@ export const homeWidgetPlugins = {
     component: lazyWidget(() => import('../components/HistorySummaryWidget.vue')),
     props: (_context) => ({}),
   },
+  'news-summary': {
+    title: '热门资讯',
+    description: '查看 Hacker News 热门技术资讯；启用后按需联网',
+    component: lazyWidget(() => import('../components/NewsSummaryWidget.vue')),
+    props: (_context) => ({}),
+  },
 } satisfies HomeWidgetPluginRegistry
 
 type HomeWidgetContextAdapterRegistry = {
@@ -136,6 +144,7 @@ const homeWidgetContextAdapters = {
   'focus-timer-summary': (context) => ({ focusTimer: context.focusTimer }),
   'bookmarks-summary': () => ({}),
   'history-summary': () => ({}),
+  'news-summary': () => ({}),
 } satisfies HomeWidgetContextAdapterRegistry
 
 export function getHomeWidgetContextForPlugin<Id extends HomeWidgetId>(id: Id, context: HomeWidgetContext): HomeWidgetContextById[Id] {
