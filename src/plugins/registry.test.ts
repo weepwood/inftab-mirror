@@ -196,6 +196,24 @@ describe('built-in panel plugin registry', () => {
     }
   })
 
+  it('uses the selected widget registry for both context and prop adapters', () => {
+    const customTodos = [{ id: 'custom', title: 'Injected todo', done: false }]
+    const contextAdapter = vi.fn(() => ({ todos: customTodos }))
+    const propsAdapter = vi.fn((context: HomeWidgetContextById['todo-summary']) => ({ items: context.todos }))
+    const plugins = {
+      ...homeWidgetPlugins,
+      'todo-summary': {
+        ...homeWidgetPlugins['todo-summary'],
+        context: contextAdapter,
+        props: propsAdapter,
+      },
+    }
+
+    expect(getHomeWidgetProps('todo-summary', homeWidgetContext, plugins)).toEqual({ items: customTodos })
+    expect(contextAdapter).toHaveBeenCalledWith(homeWidgetContext)
+    expect(propsAdapter).toHaveBeenCalledWith({ todos: customTodos })
+  })
+
   it('passes shared focus timer state to its panel and homepage widget', () => {
     const state = { ...defaultFocusTimerState, completedSessions: 2 }
     expect(panelPlugins['focus-timer'].props({ ...createPanelContext(), focusTimer: state })).toEqual({ state })

@@ -4,6 +4,8 @@
 
 面板 adapter 的最小状态/操作上下文、属性和事件参数类型集中在 `src/plugins/registry.ts` 的 `PanelContextById`、`PanelPropsById`、`PanelEventsById`；首页小组件对应定义在 `src/plugins/widgetRegistry.ts` 的 `HomeWidgetContextById`、`HomeWidgetPropsById`。每个注册项将 `context`、`props` 和事件适配器与组件元数据放在同一处，TypeScript 会按 ID 限制可访问的上下文并检查返回值。为新模块只暴露它实际需要的状态和操作。若更改组件契约，同步更新这些类型和 `src/plugins/registry.test.ts` 中的键名断言，并为实际组件交互保留端到端回归。`npm run check` 会执行插件测试的静态类型检查。
 
+首页组件架使用的注册表会同时决定该组件的上下文适配器和属性适配器；测试替代注册项时，两者必须来自同一份 `HomeWidgetPluginRegistry`，以避免验证到默认全局注册项。
+
 ## 新增工具面板
 
 1. 在 `src/plugins/ids.ts` 的 `availablePanelIds` 中加入稳定、唯一的 ID。

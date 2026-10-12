@@ -141,8 +141,12 @@ export const homeWidgetPlugins = {
   },
 } satisfies HomeWidgetPluginRegistry
 
-export function getHomeWidgetContextForPlugin<Id extends HomeWidgetId>(id: Id, context: HomeWidgetContext): HomeWidgetContextById[Id] {
-  const plugin = homeWidgetPlugins[id] as unknown as HomeWidgetPlugin<Id>
+export function getHomeWidgetContextForPlugin<Id extends HomeWidgetId>(
+  id: Id,
+  context: HomeWidgetContext,
+  plugins: HomeWidgetPluginRegistry = homeWidgetPlugins,
+): HomeWidgetContextById[Id] {
+  const plugin = plugins[id] as unknown as HomeWidgetPlugin<Id>
   return plugin.context(context)
 }
 
@@ -152,6 +156,6 @@ export function getHomeWidgetProps<Id extends HomeWidgetId>(
   plugins: HomeWidgetPluginRegistry = homeWidgetPlugins,
 ): HomeWidgetPropsById[Id] {
   const plugin = plugins[id] as HomeWidgetPlugin<Id>
-  const pluginContext = getHomeWidgetContextForPlugin(id, context)
+  const pluginContext = getHomeWidgetContextForPlugin(id, context, plugins)
   return plugin.props(pluginContext)
 }
