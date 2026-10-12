@@ -744,6 +744,35 @@ test('weather home widget shows the current city reading and opens its panel', a
   await expect(page.getByRole('dialog', { name: '天气' })).toBeVisible()
 })
 
+test('weather widget keeps its source and the homepage usable while offline, then recovers on retry', async ({ page }) => {
+  let geocodingAttempts = 0
+  await page.route('https://geocoding-api.open-meteo.com/**', async (route) => {
+    geocodingAttempts += 1
+    if (geocodingAttempts === 1) {
+      await route.fulfill({ status: 503, body: 'offline' })
+      return
+    }
+    await route.fulfill({ json: { results: [{ id: 1, name: '上海', admin1: '上海', country: '中国', latitude: 31.2, longitude: 121.5 }] } })
+  })
+  await page.route('https://api.open-meteo.com/**', (route) => route.fulfill({
+    json: { current: { temperature_2m: 20, weather_code: 1 } },
+  }))
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settingsPanel = page.getByRole('dialog', { name: '设置' })
+  await settingsPanel.getByLabel('显示天气小组件').check()
+  await settingsPanel.getByRole('button', { name: '关闭' }).click()
+
+  const widget = page.locator('[data-widget-id="weather-summary"]')
+  await expect(widget.getByRole('status')).toContainText('天气服务暂时不可用')
+  await expect(widget.getByRole('link', { name: '天气数据由 Open-Meteo 提供' })).toHaveAttribute('href', 'https://open-meteo.com/')
+  await expect(page.locator('.shortcut-grid-wrap')).toBeVisible()
+  await expect(page.getByRole('searchbox', { name: '输入并搜索' })).toBeVisible()
+
+  await widget.getByRole('button', { name: '重试获取天气' }).click()
+  await expect(widget).toContainText('上海 20°')
+  await expect(widget.getByRole('link', { name: '天气数据由 Open-Meteo 提供' })).toBeVisible()
+})
+
 test('focus timer widget stays in sync with the panel and survives a reload', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const settingsPanel = page.getByRole('dialog', { name: '设置' })

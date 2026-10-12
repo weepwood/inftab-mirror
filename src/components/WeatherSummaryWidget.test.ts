@@ -70,6 +70,30 @@ describe('WeatherSummaryWidget', () => {
     expect(wrapper.text()).toContain('天气更新失败，显示上次结果')
   })
 
+  it('keeps the data source visible and retryable when the initial request fails', async () => {
+    const initialRequest = deferred<{ ok: boolean; json: () => Promise<unknown> }>()
+    const fetchMock = vi.fn().mockReturnValue(initialRequest.promise)
+    vi.stubGlobal('fetch', fetchMock)
+    wrapper = mount(WeatherSummaryWidget, { attachTo: document.body, props: { city: '上海' } })
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[role="status"]').text()).toContain('正在获取天气')
+    expect(wrapper.find('.weather-summary-attribution').exists()).toBe(true)
+
+    initialRequest.resolve({ ok: false, json: async () => ({}) })
+    await flushPromises()
+
+    const attribution = wrapper.get('.weather-summary-attribution')
+    expect(attribution.text()).toBe('天气数据由 Open-Meteo 提供')
+    expect(attribution.attributes('href')).toBe('https://open-meteo.com/')
+    expect(wrapper.get('[role="status"]').text()).toContain('天气服务暂时不可用')
+    expect(wrapper.get('[aria-label="重试获取天气"]')).toBeTruthy()
+
+    await wrapper.get('[aria-label="重试获取天气"]').trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('.weather-summary-attribution').exists()).toBe(true)
+  })
+
   it('does not restart an in-flight stale refresh when focus and visibility events arrive together', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-12T12:00:00'))

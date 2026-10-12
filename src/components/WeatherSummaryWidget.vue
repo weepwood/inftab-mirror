@@ -71,10 +71,13 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="weather-summary-widget" :aria-busy="loading">
-    <p v-if="!summary && loading" class="weather-summary-status" role="status">正在获取天气…</p>
-    <div v-else-if="!summary" class="weather-summary-empty">
-      <span class="weather-summary-status" role="status">{{ error || '天气暂不可用' }}</span>
-      <button class="weather-summary-refresh" type="button" aria-label="重试获取天气" :disabled="loading" @click="refreshWeather"><RefreshCw :size="14" /></button>
+    <div v-if="!summary" class="weather-summary-empty">
+      <div class="weather-summary-copy">
+        <p v-if="loading" class="weather-summary-status" role="status">正在获取天气…</p>
+        <p v-else class="weather-summary-status" role="status">{{ error || '天气暂不可用' }}</p>
+        <a class="weather-summary-attribution" href="https://open-meteo.com/" target="_blank" rel="noreferrer">天气数据由 Open-Meteo 提供</a>
+      </div>
+      <button v-if="!loading" class="weather-summary-refresh" type="button" aria-label="重试获取天气" @click="refreshWeather"><RefreshCw :size="14" /></button>
     </div>
     <div v-else class="weather-summary-current">
       <component :is="weatherIcon" :size="31" :stroke-width="1.7" aria-hidden="true" />

@@ -87,7 +87,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .weather-summary-attribution { width: fit-content; overflow: hidden; color: #8d96a0; font-size: 8px; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
 .weather-summary-attribution:hover { text-decoration: underline; }
 .weather-summary-copy small { color: #ac6e36; font-size: 9px; }
-.weather-summary-empty .weather-summary-status { flex: 1; }
 .weather-summary-refresh { width: 27px; height: 27px; display: grid; flex: 0 0 auto; place-items: center; border: 0; border-radius: 7px; background: transparent; color: #727f8e; cursor: pointer; }
 .weather-summary-refresh:hover:not(:disabled) { background: rgba(76, 93, 116, .12); color: #26313e; }
 .weather-summary-refresh:disabled { opacity: .45; cursor: wait; }
