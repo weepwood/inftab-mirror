@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { CalendarDays, Pencil, Plus, Trash2, X } from '@lucide/vue'
-import { daysUntilCountdown, formatCountdown, isValidCalendarDate } from '../data/countdown'
+import { daysUntilCountdown, isValidCalendarDate } from '../data/countdown'
 import type { CountdownItem, CountdownRecurrence } from '../types'
+
+const countdownDateFormatter = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
 
 const props = defineProps<{ items: CountdownItem[] }>()
 const emit = defineEmits<{
@@ -17,9 +19,18 @@ const recurrence = ref<CountdownRecurrence>('once')
 const editingId = ref('')
 const today = ref(new Date())
 const limitReached = computed(() => props.items.length >= 500 && !editingId.value)
-const orderedItems = computed(() => [...props.items].sort((left, right) => {
-  const leftDays = daysUntilCountdown(left, today.value)
-  const rightDays = daysUntilCountdown(right, today.value)
+const orderedItems = computed(() => props.items.map((item) => {
+  const days = daysUntilCountdown(item, today.value)
+  const remaining = days === 0 ? '今天' : days > 0 ? `还有 ${days} 天` : `已过去 ${Math.abs(days)} 天`
+  return {
+    item,
+    days,
+    dateLabel: countdownDateFormatter.format(new Date(`${item.date}T12:00:00`)),
+    remaining,
+  }
+}).sort((left, right) => {
+  const leftDays = left.days
+  const rightDays = right.days
   if (leftDays < 0 && rightDays >= 0) return 1
   if (leftDays >= 0 && rightDays < 0) return -1
   return leftDays - rightDays
@@ -66,9 +77,6 @@ function remove(item: CountdownItem) {
   emit('remove', item.id)
 }
 
-function displayDate(value: string) {
-  return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(`${value}T12:00:00`))
-}
 </script>
 
 <template>
@@ -94,15 +102,15 @@ function displayDate(value: string) {
     <p v-if="limitReached" class="panel-footnote" role="status">已达到 500 条纪念日上限；删除一条后即可添加。</p>
 
     <ul v-if="orderedItems.length" class="countdown-list">
-      <li v-for="item in orderedItems" :key="item.id" class="countdown-item">
+      <li v-for="row in orderedItems" :key="row.item.id" class="countdown-item">
         <span class="countdown-icon"><CalendarDays :size="17" /></span>
         <div class="countdown-copy">
-          <strong>{{ item.title }}</strong>
-          <small>{{ displayDate(item.date) }} · {{ item.recurrence === 'yearly' ? '每年重复' : '仅一次' }}</small>
+          <strong>{{ row.item.title }}</strong>
+          <small>{{ row.dateLabel }} · {{ row.item.recurrence === 'yearly' ? '每年重复' : '仅一次' }}</small>
         </div>
-        <span class="countdown-remaining" :class="{ elapsed: item.recurrence === 'once' && daysUntilCountdown(item, today) < 0 }">{{ formatCountdown(item, today) }}</span>
-        <button class="icon-action" type="button" :aria-label="`编辑${item.title}`" @click="beginEdit(item)"><Pencil :size="14" /></button>
-        <button class="icon-action" type="button" :aria-label="`删除${item.title}`" @click="remove(item)"><Trash2 :size="14" /></button>
+        <span class="countdown-remaining" :class="{ elapsed: row.item.recurrence === 'once' && row.days < 0 }">{{ row.remaining }}</span>
+        <button class="icon-action" type="button" :aria-label="`编辑${row.item.title}`" @click="beginEdit(row.item)"><Pencil :size="14" /></button>
+        <button class="icon-action" type="button" :aria-label="`删除${row.item.title}`" @click="remove(row.item)"><Trash2 :size="14" /></button>
       </li>
     </ul>
     <div v-else class="empty-state countdown-empty"><CalendarDays :size="27" /><p>还没有纪念日</p><small>添加生日、旅行或重要日期</small></div>
