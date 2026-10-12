@@ -49,6 +49,24 @@ test('quick translation reports an exhausted chunk load without an unhandled pag
   expect(pageErrors).toEqual([])
 })
 
+test('recovers the shortcut grid after its chunk fails and manual retry succeeds', async ({ page }) => {
+  let chunkRequests = 0
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
+  await page.route(/(?:ShortcutGrid-[^/]+\.js|src\/components\/ShortcutGrid\.vue)(?:\?.*)?$/, async (route) => {
+    chunkRequests += 1
+    if (chunkRequests <= 3) await route.abort('failed')
+    else await route.continue()
+  })
+  await page.reload()
+
+  await expect(page.getByRole('alert').filter({ hasText: '快捷入口暂时无法加载' })).toBeVisible()
+  await page.getByRole('button', { name: '重试加载' }).click()
+  await expect(page.locator('.shortcut-grid-wrap')).toBeVisible()
+  expect(chunkRequests).toBeGreaterThanOrEqual(4)
+  expect(pageErrors).toEqual([])
+})
+
 test('creates a shortcut and keeps it after reloading the new tab', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Infinity 新标签页' })).toBeVisible()
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
