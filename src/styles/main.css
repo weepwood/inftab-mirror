@@ -31,7 +31,7 @@ select { background-color: #fff; color: #343a40; }
   background-position: center;
   background-size: cover;
 }
-.home.home-scrollable { overflow-y: auto; overscroll-behavior-y: contain; }
+.home.home-scrollable { overflow-y: auto; overscroll-behavior-y: contain; touch-action: auto; }
 .home-scrollable .home-content { padding-bottom: 72px; }
 .background-shade { position: absolute; inset: 0; z-index: 0; background: rgba(0, 0, 0, var(--page-shade, .2)); }
 .home-actions { position: absolute; z-index: 2; top: 20px; right: 20px; display: flex; gap: 18px; }
@@ -501,6 +501,8 @@ select { background-color: #fff; color: #343a40; }
 @media (hover: none) {
   .home-dock-remove { opacity: 1; pointer-events: auto; }
 }
+
+.home.home-scrollable .home-widget-shelf { touch-action: auto; }
 
 @media (max-width: 480px) {
   .home-clock { top: 11px; left: 13px; }

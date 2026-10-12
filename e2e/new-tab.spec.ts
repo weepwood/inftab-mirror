@@ -867,6 +867,52 @@ test('touch scrolling over shortcuts scrolls a short homepage without starting a
   }
 })
 
+test('touch gestures over the mobile widget shelf allow both page and shelf scrolling', async ({ browser, page }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 480 },
+    isMobile: true,
+    hasTouch: true,
+  })
+  try {
+    const touchPage = await context.newPage()
+    await touchPage.addInitScript(() => {
+      localStorage.setItem('inftab.preferences.v1', JSON.stringify({
+        homeWidgetIds: ['todo-summary', 'countdown-summary', 'notes-summary'],
+      }))
+    })
+    await touchPage.goto(new URL(page.url()).origin)
+    const home = touchPage.locator('.home.home-scrollable')
+    const shelf = touchPage.locator('.home-widget-shelf')
+    const firstCard = touchPage.locator('.home-widget-card').first()
+    await expect(home).toBeVisible()
+    await expect(shelf).toBeVisible()
+    await expect.poll(() => home.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
+    await expect.poll(() => shelf.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true)
+
+    const cdp = await context.newCDPSession(touchPage)
+    const bounds = await firstCard.boundingBox()
+    if (!bounds) throw new Error('The first home widget is not visible for the touch scroll check.')
+    const x = bounds.x + bounds.width / 2
+    const y = bounds.y + bounds.height / 2
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 45, id: 1 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 90, id: 1 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await expect.poll(() => home.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+
+    const nextX = x - 100
+    const shelfY = (await firstCard.boundingBox())?.y ?? y
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: shelfY + 25, id: 2 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 45, y: shelfY + 25, id: 2 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: nextX, y: shelfY + 25, id: 2 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await expect.poll(() => shelf.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
+    await cdp.detach()
+  } finally {
+    await context.close()
+  }
+})
+
 test('calendar home widget can be enabled and opens the interactive calendar panel', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByLabel('显示月历小组件').check()
