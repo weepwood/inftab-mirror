@@ -1,5 +1,5 @@
 import { useStoredState } from './useStoredState'
-import { watch } from 'vue'
+import { onScopeDispose, watch } from 'vue'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts, launcherItems } from '../data/defaults'
 import type { WorkspaceBackup } from '../data/backup'
 import { mergeById } from '../data/mergeById'
@@ -10,6 +10,8 @@ import { defaultFocusTimerState, sanitizeFocusTimerState } from '../data/focusTi
 import { defaultHomeWorkspace, defaultHomeWorkspaceId, maxHomeWorkspaceNameLength, maxHomeWorkspaces, sanitizeActiveHomeWorkspaceId, sanitizeHomeWorkspaces, type HomeWorkspace } from '../data/homeWorkspaces'
 import type { CountdownItem, CountdownRecurrence, CustomSearchEngine, Habit, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
 import { getLocalDateKey, maxCompletionDatesPerHabit, maxHabits, maxHabitTitleLength } from '../data/habits'
+
+const activeHomeWorkspaceReferenceGraceMs = 500
 
 export function useLocalWorkspace() {
   const preferences = useStoredState<Preferences>('inftab.preferences.v1', defaultPreferences, sanitizePreferences)
@@ -30,12 +32,39 @@ export function useLocalWorkspace() {
   const activeHomeWorkspaceId = useStoredState<string>(
     'inftab.active-home-workspace.v1',
     defaultHomeWorkspaceId,
-    (value) => sanitizeActiveHomeWorkspaceId(value, homeWorkspaces.value),
+    (value) => typeof value === 'string' && value.length > 0 && value.length <= 128 ? value : defaultHomeWorkspaceId,
   )
+  const initialActiveHomeWorkspaceId = sanitizeActiveHomeWorkspaceId(activeHomeWorkspaceId.value, homeWorkspaces.value)
+  if (initialActiveHomeWorkspaceId !== activeHomeWorkspaceId.value) activeHomeWorkspaceId.value = initialActiveHomeWorkspaceId
+  let activeWorkspaceValidationTimer: ReturnType<typeof setTimeout> | undefined
+  let lastKnownActiveHomeWorkspaceId = initialActiveHomeWorkspaceId
+  function clearActiveWorkspaceValidationTimer() {
+    if (activeWorkspaceValidationTimer === undefined) return
+    clearTimeout(activeWorkspaceValidationTimer)
+    activeWorkspaceValidationTimer = undefined
+  }
   watch(homeWorkspaces, () => {
-    const validId = sanitizeActiveHomeWorkspaceId(activeHomeWorkspaceId.value, homeWorkspaces.value)
-    if (validId !== activeHomeWorkspaceId.value) activeHomeWorkspaceId.value = validId
+    const selectedId = activeHomeWorkspaceId.value
+    if (homeWorkspaces.value.some((workspace) => workspace.id === selectedId)) {
+      lastKnownActiveHomeWorkspaceId = selectedId
+      clearActiveWorkspaceValidationTimer()
+    } else if (selectedId === lastKnownActiveHomeWorkspaceId) {
+      activeHomeWorkspaceId.value = sanitizeActiveHomeWorkspaceId(selectedId, homeWorkspaces.value)
+    }
   }, { flush: 'sync' })
+  watch(activeHomeWorkspaceId, (workspaceId) => {
+    clearActiveWorkspaceValidationTimer()
+    if (homeWorkspaces.value.some((workspace) => workspace.id === workspaceId)) {
+      lastKnownActiveHomeWorkspaceId = workspaceId
+      return
+    }
+    activeWorkspaceValidationTimer = setTimeout(() => {
+      activeWorkspaceValidationTimer = undefined
+      const validId = sanitizeActiveHomeWorkspaceId(activeHomeWorkspaceId.value, homeWorkspaces.value)
+      if (validId !== activeHomeWorkspaceId.value) activeHomeWorkspaceId.value = validId
+    }, activeHomeWorkspaceReferenceGraceMs)
+  }, { flush: 'sync' })
+  onScopeDispose(clearActiveWorkspaceValidationTimer)
   const todos = useStoredState<TodoItem[]>('inftab.todos.v1', [], sanitizeTodos)
   const habits = useStoredState<Habit[]>('inftab.habits.v1', [], sanitizeHabits)
   const countdowns = useStoredState<CountdownItem[]>('inftab.countdowns.v1', [], sanitizeCountdowns)

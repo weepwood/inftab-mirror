@@ -134,6 +134,49 @@ describe('useLocalWorkspace launcher ordering', () => {
 })
 
 describe('useLocalWorkspace home workspaces', () => {
+  it('keeps a pending active workspace when its workspace-list event arrives later', async () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const workspaceId = 'remote-workspace'
+    const activeKey = 'inftab.active-home-workspace.v1'
+    const workspacesKey = 'inftab.home-workspaces.v1'
+    const activeBefore = JSON.stringify(workspace.activeHomeWorkspaceId.value)
+    const activeAfter = JSON.stringify(workspaceId)
+    const workspacesBefore = JSON.stringify(workspace.homeWorkspaces.value)
+    const intermediateWorkspaces = JSON.stringify([...workspace.homeWorkspaces.value, { id: 'unrelated-workspace', name: 'Other', itemIds: [] }])
+    const workspacesAfter = JSON.stringify([
+      ...workspace.homeWorkspaces.value,
+      { id: 'unrelated-workspace', name: 'Other', itemIds: [] },
+      { id: workspaceId, name: 'Remote', itemIds: [] },
+    ])
+
+    localStorage.setItem(activeKey, activeAfter)
+    window.dispatchEvent(new StorageEvent('storage', { key: activeKey, oldValue: activeBefore, newValue: activeAfter }))
+    await vi.waitFor(() => expect(workspace.activeHomeWorkspaceId.value).toBe(workspaceId))
+
+    localStorage.setItem(workspacesKey, intermediateWorkspaces)
+    window.dispatchEvent(new StorageEvent('storage', { key: workspacesKey, oldValue: workspacesBefore, newValue: intermediateWorkspaces }))
+    await vi.waitFor(() => expect(workspace.homeWorkspaces.value.map((item) => item.id)).toContain('unrelated-workspace'))
+    expect(workspace.activeHomeWorkspaceId.value).toBe(workspaceId)
+
+    localStorage.setItem(workspacesKey, workspacesAfter)
+    window.dispatchEvent(new StorageEvent('storage', { key: workspacesKey, oldValue: intermediateWorkspaces, newValue: workspacesAfter }))
+    await vi.waitFor(() => expect(workspace.homeWorkspaces.value.map((item) => item.id)).toContain(workspaceId))
+    expect(workspace.activeHomeWorkspaceId.value).toBe(workspaceId)
+  })
+
+  it('repairs an active workspace id that does not arrive in the workspace list', async () => {
+    vi.useFakeTimers()
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+
+    workspace.activeHomeWorkspaceId.value = 'never-arrives'
+    expect(workspace.activeHomeWorkspaceId.value).toBe('never-arrives')
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(workspace.activeHomeWorkspaceId.value).toBe('default')
+  })
+
   it('creates isolated launcher groups and returns removed workspace links to the homepage', () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
