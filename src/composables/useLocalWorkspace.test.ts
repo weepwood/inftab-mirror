@@ -68,6 +68,28 @@ describe('useLocalWorkspace default shortcut URL migration', () => {
 })
 
 describe('useLocalWorkspace launcher ordering', () => {
+  it('keeps a folder member when its shortcut storage event arrives later', async () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const shortcut = { id: 'out-of-order-folder-shortcut', title: 'Out of order', url: 'https://example.com/', color: '#abc', mark: 'O' }
+    const folder = { id: 'out-of-order-folder', title: 'Work', shortcutIds: [shortcut.id], color: '#369', mark: '▣' }
+    const shortcutKey = 'inftab.shortcuts.v1'
+    const folderKey = 'inftab.folders.v1'
+    const shortcutsBefore = JSON.stringify(workspace.shortcuts.value)
+    const foldersBefore = JSON.stringify(workspace.folders.value)
+    const foldersAfter = JSON.stringify([...workspace.folders.value, folder])
+    const shortcutsAfter = JSON.stringify([...workspace.shortcuts.value, shortcut])
+
+    localStorage.setItem(folderKey, foldersAfter)
+    window.dispatchEvent(new StorageEvent('storage', { key: folderKey, oldValue: foldersBefore, newValue: foldersAfter }))
+    await vi.waitFor(() => expect(workspace.folders.value).toContainEqual(folder))
+
+    localStorage.setItem(shortcutKey, shortcutsAfter)
+    window.dispatchEvent(new StorageEvent('storage', { key: shortcutKey, oldValue: shortcutsBefore, newValue: shortcutsAfter }))
+    await vi.waitFor(() => expect(workspace.shortcuts.value).toContainEqual(shortcut))
+    await vi.waitFor(() => expect(workspace.folders.value).toContainEqual(folder))
+  })
+
   it('restores launcher order when the order update arrives before its shortcut record', async () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!

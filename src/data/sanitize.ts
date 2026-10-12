@@ -153,7 +153,11 @@ export function sanitizeShortcuts(value: unknown): Shortcut[] {
   })
 }
 
-export function sanitizeFolders(value: unknown, shortcuts: Shortcut[]): ShortcutFolder[] {
+export function sanitizeFolders(
+  value: unknown,
+  shortcuts: Shortcut[],
+  options: { preserveUnknownShortcuts?: boolean } = {},
+): ShortcutFolder[] {
   const shortcutIds = new Set(shortcuts.map((shortcut) => shortcut.id))
   const seenFolderIds = new Set<string>()
   const claimedShortcutIds = new Set<string>()
@@ -167,7 +171,7 @@ export function sanitizeFolders(value: unknown, shortcuts: Shortcut[]): Shortcut
       || typeof item.color !== 'string' || !palette.test(item.color)
       || typeof item.mark !== 'string' || !Array.isArray(item.shortcutIds) || item.shortcutIds.length > 500
       || !item.shortcutIds.every((id) => typeof id === 'string' && id.length <= 128)) continue
-    const members = item.shortcutIds.filter((id): id is string => shortcutIds.has(id) && !claimedShortcutIds.has(id))
+    const members = item.shortcutIds.filter((id): id is string => (options.preserveUnknownShortcuts || shortcutIds.has(id)) && !claimedShortcutIds.has(id))
     seenFolderIds.add(item.id)
     members.forEach((id) => claimedShortcutIds.add(id))
     result.push({

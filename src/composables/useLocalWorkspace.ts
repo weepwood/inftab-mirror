@@ -14,7 +14,11 @@ import { getLocalDateKey, maxCompletionDatesPerHabit, maxHabits, maxHabitTitleLe
 export function useLocalWorkspace() {
   const preferences = useStoredState<Preferences>('inftab.preferences.v1', defaultPreferences, sanitizePreferences)
   const shortcuts = useStoredState<Shortcut[]>('inftab.shortcuts.v1', defaultShortcuts, sanitizeShortcuts)
-  const folders = useStoredState<ShortcutFolder[]>('inftab.folders.v1', [], (value) => sanitizeFolders(value, shortcuts.value))
+  const folders = useStoredState<ShortcutFolder[]>(
+    'inftab.folders.v1',
+    [],
+    (value) => sanitizeFolders(value, shortcuts.value, { preserveUnknownShortcuts: true }),
+  )
   const launcherOrder = useStoredState<string[]>('inftab.launcher-order.v1', defaultLauncherOrder, (value) => sanitizeLauncherOrder(value, shortcuts.value, folders.value))
   const builtInLauncherIds = launcherItems.map((item) => item.id)
   const homeWorkspaces = useStoredState<HomeWorkspace[]>(
@@ -91,8 +95,10 @@ export function useLocalWorkspace() {
     })
   }
 
-  watch([shortcuts, folders], () => {
-    const cleanFolders = sanitizeFolders(folders.value, shortcuts.value)
+  watch([shortcuts, folders], ([currentShortcuts, currentFolders], [previousShortcuts]) => {
+    const cleanFolders = sanitizeFolders(currentFolders, currentShortcuts, {
+      preserveUnknownShortcuts: currentShortcuts === previousShortcuts,
+    })
     if (JSON.stringify(cleanFolders) !== JSON.stringify(folders.value)) folders.value = cleanFolders
 
     const cleanLauncherOrder = sanitizeLauncherOrder(launcherOrder.value, shortcuts.value, folders.value)
