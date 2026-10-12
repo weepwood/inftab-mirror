@@ -52,6 +52,12 @@ test('workspace tabs isolate shortcuts and persist the active workspace', async 
   await dialog.getByPlaceholder('https://example.com').fill('https://workspace.example/')
   await dialog.getByRole('button', { name: '保存' }).click()
   await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+  const shortcut = page.locator('.shortcut-cell').filter({ has: page.getByRole('button', { name: '打开Workspace only' }) })
+  if (!(await shortcut.isVisible())) await page.getByRole('button', { name: '下一页' }).click()
+  await shortcut.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: '固定到 Dock' }).click()
+  const dock = page.getByRole('navigation', { name: '常驻 Dock' })
+  await expect(dock.getByRole('button', { name: '打开Workspace only' })).toBeVisible()
 
   await page.keyboard.press('Control+f')
   const localSearch = page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })
@@ -59,15 +65,18 @@ test('workspace tabs isolate shortcuts and persist the active workspace', async 
   await expect(page.getByRole('option', { name: /Workspace only/ })).toBeVisible()
 
   await page.getByRole('tab', { name: '主页' }).click()
+  await expect(dock).toHaveCount(0)
   await localSearch.fill('Workspace only')
   await expect(page.locator('.local-search-empty')).toContainText('没有匹配的快捷入口')
 
   await page.getByRole('tab', { name: '工作区 1' }).click()
+  await expect(dock.getByRole('button', { name: '打开Workspace only' })).toBeVisible()
   await page.reload()
   await expect(page.getByRole('tab', { name: '工作区 1' })).toHaveAttribute('aria-selected', 'true')
   await page.keyboard.press('Control+f')
   await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Workspace only')
   await expect(page.getByRole('option', { name: /Workspace only/ })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: '常驻 Dock' }).getByRole('button', { name: '打开Workspace only' })).toBeVisible()
 
   await page.getByRole('button', { name: '重命名当前工作区' }).click()
   const workspaceName = page.getByRole('textbox', { name: '工作区名称' })
@@ -80,6 +89,7 @@ test('workspace tabs isolate shortcuts and persist the active workspace', async 
   await confirmation.getByRole('button', { name: '确认删除' }).click()
   await expect(page.getByRole('tab', { name: '主页' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('option', { name: /Workspace only/ })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: '常驻 Dock' }).getByRole('button', { name: '打开Workspace only' })).toBeVisible()
 })
 
 test('search submits an encoded query to the selected engine and category', async ({ page }) => {

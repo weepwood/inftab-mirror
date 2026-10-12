@@ -149,6 +149,7 @@ const allLauncherItems = computed(() => availableLauncherItems.value.filter((ite
   && !preferences.value.hiddenLauncherIds.includes(item.id)
   && (!item.shortcut || !folderedShortcutIds.value.has(item.id))))
 const homeDockItems = computed(() => preferences.value.dockItemIds.flatMap((id) => {
+  if (!activeHomeWorkspaceItemIds.value.has(id)) return []
   const item = availableLauncherItems.value.find((candidate) => candidate.id === id)
   return item ? [item] : []
 }))
