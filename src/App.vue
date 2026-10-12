@@ -45,6 +45,7 @@ const {
   focusTimer,
   customSearchEngines,
   saveShortcut: saveShortcutData,
+  addShortcuts: addShortcutsData,
   removeShortcut: removeShortcutData,
   saveFolder: saveFolderData,
   removeFolder: removeFolderData,
@@ -190,6 +191,7 @@ const panelContext = computed<PanelPluginContext>(() => ({
   weatherCity: weatherCity.value,
   customSearchEngines: customSearchEngines.value,
   focusTimer: focusTimer.value,
+  availableShortcutSlots: Math.max(0, 500 - shortcuts.value.length),
   updatePreferences,
   resetPreferences: () => requestDestructiveAction('恢复默认设置？', '当前外观、组件和布局设置将恢复默认值。', resetPreferences, '恢复默认设置'),
   openShortcut: () => openShortcutDialog(),
@@ -197,6 +199,23 @@ const panelContext = computed<PanelPluginContext>(() => ({
     openShortcutDialog()
     shortcutTitle.value = title
     shortcutUrl.value = url
+  },
+  importBookmarks: (items) => {
+    if (shortcuts.value.length + items.length > 500) return { added: 0, error: '快捷入口已达到 500 个上限，请先删除一些再导入。' }
+    const newShortcuts: Shortcut[] = items.map(({ title, url }) => {
+      const cleanTitle = title.trim().slice(0, 80) || url
+      return {
+        id: crypto.randomUUID(),
+        title: cleanTitle,
+        url,
+        color: '#3d82f6',
+        mark: [...cleanTitle].slice(0, 2).join(' ').toUpperCase(),
+      }
+    })
+    if (!addShortcutsData(newShortcuts, activeHomeWorkspaceId.value)) {
+      return { added: 0, error: '书签未能完整导入；请检查网址或快捷入口数量后重试。' }
+    }
+    return { added: newShortcuts.length }
   },
   openFolder: () => openFolderEditor(),
   exportBackup: downloadBackup,

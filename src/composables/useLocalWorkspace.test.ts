@@ -269,6 +269,48 @@ describe('useLocalWorkspace home workspaces', () => {
   })
 })
 
+describe('useLocalWorkspace bulk shortcut import', () => {
+  it('adds a batch atomically to the selected workspace and preserves launcher order', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const targetWorkspace = workspace.createHomeWorkspace('导入书签')!
+    const beforeOrder = [...workspace.launcherOrder.value]
+    const batch = [
+      { id: 'bookmark-one', title: 'One', url: 'https://one.example/', color: '#3d82f6', mark: 'O' },
+      { id: 'bookmark-two', title: 'Two', url: 'https://two.example/', color: '#3d82f6', mark: 'T' },
+    ]
+
+    expect(workspace.addShortcuts(batch, targetWorkspace)).toBe(true)
+    expect(workspace.shortcuts.value.slice(-2)).toEqual(batch)
+    expect(workspace.launcherOrder.value).toEqual([...beforeOrder, 'bookmark-one', 'bookmark-two'])
+    expect(workspace.homeWorkspaces.value.find((item) => item.id === targetWorkspace)?.itemIds).toEqual(expect.arrayContaining(['bookmark-one', 'bookmark-two']))
+    expect(workspace.homeWorkspaces.value.find((item) => item.id === 'default')?.itemIds).not.toContain('bookmark-one')
+  })
+
+  it('rejects invalid, duplicate, conflicting, or over-capacity batches without partial changes', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const existingShortcut = workspace.shortcuts.value[0]!
+    const one = { id: 'new-bookmark', title: 'One', url: 'https://one.example/', color: '#3d82f6', mark: 'O' }
+    const beforeShortcuts = [...workspace.shortcuts.value]
+    const beforeOrder = [...workspace.launcherOrder.value]
+    const beforeMembership = workspace.homeWorkspaces.value.map((item) => ({ ...item, itemIds: [...item.itemIds] }))
+
+    expect(workspace.addShortcuts([one, { ...one, id: 'second', url: 'javascript:alert(1)' }])).toBe(false)
+    expect(workspace.addShortcuts([one, { ...one, url: 'https://different.example/' }])).toBe(false)
+    expect(workspace.addShortcuts([{ ...one, id: existingShortcut.id }])).toBe(false)
+    expect(workspace.shortcuts.value).toEqual(beforeShortcuts)
+    workspace.shortcuts.value = Array.from({ length: 499 }, (_, index) => ({
+      id: 'at-capacity-' + index, title: 'Shortcut ' + index, url: `https://capacity-${index}.example/`, color: '#abc', mark: 'S',
+    }))
+    const fullBefore = [...workspace.shortcuts.value]
+    expect(workspace.addShortcuts([one, { ...one, id: 'last' }])).toBe(false)
+    expect(workspace.shortcuts.value).toEqual(fullBefore)
+    expect(workspace.launcherOrder.value).toEqual(beforeOrder)
+    expect(workspace.homeWorkspaces.value).toEqual(beforeMembership)
+  })
+})
+
 describe('useLocalWorkspace focus timer', () => {
   it('shares timer actions with panels and includes the state in backups', async () => {
     scope = effectScope()

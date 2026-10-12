@@ -23,6 +23,8 @@ function createPanelContext(): PanelPluginContext {
     resetPreferences: vi.fn(),
     openShortcut: vi.fn(),
     openShortcutFromBookmark: vi.fn(),
+    importBookmarks: vi.fn(),
+    availableShortcutSlots: 500,
     openFolder: vi.fn(),
     exportBackup: vi.fn(),
     importBackup: vi.fn(),
@@ -63,7 +65,7 @@ const homeWidgetContext: HomeWidgetContext = {
 }
 
 const expectedPanelAdapters = {
-  bookmarks: { props: [], events: ['addShortcut'] },
+  bookmarks: { props: ['availableSlots', 'importBookmarks'], events: ['addShortcut'] },
   history: { props: [], events: [] },
   calculator: { props: [], events: [] },
   calendar: { props: [], events: [] },
@@ -172,5 +174,11 @@ describe('built-in panel plugin registry', () => {
 
     listeners.addShortcut?.('Vue Docs', 'https://vuejs.org/')
     expect(addShortcut).toHaveBeenCalledWith('Vue Docs', 'https://vuejs.org/')
+  })
+
+  it('passes the available capacity and bulk-import callback to the bookmarks panel', () => {
+    const importBookmarks = vi.fn()
+    const context = { ...createPanelContext(), availableShortcutSlots: 12, importBookmarks }
+    expect(panelPlugins.bookmarks.props(context)).toEqual({ availableSlots: 12, importBookmarks })
   })
 })

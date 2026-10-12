@@ -456,6 +456,37 @@ describe('new-tab keyboard search', () => {
     }))
   })
 
+  it('bulk imports selected browser bookmarks into the active local workspace', async () => {
+    const bookmarkChange = { addListener: vi.fn(), removeListener: vi.fn() }
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains: vi.fn().mockResolvedValue(true), request: vi.fn() },
+      bookmarks: {
+        getTree: vi.fn().mockResolvedValue([{ id: '0', title: '', children: [
+          { id: '2', title: 'Vue Docs', url: 'https://vuejs.org/' },
+          { id: '3', title: 'Vite Docs', url: 'https://vite.dev/' },
+        ] }]),
+        onCreated: bookmarkChange,
+        onChanged: bookmarkChange,
+        onMoved: bookmarkChange,
+        onRemoved: bookmarkChange,
+        onChildrenReordered: bookmarkChange,
+        onImportEnded: bookmarkChange,
+      },
+    })
+    wrapper = mount(App, { attachTo: document.body })
+    await openLauncher('书签')
+    await wrapper.get('[aria-label="选择Vue Docs"]').setValue(true)
+    await wrapper.get('[aria-label="选择Vite Docs"]').setValue(true)
+    await wrapper.get('.bookmark-bulk-actions .button-primary').trigger('click')
+    await flushLocalStorageWrites()
+
+    const savedShortcuts = JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]') as Array<{ title: string; url: string }>
+    expect(savedShortcuts).toContainEqual(expect.objectContaining({ title: 'Vue Docs', url: 'https://vuejs.org/' }))
+    expect(savedShortcuts).toContainEqual(expect.objectContaining({ title: 'Vite Docs', url: 'https://vite.dev/' }))
+    expect(wrapper.text()).toContain('已导入 2 个快捷入口')
+  })
+
   it('routes the browser history launcher to its permission-aware panel', async () => {
     wrapper = mount(App, { attachTo: document.body })
     await openLauncher('history')

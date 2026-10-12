@@ -26,6 +26,16 @@ export interface BrowserBookmarkNode {
   children?: BrowserBookmarkNode[]
 }
 
+export interface BookmarkShortcutCandidate {
+  title: string
+  url: string
+}
+
+export interface BookmarkShortcutImportResult {
+  added: number
+  error?: string
+}
+
 export interface Shortcut {
   id: string
   title: string

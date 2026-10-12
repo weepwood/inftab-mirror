@@ -1,6 +1,6 @@
 import type { Component } from 'vue'
 import type { WorkspaceBackup } from '../data/backup'
-import type { CountdownItem, CustomSearchEngine, Habit, Note, Preferences, TodoItem } from '../types'
+import type { BookmarkShortcutCandidate, BookmarkShortcutImportResult, CountdownItem, CustomSearchEngine, Habit, Note, Preferences, TodoItem } from '../types'
 import type { FocusTimerState } from '../data/focusTimer'
 import type { PanelId } from './ids'
 import { lazyPluginComponent } from './asyncComponent'
@@ -43,6 +43,8 @@ export interface PanelPluginContext {
   resetPreferences: () => void
   openShortcut: () => void
   openShortcutFromBookmark: (title: string, url: string) => void
+  importBookmarks: (items: BookmarkShortcutCandidate[]) => BookmarkShortcutImportResult
+  availableShortcutSlots: number
   openFolder: () => void
   exportBackup: () => void
   importBackup: (backup: WorkspaceBackup, mode: 'merge' | 'replace') => void
@@ -75,7 +77,7 @@ type NoProps = Record<string, never>
 type NoContext = Record<never, never>
 
 export interface PanelContextById {
-  bookmarks: Pick<PanelPluginContext, 'openShortcutFromBookmark'>
+  bookmarks: Pick<PanelPluginContext, 'openShortcutFromBookmark' | 'importBookmarks' | 'availableShortcutSlots'>
   history: NoContext
   calculator: NoContext
   calendar: NoContext
@@ -89,7 +91,7 @@ export interface PanelContextById {
 }
 
 export interface PanelPropsById {
-  bookmarks: NoProps
+  bookmarks: { availableSlots: number; importBookmarks: (items: BookmarkShortcutCandidate[]) => BookmarkShortcutImportResult }
   history: NoProps
   calculator: NoProps
   calendar: NoProps
@@ -169,7 +171,7 @@ export const panelPlugins = {
     title: '浏览器书签',
     description: '查看当前浏览器中保存的书签',
     component: lazyPanel(() => import('../components/BookmarksPanel.vue')),
-    props: (_context) => ({}),
+    props: (context) => ({ availableSlots: context.availableShortcutSlots, importBookmarks: context.importBookmarks }),
     listeners: (context) => ({ addShortcut: context.openShortcutFromBookmark }),
   },
   history: {

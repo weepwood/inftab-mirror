@@ -21,7 +21,8 @@ afterEach(() => {
 describe('BookmarksPanel', () => {
   it('explains that browser bookmarks are extension-only on the website', () => {
     vi.stubGlobal('chrome', undefined)
-    wrapper = mount(BookmarksPanel)
+    const importBookmarks = vi.fn().mockReturnValue({ added: 1 })
+    wrapper = mount(BookmarksPanel, { props: { availableSlots: 10, importBookmarks } })
     expect(wrapper.text()).toContain('此功能需要浏览器扩展')
     expect(wrapper.find('button').exists()).toBe(false)
   })
@@ -55,12 +56,13 @@ describe('BookmarksPanel', () => {
         onImportEnded: bookmarkChange,
       },
     })
-    wrapper = mount(BookmarksPanel)
+    const importBookmarks = vi.fn().mockReturnValue({ added: 1 })
+    wrapper = mount(BookmarksPanel, { props: { availableSlots: 10, importBookmarks } })
     await flushPromises()
     expect(wrapper.text()).toContain('连接当前浏览器的书签')
     expect(request).not.toHaveBeenCalled()
 
-    await wrapper.get('button').trigger('click')
+    await wrapper.get('.bookmark-permission button').trigger('click')
     await flushPromises()
     expect(request).toHaveBeenCalledWith({ permissions: ['bookmarks'] })
     expect(wrapper.findAll('.browser-bookmark-link').map((link) => link.text())).toEqual(['Vue Docs'])
@@ -71,6 +73,33 @@ describe('BookmarksPanel', () => {
     expect(wrapper.findAll('.browser-bookmark-link').map((link) => link.text())).toEqual(['Vue Docs'])
     await wrapper.get('[aria-label="添加Vue Docs到快捷入口"]').trigger('click')
     expect(wrapper.emitted('addShortcut')).toEqual([['Vue Docs', 'https://vuejs.org/']])
+    await wrapper.get('[aria-label="选择Vue Docs"]').setValue(true)
+    expect(wrapper.text()).toContain('已选 1 / 可添加 10')
+    await wrapper.get('.bookmark-bulk-actions .button-primary').trigger('click')
+    expect(importBookmarks).toHaveBeenCalledWith([{ title: 'Vue Docs', url: 'https://vuejs.org/' }])
+    expect(wrapper.text()).toContain('已导入 1 个快捷入口')
+  })
+
+  it('limits selection to available slots and reports capacity changes before importing', async () => {
+    const bookmarkChange = { addListener: vi.fn(), removeListener: vi.fn() }
+    const getTree = vi.fn().mockResolvedValue([{ id: '0', title: '', children: [
+      { id: 'one', title: 'One', url: 'https://one.example/' },
+      { id: 'two', title: 'Two', url: 'https://two.example/' },
+    ] }])
+    const importBookmarks = vi.fn().mockReturnValue({ added: 1 })
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains: vi.fn().mockResolvedValue(true), request: vi.fn() },
+      bookmarks: { getTree, onCreated: bookmarkChange },
+    })
+    wrapper = mount(BookmarksPanel, { props: { availableSlots: 1, importBookmarks } })
+    await flushPromises()
+
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(2)
+    expect((wrapper.findAll('input[type="checkbox"]')[1]!.element as HTMLInputElement).disabled).toBe(true)
+    await wrapper.get('button.button-primary').trigger('click')
+    expect(importBookmarks).toHaveBeenCalledWith([{ title: 'One', url: 'https://one.example/' }])
   })
 
   it('clears the visible bookmark data when permission is revoked while open', async () => {
@@ -89,7 +118,7 @@ describe('BookmarksPanel', () => {
         onCreated: { addListener: vi.fn(), removeListener: vi.fn() },
       },
     })
-    wrapper = mount(BookmarksPanel)
+    wrapper = mount(BookmarksPanel, { props: { availableSlots: 500, importBookmarks: vi.fn() } })
     await flushPromises()
     expect(wrapper.find('.browser-bookmark-link').exists()).toBe(true)
 
@@ -114,7 +143,7 @@ describe('BookmarksPanel', () => {
       permissions: { contains, request: vi.fn(), onRemoved: permissionRemoved },
       bookmarks: { getTree, onCreated: { addListener: vi.fn(), removeListener: vi.fn() } },
     })
-    wrapper = mount(BookmarksPanel)
+    wrapper = mount(BookmarksPanel, { props: { availableSlots: 500, importBookmarks: vi.fn() } })
     permissionRemoved.fire()
     await flushPromises()
     oldPermissionCheck.resolve(true)

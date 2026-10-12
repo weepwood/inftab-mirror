@@ -230,6 +230,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .custom-engine-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; color: #555d66; font-size: 13px; }
 .browser-bookmarks-content { display: flex; flex: 1; flex-direction: column; min-height: 0; padding: 18px 20px 24px; }
 .bookmark-search { margin-bottom: 12px; }
+.bookmark-bulk-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; color: #718093; font-size: 12px; }
+.bookmark-bulk-actions .button-primary { min-height: 32px; padding: 0 10px; font-size: 12px; }
+.bookmark-import-message { margin: 0 0 8px; color: #5c718c; font-size: 12px; }
+.browser-bookmark-select { width: 16px; height: 16px; flex: 0 0 16px; margin: 0 3px 0 8px; accent-color: #557fb6; }
 .bookmark-permission { display: grid; justify-items: center; gap: 10px; padding: 42px 18px; color: #858c95; text-align: center; }
 .bookmark-permission > svg { color: #6885ac; }
 .bookmark-permission p { margin: 0; color: #454d56; font-size: 15px; font-weight: 600; }

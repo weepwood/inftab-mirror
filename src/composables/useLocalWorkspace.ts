@@ -203,6 +203,30 @@ export function useLocalWorkspace() {
     return true
   }
 
+  function addShortcuts(items: Shortcut[], workspaceId = activeHomeWorkspaceId.value): boolean {
+    if (!items.length || !homeWorkspaces.value.some((workspace) => workspace.id === workspaceId)
+      || shortcuts.value.length + items.length > 500) return false
+    const existingLauncherIds = new Set([
+      ...shortcuts.value.map((item) => item.id),
+      ...folders.value.map((item) => item.id),
+      ...builtInLauncherIds,
+    ])
+    const incomingIds = new Set<string>()
+    for (const item of items) {
+      if (existingLauncherIds.has(item.id) || incomingIds.has(item.id)) return false
+      incomingIds.add(item.id)
+    }
+    const next = sanitizeShortcuts([...shortcuts.value, ...items])
+    if (next.length !== shortcuts.value.length + items.length) return false
+
+    shortcuts.value = next
+    launcherOrder.value = [...launcherOrder.value, ...items.map((item) => item.id)]
+    homeWorkspaces.value = homeWorkspaces.value.map((workspace) => workspace.id === workspaceId
+      ? { ...workspace, itemIds: [...new Set([...workspace.itemIds, ...items.map((item) => item.id)])] }
+      : workspace)
+    return true
+  }
+
   function removeShortcut(id: string) {
     shortcuts.value = shortcuts.value.filter((shortcut) => shortcut.id !== id)
     homeWorkspaces.value = homeWorkspaces.value.map((workspace) => ({
@@ -546,6 +570,7 @@ export function useLocalWorkspace() {
     weatherCity,
     focusTimer,
     saveShortcut,
+    addShortcuts,
     removeShortcut,
     saveFolder,
     removeFolder,
