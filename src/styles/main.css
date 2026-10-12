@@ -32,6 +32,7 @@ select { background-color: #fff; color: #343a40; }
   background-size: cover;
 }
 .home.home-scrollable { overflow-y: auto; overscroll-behavior-y: contain; touch-action: auto; }
+.home.home-with-dock { touch-action: pan-x pan-y pinch-zoom; }
 .home-scrollable .home-content { padding-bottom: 72px; }
 .background-shade { position: absolute; inset: 0; z-index: 0; background: rgba(0, 0, 0, var(--page-shade, .2)); }
 .home-actions { position: absolute; z-index: 2; top: 20px; right: 20px; display: flex; gap: 18px; }
@@ -106,7 +107,7 @@ select { background-color: #fff; color: #343a40; }
 .weather-summary-refresh { width: 27px; height: 27px; display: grid; flex: 0 0 auto; place-items: center; border: 0; border-radius: 7px; background: transparent; color: #727f8e; cursor: pointer; }
 .weather-summary-refresh:hover:not(:disabled) { background: rgba(76, 93, 116, .12); color: #26313e; }
 .weather-summary-refresh:disabled { opacity: .45; cursor: wait; }
-.home-dock { position: fixed; z-index: 2; bottom: 42px; left: 50%; display: flex; gap: 5px; max-width: calc(100vw - 88px); overflow-x: auto; padding: 7px; transform: translateX(-50%); border: 1px solid rgba(255, 255, 255, .46); border-radius: 16px; background: rgba(30, 35, 39, .52); box-shadow: 0 8px 24px rgba(0, 0, 0, .2); backdrop-filter: blur(16px); scrollbar-width: thin; touch-action: pan-x; }
+.home-dock { position: fixed; z-index: 2; bottom: 42px; left: 50%; display: flex; gap: 5px; max-width: calc(100vw - 88px); overflow-x: auto; padding: 7px; transform: translateX(-50%); border: 1px solid rgba(255, 255, 255, .46); border-radius: 16px; background: rgba(30, 35, 39, .52); box-shadow: 0 8px 24px rgba(0, 0, 0, .2); backdrop-filter: blur(16px); scrollbar-width: thin; touch-action: pan-x pinch-zoom; }
 .home-dock-entry { position: relative; width: 56px; flex: 0 0 56px; }
 .home-dock-item { width: 56px; min-height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; border-radius: 10px; padding: 4px 2px; background: transparent; color: #fff; cursor: pointer; }
 .home-dock-item:hover, .home-dock-item:focus-visible { background: rgba(255, 255, 255, .2); }

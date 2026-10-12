@@ -916,7 +916,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': shortHomeScrollEnabled, 'home-minimal': minimalMode }" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
+  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': shortHomeScrollEnabled, 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode }" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
     <a class="skip-link" href="#main-content">跳到快捷入口</a>
     <h1 class="visually-hidden">Infinity 新标签页</h1>
     <div class="background-shade"></div>

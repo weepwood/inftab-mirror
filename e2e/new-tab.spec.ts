@@ -913,6 +913,52 @@ test('touch gestures over the mobile widget shelf allow both page and shelf scro
   }
 })
 
+test('touch gestures over the mobile dock allow both page and dock scrolling', async ({ browser, page }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 480 },
+    isMobile: true,
+    hasTouch: true,
+  })
+  try {
+    const touchPage = await context.newPage()
+    await touchPage.addInitScript(() => {
+      localStorage.setItem('inftab.preferences.v1', JSON.stringify({
+        homeWidgetIds: ['todo-summary', 'habits-summary', 'countdown-summary', 'notes-summary', 'calendar-summary'],
+        dockItemIds: ['jd', 'tmall', 'taobao', 'vip', 'gaoding', 'baidu', 'lunwenmao', 'ctrip'],
+      }))
+    })
+    await touchPage.goto(new URL(page.url()).origin)
+    const home = touchPage.locator('.home.home-scrollable')
+    const dock = touchPage.locator('.home-dock')
+    const dockItem = touchPage.locator('.home-dock-item').first()
+    await expect(home).toBeVisible()
+    await expect(dock).toBeVisible()
+    await expect.poll(() => home.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
+    await expect.poll(() => dock.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true)
+    const cdp = await context.newCDPSession(touchPage)
+    const bounds = await dockItem.boundingBox()
+    if (!bounds) throw new Error('The first Dock item is not visible for the touch scroll check.')
+    const x = bounds.x + bounds.width / 2
+    const y = bounds.y + bounds.height / 2
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 45, id: 1 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 90, id: 1 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await expect.poll(() => home.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+
+    const nextX = x - 100
+    const dockY = (await dockItem.boundingBox())?.y ?? y
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: dockY + 10, id: 2 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 45, y: dockY + 10, id: 2 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: nextX, y: dockY + 10, id: 2 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await expect.poll(() => dock.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
+    await cdp.detach()
+  } finally {
+    await context.close()
+  }
+})
+
 test('calendar home widget can be enabled and opens the interactive calendar panel', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByLabel('显示月历小组件').check()
