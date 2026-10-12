@@ -6,6 +6,13 @@ export const storageWriteErrorEvent = 'inftab:storage-write-error'
 export interface StoredStateOptions<T = unknown> {
   /** Keep the incoming value intact for state where external changes should always win. */
   mergeConcurrentChanges?: boolean
+  /** Resolve domain-specific conflicts after the standard concurrent edit merge. */
+  resolveConcurrentChanges?: (
+    current: T,
+    previous: T,
+    external: T,
+    mergeDefault: (current: T, previous: T, external: T) => T,
+  ) => T
   /** Use a clean default when another tab clears the entire local storage area. */
   clearFallback?: T
 }
@@ -107,7 +114,11 @@ export function useStoredState<T>(
       if (hasPreviousValue && JSON.stringify(value.value) !== JSON.stringify(previousValue!)) {
         try {
           const { mergeConcurrentEdits, valuesEqual } = await loadConcurrentState()
-          nextValue = mergeConcurrentEdits(value.value, previousValue!, externalValue, normalize)
+          const mergeDefault = (current: T, previous: T, external: T) =>
+            mergeConcurrentEdits(current, previous, external, normalize)
+          nextValue = options.resolveConcurrentChanges
+            ? options.resolveConcurrentChanges(value.value, previousValue!, externalValue, mergeDefault)
+            : mergeDefault(value.value, previousValue!, externalValue)
           persistMergedValue = !valuesEqual(nextValue, externalValue)
         } catch {
           // Keep this tab's edits if the optional merge chunk cannot be loaded.

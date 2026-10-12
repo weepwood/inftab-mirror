@@ -317,6 +317,34 @@ describe('useLocalWorkspace home workspaces', () => {
       .toEqual(['default', firstId, activeId, 'remote-space'])
   })
 
+  it('keeps one deterministic owner when the same shortcut moves differently in two tabs', async () => {
+    vi.useFakeTimers()
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const originalWorkspaceId = workspace.createHomeWorkspace('原位置')!
+    const localWorkspaceId = workspace.createHomeWorkspace('本机移动')!
+    const externalWorkspaceId = workspace.createHomeWorkspace('另一标签页移动')!
+    const shortcut = { id: 'shared-move', title: 'Shared', url: 'https://shared.example/', color: '#abc', mark: 'S' }
+    workspace.saveShortcut(shortcut, originalWorkspaceId)
+    await vi.advanceTimersByTimeAsync(180)
+
+    const storageKey = 'inftab.home-workspaces.v1'
+    const previous = localStorage.getItem(storageKey)!
+    workspace.saveShortcut(shortcut, localWorkspaceId)
+
+    const externalWorkspaces = JSON.parse(previous) as { id: string; itemIds: string[] }[]
+    const original = externalWorkspaces.find((item) => item.id === originalWorkspaceId)!
+    const externalTarget = externalWorkspaces.find((item) => item.id === externalWorkspaceId)!
+    original.itemIds = original.itemIds.filter((id) => id !== shortcut.id)
+    externalTarget.itemIds.push(shortcut.id)
+    const external = JSON.stringify(externalWorkspaces)
+    localStorage.setItem(storageKey, external)
+    window.dispatchEvent(new StorageEvent('storage', { key: storageKey, oldValue: previous, newValue: external }))
+
+    await vi.waitFor(() => expect(workspace.homeWorkspaces.value
+      .filter((item) => item.itemIds.includes(shortcut.id)).map((item) => item.id)).toEqual([externalWorkspaceId]))
+  })
+
   it('merges separate shortcut moves made concurrently in different workspaces', async () => {
     vi.useFakeTimers()
     scope = effectScope()
