@@ -77,6 +77,42 @@ describe('optional browser resource lifecycle', () => {
     expect(onResourceChange).toBeTypeOf('function')
   })
 
+  it('clears permission-scoped data immediately when permission changes during a load', async () => {
+    let onPermissionChange: (() => void) | undefined
+    let resolvePermissionRecheck!: (granted: boolean) => void
+    let resolvePendingLoad!: (items: string[]) => void
+    const hasPermission = vi.fn()
+      .mockResolvedValueOnce(true)
+      .mockReturnValueOnce(new Promise<boolean>((resolve) => { resolvePermissionRecheck = resolve }))
+    const load = vi.fn()
+      .mockReturnValueOnce(new Promise<string[]>((resolve) => { resolvePendingLoad = resolve }))
+    const options = permissionOptions({
+      hasPermission,
+      load,
+      subscribeToPermissionChanges: vi.fn((listener: () => void) => {
+        onPermissionChange = listener
+        return vi.fn()
+      }),
+    })
+    const { getState } = mountResource(options)
+    await flushPromises()
+    expect(load).toHaveBeenCalledOnce()
+
+    onPermissionChange?.()
+    expect(getState().permissionGranted.value).toBe(false)
+    expect(getState().data.value).toEqual([])
+    expect(getState().loading.value).toBe(false)
+
+    resolvePendingLoad(['stale protected item'])
+    await flushPromises()
+    expect(getState().data.value).toEqual([])
+
+    resolvePermissionRecheck(false)
+    await flushPromises()
+    expect(getState().permissionGranted.value).toBe(false)
+    expect(getState().data.value).toEqual([])
+  })
+
   it('ignores resource events delivered after unmount', async () => {
     vi.useFakeTimers()
     let onResourceChange: (() => void) | undefined

@@ -61,6 +61,7 @@ export function useOptionalBrowserResource<T>(options: OptionalBrowserResourceOp
     permissionGranted.value = false
     data.value = options.initial
     loading.value = false
+    error.value = ''
   }
 
   async function syncPermission() {
@@ -93,7 +94,10 @@ export function useOptionalBrowserResource<T>(options: OptionalBrowserResourceOp
   onMounted(() => {
     isActive = true
     if (!options.supported) return
-    stopWatchingPermission = options.subscribeToPermissionChanges(() => { void syncPermission() })
+    stopWatchingPermission = options.subscribeToPermissionChanges(() => {
+      clearPermissionScopedState()
+      void syncPermission()
+    })
     void syncPermission()
   })
 
