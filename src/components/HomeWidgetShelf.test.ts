@@ -25,11 +25,11 @@ describe('home widget shelf plugin activation', () => {
         props: (context: Pick<HomeWidgetContext, 'todos'>) => ({ items: context.todos }),
       },
     } satisfies HomeWidgetPluginRegistry
-    const context: HomeWidgetContext = { todos: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海', focusTimer: defaultFocusTimerState }
+    const context: HomeWidgetContext = { todos: [], habits: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海', focusTimer: defaultFocusTimerState }
     wrapper = mount(HomeWidgetShelf, {
       props: {
         widgetIds: ['todo-summary'],
-        widgetSizes: { 'todo-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard', 'weather-summary': 'standard', 'focus-timer-summary': 'standard', 'bookmarks-summary': 'standard', 'history-summary': 'standard' },
+        widgetSizes: { 'todo-summary': 'standard', 'habits-summary': 'standard', 'countdown-summary': 'standard', 'notes-summary': 'standard', 'calendar-summary': 'standard', 'weather-summary': 'standard', 'focus-timer-summary': 'standard', 'bookmarks-summary': 'standard', 'history-summary': 'standard' },
         context,
         plugins,
       },

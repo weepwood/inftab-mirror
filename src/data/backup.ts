@@ -1,6 +1,6 @@
-import { availableHomeWidgetIds, maxDockItems, type CountdownItem, type CustomSearchEngine, type Note, type Preferences, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
+import { availableHomeWidgetIds, maxDockItems, type CountdownItem, type CustomSearchEngine, type Habit, type Note, type Preferences, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
 import { launcherItems } from './defaults'
-import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
+import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeHabits, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
 import { maxWallpaperDataUrlLength } from './imageLimits'
 import { sanitizeFocusTimerState, type FocusTimerState } from './focusTimerState'
 import { defaultHomeWorkspace, maxHomeWorkspaces, sanitizeActiveHomeWorkspaceId, sanitizeHomeWorkspaces, type HomeWorkspace } from './homeWorkspaces'
@@ -14,6 +14,7 @@ export interface WorkspaceBackup {
   folders: ShortcutFolder[]
   launcherOrder: string[]
   todos: TodoItem[]
+  habits?: Habit[]
   countdowns: CountdownItem[]
   notes: Note[]
   activeNoteId: string
@@ -47,6 +48,8 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   validateArray(rawFolders, '文件夹')
   validateArray(value.launcherOrder, '入口排序', maxLauncherOrderItems)
   validateArray(value.todos, '待办事项')
+  const rawHabits = value.habits ?? []
+  validateArray(rawHabits, '习惯', 100)
   const rawCountdowns = value.countdowns ?? []
   const rawCustomSearchEngines = value.customSearchEngines ?? []
   validateArray(rawCountdowns, '纪念日')
@@ -103,10 +106,11 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   const shortcuts = sanitizeShortcuts(value.shortcuts)
   const folders = sanitizeFolders(rawFolders, shortcuts)
   const todos = sanitizeTodos(value.todos)
+  const habits = sanitizeHabits(rawHabits)
   const countdowns = sanitizeCountdowns(rawCountdowns)
   const customSearchEngines = sanitizeCustomSearchEngines(rawCustomSearchEngines)
   const notes = sanitizeNotes(value.notes)
-  if (shortcuts.length !== value.shortcuts.length || folders.length !== rawFolders.length || todos.length !== value.todos.length || countdowns.length !== rawCountdowns.length || notes.length !== value.notes.length || customSearchEngines.length !== rawCustomSearchEngines.length) {
+  if (shortcuts.length !== value.shortcuts.length || folders.length !== rawFolders.length || todos.length !== value.todos.length || habits.length !== rawHabits.length || countdowns.length !== rawCountdowns.length || notes.length !== value.notes.length || customSearchEngines.length !== rawCustomSearchEngines.length) {
     throw new Error('备份中包含重复或无法识别的数据，请检查文件后重试。')
   }
   if (!['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yahoo', '360'].includes(String(value.preferences.engine))) {
@@ -156,6 +160,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     folders,
     launcherOrder: sanitizeLauncherOrder(value.launcherOrder, shortcuts, folders),
     todos,
+    habits,
     countdowns,
     notes,
     activeNoteId: sanitizeActiveNoteId(typeof value.activeNoteId === 'string' ? value.activeNoteId.slice(0, 128) : '', notes),

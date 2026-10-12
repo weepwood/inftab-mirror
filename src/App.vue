@@ -37,6 +37,7 @@ const {
   homeWorkspaces,
   activeHomeWorkspaceId,
   todos,
+  habits,
   countdowns,
   notes,
   activeNoteId,
@@ -58,6 +59,10 @@ const {
   updateTodo,
   removeTodo,
   clearCompletedTodos,
+  addHabit,
+  updateHabit,
+  toggleHabitToday,
+  removeHabit,
   addCountdown,
   updateCountdown,
   removeCountdown,
@@ -177,6 +182,7 @@ const panelContext = computed<PanelPluginContext>(() => ({
   preferences: preferences.value,
   backupExportError: backupExportError.value,
   todos: todos.value,
+  habits: habits.value,
   countdowns: countdowns.value,
   notes: notes.value,
   activeNoteId: activeNoteId.value,
@@ -199,6 +205,10 @@ const panelContext = computed<PanelPluginContext>(() => ({
   updateTodo,
   removeTodo: (id) => requestDestructiveAction('删除待办？', '此待办将从本机移除。', () => removeTodo(id)),
   clearCompletedTodos: () => requestDestructiveAction('清除已完成待办？', '所有已完成的待办都将从本机移除。', clearCompletedTodos),
+  addHabit,
+  updateHabit,
+  toggleHabitToday,
+  removeHabit: (id) => requestDestructiveAction('删除习惯？', '此习惯及其打卡记录将从本机移除。', () => removeHabit(id)),
   addCountdown,
   updateCountdown,
   removeCountdown: (id) => requestDestructiveAction('删除纪念日？', '此纪念日将从本机移除。', () => removeCountdown(id)),
@@ -218,7 +228,7 @@ const activePanelPlugin = computed(() => activePanel.value ? panelPlugins[active
 const activePanelComponent = computed<Component | undefined>(() => activePanelPlugin.value?.component)
 const activePanelProps = computed<Record<string, unknown>>(() => activePanelPlugin.value?.props(panelContext.value) ?? {})
 const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanelPlugin.value?.listeners(panelContext.value) ?? {})
-const homeWidgetContext = computed(() => ({ todos: todos.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
+const homeWidgetContext = computed(() => ({ todos: todos.value, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
 const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0)
 const shortHomeScrollEnabled = computed(() => (showHomeWidgets.value || homeDockItems.value.length > 0) && viewport.value.height <= 560)
 const homeWidgetRows = computed(() => {

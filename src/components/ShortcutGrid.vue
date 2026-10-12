@@ -36,6 +36,7 @@ const itemIcons: Record<string, Component> = {
   calculator: Calculator,
   weather: CloudSun,
   countdowns: PartyPopper,
+  habits: ListTodo,
   todos: ListTodo,
   notes: StickyNote,
   settings: Settings,

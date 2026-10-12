@@ -3,11 +3,12 @@ import { watch } from 'vue'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts, launcherItems } from '../data/defaults'
 import { mergeById, type WorkspaceBackup } from '../data/backup'
 import { isValidCalendarDate } from '../data/countdown'
-import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
+import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeHabits, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
 import { isValidCustomSearchTemplate } from '../data/search'
 import { defaultFocusTimerState, sanitizeFocusTimerState } from '../data/focusTimerState'
 import { defaultHomeWorkspace, defaultHomeWorkspaceId, maxHomeWorkspaceNameLength, maxHomeWorkspaces, sanitizeActiveHomeWorkspaceId, sanitizeHomeWorkspaces, type HomeWorkspace } from '../data/homeWorkspaces'
-import type { CountdownItem, CountdownRecurrence, CustomSearchEngine, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import type { CountdownItem, CountdownRecurrence, CustomSearchEngine, Habit, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import { getLocalDateKey, maxCompletionDatesPerHabit, maxHabits, maxHabitTitleLength } from '../data/habits'
 
 export function useLocalWorkspace() {
   const preferences = useStoredState<Preferences>('inftab.preferences.v1', defaultPreferences, sanitizePreferences)
@@ -30,6 +31,7 @@ export function useLocalWorkspace() {
     if (validId !== activeHomeWorkspaceId.value) activeHomeWorkspaceId.value = validId
   }, { flush: 'sync' })
   const todos = useStoredState<TodoItem[]>('inftab.todos.v1', [], sanitizeTodos)
+  const habits = useStoredState<Habit[]>('inftab.habits.v1', [], sanitizeHabits)
   const countdowns = useStoredState<CountdownItem[]>('inftab.countdowns.v1', [], sanitizeCountdowns)
   const notes = useStoredState<Note[]>('inftab.notes.v1', [], sanitizeNotes)
   const customSearchEngines = useStoredState<CustomSearchEngine[]>('inftab.custom-search-engines.v1', [], sanitizeCustomSearchEngines)
@@ -294,6 +296,35 @@ export function useLocalWorkspace() {
     todos.value = todos.value.filter((item) => !item.done)
   }
 
+  function addHabit(title: string) {
+    const cleanTitle = title.trim().slice(0, maxHabitTitleLength)
+    if (!cleanTitle || habits.value.length >= maxHabits) return
+    habits.value = [{ id: crypto.randomUUID(), title: cleanTitle, completedDates: [] }, ...habits.value]
+  }
+
+  function updateHabit(id: string, title: string) {
+    const cleanTitle = title.trim().slice(0, maxHabitTitleLength)
+    if (!cleanTitle) return
+    habits.value = habits.value.map((habit) => habit.id === id ? { ...habit, title: cleanTitle } : habit)
+  }
+
+  function toggleHabitToday(id: string) {
+    const today = getLocalDateKey()
+    habits.value = habits.value.map((habit) => {
+      if (habit.id !== id) return habit
+      return {
+        ...habit,
+        completedDates: habit.completedDates.includes(today)
+          ? habit.completedDates.filter((date) => date !== today)
+          : [...habit.completedDates, today].sort().slice(-maxCompletionDatesPerHabit),
+      }
+    })
+  }
+
+  function removeHabit(id: string) {
+    habits.value = habits.value.filter((habit) => habit.id !== id)
+  }
+
   function addCountdown(title: string, date: string, recurrence: CountdownRecurrence) {
     const cleanTitle = title.trim().slice(0, 80)
     if (!cleanTitle || !isValidCalendarDate(date) || (recurrence !== 'once' && recurrence !== 'yearly')) return
@@ -364,6 +395,7 @@ export function useLocalWorkspace() {
       folders: folders.value,
       launcherOrder: [...launcherOrder.value],
       todos: todos.value,
+      habits: habits.value,
       countdowns: countdowns.value,
       notes: notes.value,
       customSearchEngines: customSearchEngines.value,
@@ -383,6 +415,7 @@ export function useLocalWorkspace() {
     const importedShortcuts = sanitizeShortcuts(backup.shortcuts)
     const importedFolders = sanitizeFolders(backup.folders, importedShortcuts)
     const importedTodos = sanitizeTodos(backup.todos)
+    const importedHabits = sanitizeHabits(backup.habits ?? [])
     const importedCountdowns = sanitizeCountdowns(backup.countdowns)
     const importedNotes = sanitizeNotes(backup.notes)
     const importedCustomSearchEngines = sanitizeCustomSearchEngines(backup.customSearchEngines ?? [])
@@ -392,6 +425,7 @@ export function useLocalWorkspace() {
       folders.value = importedFolders
       launcherOrder.value = sanitizeLauncherOrder(backup.launcherOrder, importedShortcuts, importedFolders)
       todos.value = importedTodos
+      habits.value = importedHabits
       countdowns.value = importedCountdowns
       notes.value = importedNotes
       activeNoteId.value = sanitizeActiveNoteId(backup.activeNoteId, importedNotes)
@@ -427,6 +461,7 @@ export function useLocalWorkspace() {
       { label: '快捷入口', current: shortcuts.value, incoming: importedShortcuts, limit: 500 },
       { label: '文件夹', current: folders.value, incoming: importedFolders, limit: 500 },
       { label: '待办事项', current: todos.value, incoming: importedTodos, limit: 500 },
+      { label: '习惯', current: habits.value, incoming: importedHabits, limit: maxHabits },
       { label: '纪念日', current: countdowns.value, incoming: importedCountdowns, limit: 500 },
       { label: '笔记', current: notes.value, incoming: importedNotes, limit: 500 },
       { label: '自定义搜索引擎', current: customSearchEngines.value, incoming: importedCustomSearchEngines, limit: 20 },
@@ -480,6 +515,7 @@ export function useLocalWorkspace() {
     activeHomeWorkspaceId.value = sanitizeActiveHomeWorkspaceId(importedActiveWorkspaceId, homeWorkspaces.value)
     launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...backup.launcherOrder], shortcuts.value, folders.value)
     todos.value = sanitizeTodos(mergeById(todos.value, importedTodos))
+    habits.value = sanitizeHabits(mergeById(habits.value, importedHabits))
     countdowns.value = sanitizeCountdowns(mergeById(countdowns.value, importedCountdowns))
     notes.value = sanitizeNotes(mergeById(notes.value, importedNotes))
     preferences.value = sanitizePreferences({ ...preferences.value, ...backup.preferences })
@@ -502,6 +538,7 @@ export function useLocalWorkspace() {
     homeWorkspaces,
     activeHomeWorkspaceId,
     todos,
+    habits,
     countdowns,
     notes,
     customSearchEngines,
@@ -523,6 +560,10 @@ export function useLocalWorkspace() {
     updateTodo,
     removeTodo,
     clearCompletedTodos,
+    addHabit,
+    updateHabit,
+    toggleHabitToday,
+    removeHabit,
     addCountdown,
     updateCountdown,
     removeCountdown,

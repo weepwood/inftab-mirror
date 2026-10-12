@@ -3,6 +3,7 @@ import { effectScope } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseWorkspaceBackup } from '../data/backup'
 import { defaultFocusTimerState, startFocusTimer } from '../data/focusTimer'
+import { getLocalDateKey, maxCompletionDatesPerHabit } from '../data/habits'
 import { useLocalWorkspace } from './useLocalWorkspace'
 
 let scope: ReturnType<typeof effectScope> | undefined
@@ -303,6 +304,47 @@ describe('useLocalWorkspace focus timer', () => {
     delete backup.focusTimer
     workspace.restoreBackup(backup, 'replace')
     expect(workspace.focusTimer.value).toEqual(defaultFocusTimerState)
+  })
+})
+
+describe('useLocalWorkspace habits', () => {
+  it('stores local-day check-ins and carries them through backup replacement', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-12T04:00:00.000Z'))
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+
+    workspace.addHabit('  阅读  ')
+    const habit = workspace.habits.value[0]!
+    expect(habit.title).toBe('阅读')
+    workspace.toggleHabitToday(habit.id)
+    expect(workspace.habits.value[0]?.completedDates).toEqual([getLocalDateKey()])
+
+    const backup = parseWorkspaceBackup(workspace.createBackup())
+    expect(backup.habits).toEqual(workspace.habits.value)
+    workspace.removeHabit(habit.id)
+    expect(workspace.habits.value).toEqual([])
+    expect(workspace.restoreBackup(backup, 'replace')).toBeUndefined()
+    expect(workspace.habits.value).toEqual(backup.habits)
+  })
+
+  it('keeps habit history bounded while retaining the newest check-in', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-12T12:00:00.000Z'))
+    const completedDates = Array.from({ length: maxCompletionDatesPerHabit }, (_, index) => {
+      const date = new Date(Date.UTC(2016, 0, 1 + index))
+      return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`
+    })
+    localStorage.setItem('inftab.habits.v1', JSON.stringify([{ id: 'read', title: '阅读', completedDates }]))
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+
+    workspace.toggleHabitToday('read')
+
+    const updated = workspace.habits.value[0]!
+    expect(updated.completedDates).toHaveLength(maxCompletionDatesPerHabit)
+    expect(updated.completedDates).toContain(getLocalDateKey())
+    expect(updated.completedDates[0]).not.toBe(completedDates[0])
   })
 })
 

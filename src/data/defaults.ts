@@ -76,6 +76,7 @@ export const defaultShortcuts: Shortcut[] = [
 export const launcherItems: LauncherItem[] = [
   { id: 'weather', title: '天气', action: 'weather', color: '#36b3ff', mark: '☁', icon: 'weather-default.png' },
   { id: 'countdowns', title: '纪念日', action: 'countdowns', color: '#fff', mark: '🎉' },
+  { id: 'habits', title: '习惯打卡', action: 'habits', color: '#fff', mark: '✓' },
   { id: 'todos', title: '待办事项', action: 'todos', color: '#fff', mark: '✓', icon: '6e49210c084629259f22609980c48ecf.png' },
   { id: 'focus-timer', title: '专注计时', action: 'focus-timer', color: '#fff', mark: '⏱' },
   { id: 'notes', title: '笔记', action: 'notes', color: '#fff', mark: '▮', icon: '006b88c07a2e87d5a61f3c969a70575c.png' },

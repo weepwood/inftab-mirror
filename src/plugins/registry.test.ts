@@ -12,6 +12,7 @@ function createPanelContext(): PanelPluginContext {
     preferences: defaultPreferences,
     backupExportError: '',
     todos: [],
+    habits: [],
     countdowns: [],
     notes: [],
     activeNoteId: '',
@@ -30,6 +31,10 @@ function createPanelContext(): PanelPluginContext {
     updateTodo: vi.fn(),
     removeTodo: vi.fn(),
     clearCompletedTodos: vi.fn(),
+    addHabit: vi.fn(),
+    updateHabit: vi.fn(),
+    toggleHabitToday: vi.fn(),
+    removeHabit: vi.fn(),
     addCountdown: vi.fn(),
     updateCountdown: vi.fn(),
     removeCountdown: vi.fn(),
@@ -49,6 +54,7 @@ function createPanelContext(): PanelPluginContext {
 
 const homeWidgetContext: HomeWidgetContext = {
   todos: [],
+  habits: [],
   countdowns: [],
   notes: [],
   activeNoteId: '',
@@ -66,6 +72,7 @@ const expectedPanelAdapters = {
     events: ['update', 'reset', 'addShortcut', 'addFolder', 'exportBackup', 'importBackup', 'addSearchEngine', 'removeSearchEngine'],
   },
   todos: { props: ['items'], events: ['add', 'toggle', 'update', 'remove', 'clearCompleted'] },
+  habits: { props: ['items'], events: ['add', 'update', 'toggleToday', 'remove'] },
   'focus-timer': { props: ['state'], events: ['start', 'pause', 'reset', 'setDuration'] },
   notes: { props: ['notes', 'activeId'], events: ['add', 'select', 'update', 'remove'] },
   countdowns: { props: ['items'], events: ['add', 'update', 'remove'] },
@@ -74,6 +81,7 @@ const expectedPanelAdapters = {
 
 const expectedWidgetProps = {
   'todo-summary': ['items'],
+  'habits-summary': ['items'],
   'countdown-summary': ['items'],
   'notes-summary': ['notes', 'activeId'],
   'calendar-summary': [],

@@ -1,6 +1,6 @@
 import type { Component } from 'vue'
 import type { WorkspaceBackup } from '../data/backup'
-import type { CountdownItem, CustomSearchEngine, Note, Preferences, TodoItem } from '../types'
+import type { CountdownItem, CustomSearchEngine, Habit, Note, Preferences, TodoItem } from '../types'
 import type { FocusTimerState } from '../data/focusTimer'
 import type { PanelId } from './ids'
 import { lazyPluginComponent } from './asyncComponent'
@@ -10,6 +10,7 @@ export type { PanelId } from './ids'
 export const launcherPanelRoutes = {
   weather: 'weather',
   todos: 'todos',
+  habits: 'habits',
   'focus-timer': 'focus-timer',
   notes: 'notes',
   countdowns: 'countdowns',
@@ -31,6 +32,7 @@ export interface PanelPluginContext {
   preferences: Preferences
   backupExportError: string
   todos: TodoItem[]
+  habits: Habit[]
   countdowns: CountdownItem[]
   notes: Note[]
   activeNoteId: string
@@ -49,6 +51,10 @@ export interface PanelPluginContext {
   updateTodo: (id: string, title: string) => void
   removeTodo: (id: string) => void
   clearCompletedTodos: () => void
+  addHabit: (title: string) => void
+  updateHabit: (id: string, title: string) => void
+  toggleHabitToday: (id: string) => void
+  removeHabit: (id: string) => void
   addCountdown: (title: string, date: string, recurrence: 'once' | 'yearly') => void
   updateCountdown: (id: string, title: string, date: string, recurrence: 'once' | 'yearly') => void
   removeCountdown: (id: string) => void
@@ -75,6 +81,7 @@ export interface PanelContextById {
   calendar: NoContext
   settings: Pick<PanelPluginContext, 'preferences' | 'backupExportError' | 'customSearchEngines' | 'updatePreferences' | 'resetPreferences' | 'openShortcut' | 'openFolder' | 'exportBackup' | 'importBackup' | 'addCustomSearchEngine' | 'removeCustomSearchEngine'>
   todos: Pick<PanelPluginContext, 'todos' | 'addTodo' | 'toggleTodo' | 'updateTodo' | 'removeTodo' | 'clearCompletedTodos'>
+  habits: Pick<PanelPluginContext, 'habits' | 'addHabit' | 'updateHabit' | 'toggleHabitToday' | 'removeHabit'>
   'focus-timer': Pick<PanelPluginContext, 'focusTimer' | 'startFocusTimer' | 'pauseFocusTimer' | 'resetFocusTimer' | 'setFocusDuration'>
   notes: Pick<PanelPluginContext, 'notes' | 'activeNoteId' | 'addNote' | 'selectNote' | 'updateNote' | 'removeNote'>
   countdowns: Pick<PanelPluginContext, 'countdowns' | 'addCountdown' | 'updateCountdown' | 'removeCountdown'>
@@ -88,6 +95,7 @@ export interface PanelPropsById {
   calendar: NoProps
   settings: { preferences: Preferences; exportError: string; customEngines: CustomSearchEngine[] }
   todos: { items: TodoItem[] }
+  habits: { items: Habit[] }
   'focus-timer': { state: FocusTimerState }
   notes: { notes: Note[]; activeId: string }
   countdowns: { items: CountdownItem[] }
@@ -115,6 +123,12 @@ export interface PanelEventsById {
     update: (id: string, title: string) => void
     remove: (id: string) => void
     clearCompleted: () => void
+  }
+  habits: {
+    add: (title: string) => void
+    update: (id: string, title: string) => void
+    toggleToday: (id: string) => void
+    remove: (id: string) => void
   }
   'focus-timer': {
     start: () => void
@@ -206,6 +220,18 @@ export const panelPlugins = {
       update: context.updateTodo,
       remove: context.removeTodo,
       clearCompleted: context.clearCompletedTodos,
+    }),
+  },
+  habits: {
+    title: '习惯打卡',
+    description: '记录每天坚持的小习惯',
+    component: lazyPanel(() => import('../components/HabitsPanel.vue')),
+    props: (context) => ({ items: context.habits }),
+    listeners: (context) => ({
+      add: context.addHabit,
+      update: context.updateHabit,
+      toggleToday: context.toggleHabitToday,
+      remove: context.removeHabit,
     }),
   },
   'focus-timer': {

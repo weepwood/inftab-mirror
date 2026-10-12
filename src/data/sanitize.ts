@@ -1,6 +1,7 @@
 import { defaultLauncherOrder, defaultPreferences, launcherItems, wallpaperChoices } from './defaults'
 import { maxWallpaperDataUrlLength } from './imageLimits'
 import { isValidCalendarDate } from './countdown'
+import { sanitizeHabits } from './habits'
 import { isValidCustomSearchTemplate } from './search'
 import { normalizeWebUrl } from './urls'
 import { availableHomeWidgetIds, maxDockItems, type CountdownItem, type CustomSearchEngine, type HomeWidgetId, type Note, type Preferences, type SearchMode, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
@@ -187,6 +188,8 @@ export function sanitizeTodos(value: unknown): TodoItem[] {
     return title ? { id: item.id, title, done: item.done } : undefined
   })
 }
+
+export { sanitizeHabits }
 
 export function sanitizeCountdowns(value: unknown): CountdownItem[] {
   return uniqueRecords(value, (item) => {

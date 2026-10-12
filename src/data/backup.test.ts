@@ -28,6 +28,17 @@ describe('workspace backups', () => {
     expect(parsed.preferences.shade).toBe(0)
     expect(parsed.launcherOrder).not.toContain('stale-id')
     expect(parsed.activeNoteId).toBe('note-1')
+    expect(parsed.habits).toEqual([])
+  })
+
+  it('validates and migrates local habit records in backups', () => {
+    const parsed = parseWorkspaceBackup(backup({
+      habits: [{ id: 'read', title: ' 阅读 ', completedDates: ['2026-10-12'] }],
+    }))
+    expect(parsed.habits).toEqual([{ id: 'read', title: '阅读', completedDates: ['2026-10-12'] }])
+    expect(() => parseWorkspaceBackup(backup({
+      habits: [{ id: 'invalid', title: 'Invalid', completedDates: ['2026-02-30'] }],
+    }))).toThrow(/重复或无法识别/)
   })
 
   it('migrates older backups into one homepage containing their valid launchers', () => {
@@ -92,7 +103,7 @@ describe('workspace backups', () => {
     }))
     expect(parsed.countdowns).toEqual([{ id: 'anniversary', title: 'Anniversary', date: '2020-02-29', recurrence: 'yearly' }])
     expect(parsed.folders[0]?.shortcutIds).toEqual(['custom'])
-    expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'countdowns', 'todos', 'focus-timer', 'notes', 'settings', 'bookmarks', 'history', 'calculator', 'calendar'])
+    expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'countdowns', 'habits', 'todos', 'focus-timer', 'notes', 'settings', 'bookmarks', 'history', 'calculator', 'calendar'])
   })
 
   it('keeps older backups compatible with the new clock preference', () => {

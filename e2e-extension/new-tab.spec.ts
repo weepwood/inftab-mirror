@@ -67,6 +67,22 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
     await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Extension E2E')
     await expect(page.getByRole('option', { name: /Extension E2E/ })).toBeVisible()
 
+    await page.locator('[data-item-id="habits"] .shortcut-open').click()
+    const habitsPanel = page.getByRole('dialog', { name: '习惯打卡' })
+    await habitsPanel.getByRole('textbox', { name: '添加一个习惯' }).fill('Extension walk')
+    await habitsPanel.getByRole('button', { name: '添加习惯' }).click()
+    await habitsPanel.getByRole('button', { name: '完成Extension walk今日打卡' }).click()
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.habits.v1') ?? '[]')))
+      .toEqual([expect.objectContaining({ title: 'Extension walk' })])
+    await habitsPanel.getByRole('button', { name: '关闭' }).click()
+    await page.evaluate(() => {
+      const key = 'inftab.preferences.v1'
+      const preferences = JSON.parse(localStorage.getItem(key) ?? '{}')
+      localStorage.setItem(key, JSON.stringify({ ...preferences, homeWidgetIds: ['habits-summary'] }))
+    })
+    await page.reload()
+    await expect(page.locator('[data-widget-id="habits-summary"]')).toContainText('今天完成 1 / 1 个习惯')
+
     const optionalPermissions = await page.evaluate(() => {
       const permissions = (window as unknown as {
         chrome: { permissions: { contains: (details: { permissions: string[] }) => Promise<boolean> } }

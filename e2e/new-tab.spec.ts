@@ -242,6 +242,7 @@ test('every built-in panel route loads and closes without a runtime error', asyn
   const routes = [
     ['weather', '天气'],
     ['countdowns', '纪念日与倒计时'],
+    ['habits', '习惯打卡'],
     ['todos', '待办事项'],
     ['focus-timer', '专注计时'],
     ['notes', '笔记'],
@@ -283,11 +284,35 @@ test('every built-in panel route loads and closes without a runtime error', asyn
   expect(panelErrors).toEqual([])
 })
 
+test('habit check-ins persist locally and appear in the homepage widget', async ({ page }) => {
+  await page.locator('[data-item-id="habits"] .shortcut-open').click()
+  const panel = page.getByRole('dialog', { name: '习惯打卡' })
+  await panel.getByRole('textbox', { name: '添加一个习惯' }).fill('阅读')
+  await panel.getByRole('button', { name: '添加习惯' }).click()
+  await panel.getByRole('button', { name: '完成阅读今日打卡' }).click()
+  await expect(panel.getByRole('status')).toContainText('今天完成 1 / 1')
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.habits.v1') ?? '[]')))
+    .toEqual([expect.objectContaining({ title: '阅读' })])
+  await panel.getByRole('button', { name: '关闭' }).click()
+
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    const preferences = JSON.parse(localStorage.getItem(key) ?? '{}')
+    localStorage.setItem(key, JSON.stringify({ ...preferences, homeWidgetIds: ['habits-summary'] }))
+  })
+  await page.reload()
+  const widget = page.locator('[data-widget-id="habits-summary"]')
+  await expect(widget).toContainText('今天完成 1 / 1 个习惯')
+  await widget.getByRole('button', { name: '打开习惯打卡' }).click()
+  await expect(page.getByRole('dialog', { name: '习惯打卡' })).toBeVisible()
+})
+
 test('every home widget plugin loads together without a runtime error', async ({ page }) => {
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
   const widgetIds = [
     'todo-summary',
+    'habits-summary',
     'countdown-summary',
     'notes-summary',
     'calendar-summary',

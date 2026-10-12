@@ -49,6 +49,12 @@ export interface TodoItem {
   done: boolean
 }
 
+export interface Habit {
+  id: string
+  title: string
+  completedDates: string[]
+}
+
 export type CountdownRecurrence = 'once' | 'yearly'
 
 export interface CountdownItem {

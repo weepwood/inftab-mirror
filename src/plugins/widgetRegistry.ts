@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import type { CountdownItem, Note, TodoItem } from '../types'
+import type { CountdownItem, Habit, Note, TodoItem } from '../types'
 import type { FocusTimerState } from '../data/focusTimer'
 import type { PanelId } from './ids'
 import type { HomeWidgetId } from './ids'
@@ -7,6 +7,7 @@ import { lazyPluginComponent } from './asyncComponent'
 
 export interface HomeWidgetContext {
   todos: TodoItem[]
+  habits: Habit[]
   countdowns: CountdownItem[]
   notes: Note[]
   activeNoteId: string
@@ -19,6 +20,7 @@ type NoContext = Record<never, never>
 
 export interface HomeWidgetContextById {
   'todo-summary': Pick<HomeWidgetContext, 'todos'>
+  'habits-summary': Pick<HomeWidgetContext, 'habits'>
   'countdown-summary': Pick<HomeWidgetContext, 'countdowns'>
   'notes-summary': Pick<HomeWidgetContext, 'notes' | 'activeNoteId'>
   'calendar-summary': NoContext
@@ -30,6 +32,7 @@ export interface HomeWidgetContextById {
 
 export interface HomeWidgetPropsById {
   'todo-summary': { items: TodoItem[] }
+  'habits-summary': { items: Habit[] }
   'countdown-summary': { items: CountdownItem[] }
   'notes-summary': { notes: Note[]; activeId: string }
   'calendar-summary': NoProps
@@ -60,6 +63,13 @@ export const homeWidgetPlugins = {
     panel: 'todos',
     component: lazyWidget(() => import('../components/TodoSummaryWidget.vue')),
     props: (context) => ({ items: context.todos }),
+  },
+  'habits-summary': {
+    title: '习惯打卡',
+    description: '查看今天已完成的习惯',
+    panel: 'habits',
+    component: lazyWidget(() => import('../components/HabitsSummaryWidget.vue')),
+    props: (context) => ({ items: context.habits }),
   },
   'countdown-summary': {
     title: '倒计时',
