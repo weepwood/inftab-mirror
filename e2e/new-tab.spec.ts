@@ -412,6 +412,37 @@ test('backup import preview lists habits and home workspaces before restoring da
   expect(await page.evaluate(() => localStorage.getItem('inftab.habits.v1'))).toBeNull()
 })
 
+test('malformed backup collections fail before preview or changing local data', async ({ page }) => {
+  const shortcutId = `must-not-import-${Date.now()}`
+  const backup = {
+    format: 'inftab-workspace',
+    version: 1,
+    preferences: {
+      engine: 'baidu', mode: 'html', wallpaper: '/wallpapers/forest.webp', customWallpaper: '',
+      shade: 0.2, iconSize: 96, columns: 6, showNames: true, iconRadius: 50,
+    },
+    shortcuts: [{ id: shortcutId, title: 'Must not import', url: 'https://example.com/', color: '#abc', mark: 'M' }],
+    folders: null,
+    launcherOrder: [shortcutId],
+    todos: [],
+    notes: [],
+    activeNoteId: '',
+    weatherCity: '上海',
+  }
+
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settings = page.getByRole('dialog', { name: '设置' })
+  await settings.locator('input[accept="application/json,.json"]').setInputFiles({
+    name: 'malformed-workspace.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(backup)),
+  })
+
+  await expect(settings.getByRole('alert')).toContainText('备份中的文件夹数量无效')
+  await expect(page.getByRole('dialog', { name: '恢复本地备份' })).toHaveCount(0)
+  expect(await page.evaluate((id) => localStorage.getItem('inftab.shortcuts.v1')?.includes(id) ?? false, shortcutId)).toBe(false)
+})
+
 test('backup import explains shortcut and folder ID collisions before preview', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const settings = page.getByRole('dialog', { name: '设置' })
