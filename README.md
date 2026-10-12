@@ -31,7 +31,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-The end-to-end suite covers shortcut creation and persistence, keyboard launcher search, panel open/close, widget add/reorder/remove and persistence, settings persistence, and narrow-screen overflow. GitHub Actions runs both suites for pull requests and before publishing to Pages; browser reports and failure traces are retained as workflow artifacts.
+The end-to-end suite covers shortcut creation and persistence, keyboard launcher search, panel open/close, widget add/reorder/remove and persistence, settings persistence, and narrow-screen overflow. GitHub Actions runs the unit, website browser, production preview, and packaged-extension suites for pull requests and before publishing to Pages; browser reports and failure traces are retained as workflow artifacts.
 
 To run the same user flows against the production build and its lazy-loaded assets, run:
 
@@ -40,6 +40,12 @@ npm run test:e2e:production
 ```
 
 This command builds the app first, then starts Vite's production preview server for Playwright.
+
+To load the built package as a real Manifest V3 extension in an isolated Chromium profile and verify the new-tab override and optional-permission defaults, run:
+
+```sh
+npm run test:e2e:extension
+```
 
 GitHub Pages 使用 `dist/` 作为发布目录。首次部署前，在仓库 **Settings → Pages → Build and deployment** 中将 Source 设为 **GitHub Actions**。之后推送到 `main` 会自动构建并发布；也可以在 Actions 页面手动运行工作流。`vite.config.ts` 使用相对资源路径，支持部署在仓库子路径下。
 

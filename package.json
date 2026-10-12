@@ -7,10 +7,11 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build && node scripts/check-bundle-size.mjs && node scripts/check-extension-build.mjs",
     "preview": "vite preview",
-    "check": "vue-tsc --noEmit",
+    "check": "vue-tsc --noEmit && tsc -p tsconfig.e2e-extension.json",
     "test": "vitest run && node scripts/check-default-assets.mjs",
     "test:e2e": "playwright test",
-    "test:e2e:production": "npm run build && playwright test --config playwright.production.config.ts"
+    "test:e2e:production": "npm run build && playwright test --config playwright.production.config.ts",
+    "test:e2e:extension": "npm run check && npm run build && playwright test --config playwright.extension.config.ts"
   },
   "dependencies": {
     "@lucide/vue": "^1.55.0",
@@ -18,6 +19,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",
+    "@types/node": "^24.19.2",
     "@vitejs/plugin-vue": "^6.0.10",
     "@vue/test-utils": "^2.5.1",
     "jsdom": "^30.1.2",
