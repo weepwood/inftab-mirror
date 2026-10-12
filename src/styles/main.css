@@ -342,7 +342,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .calendar-day.today { border-color: #7fa3e8; color: #3266bd; font-weight: 700; }
 .calendar-day[aria-pressed='true'] { border-color: #477ff0; background: #477ff0; color: #fff; }
 .calendar-selected { margin: 17px 0 0; padding: 12px; border-radius: 9px; background: #f4f6f9; color: #66707c; font-size: 12px; text-align: center; }
-.countdown-item { min-width: 0; display: flex; align-items: center; gap: 9px; padding: 10px 2px; border-bottom: 1px solid #eff0f2; }
+.countdown-item { min-width: 0; min-height: 54px; display: flex; align-items: center; gap: 9px; padding: 10px 2px; border-bottom: 1px solid #eff0f2; content-visibility: auto; contain-intrinsic-size: auto 54px; }
 .countdown-icon { width: 32px; height: 32px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 10px; background: #fff1e9; color: #db7547; }
 .countdown-copy { min-width: 0; flex: 1; display: grid; gap: 3px; }
 .countdown-copy strong { overflow: hidden; color: #343a41; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
@@ -357,7 +357,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .inline-add button:hover { background: #2f68d9; }
 .inline-add button:disabled, .note-add:disabled { cursor: not-allowed; opacity: .55; }
 .todo-list { display: grid; gap: 5px; margin: 16px 0 0; padding: 0; list-style: none; }
-.todo-list li { min-height: 47px; display: flex; align-items: center; gap: 11px; padding: 6px 4px; border-bottom: 1px solid #eff0f2; color: #41464d; font-size: 13px; }
+.todo-list li { min-height: 47px; display: flex; align-items: center; gap: 11px; padding: 6px 4px; border-bottom: 1px solid #eff0f2; color: #41464d; font-size: 13px; content-visibility: auto; contain-intrinsic-size: auto 47px; }
 .todo-list li.done span { color: #a6a9ae; text-decoration: line-through; }
 .todo-list li span { flex: 1; overflow-wrap: anywhere; }
 .todo-edit-form { flex: 1; display: flex; align-items: center; gap: 5px; }
@@ -378,7 +378,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .notes-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 225px minmax(0, 1fr); }
 .notes-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; padding: 13px 10px; border-right: 1px solid #eceef1; }
 .note-add { height: 36px; display: flex; align-items: center; gap: 8px; margin: 0 2px 8px; padding: 0 10px; border: 0; border-radius: 7px; background: #edf3ff; color: #3971dc; font-size: 12px; cursor: pointer; }
-.note-list-item { min-height: 58px; display: flex; flex-direction: column; gap: 5px; overflow: hidden; padding: 10px; border: 0; border-radius: 7px; background: transparent; color: #444a51; text-align: left; cursor: pointer; }
+.note-list-item { min-height: 58px; display: flex; flex-direction: column; gap: 5px; overflow: hidden; padding: 10px; border: 0; border-radius: 7px; background: transparent; color: #444a51; text-align: left; cursor: pointer; content-visibility: auto; contain-intrinsic-size: auto 58px; }
 .note-list-item.active, .note-list-item:hover { background: #eef0f3; }
 .note-list-item strong, .note-list-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-list-item strong { font-size: 12px; font-weight: 600; }

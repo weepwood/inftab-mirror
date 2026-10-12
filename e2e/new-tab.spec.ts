@@ -405,6 +405,45 @@ test('every built-in panel route loads and closes without a runtime error', asyn
   expect(panelErrors).toEqual([])
 })
 
+test('large local lists skip rendering offscreen rows without hiding their records', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('inftab.todos.v1', JSON.stringify(Array.from({ length: 500 }, (_, index) => ({
+      id: `todo-${index}`, title: `Task ${index}`, done: false,
+    }))))
+    localStorage.setItem('inftab.notes.v1', JSON.stringify(Array.from({ length: 500 }, (_, index) => ({
+      id: `note-${index}`, title: `Note ${index}`, body: `Body ${index}`, updatedAt: index,
+    }))))
+    localStorage.setItem('inftab.active-note.v1', JSON.stringify('note-0'))
+    localStorage.setItem('inftab.countdowns.v1', JSON.stringify(Array.from({ length: 500 }, (_, index) => ({
+      id: `countdown-${index}`, title: `Date ${index}`, date: `2027-01-${String(index % 28 + 1).padStart(2, '0')}`, recurrence: 'once',
+    }))))
+  })
+  await page.reload()
+  const search = async (term: string) => {
+    await page.keyboard.press('Control+f')
+    const input = page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })
+    await input.fill(term)
+    await page.getByRole('option', { name: new RegExp(term) }).click()
+  }
+  const assertVirtualizedRows = async (selector: string, expectedCount: number, expectedSize: string) => {
+    const rows = page.locator(selector)
+    await expect(rows).toHaveCount(expectedCount)
+    await expect.poll(() => rows.first().evaluate((element) => getComputedStyle(element).contentVisibility)).toBe('auto')
+    await expect.poll(() => rows.first().evaluate((element) => getComputedStyle(element).containIntrinsicSize)).toContain(expectedSize)
+  }
+
+  await search('待办事项')
+  await assertVirtualizedRows('.todo-list li', 500, '47px')
+  await page.getByRole('button', { name: '关闭' }).click()
+
+  await search('笔记')
+  await assertVirtualizedRows('.note-list-item', 500, '58px')
+  await page.getByRole('button', { name: '关闭' }).click()
+
+  await search('纪念日')
+  await assertVirtualizedRows('.countdown-item', 500, '54px')
+})
+
 test('habit check-ins persist locally and appear in the homepage widget', async ({ page }) => {
   await page.locator('[data-item-id="habits"] .shortcut-open').click()
   const panel = page.getByRole('dialog', { name: '习惯打卡' })
