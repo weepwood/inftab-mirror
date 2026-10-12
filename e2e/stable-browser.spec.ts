@@ -35,6 +35,21 @@ test('stable browsers preserve Tab focus when leaving the search engine menu', a
   await expect(picker).toBeFocused()
 })
 
+test('stable browsers show focus and readable colors on native settings selects', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settings = page.getByRole('dialog', { name: '设置' })
+  const theme = settings.getByRole('combobox', { name: '颜色主题' })
+
+  await theme.focus()
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Shift+Tab')
+  await expect(theme).toBeFocused()
+  await expect.poll(() => theme.evaluate((element) => getComputedStyle(element).outlineWidth)).toBe('2px')
+  await theme.selectOption('dark')
+  await expect.poll(() => theme.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(37, 42, 52)')
+  await expect.poll(() => theme.evaluate((element) => getComputedStyle(element).color)).toBe('rgb(226, 230, 237)')
+})
+
 test('stable browsers persist a new shortcut after reload at a narrow viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
