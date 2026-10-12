@@ -22,8 +22,10 @@ export function useOptionalBrowserResource<T>(options: OptionalBrowserResourceOp
   let changeTimer: ReturnType<typeof setTimeout> | undefined
   let stopListening: (() => void) | undefined
   let stopWatchingPermission: (() => void) | undefined
+  let isActive = false
 
   async function refresh() {
+    if (!isActive || !options.supported) return
     const sequence = ++refreshSequence
     loading.value = true
     error.value = ''
@@ -38,6 +40,7 @@ export function useOptionalBrowserResource<T>(options: OptionalBrowserResourceOp
   }
 
   function queueRefresh() {
+    if (!isActive) return
     if (changeTimer !== undefined) clearTimeout(changeTimer)
     changeTimer = setTimeout(() => {
       changeTimer = undefined
@@ -46,10 +49,22 @@ export function useOptionalBrowserResource<T>(options: OptionalBrowserResourceOp
   }
 
   function watchResourceChanges() {
-    if (!stopListening && options.subscribeToChanges) stopListening = options.subscribeToChanges(queueRefresh)
+    if (isActive && !stopListening && options.subscribeToChanges) stopListening = options.subscribeToChanges(queueRefresh)
+  }
+
+  function clearPermissionScopedState() {
+    refreshSequence += 1
+    if (changeTimer !== undefined) clearTimeout(changeTimer)
+    changeTimer = undefined
+    stopListening?.()
+    stopListening = undefined
+    permissionGranted.value = false
+    data.value = options.initial
+    loading.value = false
   }
 
   async function syncPermission() {
+    if (!isActive || !options.supported) return
     const sequence = ++permissionSequence
     try {
       const granted = await options.hasPermission()
@@ -59,32 +74,31 @@ export function useOptionalBrowserResource<T>(options: OptionalBrowserResourceOp
         watchResourceChanges()
         await refresh()
       } else {
-        refreshSequence += 1
-        if (changeTimer !== undefined) clearTimeout(changeTimer)
-        changeTimer = undefined
-        stopListening?.()
-        stopListening = undefined
-        data.value = options.initial
-        loading.value = false
+        clearPermissionScopedState()
         error.value = ''
       }
     } catch {
-      if (sequence === permissionSequence) error.value = options.permissionError
+      if (sequence !== permissionSequence || !isActive) return
+      clearPermissionScopedState()
+      error.value = options.permissionError
     }
   }
 
   async function retry() {
+    if (!isActive || !options.supported) return
     if (permissionGranted.value) await refresh()
     else await syncPermission()
   }
 
   onMounted(() => {
+    isActive = true
     if (!options.supported) return
     stopWatchingPermission = options.subscribeToPermissionChanges(() => { void syncPermission() })
     void syncPermission()
   })
 
   onBeforeUnmount(() => {
+    isActive = false
     permissionSequence += 1
     refreshSequence += 1
     if (changeTimer !== undefined) clearTimeout(changeTimer)
