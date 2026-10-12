@@ -31,6 +31,24 @@ describe('useLocalWorkspace default shortcut migration', () => {
   })
 })
 
+describe('useLocalWorkspace default shortcut URL migration', () => {
+  it('repairs known placeholder targets while preserving custom destinations', () => {
+    localStorage.setItem('inftab.shortcuts.v1', JSON.stringify([
+      { id: 'fox', title: 'Lemur', url: 'https://www.google.com/', color: '#06b8df', mark: 'F' },
+      { id: 'games', title: 'Games', url: 'https://inftab.com/', color: '#f7f7f7', mark: 'G' },
+      { id: 'infinitytab', title: 'Infinity', url: 'https://inftab.com/', color: '#141414', mark: 'I' },
+      { id: 'jd', title: 'My store', url: 'https://shop.example/', color: '#e9232e', mark: 'J' },
+    ]))
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+
+    expect(workspace.shortcuts.value.find((item) => item.id === 'fox')?.url).toBe('https://www.lemurbrowser.com/app/zh/')
+    expect(workspace.shortcuts.value.find((item) => item.id === 'games')?.url).toBe('https://games.inftab.com/')
+    expect(workspace.shortcuts.value.find((item) => item.id === 'infinitytab')?.url).toBe('https://www.infinitytab.com/')
+    expect(workspace.shortcuts.value.find((item) => item.id === 'jd')?.url).toBe('https://shop.example/')
+  })
+})
+
 describe('useLocalWorkspace launcher ordering', () => {
   it('preserves hidden launcher positions while reordering visible items', () => {
     scope = effectScope()

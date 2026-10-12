@@ -88,11 +88,17 @@ export function useLocalWorkspace() {
     fox: '24f02a8178e623d22dc563857bf32f8.png',
     infinitytab: 'bc545d7b32d3c84c3041ca092fb2689.png',
   }
+  const outdatedDefaultUrls: Record<string, string> = {
+    fox: 'https://www.google.com/',
+    games: 'https://inftab.com/',
+    infinitytab: 'https://inftab.com/',
+  }
   shortcuts.value = shortcuts.value.map((shortcut) => {
     const defaults = defaultShortcutById.get(shortcut.id)
     const outdatedIcon = outdatedDefaultIcons[shortcut.id]
     const icon = shortcut.icon === outdatedIcon ? defaults?.icon : shortcut.icon ?? defaults?.icon
-    return defaults ? { ...defaults, ...shortcut, icon } : shortcut
+    const url = shortcut.url === outdatedDefaultUrls[shortcut.id] ? defaults?.url ?? shortcut.url : shortcut.url
+    return defaults ? { ...defaults, ...shortcut, icon, url } : shortcut
   })
 
   function saveShortcut(shortcut: Shortcut): boolean {
