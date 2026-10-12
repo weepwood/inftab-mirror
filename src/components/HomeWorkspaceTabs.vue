@@ -17,6 +17,7 @@ const editing = ref(false)
 const draft = ref('')
 const nameError = ref('')
 const nameInput = ref<HTMLInputElement>()
+const tablist = ref<HTMLDivElement>()
 const activeWorkspace = () => props.workspaces.find((workspace) => workspace.id === props.activeId) ?? props.workspaces[0]
 
 function beginRename() {
@@ -56,13 +57,13 @@ function handleTabKeydown(event: KeyboardEvent, index: number) {
   const next = props.workspaces[nextIndex]
   if (!next) return
   emit('select', next.id)
-  void nextTick(() => document.querySelector<HTMLButtonElement>(`[data-workspace-tab="${CSS.escape(next.id)}"]`)?.focus())
+  void nextTick(() => tablist.value?.querySelectorAll<HTMLButtonElement>('[data-workspace-tab]')[nextIndex]?.focus())
 }
 </script>
 
 <template>
   <div class="home-workspace-bar" role="region" aria-label="主页工作区">
-    <div class="home-workspace-tablist" role="tablist" aria-label="切换工作区">
+    <div ref="tablist" class="home-workspace-tablist" role="group" aria-label="切换工作区">
       <button
         v-for="(workspace, index) in workspaces"
         :key="workspace.id"
@@ -70,9 +71,7 @@ function handleTabKeydown(event: KeyboardEvent, index: number) {
         class="home-workspace-tab"
         :class="{ active: workspace.id === activeId }"
         type="button"
-        role="tab"
-        :aria-selected="workspace.id === activeId"
-        :tabindex="workspace.id === activeId ? 0 : -1"
+        :aria-pressed="workspace.id === activeId"
         @click="emit('select', workspace.id)"
         @keydown="handleTabKeydown($event, index)"
       >{{ workspace.name }}</button>
