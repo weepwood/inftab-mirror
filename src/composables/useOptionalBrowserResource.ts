@@ -25,7 +25,7 @@ export function useOptionalBrowserResource<T>(options: OptionalBrowserResourceOp
   let isActive = false
 
   async function refresh() {
-    if (!isActive || !options.supported) return
+    if (!isActive || !options.supported || !permissionGranted.value) return
     const sequence = ++refreshSequence
     loading.value = true
     error.value = ''

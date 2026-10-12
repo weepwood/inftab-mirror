@@ -37,6 +37,17 @@ function permissionOptions(overrides: Partial<OptionalBrowserResourceOptions<str
 }
 
 describe('optional browser resource lifecycle', () => {
+  it('does not load an optional resource when refresh is called without permission', async () => {
+    const options = permissionOptions({ hasPermission: vi.fn().mockResolvedValue(false) })
+    const { getState } = mountResource(options)
+    await flushPromises()
+
+    await getState().refresh()
+
+    expect(getState().permissionGranted.value).toBe(false)
+    expect(options.load).not.toHaveBeenCalled()
+  })
+
   it('clears protected data and listeners if a permission recheck fails', async () => {
     let onPermissionChange: (() => void) | undefined
     let onResourceChange: (() => void) | undefined
