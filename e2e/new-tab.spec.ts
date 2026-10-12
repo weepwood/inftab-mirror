@@ -41,6 +41,30 @@ test('creates a shortcut and keeps it after reloading the new tab', async ({ pag
   await expect(page.getByRole('button', { name: '打开E2E Example' })).toBeVisible()
 })
 
+test('minimal mode keeps search available and restores the homepage with Escape', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({
+    showSearchBar: false,
+    homeWidgetIds: ['todo-summary'],
+  })))
+  await page.reload()
+  await expect(page.getByRole('searchbox', { name: '输入并搜索' })).toHaveCount(0)
+  await expect(page.locator('.home-widget-shelf')).toBeVisible()
+
+  const enterMinimalMode = page.getByRole('button', { name: '进入极简模式' })
+  await enterMinimalMode.click()
+  await expect(page.getByRole('button', { name: '退出极简模式' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.home-widget-shelf')).toHaveCount(0)
+  await expect(page.locator('.home-workspace-bar')).toHaveCount(0)
+  await expect(page.locator('.shortcut-grid-wrap')).toHaveCount(0)
+  await expect(page.getByRole('searchbox', { name: '输入并搜索' })).toBeFocused()
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: '进入极简模式' })).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.locator('.home-widget-shelf')).toBeVisible()
+  await expect(page.locator('.shortcut-grid-wrap')).toBeVisible()
+  await expect(page.getByRole('searchbox', { name: '输入并搜索' })).toHaveCount(0)
+})
+
 test('workspace tabs isolate shortcuts and persist the active workspace', async ({ page }) => {
   await page.getByRole('button', { name: '新建工作区' }).click()
   await expect(page.getByRole('button', { name: '工作区 1', exact: true })).toHaveAttribute('aria-pressed', 'true')

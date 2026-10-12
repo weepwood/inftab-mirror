@@ -84,6 +84,7 @@ const {
 
 const query = ref('')
 const localSearchMode = ref(false)
+const minimalMode = ref(false)
 const systemPrefersDark = ref(false)
 const effectiveTheme = computed(() => preferences.value.themeMode === 'system'
   ? (systemPrefersDark.value ? 'dark' : 'light')
@@ -230,7 +231,7 @@ const activePanelProps = computed<Record<string, unknown>>(() => activePanelPlug
 const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanelPlugin.value?.listeners(panelContext.value) ?? {})
 const homeWidgetContext = computed(() => ({ todos: todos.value, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
 const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0)
-const shortHomeScrollEnabled = computed(() => (showHomeWidgets.value || homeDockItems.value.length > 0) && viewport.value.height <= 560)
+const shortHomeScrollEnabled = computed(() => !minimalMode.value && (showHomeWidgets.value || homeDockItems.value.length > 0) && viewport.value.height <= 560)
 const homeWidgetRows = computed(() => {
   if (!showHomeWidgets.value || viewport.value.width <= 780) return showHomeWidgets.value ? 1 : 0
   const shelfWidth = Math.min(Math.max(0, viewport.value.width - 64), 960)
@@ -584,7 +585,7 @@ function goToPage(page: number) {
 }
 
 function startHomeSwipe(event: PointerEvent) {
-  if (event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf, .home-dock'))) return
+  if (minimalMode.value || event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf, .home-dock'))) return
   homeTouchStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
 }
 
@@ -597,7 +598,7 @@ function finishHomeSwipe(event: PointerEvent) {
 }
 
 function handleHomeWheel(event: WheelEvent) {
-  if (shortHomeScrollEnabled.value) return
+  if (minimalMode.value || shortHomeScrollEnabled.value) return
   if (activePanel.value || shortcutDialog.value || homeWheelLocked
     || (event.target instanceof Element && event.target.closest('.home-widget-shelf, .home-dock'))) return
   const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY)
@@ -682,6 +683,10 @@ function handleKeydown(event: KeyboardEvent) {
       activePanel.value = null
       return
     }
+    if (minimalMode.value) {
+      minimalMode.value = false
+      return
+    }
   }
   const target = event.target instanceof HTMLElement ? event.target : null
   const editingText = target?.matches('input, textarea, [contenteditable="true"]') ?? false
@@ -702,8 +707,13 @@ function handleKeydown(event: KeyboardEvent) {
     searchBar.value.focusSearch()
     return
   }
-  if (event.key === 'ArrowRight' && !editingText && !localSearchMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(1)
-  if (event.key === 'ArrowLeft' && !editingText && !localSearchMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(-1)
+  if (event.key === 'ArrowRight' && !editingText && !localSearchMode.value && !minimalMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(1)
+  if (event.key === 'ArrowLeft' && !editingText && !localSearchMode.value && !minimalMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(-1)
+}
+
+function toggleMinimalMode() {
+  minimalMode.value = !minimalMode.value
+  if (minimalMode.value) void nextTick(() => searchBar.value?.focusSearch())
 }
 
 function updateViewport() {
@@ -789,19 +799,20 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': shortHomeScrollEnabled }" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
+  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': shortHomeScrollEnabled, 'home-minimal': minimalMode }" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
     <a class="skip-link" href="#main-content">跳到快捷入口</a>
     <h1 class="visually-hidden">Infinity 新标签页</h1>
     <div class="background-shade"></div>
     <header class="home-actions">
+      <button type="button" class="round-action minimal-mode-toggle" :aria-label="minimalMode ? '退出极简模式' : '进入极简模式'" :aria-pressed="minimalMode" :title="minimalMode ? '退出极简模式' : '进入极简模式'" @click="toggleMinimalMode"><span aria-hidden="true">{{ minimalMode ? '×' : '◉' }}</span></button>
       <button type="button" class="round-action" aria-label="回到首页" @click="goToPage(0)"><House :size="19" /></button>
       <button type="button" class="round-action" aria-label="打开设置" @click="activePanel = 'settings'"><Menu :size="21" /></button>
     </header>
 
     <ClockWidget v-if="preferences.showClock" />
-    <section id="main-content" class="home-content" tabindex="-1">
+    <section id="main-content" class="home-content" :class="{ 'home-content-minimal': minimalMode }" tabindex="-1">
       <HomeWidgetShelf
-        v-if="showHomeWidgets"
+        v-if="showHomeWidgets && !minimalMode"
         :widget-ids="preferences.homeWidgetIds"
         :widget-sizes="preferences.homeWidgetSizes"
         :context="homeWidgetContext"
@@ -811,6 +822,7 @@ onBeforeUnmount(() => {
         @resize="resizeHomeWidget"
       />
       <HomeWorkspaceTabs
+        v-if="!minimalMode"
         :workspaces="homeWorkspaces"
         :active-id="activeHomeWorkspaceId"
         @select="activeHomeWorkspaceId = $event"
@@ -821,7 +833,7 @@ onBeforeUnmount(() => {
       />
       <SearchBar
         ref="searchBar"
-        v-if="preferences.showSearchBar || localSearchMode"
+        v-if="preferences.showSearchBar || localSearchMode || minimalMode"
         v-model="query"
         v-model:engine="preferences.engine"
         v-model:mode="preferences.mode"
@@ -850,6 +862,7 @@ onBeforeUnmount(() => {
         </template>
       </SearchBar>
       <ShortcutGrid
+        v-if="!minimalMode"
         :items="allLauncherItems"
         :dock-item-ids="preferences.dockItemIds"
         :columns="preferences.columns"
@@ -870,7 +883,7 @@ onBeforeUnmount(() => {
         @move-by-keyboard="moveLauncherItemByKeyboard"
         @swipe="movePage"
       />
-      <nav v-if="pageCount > 1" class="page-dots" aria-label="快捷入口页码">
+      <nav v-if="pageCount > 1 && !minimalMode" class="page-dots" aria-label="快捷入口页码">
         <button type="button" aria-label="上一页" class="page-arrow" @click="movePage(-1)"><ArrowLeft :size="15" /></button>
         <template v-for="item in pageNavigation" :key="item.kind === 'page' ? `page-${item.page}` : item.id">
           <button v-if="item.kind === 'page'" type="button" :aria-label="`第${item.page + 1}页`" :aria-current="item.page === currentPage ? 'page' : undefined" class="page-dot" :class="{ active: item.page === currentPage }" @click="goToPage(item.page)"></button>
@@ -880,7 +893,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <HomeDock v-if="homeDockItems.length" :items="homeDockItems" @open="openItem" @remove="toggleDockItem" />
+    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" @open="openItem" @remove="toggleDockItem" />
 
     <img class="windmill" :src="`${baseUrl}windmill.svg`" alt="" />
     <div v-if="storageError" class="storage-error-toast" role="alert">
