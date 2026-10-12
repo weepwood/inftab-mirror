@@ -395,7 +395,8 @@ describe('new-tab keyboard search', () => {
     await nextTick()
 
     const panel = wrapper.get('.side-panel[role="dialog"]')
-    const focusable = panel.findAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')
+    const focusable = panel.findAll('button:not([disabled]), input:not([disabled]):not([type="hidden"]):not(.visually-hidden), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]):not(.visually-hidden)')
+    for (const fileInput of panel.findAll('input.visually-hidden')) expect(fileInput.attributes('tabindex')).toBe('-1')
     const first = focusable[0]!.element as HTMLElement
     const last = focusable.at(-1)!.element as HTMLElement
     expect(panel.element.contains(document.activeElement)).toBe(true)

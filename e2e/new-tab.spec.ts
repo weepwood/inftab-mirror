@@ -104,6 +104,27 @@ test('creates a shortcut and keeps it after reloading the new tab', async ({ pag
   await expect(page.getByRole('button', { name: '打开E2E Example' })).toBeVisible()
 })
 
+test('shortcut dialog traps keyboard focus, exposes dialog semantics, and restores its trigger', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settings = page.getByRole('dialog', { name: '设置' })
+  const addShortcut = settings.getByRole('button', { name: /添加快捷入口/ })
+  await addShortcut.click()
+
+  const dialog = page.getByRole('dialog', { name: '添加快捷入口' })
+  const first = dialog.getByRole('button', { name: '关闭' })
+  const last = dialog.getByRole('button', { name: '保存' })
+  await expect(dialog).toBeVisible()
+  await expect(first).toBeFocused()
+  await expect(dialog.locator('input[type="file"]')).toHaveAttribute('tabindex', '-1')
+  await page.keyboard.press('Shift+Tab')
+  await expect(last).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(first).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(addShortcut).toBeFocused()
+})
+
 test('minimal mode keeps search available and restores the homepage with Escape', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({
     showSearchBar: false,
@@ -383,8 +404,8 @@ test('every built-in panel route loads and closes without a runtime error', asyn
     // Loading and terminal chunk-error states share this marker. Requiring it
     // to disappear ensures each lazy component actually mounted.
     await expect(panel.locator('.panel-loading')).toHaveCount(0)
-    const firstFocusable = panel.locator('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])').first()
-    const lastFocusable = panel.locator('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])').last()
+    const firstFocusable = panel.locator('button:not([disabled]), input:not([disabled]):not([type="hidden"]):not(.visually-hidden), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]):not(.visually-hidden)').first()
+    const lastFocusable = panel.locator('button:not([disabled]), input:not([disabled]):not([type="hidden"]):not(.visually-hidden), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]):not(.visually-hidden)').last()
     await expect(firstFocusable).toBeFocused()
     await page.keyboard.press('Shift+Tab')
     await expect(lastFocusable).toBeFocused()

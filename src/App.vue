@@ -129,10 +129,12 @@ const pendingDestructiveAction = ref<{ title: string; description: string; confi
 let destructiveActionFocusTarget: HTMLElement | undefined
 const searchBar = ref<{ focusSearch: () => void; showTranslationError: () => void }>()
 const sidePanel = ref<HTMLElement>()
+const shortcutDialogElement = ref<HTMLFormElement>()
 const folderDialogOpen = ref(false)
 const activeFolder = ref<ShortcutFolder>()
 const folderSaveError = ref('')
 const shortcutDialog = ref(false)
+let shortcutDialogReturnFocusTarget: HTMLElement | undefined
 const editingId = ref('')
 const shortcutWorkspaceId = ref('default')
 const shortcutTitle = ref('')
@@ -366,13 +368,26 @@ watch(activePanel, async (panel, previousPanel) => {
   }
   if (!panel) return
   await nextTick()
-  sidePanel.value?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')?.focus()
+  sidePanel.value?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]):not([type="hidden"]):not(.visually-hidden), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]):not(.visually-hidden)')?.focus()
 })
+watch(shortcutDialog, async (isOpen) => {
+  if (isOpen) {
+    await nextTick()
+    shortcutDialogElement.value?.querySelector<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]):not([type="hidden"]):not(.visually-hidden), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+    )?.focus()
+    return
+  }
+  const target = shortcutDialogReturnFocusTarget
+  shortcutDialogReturnFocusTarget = undefined
+  await nextTick()
+  if (target?.isConnected) target.focus()
+}, { flush: 'post' })
 
 function handlePanelKeydown(event: KeyboardEvent) {
   if (event.key !== 'Tab' || !sidePanel.value) return
   const focusable = [...sidePanel.value.querySelectorAll<HTMLElement>(
-    'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+    'button:not([disabled]), input:not([disabled]):not([type="hidden"]):not(.visually-hidden), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]):not(.visually-hidden)',
   )]
   if (!focusable.length) {
     event.preventDefault()
@@ -558,6 +573,7 @@ function openFolderShortcuts(items: Shortcut[]) {
 }
 
 function openShortcutDialog(item?: LauncherItem) {
+  shortcutDialogReturnFocusTarget = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
   editingId.value = item?.shortcut?.id ?? ''
   shortcutWorkspaceId.value = item?.shortcut
     ? homeWorkspaces.value.find((workspace) => workspace.itemIds.includes(item.shortcut!.id))?.id ?? activeHomeWorkspaceId.value
@@ -572,6 +588,32 @@ function openShortcutDialog(item?: LauncherItem) {
   shortcutIconError.value = ''
   if (shortcutIconFile.value) shortcutIconFile.value.value = ''
   shortcutDialog.value = true
+}
+
+function handleShortcutDialogKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    shortcutDialog.value = false
+    return
+  }
+  if (event.key !== 'Tab' || !shortcutDialogElement.value) return
+  const focusable = [...shortcutDialogElement.value.querySelectorAll<HTMLElement>(
+    'button:not([disabled]), input:not([disabled]):not([type="hidden"]):not(.visually-hidden), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]):not(.visually-hidden)',
+  )]
+  if (!focusable.length) {
+    event.preventDefault()
+    return
+  }
+  const first = focusable[0]!
+  const last = focusable.at(-1)!
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
 }
 function fillShortcutFromBrowserTab(tab: BrowserTabCandidate) {
   shortcutTitle.value = tab.title.slice(0, 24)
@@ -1004,8 +1046,8 @@ onBeforeUnmount(() => {
     />
 
     <div v-if="shortcutDialog" class="modal-backdrop" @click.self="shortcutDialog = false">
-      <form class="shortcut-dialog" @submit.prevent="saveShortcut">
-        <header><div><h2>{{ editingId ? '编辑快捷入口' : '添加快捷入口' }}</h2><p>名称和网址可以随时修改</p></div><button type="button" aria-label="关闭" @click="shortcutDialog = false"><X :size="19" /></button></header>
+      <form ref="shortcutDialogElement" class="shortcut-dialog" role="dialog" aria-modal="true" aria-labelledby="shortcut-dialog-title" @keydown="handleShortcutDialogKeydown" @submit.prevent="saveShortcut">
+        <header><div><h2 id="shortcut-dialog-title">{{ editingId ? '编辑快捷入口' : '添加快捷入口' }}</h2><p>名称和网址可以随时修改</p></div><button type="button" aria-label="关闭" @click="shortcutDialog = false"><X :size="19" /></button></header>
         <label>名称<input v-model="shortcutTitle" autofocus required maxlength="24" placeholder="例如：GitHub" /></label>
         <label>所属工作区<select v-model="shortcutWorkspaceId"><option v-for="workspace in homeWorkspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></select></label>
         <p v-if="shortcutLimitReached" class="backup-error" role="status">最多只能保存 500 个快捷入口。</p>
@@ -1019,7 +1061,7 @@ onBeforeUnmount(() => {
         </div>
         <label>图标图片地址（可选）<input v-model="shortcutIcon" placeholder="素材文件名、图片网址或 Base64" @input="shortcutIconError = ''" /></label>
         <div class="icon-file-actions">
-          <input ref="shortcutIconFile" class="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="loadShortcutIconFile" />
+          <input ref="shortcutIconFile" class="visually-hidden" type="file" tabindex="-1" aria-hidden="true" accept="image/png,image/jpeg,image/webp,image/gif" @change="loadShortcutIconFile" />
           <button class="button-secondary" type="button" @click="shortcutIconFile?.click()">上传本地图片</button>
           <span>图片会压缩为 Base64 保存在本机，离线可用</span>
         </div>

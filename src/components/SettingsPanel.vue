@@ -234,7 +234,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
         <input :value="hasLocalWallpaper ? '' : preferences.customWallpaper" placeholder="https://example.com/wallpaper.jpg" @input="setCustomWallpaper(($event.target as HTMLInputElement).value)" />
       </label>
       <div class="backup-actions wallpaper-upload-actions">
-        <input ref="wallpaperFileInput" class="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="loadWallpaperFile" />
+        <input ref="wallpaperFileInput" class="visually-hidden" type="file" tabindex="-1" aria-hidden="true" accept="image/png,image/jpeg,image/webp,image/gif" @change="loadWallpaperFile" />
         <button class="button-secondary" type="button" @click="wallpaperFileInput?.click()">上传本地壁纸</button>
         <button v-if="hasLocalWallpaper" class="button-secondary" type="button" @click="setCustomWallpaper('')">移除本地壁纸</button>
       </div>
@@ -307,7 +307,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       <div class="backup-actions">
         <button class="button-secondary" type="button" @click="emit('exportBackup')">导出 JSON 备份</button>
         <button ref="importButton" class="button-secondary import-backup-button" type="button" @click="fileInput?.click()">导入备份</button>
-        <input ref="fileInput" class="visually-hidden" type="file" accept="application/json,.json" @change="readBackup" />
+        <input ref="fileInput" class="visually-hidden" type="file" tabindex="-1" aria-hidden="true" accept="application/json,.json" @change="readBackup" />
       </div>
       <p v-if="importError" class="backup-error" role="alert">{{ importError }}</p>
       <p v-if="exportError" class="backup-error" role="alert">{{ exportError }}</p>
