@@ -174,6 +174,15 @@ describe('workspace backups', () => {
     expect(parsed.launcherOrder).toEqual(['folder-work', 'weather', 'countdowns', 'habits', 'todos', 'focus-timer', 'notes', 'settings', 'bookmarks', 'history', 'calculator', 'calendar'])
   })
 
+  it.each([
+    ['folders', '文件夹'],
+    ['habits', '习惯'],
+    ['countdowns', '纪念日'],
+    ['customSearchEngines', '自定义搜索引擎'],
+  ])('rejects an explicitly null optional %s list rather than silently importing it empty', (key, label) => {
+    expect(() => parseWorkspaceBackup(backup({ [key]: null }))).toThrow(`备份中的${label}数量无效`)
+  })
+
   it('keeps older backups compatible with the new clock preference', () => {
     const preferences = { ...defaultPreferences, showClock: undefined, themeMode: undefined, dockItemIds: undefined, homeWidgetIds: undefined }
 

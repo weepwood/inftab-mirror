@@ -37,22 +37,25 @@ function validateArray(value: unknown, label: string, limit = maxItems): asserts
     throw new Error(`备份中的${label}数量无效（最多 ${limit} 项）。`)
   }
 }
+
+function optionalArray(source: Record<string, unknown>, key: string, label: string, limit = maxItems): unknown[] {
+  if (!Object.hasOwn(source, key)) return []
+  validateArray(source[key], label, limit)
+  return source[key]
+}
+
 export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   if (!isRecord(value) || value.format !== 'inftab-workspace' || value.version !== 1) {
     throw new Error('这不是受支持的 Inftab 备份文件。')
   }
   if (!isRecord(value.preferences)) throw new Error('备份文件缺少有效的页面设置。')
   validateArray(value.shortcuts, '快捷入口')
-  const rawFolders = value.folders ?? []
-  validateArray(rawFolders, '文件夹')
+  const rawFolders = optionalArray(value, 'folders', '文件夹')
   validateArray(value.launcherOrder, '入口排序', maxLauncherOrderItems)
   validateArray(value.todos, '待办事项')
-  const rawHabits = value.habits ?? []
-  validateArray(rawHabits, '习惯', 100)
-  const rawCountdowns = value.countdowns ?? []
-  const rawCustomSearchEngines = value.customSearchEngines ?? []
-  validateArray(rawCountdowns, '纪念日')
-  validateArray(rawCustomSearchEngines, '自定义搜索引擎')
+  const rawHabits = optionalArray(value, 'habits', '习惯', 100)
+  const rawCountdowns = optionalArray(value, 'countdowns', '纪念日')
+  const rawCustomSearchEngines = optionalArray(value, 'customSearchEngines', '自定义搜索引擎')
   validateArray(value.notes, '笔记')
   const rawPreferences = value.preferences
   const requiredPreferenceTypes: Record<string, (item: unknown) => boolean> = {
