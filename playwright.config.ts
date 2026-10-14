@@ -2,6 +2,9 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e',
+  // Vite's development server serves source modules instead of hashed production
+  // chunks, so recovery tests that target built assets run in the preview suite.
+  testIgnore: '**/production-chunks.spec.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
