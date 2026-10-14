@@ -3,6 +3,7 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultPreferences } from '../data/defaults'
 import { defaultFocusTimerState } from '../data/focusTimerState'
+import * as backupParsing from '../data/backup'
 import * as imageProcessing from '../data/images'
 import SettingsPanel from './SettingsPanel.vue'
 
@@ -153,6 +154,24 @@ describe('SettingsPanel local wallpaper upload', () => {
       .filter((value): value is string => Boolean(value?.startsWith('data:image/')))
     expect(uploadedWallpapers).toEqual(['data:image/webp;base64,bmV3ZXI='])
   })
+
+  it('does not emit a wallpaper update after the settings panel unmounts', async () => {
+    let resolveCompression!: (dataUrl: string) => void
+    vi.spyOn(imageProcessing, 'compressImageBlob').mockImplementation(() => new Promise((resolve) => { resolveCompression = resolve }))
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+    const input = wrapper.get('input[accept="image/png,image/jpeg,image/webp,image/gif"]')
+    Object.defineProperty(input.element, 'files', {
+      configurable: true,
+      value: [new File(['image'], 'wallpaper.png', { type: 'image/png' })],
+    })
+    await input.trigger('change')
+    const panel = wrapper
+    panel.unmount()
+    resolveCompression('data:image/webp;base64,c3RhbGU=')
+    await flushPromises()
+
+    expect(panel.emitted('update')).toBeUndefined()
+  })
 })
 
 describe('SettingsPanel wallpaper rotation', () => {
@@ -239,6 +258,7 @@ describe('SettingsPanel backup preview', () => {
   })
 
   it('keeps the latest selected backup when an earlier file read finishes later', async () => {
+    const parseBackup = vi.spyOn(backupParsing, 'parseWorkspaceBackup')
     wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
     const backup = (exportedAt: string) => JSON.stringify({
       format: 'inftab-workspace',
@@ -271,10 +291,12 @@ describe('SettingsPanel backup preview', () => {
     await input.trigger('change')
     await flushPromises()
     expect(wrapper.get('.backup-preview').text()).toBe(`备份时间：${new Date(latestExportedAt).toLocaleString()}`)
+    expect(parseBackup).toHaveBeenCalledOnce()
 
     resolveFirst(backup('2020-01-01T00:00:00.000Z'))
     await flushPromises()
 
     expect(wrapper.get('.backup-preview').text()).toBe(`备份时间：${new Date(latestExportedAt).toLocaleString()}`)
+    expect(parseBackup).toHaveBeenCalledOnce()
   })
 })

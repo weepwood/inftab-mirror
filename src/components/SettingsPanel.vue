@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { launcherItems, searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
 import { compressImageBlob } from '../data/images'
@@ -38,6 +38,11 @@ const searchEngineName = ref('')
 const searchEngineTemplate = ref('')
 const searchEngineError = ref('')
 const manageableLauncherItems = launcherItems.filter((item) => item.action && item.id !== 'settings')
+
+onBeforeUnmount(() => {
+  wallpaperReadId += 1
+  backupReadId += 1
+})
 
 watch(pendingBackup, async (backup, previous) => {
   if (backup) {
@@ -162,8 +167,9 @@ async function readBackup(event: Event) {
     return
   }
   try {
-    const parsedBackup = parseWorkspaceBackup(JSON.parse(await file.text()))
+    const content = await file.text()
     if (readId !== backupReadId) return
+    const parsedBackup = parseWorkspaceBackup(JSON.parse(content))
     pendingBackup.value = parsedBackup
     importError.value = ''
   } catch (error) {
