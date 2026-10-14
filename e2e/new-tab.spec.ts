@@ -378,6 +378,47 @@ test('names backup downloads with the local date near UTC midnight', async ({ br
   }
 })
 
+test('restores a valid backup only after confirmation and keeps it after reload', async ({ page }) => {
+  const backup = {
+    format: 'inftab-workspace',
+    version: 1,
+    exportedAt: '2026-10-14T00:00:00.000Z',
+    preferences: {
+      engine: 'baidu', mode: 'html', wallpaper: '/wallpapers/forest.webp', customWallpaper: '',
+      shade: 0.2, iconSize: 96, columns: 6, showNames: true, iconRadius: 50,
+    },
+    shortcuts: [{ id: 'restored-shortcut', title: 'Restored Shortcut', url: 'https://restored.example/', color: '#abc', mark: 'R' }],
+    folders: [],
+    launcherOrder: ['restored-shortcut'],
+    todos: [{ id: 'restored-todo', title: 'Restored todo', done: false }],
+    habits: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海', customSearchEngines: [],
+    homeWorkspaces: [{ id: 'default', name: '主页', itemIds: ['restored-shortcut'] }],
+    activeHomeWorkspaceId: 'default',
+  }
+
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settings = page.getByRole('dialog', { name: '设置' })
+  const shortcutsBeforeImport = await page.evaluate(() => localStorage.getItem('inftab.shortcuts.v1'))
+  await settings.locator('input[accept="application/json,.json"]').setInputFiles({
+    name: 'valid-workspace.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(backup)),
+  })
+
+  const preview = page.getByRole('dialog', { name: '恢复本地备份' })
+  await expect(preview).toContainText('1 个快捷入口')
+  await expect(preview).toContainText('1 条待办')
+  expect(await page.evaluate(() => localStorage.getItem('inftab.shortcuts.v1'))).toBe(shortcutsBeforeImport)
+  await preview.getByRole('button', { name: '覆盖导入' }).click()
+
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('inftab.shortcuts.v1'))).toContain('restored-shortcut')
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('inftab.todos.v1'))).toContain('Restored todo')
+  await page.reload()
+  await page.keyboard.press('Control+f')
+  await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Restored Shortcut')
+  await expect(page.getByRole('option', { name: /Restored Shortcut/ })).toBeVisible()
+})
+
 test('backup import preview lists habits and home workspaces before restoring data', async ({ page }) => {
   const backup = {
     format: 'inftab-workspace',
