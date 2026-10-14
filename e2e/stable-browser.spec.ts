@@ -75,6 +75,34 @@ test('stable browsers persist a new shortcut after reload at a narrow viewport',
   await expect(page.getByRole('option', { name: /Stable Browser/ })).toBeVisible()
 })
 
+test('stable browsers reject malformed backups before preview or import', async ({ page }) => {
+  const shortcutId = `must-not-import-${Date.now()}`
+  const backup = {
+    format: 'inftab-workspace',
+    version: 1,
+    preferences: { engine: 'baidu', mode: 'html', wallpaper: '/wallpapers/forest.webp' },
+    shortcuts: [{ id: shortcutId, title: 'Must not import', url: 'https://example.com/', color: '#abc', mark: 'M' }],
+    folders: null,
+    launcherOrder: [shortcutId],
+    todos: [],
+    notes: [],
+    activeNoteId: '',
+    weatherCity: '上海',
+  }
+
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settings = page.getByRole('dialog', { name: '设置' })
+  await settings.locator('input[accept="application/json,.json"]').setInputFiles({
+    name: 'malformed-workspace.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(backup)),
+  })
+
+  await expect(settings.getByRole('alert')).toContainText('备份中的文件夹数量无效')
+  await expect(page.getByRole('dialog', { name: '恢复本地备份' })).toHaveCount(0)
+  expect(await page.evaluate((id) => localStorage.getItem('inftab.shortcuts.v1')?.includes(id) ?? false, shortcutId)).toBe(false)
+})
+
 test('stable browsers open every shortcut in a folder from one click', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByRole('button', { name: '新建文件夹' }).click()
