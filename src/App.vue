@@ -154,6 +154,9 @@ const shortcutSaveError = ref('')
 const shortcutIconFile = ref<HTMLInputElement>()
 const shortcutIconError = ref('')
 const savingShortcut = ref(false)
+const loadingShortcutIcon = ref(false)
+let shortcutSaveRequestId = 0
+let shortcutIconUploadRequestId = 0
 const canImportBrowserTabs = location.protocol === 'chrome-extension:'
 const viewport = ref({ width: window.innerWidth, height: window.innerHeight })
 const pageSize = computed(() => preferences.value.columns * preferences.value.rows)
@@ -391,6 +394,10 @@ watch(shortcutDialog, async (isOpen) => {
     initialFocus?.focus()
     return
   }
+  shortcutSaveRequestId += 1
+  shortcutIconUploadRequestId += 1
+  savingShortcut.value = false
+  loadingShortcutIcon.value = false
   const target = shortcutDialogReturnFocusTarget
   shortcutDialogReturnFocusTarget = undefined
   await nextTick()
@@ -600,6 +607,10 @@ function openFolderShortcuts(items: Shortcut[]) {
 }
 
 function openShortcutDialog(item?: LauncherItem) {
+  shortcutSaveRequestId += 1
+  shortcutIconUploadRequestId += 1
+  savingShortcut.value = false
+  loadingShortcutIcon.value = false
   shortcutDialogReturnFocusTarget = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
   editingId.value = item?.shortcut?.id ?? ''
   shortcutWorkspaceId.value = item?.shortcut
@@ -648,26 +659,41 @@ function fillShortcutFromBrowserTab(tab: BrowserTabCandidate) {
   shortcutUrlError.value = ''
 }
 
+function handleShortcutIconInput() {
+  shortcutIconUploadRequestId += 1
+  loadingShortcutIcon.value = false
+  shortcutIconError.value = ''
+}
+
 async function loadShortcutIconFile(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
-  if (!file) return
+  const requestId = ++shortcutIconUploadRequestId
+  loadingShortcutIcon.value = false
   shortcutIconError.value = ''
+  if (!file) return
   if (file.size > maxImageUploadBytes) {
     shortcutIconError.value = '图片不能超过 10 MB。'
     return
   }
+  loadingShortcutIcon.value = true
   try {
     const { compressImageBlob } = await import('./data/images')
-    shortcutIcon.value = await compressImageBlob(file, 192)
+    if (requestId !== shortcutIconUploadRequestId || !shortcutDialog.value) return
+    const icon = await compressImageBlob(file, 192)
+    if (requestId !== shortcutIconUploadRequestId || !shortcutDialog.value) return
+    shortcutIcon.value = icon
   } catch (error) {
+    if (requestId !== shortcutIconUploadRequestId || !shortcutDialog.value) return
     shortcutIconError.value = error instanceof Error ? error.message : '无法处理这张图片。'
+  } finally {
+    if (requestId === shortcutIconUploadRequestId) loadingShortcutIcon.value = false
   }
 }
 
 async function saveShortcut() {
-  if (savingShortcut.value) return
+  if (savingShortcut.value || loadingShortcutIcon.value) return
   const title = shortcutTitle.value.trim()
   let destination = shortcutUrl.value.trim()
   if (!title || !destination) return
@@ -677,6 +703,11 @@ async function saveShortcut() {
     return
   }
   destination = normalizedDestination
+  const saveRequestId = ++shortcutSaveRequestId
+  const shortcutId = editingId.value || createLocalId()
+  const destinationWorkspaceId = shortcutWorkspaceId.value
+  const color = shortcutColor.value
+  const mark = shortcutMark.value.trim() || title.slice(0, 2)
   shortcutUrlError.value = ''
   let icon = shortcutIcon.value.trim()
   shortcutIconError.value = ''
@@ -694,25 +725,29 @@ async function saveShortcut() {
     savingShortcut.value = true
     try {
       const { fetchAndCompressImage } = await import('./data/images')
+      if (saveRequestId !== shortcutSaveRequestId || !shortcutDialog.value) return
       icon = await fetchAndCompressImage(icon, 192)
     } catch (error) {
+      if (saveRequestId !== shortcutSaveRequestId || !shortcutDialog.value) return
       shortcutIconError.value = error instanceof Error && !error.message.includes('Failed to fetch')
         ? error.message
         : '无法从这个网址读取图片（可能被跨域限制）。请上传本地图片后再保存。'
       savingShortcut.value = false
       return
     }
+    if (saveRequestId !== shortcutSaveRequestId || !shortcutDialog.value) return
     savingShortcut.value = false
   }
   const next: Shortcut = {
-    id: editingId.value || createLocalId(),
+    id: shortcutId,
     title,
     url: destination,
-    color: shortcutColor.value,
-    mark: shortcutMark.value.trim() || title.slice(0, 2),
+    color,
+    mark,
     icon: icon || undefined,
   }
-  if (!saveShortcutData(next, shortcutWorkspaceId.value)) {
+  if (saveRequestId !== shortcutSaveRequestId || !shortcutDialog.value) return
+  if (!saveShortcutData(next, destinationWorkspaceId)) {
     shortcutSaveError.value = '最多只能保存 500 个快捷入口。'
     return
   }
@@ -941,6 +976,8 @@ onBeforeUnmount(() => {
   if (wallpaperRotationTimer !== undefined) window.clearTimeout(wallpaperRotationTimer)
   wallpaperRotationTimer = undefined
   wallpaperRotationRequest += 1
+  shortcutSaveRequestId += 1
+  shortcutIconUploadRequestId += 1
   if (systemThemeQuery?.removeEventListener) systemThemeQuery.removeEventListener('change', updateSystemTheme)
   else systemThemeQuery?.removeListener?.(updateSystemTheme)
   systemThemeQuery = undefined
@@ -1085,25 +1122,26 @@ onBeforeUnmount(() => {
     <div v-if="shortcutDialog" class="modal-backdrop" @click.self="shortcutDialog = false">
       <form ref="shortcutDialogElement" class="shortcut-dialog" role="dialog" aria-modal="true" aria-labelledby="shortcut-dialog-title" @keydown="handleShortcutDialogKeydown" @submit.prevent="saveShortcut">
         <header><div><h2 id="shortcut-dialog-title">{{ editingId ? '编辑快捷入口' : '添加快捷入口' }}</h2><p>名称和网址可以随时修改</p></div><button type="button" aria-label="关闭" @click="shortcutDialog = false"><X :size="19" /></button></header>
-        <label>名称<input ref="shortcutTitleInput" v-model="shortcutTitle" required maxlength="24" placeholder="例如：GitHub" /></label>
-        <label>所属工作区<select v-model="shortcutWorkspaceId"><option v-for="workspace in homeWorkspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></select></label>
+        <label>名称<input ref="shortcutTitleInput" v-model="shortcutTitle" required maxlength="24" placeholder="例如：GitHub" :disabled="savingShortcut" /></label>
+        <label>所属工作区<select v-model="shortcutWorkspaceId" :disabled="savingShortcut"><option v-for="workspace in homeWorkspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></select></label>
         <p v-if="shortcutLimitReached" class="backup-error" role="status">最多只能保存 500 个快捷入口。</p>
-        <BrowserTabImport v-if="canImportBrowserTabs" @select="fillShortcutFromBrowserTab" />
-        <label>网址<input v-model="shortcutUrl" required maxlength="2048" placeholder="https://example.com" @input="shortcutUrlError = ''" /></label>
+        <BrowserTabImport v-if="canImportBrowserTabs && !savingShortcut" @select="fillShortcutFromBrowserTab" />
+        <label>网址<input v-model="shortcutUrl" required maxlength="2048" placeholder="https://example.com" @input="shortcutUrlError = ''" :disabled="savingShortcut" /></label>
         <p v-if="shortcutUrlError" class="backup-error" role="alert">{{ shortcutUrlError }}</p>
         <p v-if="shortcutSaveError" class="backup-error" role="alert">{{ shortcutSaveError }}</p>
         <div class="dialog-row">
-          <label>图标文字<input v-model="shortcutMark" maxlength="5" placeholder="自动取名称" /></label>
-          <label class="color-field">图标颜色<input v-model="shortcutColor" type="color" /></label>
+          <label>图标文字<input v-model="shortcutMark" maxlength="5" placeholder="自动取名称" :disabled="savingShortcut" /></label>
+          <label class="color-field">图标颜色<input v-model="shortcutColor" type="color" :disabled="savingShortcut" /></label>
         </div>
-        <label>图标图片地址（可选）<input v-model="shortcutIcon" placeholder="素材文件名、图片网址或 Base64" @input="shortcutIconError = ''" /></label>
+        <label>图标图片地址（可选）<input v-model="shortcutIcon" placeholder="素材文件名、图片网址或 Base64" @input="handleShortcutIconInput" :disabled="savingShortcut" /></label>
         <div class="icon-file-actions">
-          <input ref="shortcutIconFile" class="visually-hidden" type="file" tabindex="-1" aria-hidden="true" accept="image/png,image/jpeg,image/webp,image/gif" @change="loadShortcutIconFile" />
-          <button class="button-secondary" type="button" @click="shortcutIconFile?.click()">上传本地图片</button>
+          <input ref="shortcutIconFile" class="visually-hidden" type="file" tabindex="-1" aria-hidden="true" accept="image/png,image/jpeg,image/webp,image/gif" :disabled="savingShortcut" @change="loadShortcutIconFile" />
+          <button class="button-secondary" type="button" :disabled="savingShortcut || loadingShortcutIcon" @click="shortcutIconFile?.click()">{{ loadingShortcutIcon ? '正在处理图片…' : '上传本地图片' }}</button>
           <span>图片会压缩为 Base64 保存在本机，离线可用</span>
         </div>
+        <p v-if="loadingShortcutIcon" class="panel-footnote" role="status">正在压缩图片，请稍候再保存。</p>
         <p v-if="shortcutIconError" class="backup-error" role="alert">{{ shortcutIconError }}</p>
-        <footer><button class="button-secondary" type="button" @click="shortcutDialog = false">取消</button><button class="button-primary" type="submit" :disabled="savingShortcut || shortcutLimitReached">{{ savingShortcut ? '正在转存图标…' : '保存' }}</button></footer>
+        <footer><button class="button-secondary" type="button" @click="shortcutDialog = false">取消</button><button class="button-primary" type="submit" :disabled="savingShortcut || loadingShortcutIcon || shortcutLimitReached">{{ savingShortcut ? '正在转存图标…' : loadingShortcutIcon ? '正在处理图片…' : '保存' }}</button></footer>
       </form>
     </div>
 

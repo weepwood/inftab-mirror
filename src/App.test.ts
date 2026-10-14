@@ -3,6 +3,7 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultPreferences, launcherItems, wallpaperChoices } from './data/defaults'
+import * as imageProcessing from './data/images'
 import WeatherPanel from './components/WeatherPanel.vue'
 import App from './App.vue'
 
@@ -122,6 +123,56 @@ describe('new-tab short viewport layout', () => {
       if (heightDescriptor) Object.defineProperty(window, 'innerHeight', heightDescriptor)
       if (widthDescriptor) Object.defineProperty(window, 'innerWidth', widthDescriptor)
     }
+  })
+})
+
+describe('new-tab shortcut dialog asynchronous work', () => {
+  it('ignores a shortcut icon upload after its dialog closes and reopens', async () => {
+    let resolveCompression!: (dataUrl: string) => void
+    vi.spyOn(imageProcessing, 'compressImageBlob').mockImplementation(() => new Promise((resolve) => { resolveCompression = resolve }))
+    await mountApp()
+    await openLauncher('settings')
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+    const fileInput = wrapper.get('.shortcut-dialog input[type="file"]')
+    Object.defineProperty(fileInput.element, 'files', {
+      configurable: true,
+      value: [new File(['icon'], 'icon.png', { type: 'image/png' })],
+    })
+    await fileInput.trigger('change')
+    await vi.waitFor(() => expect(imageProcessing.compressImageBlob).toHaveBeenCalledOnce())
+
+    await wrapper.get('.shortcut-dialog button[aria-label="关闭"]').trigger('click')
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+    resolveCompression('data:image/webp;base64,c3RhbGU=')
+    await flushPromises()
+
+    expect(wrapper.get('.shortcut-dialog input[placeholder="素材文件名、图片网址或 Base64"]').element).toHaveProperty('value', '')
+    expect(wrapper.find('.shortcut-dialog').exists()).toBe(true)
+    expect(wrapper.find('.shortcut-dialog [role="alert"]').exists()).toBe(false)
+  })
+
+  it('does not save or close a reopened dialog when a previous remote icon save finishes', async () => {
+    let resolveImageFetch!: (dataUrl: string) => void
+    vi.spyOn(imageProcessing, 'fetchAndCompressImage').mockImplementation(() => new Promise((resolve) => { resolveImageFetch = resolve }))
+    await mountApp()
+    await openLauncher('settings')
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await wrapper.get('.shortcut-dialog input[placeholder="例如：GitHub"]').setValue('Cancelled shortcut')
+    await wrapper.get('.shortcut-dialog input[placeholder="https://example.com"]').setValue('https://cancelled.example/')
+    await wrapper.get('.shortcut-dialog input[placeholder="素材文件名、图片网址或 Base64"]').setValue('https://images.example/icon.png')
+    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await vi.waitFor(() => expect(imageProcessing.fetchAndCompressImage).toHaveBeenCalledOnce())
+
+    await wrapper.get('.shortcut-dialog button[aria-label="关闭"]').trigger('click')
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+    resolveImageFetch('data:image/webp;base64,c3RhbGU=')
+    await flushPromises()
+    await flushLocalStorageWrites()
+
+    expect(wrapper.find('.shortcut-dialog').exists()).toBe(true)
+    expect(wrapper.get('.shortcut-dialog input[placeholder="例如：GitHub"]').element).toHaveProperty('value', '')
+    const shortcuts = JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]') as Array<{ title: string }>
+    expect(shortcuts.some((item) => item.title === 'Cancelled shortcut')).toBe(false)
   })
 })
 
