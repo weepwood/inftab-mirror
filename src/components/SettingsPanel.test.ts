@@ -3,6 +3,7 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultPreferences } from '../data/defaults'
 import { defaultFocusTimerState } from '../data/focusTimerState'
+import * as imageProcessing from '../data/images'
 import SettingsPanel from './SettingsPanel.vue'
 
 let wrapper: VueWrapper | undefined
@@ -102,6 +103,55 @@ describe('SettingsPanel local wallpaper upload', () => {
     })
     await wrapper.findAll('button').find((button) => button.text().trim() === '移除本地壁纸')!.trigger('click')
     expect(wrapper.emitted('update')).toContainEqual([{ customWallpaper: '' }])
+  })
+
+  it('does not let a slower image upload override the latest wallpaper choice', async () => {
+    let resolveCompression!: (dataUrl: string) => void
+    vi.spyOn(imageProcessing, 'compressImageBlob').mockImplementation(() => new Promise((resolve) => { resolveCompression = resolve }))
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+    const input = wrapper.get('input[accept="image/png,image/jpeg,image/webp,image/gif"]')
+    Object.defineProperty(input.element, 'files', {
+      configurable: true,
+      value: [new File(['image'], 'wallpaper.png', { type: 'image/png' })],
+    })
+    await input.trigger('change')
+    expect(imageProcessing.compressImageBlob).toHaveBeenCalledOnce()
+
+    await wrapper.get('button[aria-label="暮色"]').trigger('click')
+    resolveCompression('data:image/webp;base64,c3RhbGU=')
+    await flushPromises()
+
+    expect(wrapper.emitted('update')).toContainEqual([{ wallpaper: 'linear-gradient(135deg, #192a3a, #67526f 52%, #e0a777)' }])
+    expect(wrapper.emitted('update')).toContainEqual([{ customWallpaper: '' }])
+    expect(wrapper.emitted('update')?.some(([value]) => (value as { customWallpaper?: string }).customWallpaper?.startsWith('data:image/'))).toBe(false)
+  })
+
+  it('keeps the newest local image when compression completes out of order', async () => {
+    const resolveCompression: Array<(dataUrl: string) => void> = []
+    vi.spyOn(imageProcessing, 'compressImageBlob').mockImplementation(() => new Promise((resolve) => { resolveCompression.push(resolve) }))
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+    const input = wrapper.get('input[accept="image/png,image/jpeg,image/webp,image/gif"]')
+    Object.defineProperty(input.element, 'files', {
+      configurable: true,
+      value: [new File(['first'], 'first.png', { type: 'image/png' })],
+    })
+    await input.trigger('change')
+    Object.defineProperty(input.element, 'files', {
+      configurable: true,
+      value: [new File(['second'], 'second.png', { type: 'image/png' })],
+    })
+    await input.trigger('change')
+    expect(resolveCompression).toHaveLength(2)
+
+    resolveCompression[1]!('data:image/webp;base64,bmV3ZXI=')
+    await flushPromises()
+    resolveCompression[0]!('data:image/webp;base64,ZWxkZXI=')
+    await flushPromises()
+
+    const uploadedWallpapers = wrapper.emitted('update')
+      ?.map(([value]) => (value as { customWallpaper?: string }).customWallpaper)
+      .filter((value): value is string => Boolean(value?.startsWith('data:image/')))
+    expect(uploadedWallpapers).toEqual(['data:image/webp;base64,bmV3ZXI='])
   })
 })
 

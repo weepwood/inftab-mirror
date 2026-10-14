@@ -27,6 +27,7 @@ const emit = defineEmits<{
 const fileInput = ref<HTMLInputElement>()
 const wallpaperFileInput = ref<HTMLInputElement>()
 const wallpaperError = ref('')
+let wallpaperReadId = 0
 const importButton = ref<HTMLButtonElement>()
 const backupDialog = ref<HTMLElement>()
 const pendingBackup = ref<WorkspaceBackup>()
@@ -86,6 +87,8 @@ function setTransitionEffect(effect: PageTransitionEffect) {
 }
 
 function setWallpaper(choice: string) {
+  wallpaperReadId += 1
+  wallpaperError.value = ''
   update('wallpaper', choice)
   update('customWallpaper', '')
   update('wallpaperRotationLastAt', Date.now())
@@ -97,6 +100,8 @@ function setWallpaperRotation(mode: WallpaperRotation) {
 }
 
 function setCustomWallpaper(value: string) {
+  wallpaperReadId += 1
+  wallpaperError.value = ''
   update('customWallpaper', value)
   update('wallpaperRotationLastAt', Date.now())
 }
@@ -126,17 +131,20 @@ async function loadWallpaperFile(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
-  if (!file) return
+  const readId = ++wallpaperReadId
   wallpaperError.value = ''
+  if (!file) return
   if (file.size > maxImageUploadBytes) {
     wallpaperError.value = '图片不能超过 10 MB。'
     return
   }
   try {
     const dataUrl = await compressImageBlob(file, 1920, 1_400_000)
+    if (readId !== wallpaperReadId) return
     if (dataUrl.length > maxWallpaperDataUrlLength) throw new Error('压缩后的图片仍然过大，请换一张内容更简单的图片。')
     setCustomWallpaper(dataUrl)
   } catch (error) {
+    if (readId !== wallpaperReadId) return
     wallpaperError.value = error instanceof Error ? error.message : '无法处理这张图片。'
   }
 }
