@@ -539,6 +539,22 @@ describe('useLocalWorkspace shortcut id validation', () => {
     expect(workspace.saveShortcut({ id: 'weather', title: 'Replacement', url: 'https://example.com/', color: '#abc', mark: 'R' })).toBe(false)
     expect(workspace.shortcuts.value).toEqual(existingShortcuts)
   })
+
+  it('rejects a shortcut that reuses an existing folder ID without changing launcher state', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const folder = { id: 'shared-launcher-id', title: 'Existing folder', shortcutIds: [], color: '#abc', mark: 'F' }
+    expect(workspace.saveFolder(folder)).toBe(true)
+    const beforeOrder = [...workspace.launcherOrder.value]
+    const beforeWorkspaces = workspace.homeWorkspaces.value.map((item) => ({ ...item, itemIds: [...item.itemIds] }))
+
+    expect(workspace.saveShortcut({ id: folder.id, title: 'Conflicting shortcut', url: 'https://example.com/', color: '#abc', mark: 'S' })).toBe(false)
+
+    expect(workspace.shortcuts.value.some((item) => item.id === folder.id)).toBe(false)
+    expect(workspace.folders.value).toEqual([folder])
+    expect(workspace.launcherOrder.value).toEqual(beforeOrder)
+    expect(workspace.homeWorkspaces.value).toEqual(beforeWorkspaces)
+  })
 })
 
 describe('useLocalWorkspace dock references', () => {

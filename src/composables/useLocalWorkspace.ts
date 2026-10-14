@@ -276,7 +276,9 @@ export function useLocalWorkspace() {
   }
 
   function saveShortcut(shortcut: Shortcut, workspaceId = activeHomeWorkspaceId.value): boolean {
-    if (!homeWorkspaces.value.some((workspace) => workspace.id === workspaceId) || !isValidLauncherColor(shortcut.color)) return false
+    if (!homeWorkspaces.value.some((workspace) => workspace.id === workspaceId)
+      || folders.value.some((folder) => folder.id === shortcut.id)
+      || !isValidLauncherColor(shortcut.color)) return false
     const exists = shortcuts.value.some((item) => item.id === shortcut.id)
     const next = exists
       ? shortcuts.value.map((item) => item.id === shortcut.id ? shortcut : item)
