@@ -33,6 +33,10 @@ const backupDialog = ref<HTMLElement>()
 const pendingBackup = ref<WorkspaceBackup>()
 const importError = ref('')
 let backupReadId = 0
+const backupExportedAtLabel = computed(() => {
+  const timestamp = Date.parse(pendingBackup.value?.exportedAt ?? '')
+  return Number.isFinite(timestamp) ? new Date(timestamp).toLocaleString() : '未知'
+})
 const hasLocalWallpaper = computed(() => props.preferences.customWallpaper.startsWith('data:image/'))
 const searchEngineName = ref('')
 const searchEngineTemplate = ref('')
@@ -338,7 +342,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
     <div v-if="pendingBackup" class="modal-backdrop backup-backdrop" @click.self="pendingBackup = undefined">
       <section ref="backupDialog" class="shortcut-dialog backup-dialog" role="dialog" aria-modal="true" aria-labelledby="backup-title" @keydown="handleBackupDialogKeydown">
         <header><div><h2 id="backup-title">恢复本地备份</h2><p>请先确认导入的数据</p></div><button type="button" aria-label="取消导入" @click="pendingBackup = undefined">×</button></header>
-        <p class="backup-preview">备份时间：{{ pendingBackup.exportedAt ? new Date(pendingBackup.exportedAt).toLocaleString() : '未知' }}</p>
+        <p class="backup-preview">备份时间：{{ backupExportedAtLabel }}</p>
         <ul class="backup-counts">
           <li>{{ pendingBackup.shortcuts.length }} 个快捷入口</li>
           <li>{{ pendingBackup.folders.length }} 个文件夹</li>

@@ -257,6 +257,35 @@ describe('SettingsPanel backup preview', () => {
     expect(wrapper.get('[role="dialog"][aria-labelledby="backup-title"]').text()).toContain('包含专注计时状态')
   })
 
+  it('shows unknown instead of an invalid date for malformed backup timestamps', async () => {
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+    const backup = {
+      format: 'inftab-workspace',
+      version: 1,
+      exportedAt: 'not-a-date',
+      preferences: { ...defaultPreferences },
+      shortcuts: [],
+      folders: [],
+      launcherOrder: [],
+      todos: [],
+      habits: [],
+      countdowns: [],
+      notes: [],
+      activeNoteId: '',
+      weatherCity: '上海',
+      customSearchEngines: [],
+    }
+    const input = wrapper.get('input[accept="application/json,.json"]')
+    Object.defineProperty(input.element, 'files', {
+      configurable: true,
+      value: [new File([JSON.stringify(backup)], 'workspace.json', { type: 'application/json' })],
+    })
+    await input.trigger('change')
+    await flushPromises()
+
+    expect(wrapper.get('.backup-preview').text()).toBe('备份时间：未知')
+  })
+
   it('keeps the latest selected backup when an earlier file read finishes later', async () => {
     const parseBackup = vi.spyOn(backupParsing, 'parseWorkspaceBackup')
     wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
