@@ -153,6 +153,35 @@ test('creates a shortcut and keeps it after reloading the new tab', async ({ pag
   await expect(page.getByRole('button', { name: '打开E2E Example' })).toBeVisible()
 })
 
+test('creates and restores a shortcut when native randomUUID is unavailable', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(Crypto.prototype, 'randomUUID', { configurable: true, value: undefined })
+  })
+  await page.reload()
+
+  await expect.poll(() => page.evaluate(() => typeof crypto.randomUUID)).toBe('undefined')
+  await expect.poll(() => page.evaluate(() => typeof crypto.getRandomValues)).toBe('function')
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByRole('button', { name: /添加快捷入口/ }).click()
+  const dialog = page.locator('.shortcut-dialog')
+  await dialog.getByPlaceholder('例如：GitHub').fill('Fallback ID Example')
+  await dialog.getByPlaceholder('https://example.com').fill('https://fallback-id.example/')
+  await dialog.getByRole('button', { name: '保存' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('inftab.shortcuts.v1'))).toContain('Fallback ID Example')
+  const shortcutId = await page.evaluate(() => {
+    const shortcuts = JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]') as Array<{ id: string; title: string }>
+    return shortcuts.find((shortcut) => shortcut.title === 'Fallback ID Example')?.id
+  })
+  expect(shortcutId).toMatch(/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i)
+
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+  await page.reload()
+  await page.keyboard.press('Control+f')
+  await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Fallback ID Example')
+  await expect(page.getByRole('option', { name: /Fallback ID Example/ })).toBeVisible()
+})
+
 test('shortcut dialog traps keyboard focus, exposes dialog semantics, and restores its trigger', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const settings = page.getByRole('dialog', { name: '设置' })
