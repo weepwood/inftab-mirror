@@ -49,6 +49,36 @@ describe('WeatherSummaryWidget', () => {
     expect(wrapper.get('[role="status"]').text()).toContain('尚未授权')
   })
 
+  it('keeps the current reading and stops weather refresh after permission is revoked', async () => {
+    let permissionGranted = true
+    const contains = vi.fn(async () => permissionGranted)
+    const permissionListeners = new Set<(details: { origins?: string[] }) => void>()
+    const onRemoved = {
+      addListener: vi.fn((listener: (details: { origins?: string[] }) => void) => permissionListeners.add(listener)),
+      removeListener: vi.fn((listener: (details: { origins?: string[] }) => void) => permissionListeners.delete(listener)),
+      fire: (origins: string[]) => permissionListeners.forEach((listener) => listener({ origins })),
+    }
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(weatherResponse('上海', 21)[0])
+      .mockResolvedValueOnce(weatherResponse('上海', 21)[1])
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, permissions: { contains, request: vi.fn(), onRemoved } })
+    vi.stubGlobal('fetch', fetchMock)
+    wrapper = mount(WeatherSummaryWidget, { props: { city: '上海' } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('上海 21°')
+
+    permissionGranted = false
+    onRemoved.fire([...weatherHostPermissions])
+    await vi.waitFor(() => expect(wrapper!.text()).toContain('天气联网访问未授权'))
+
+    expect(wrapper.text()).toContain('上海 21°')
+    expect(wrapper.find('.weather-summary-authorize').exists()).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+    wrapper = undefined
+    expect(onRemoved.removeListener).toHaveBeenCalledOnce()
+  })
+
   it('requests weather hosts from a direct user action and loads the widget after approval', async () => {
     const contains = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true)
     const request = vi.fn().mockResolvedValue(true)

@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, RefreshCw, Snowflake, Sun } from '@lucide/vue'
 import { fetchWeatherSummary, weatherDescription, type WeatherSummary } from '../data/weatherSummary'
-import { hasWeatherPermission, requestWeatherPermission } from '../data/weatherPermissions'
+import { hasWeatherPermission, requestWeatherPermission, subscribeToWeatherPermissionChanges } from '../data/weatherPermissions'
 
 const props = defineProps<{ city: string }>()
 const summary = ref<WeatherSummary>()
@@ -26,6 +26,7 @@ let activeRequest: AbortController | undefined
 let lastUpdatedAt = 0
 const refreshInterval = 15 * 60 * 1000
 let isActive = false
+let stopWatchingPermission: (() => void) | undefined
 
 async function refreshWeather() {
   const version = ++requestVersion
@@ -98,6 +99,10 @@ watch(() => props.city, () => {
 })
 onMounted(() => {
   isActive = true
+  stopWatchingPermission = subscribeToWeatherPermissionChanges(() => {
+    if (!isActive || requestingPermission.value) return
+    void refreshWeather()
+  })
   window.addEventListener('focus', refreshIfStale)
   document.addEventListener('visibilitychange', refreshIfStale)
   void refreshWeather()
@@ -106,6 +111,7 @@ onBeforeUnmount(() => {
   isActive = false
   requestVersion += 1
   activeRequest?.abort()
+  stopWatchingPermission?.()
   window.removeEventListener('focus', refreshIfStale)
   document.removeEventListener('visibilitychange', refreshIfStale)
 })

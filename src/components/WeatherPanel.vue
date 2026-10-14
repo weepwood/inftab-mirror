@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Droplets, RefreshCw, Search, Snowflake, Sun, Wind } from '@lucide/vue'
 import { isValidCalendarDate } from '../data/countdown'
 import { isValidWeatherCode, weatherDescription as weatherLabel } from '../data/weatherSummary'
-import { hasWeatherPermission, requestWeatherPermission } from '../data/weatherPermissions'
+import { hasWeatherPermission, requestWeatherPermission, subscribeToWeatherPermissionChanges } from '../data/weatherPermissions'
 
 interface LocationResult {
   id: number
@@ -46,6 +46,7 @@ let activeRequest: AbortController | undefined
 let internallySelectedCity = ''
 const requestTimeoutMs = 15_000
 let isActive = false
+let stopWatchingPermission: (() => void) | undefined
 
 const today = computed(() => forecast.value?.daily.time[0])
 
@@ -170,6 +171,30 @@ async function authorizeWeather() {
   }
 }
 
+async function syncWeatherPermission() {
+  if (!isActive || requestingPermission.value) return
+  let granted = false
+  try {
+    granted = await hasWeatherPermission()
+  } catch {
+    // Treat an unavailable permission check as revoked and keep existing data visible.
+  }
+  if (!isActive || requestingPermission.value) return
+  if (!granted) {
+    activeRequest?.abort()
+    activeRequest = undefined
+    requestVersion += 1
+    loading.value = false
+    permissionRequired.value = true
+    error.value = ''
+    return
+  }
+  if (permissionRequired.value) {
+    permissionRequired.value = false
+    await searchCity()
+  }
+}
+
 function beginRequest() {
   activeRequest?.abort()
   activeRequest = new AbortController()
@@ -253,12 +278,14 @@ function formatWeekday(date: string) {
 
 onMounted(() => {
   isActive = true
+  stopWatchingPermission = subscribeToWeatherPermissionChanges(() => { void syncWeatherPermission() })
   void searchCity()
 })
 onBeforeUnmount(() => {
   requestVersion += 1
   isActive = false
   activeRequest?.abort()
+  stopWatchingPermission?.()
 })
 </script>
 
