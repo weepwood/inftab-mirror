@@ -50,6 +50,25 @@ describe('lazy plugin component loading', () => {
     expect(loader).toHaveBeenCalledOnce()
   })
 
+  it('does not retry a chunk failure that arrives after its wrapper unmounts', async () => {
+    vi.useFakeTimers()
+    let rejectLoader!: (reason: Error) => void
+    const loader = vi.fn(() => new Promise<never>((_resolve, reject) => { rejectLoader = reject }))
+    const plugin = lazyPluginComponent(loader, 'Loading plugin…', 'Plugin failed to load.')
+    wrapper = mount(defineComponent({ setup: () => () => h('section', [h(plugin)]) }))
+    await flushPromises()
+
+    expect(loader).toHaveBeenCalledOnce()
+    wrapper.unmount()
+    wrapper = undefined
+    rejectLoader(new Error('chunk unavailable'))
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(5_000)
+    await flushPromises()
+
+    expect(loader).toHaveBeenCalledOnce()
+  })
+
   it('retries transient chunk failures automatically and offers another retry after exhaustion', async () => {
     const loadedComponent = defineComponent({ setup: () => () => h('p', 'Loaded plugin') })
     const loader = vi.fn(async () => {

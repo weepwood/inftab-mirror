@@ -24,6 +24,7 @@ export function lazyPluginComponent(loader: AsyncComponentLoader, loadingMessage
     setup(_props, { attrs, slots }) {
       let component: ShallowRef<Component>
       let retryTimer: ReturnType<typeof setTimeout> | undefined
+      let isMounted = true
       const runtimeError = ref(false)
       let asyncLoadFailed = false
 
@@ -34,10 +35,12 @@ export function lazyPluginComponent(loader: AsyncComponentLoader, loadingMessage
       })
 
       onBeforeUnmount(() => {
+        isMounted = false
         if (retryTimer !== undefined) clearTimeout(retryTimer)
       })
 
       function retryManually() {
+        if (!isMounted) return
         runtimeError.value = false
         asyncLoadFailed = false
         component.value = createAsyncComponent()
@@ -78,6 +81,10 @@ export function lazyPluginComponent(loader: AsyncComponentLoader, loadingMessage
           delay: 0,
           suspensible: false,
           onError(_error, retry, fail, attempts) {
+            if (!isMounted) {
+              fail()
+              return
+            }
             if (attempts >= 3) {
               fail()
               return
