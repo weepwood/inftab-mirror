@@ -62,11 +62,17 @@ describe('WeatherPanel request ordering', () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(response({ results: [locations[0]] }))
       .mockResolvedValueOnce(response(forecast(22)))
+      .mockImplementationOnce(waitForAbort)
     vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, permissions: { contains, request: vi.fn(), onRemoved } })
     vi.stubGlobal('fetch', fetchMock)
     const wrapper = mount(WeatherPanel, { props: { city: '新加坡' } })
     await flushPromises()
     expect(wrapper.find('.weather-current strong').text()).toBe('22°')
+
+    await wrapper.get('.weather-place button').trigger('click')
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
+    const pendingSignal = (fetchMock.mock.calls[2]?.[1] as RequestInit).signal
+    expect(pendingSignal?.aborted).toBe(false)
 
     permissionGranted = false
     onRemoved.fire([...weatherHostPermissions])
@@ -74,7 +80,8 @@ describe('WeatherPanel request ordering', () => {
 
     expect(wrapper.find('.weather-current strong').text()).toBe('22°')
     expect(wrapper.find('.weather-authorize').exists()).toBe(true)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(pendingSignal?.aborted).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
     wrapper.unmount()
     expect(onRemoved.removeListener).toHaveBeenCalledOnce()
   })

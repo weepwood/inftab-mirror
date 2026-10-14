@@ -61,11 +61,19 @@ describe('WeatherSummaryWidget', () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(weatherResponse('上海', 21)[0])
       .mockResolvedValueOnce(weatherResponse('上海', 21)[1])
+      .mockImplementationOnce((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+      }))
     vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, permissions: { contains, request: vi.fn(), onRemoved } })
     vi.stubGlobal('fetch', fetchMock)
     wrapper = mount(WeatherSummaryWidget, { props: { city: '上海' } })
     await flushPromises()
     expect(wrapper.text()).toContain('上海 21°')
+
+    await wrapper.get('[aria-label="刷新天气"]').trigger('click')
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
+    const pendingSignal = (fetchMock.mock.calls[2]?.[1] as RequestInit).signal
+    expect(pendingSignal?.aborted).toBe(false)
 
     permissionGranted = false
     onRemoved.fire([...weatherHostPermissions])
@@ -73,7 +81,8 @@ describe('WeatherSummaryWidget', () => {
 
     expect(wrapper.text()).toContain('上海 21°')
     expect(wrapper.find('.weather-summary-authorize').exists()).toBe(true)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(pendingSignal?.aborted).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
     wrapper.unmount()
     wrapper = undefined
     expect(onRemoved.removeListener).toHaveBeenCalledOnce()
