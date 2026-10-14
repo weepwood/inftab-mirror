@@ -12,6 +12,7 @@ import { maxImageUploadBytes } from './data/imageLimits'
 import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
 import { toLocalDateKey } from './data/calendar'
+import { createLocalId } from './data/createId'
 import { normalizeWebUrl } from './data/urls'
 import type { BrowserTabCandidate } from './data/browserTabs'
 import { launcherPanelRoutes, shortcutPanelRoutes } from './plugins/routes'
@@ -253,7 +254,7 @@ const panelContext = computed<PanelPluginContext>(() => ({
     const newShortcuts: Shortcut[] = items.map(({ title, url }) => {
       const cleanTitle = title.trim().slice(0, 80) || url
       return {
-        id: crypto.randomUUID(),
+        id: createLocalId(),
         title: cleanTitle,
         url,
         color: '#3d82f6',
@@ -704,7 +705,7 @@ async function saveShortcut() {
     savingShortcut.value = false
   }
   const next: Shortcut = {
-    id: editingId.value || crypto.randomUUID(),
+    id: editingId.value || createLocalId(),
     title,
     url: destination,
     color: shortcutColor.value,

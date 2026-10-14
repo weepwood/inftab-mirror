@@ -11,6 +11,7 @@ import { defaultFocusTimerState, sanitizeFocusTimerState } from '../data/focusTi
 import { defaultHomeWorkspace, defaultHomeWorkspaceId, maxHomeWorkspaceNameLength, maxHomeWorkspaces, sanitizeActiveHomeWorkspaceId, sanitizeHomeWorkspaces, type HomeWorkspace } from '../data/homeWorkspaces'
 import type { CountdownItem, CountdownRecurrence, CustomSearchEngine, Habit, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
 import { getLocalDateKey, maxCompletionDatesPerHabit, maxHabits, maxHabitTitleLength } from '../data/habits'
+import { createLocalId } from '../data/createId'
 
 export function useLocalWorkspace() {
   const preferences = useStoredState<Preferences>('inftab.preferences.v1', defaultPreferences, sanitizePreferences)
@@ -234,7 +235,7 @@ export function useLocalWorkspace() {
     if (homeWorkspaces.value.length >= maxHomeWorkspaces) return undefined
     const cleanName = name.trim().slice(0, maxHomeWorkspaceNameLength)
     if (!cleanName || homeWorkspaces.value.some((workspace) => workspace.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase())) return undefined
-    const id = crypto.randomUUID()
+    const id = createLocalId()
     homeWorkspaces.value = [...homeWorkspaces.value, { id, name: cleanName, itemIds: [...builtInLauncherIds] }]
     activeHomeWorkspaceId.value = id
     return id
@@ -384,7 +385,7 @@ export function useLocalWorkspace() {
   function addTodo(title: string) {
     const cleanTitle = title.trim().slice(0, 500)
     if (!cleanTitle || todos.value.length >= 500) return
-    todos.value = [{ id: crypto.randomUUID(), title: cleanTitle, done: false }, ...todos.value]
+    todos.value = [{ id: createLocalId(), title: cleanTitle, done: false }, ...todos.value]
   }
 
   function toggleTodo(id: string) {
@@ -408,7 +409,7 @@ export function useLocalWorkspace() {
   function addHabit(title: string) {
     const cleanTitle = title.trim().slice(0, maxHabitTitleLength)
     if (!cleanTitle || habits.value.length >= maxHabits) return
-    habits.value = [{ id: crypto.randomUUID(), title: cleanTitle, completedDates: [] }, ...habits.value]
+    habits.value = [{ id: createLocalId(), title: cleanTitle, completedDates: [] }, ...habits.value]
   }
 
   function updateHabit(id: string, title: string) {
@@ -437,7 +438,7 @@ export function useLocalWorkspace() {
   function addCountdown(title: string, date: string, recurrence: CountdownRecurrence) {
     const cleanTitle = title.trim().slice(0, 80)
     if (!cleanTitle || !isValidCalendarDate(date) || (recurrence !== 'once' && recurrence !== 'yearly')) return
-    const next = sanitizeCountdowns([{ id: crypto.randomUUID(), title: cleanTitle, date, recurrence }, ...countdowns.value])
+    const next = sanitizeCountdowns([{ id: createLocalId(), title: cleanTitle, date, recurrence }, ...countdowns.value])
     if (next.length > countdowns.value.length) countdowns.value = next
   }
 
@@ -455,7 +456,7 @@ export function useLocalWorkspace() {
 
   function addNote() {
     if (notes.value.length >= 500) return
-    const note: Note = { id: crypto.randomUUID(), title: '', body: '', updatedAt: Date.now() }
+    const note: Note = { id: createLocalId(), title: '', body: '', updatedAt: Date.now() }
     notes.value = [note, ...notes.value]
     activeNoteId.value = note.id
   }
@@ -478,7 +479,7 @@ export function useLocalWorkspace() {
     const cleanName = name.trim().slice(0, 40)
     const cleanTemplate = template.trim()
     if (!cleanName || !isValidCustomSearchTemplate(cleanTemplate) || customSearchEngines.value.length >= 20) return
-    const engine: CustomSearchEngine = { id: crypto.randomUUID(), name: cleanName, template: cleanTemplate }
+    const engine: CustomSearchEngine = { id: createLocalId(), name: cleanName, template: cleanTemplate }
     customSearchEngines.value = [...customSearchEngines.value, engine]
     preferences.value = sanitizePreferences({ ...preferences.value, engine: 'custom:' + engine.id })
   }
