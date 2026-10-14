@@ -10,7 +10,7 @@ export type SearchEngineSelection = EngineId | `custom:${string}`
 export type PageTransitionEffect = 'slide' | 'particles' | 'trails'
 export type WallpaperRotation = 'off' | 'hourly' | 'daily'
 export type ThemeMode = 'light' | 'dark' | 'system'
-export type HomeWidgetSize = 'standard' | 'wide'
+export type HomeWidgetSize = 'standard' | 'wide' | 'full'
 export const maxDockItems = 24
 
 export interface CustomSearchEngine {

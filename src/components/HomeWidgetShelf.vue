@@ -52,6 +52,25 @@ function moveWidget(index: number, direction: -1 | 1) {
   const targetIndex = index + direction
   if (targetIndex >= 0 && targetIndex < props.widgetIds.length) reorderWidget(index, targetIndex)
 }
+
+function nextWidgetSize(size: HomeWidgetSize): HomeWidgetSize {
+  if (size === 'standard') return 'wide'
+  if (size === 'wide') return 'full'
+  return 'standard'
+}
+
+function widgetSizeActionLabel(id: HomeWidgetId) {
+  const size = props.widgetSizes[id]
+  if (size === 'standard') return `将${props.plugins[id].title}加宽`
+  if (size === 'wide') return `将${props.plugins[id].title}扩展为整行`
+  return `将${props.plugins[id].title}恢复标准宽度`
+}
+
+function widgetSizeButtonText(size: HomeWidgetSize) {
+  if (size === 'standard') return '加宽'
+  if (size === 'wide') return '整行'
+  return '标准'
+}
 </script>
 
 <template>
@@ -62,7 +81,7 @@ function moveWidget(index: number, direction: -1 | 1) {
       :key="id"
       class="home-widget-card"
       :data-widget-id="id"
-      :class="{ dragging: draggingIndex === index, 'home-widget-card-wide': widgetSizes[id] === 'wide' }"
+      :class="{ dragging: draggingIndex === index, 'home-widget-card-wide': widgetSizes[id] === 'wide', 'home-widget-card-full': widgetSizes[id] === 'full' }"
       @dragover.prevent
       @drop="dropWidget($event, index)"
       @dragend="draggingIndex = null"
@@ -77,7 +96,7 @@ function moveWidget(index: number, direction: -1 | 1) {
         <span v-else class="home-widget-title home-widget-title-static">{{ props.plugins[id].title }}</span>
         <button class="home-widget-order" type="button" :disabled="index === 0" :aria-label="`将${props.plugins[id].title}上移`" @click="moveWidget(index, -1)"><ArrowUp :size="14" /></button>
         <button class="home-widget-order" type="button" :disabled="index === widgetIds.length - 1" :aria-label="`将${props.plugins[id].title}下移`" @click="moveWidget(index, 1)"><ArrowDown :size="14" /></button>
-        <button class="home-widget-size" type="button" :aria-label="widgetSizes[id] === 'wide' ? `将${props.plugins[id].title}恢复标准宽度` : `将${props.plugins[id].title}加宽`" @click="emit('resize', id, widgetSizes[id] === 'wide' ? 'standard' : 'wide')">{{ widgetSizes[id] === 'wide' ? '标准' : '加宽' }}</button>
+        <button class="home-widget-size" type="button" :aria-label="widgetSizeActionLabel(id)" @click="emit('resize', id, nextWidgetSize(widgetSizes[id]))">{{ widgetSizeButtonText(widgetSizes[id]) }}</button>
         <button class="home-widget-remove" type="button" :aria-label="`移除${props.plugins[id].title}`" @click="emit('remove', id)"><X :size="15" /></button>
       </header>
       <component :is="props.plugins[id].component" v-bind="getHomeWidgetProps(id, context, props.plugins)" />

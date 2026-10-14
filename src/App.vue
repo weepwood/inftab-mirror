@@ -17,7 +17,7 @@ import { normalizeWebUrl } from './data/urls'
 import type { BrowserTabCandidate } from './data/browserTabs'
 import { launcherPanelRoutes, shortcutPanelRoutes } from './plugins/routes'
 import type { PanelId, PanelPluginContext } from './plugins/registry'
-import { maxDockItems, type HomeWidgetId, type LauncherItem, type Shortcut, type ShortcutFolder } from './types'
+import { maxDockItems, type HomeWidgetId, type HomeWidgetSize, type LauncherItem, type Shortcut, type ShortcutFolder } from './types'
 
 type Panel = PanelId | null
 interface LocalSearchMatch {
@@ -314,7 +314,8 @@ const homeWidgetRows = computed(() => {
   let rows = 1
   let occupiedColumns = 0
   for (const id of preferences.value.homeWidgetIds) {
-    const span = preferences.value.homeWidgetSizes[id] === 'wide' ? Math.min(2, columns) : 1
+    const size = preferences.value.homeWidgetSizes[id]
+    const span = size === 'full' ? columns : size === 'wide' ? Math.min(2, columns) : 1
     if (occupiedColumns + span > columns) {
       rows += 1
       occupiedColumns = 0
@@ -812,7 +813,7 @@ function removeHomeWidget(id: HomeWidgetId) {
   updatePreferences({ homeWidgetIds: preferences.value.homeWidgetIds.filter((widgetId) => widgetId !== id) })
 }
 
-function resizeHomeWidget(id: HomeWidgetId, size: 'standard' | 'wide') {
+function resizeHomeWidget(id: HomeWidgetId, size: HomeWidgetSize) {
   updatePreferences({ homeWidgetSizes: { ...preferences.value.homeWidgetSizes, [id]: size } })
 }
 

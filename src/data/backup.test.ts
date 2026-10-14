@@ -224,6 +224,9 @@ describe('workspace backups', () => {
     expect(parseWorkspaceBackup(backup({
       preferences: { ...defaultPreferences, homeWidgetSizes: { ...defaultPreferences.homeWidgetSizes, 'todo-summary': 'wide' } },
     })).preferences.homeWidgetSizes['todo-summary']).toBe('wide')
+    expect(parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, homeWidgetSizes: { ...defaultPreferences.homeWidgetSizes, 'todo-summary': 'full' } },
+    })).preferences.homeWidgetSizes['todo-summary']).toBe('full')
     expect(() => parseWorkspaceBackup(backup({
       preferences: { ...defaultPreferences, homeWidgetSizes: { ...defaultPreferences.homeWidgetSizes, 'todo-summary': 'huge' } },
     }))).toThrow(/页面设置无法识别/)

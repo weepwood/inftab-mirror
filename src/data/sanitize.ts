@@ -55,7 +55,7 @@ export function sanitizePreferences(value: unknown): Preferences {
   const rawWidgetSizes = record(raw.homeWidgetSizes) ? raw.homeWidgetSizes : {}
   const homeWidgetSizes = Object.fromEntries(availableHomeWidgetIds.map((id) => [
     id,
-    rawWidgetSizes[id] === 'wide' ? 'wide' : 'standard',
+    rawWidgetSizes[id] === 'wide' || rawWidgetSizes[id] === 'full' ? rawWidgetSizes[id] : 'standard',
   ])) as Preferences['homeWidgetSizes']
   const visibleSearchModes = Array.isArray(raw.visibleSearchModes)
     ? [...new Set(raw.visibleSearchModes.filter((item): item is SearchMode => typeof item === 'string' && searchModes.has(item as SearchMode))) ]

@@ -1445,8 +1445,17 @@ test('desktop widget shelf fits every enabled widget into a responsive grid', as
   expect(expandedLayoutRows).toBe(2)
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').homeWidgetSizes?.['todo-summary']))
     .toBe('wide')
+  await page.getByRole('button', { name: '将待办概览扩展为整行' }).click()
+  await expect(page.locator('[data-widget-id="todo-summary"]')).toHaveClass(/home-widget-card-full/)
+  const fullWidth = await page.locator('[data-widget-id="todo-summary"]').evaluate((element) => ({
+    card: element.getBoundingClientRect().width,
+    shelf: element.parentElement!.getBoundingClientRect().width,
+  }))
+  expect(Math.abs(fullWidth.card - fullWidth.shelf)).toBeLessThan(2)
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').homeWidgetSizes?.['todo-summary']))
+    .toBe('full')
   await page.reload()
-  await expect(page.locator('[data-widget-id="todo-summary"]')).toHaveClass(/home-widget-card-wide/)
+  await expect(page.locator('[data-widget-id="todo-summary"]')).toHaveClass(/home-widget-card-full/)
   await page.setViewportSize({ width: 800, height: 900 })
   const compactLayout = await shelf.evaluate((element) => ({
     columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
