@@ -187,4 +187,44 @@ describe('SettingsPanel backup preview', () => {
     expect(wrapper.get('[role="dialog"][aria-labelledby="backup-title"]').text()).toContain('1 个习惯')
     expect(wrapper.get('[role="dialog"][aria-labelledby="backup-title"]').text()).toContain('包含专注计时状态')
   })
+
+  it('keeps the latest selected backup when an earlier file read finishes later', async () => {
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+    const backup = (exportedAt: string) => JSON.stringify({
+      format: 'inftab-workspace',
+      version: 1,
+      exportedAt,
+      preferences: { ...defaultPreferences },
+      shortcuts: [],
+      folders: [],
+      launcherOrder: [],
+      todos: [],
+      habits: [],
+      countdowns: [],
+      notes: [],
+      activeNoteId: '',
+      weatherCity: '上海',
+      customSearchEngines: [],
+    })
+    let resolveFirst!: (content: string) => void
+    const firstFile = {
+      size: 1,
+      text: () => new Promise<string>((resolve) => { resolveFirst = resolve }),
+    } as File
+    const latestExportedAt = '2026-10-14T00:00:00.000Z'
+    const latestFile = new File([backup(latestExportedAt)], 'latest.json', { type: 'application/json' })
+    const input = wrapper.get('input[accept="application/json,.json"]')
+
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [firstFile] })
+    await input.trigger('change')
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [latestFile] })
+    await input.trigger('change')
+    await flushPromises()
+    expect(wrapper.get('.backup-preview').text()).toBe(`备份时间：${new Date(latestExportedAt).toLocaleString()}`)
+
+    resolveFirst(backup('2020-01-01T00:00:00.000Z'))
+    await flushPromises()
+
+    expect(wrapper.get('.backup-preview').text()).toBe(`备份时间：${new Date(latestExportedAt).toLocaleString()}`)
+  })
 })

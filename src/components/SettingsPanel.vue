@@ -31,6 +31,7 @@ const importButton = ref<HTMLButtonElement>()
 const backupDialog = ref<HTMLElement>()
 const pendingBackup = ref<WorkspaceBackup>()
 const importError = ref('')
+let backupReadId = 0
 const hasLocalWallpaper = computed(() => props.preferences.customWallpaper.startsWith('data:image/'))
 const searchEngineName = ref('')
 const searchEngineTemplate = ref('')
@@ -144,17 +145,21 @@ async function readBackup(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
+  const readId = ++backupReadId
+  pendingBackup.value = undefined
+  importError.value = ''
   if (!file) return
   if (file.size > 10 * 1024 * 1024) {
-    pendingBackup.value = undefined
     importError.value = '备份文件不能超过 10 MB。'
     return
   }
   try {
-    pendingBackup.value = parseWorkspaceBackup(JSON.parse(await file.text()))
+    const parsedBackup = parseWorkspaceBackup(JSON.parse(await file.text()))
+    if (readId !== backupReadId) return
+    pendingBackup.value = parsedBackup
     importError.value = ''
   } catch (error) {
-    pendingBackup.value = undefined
+    if (readId !== backupReadId) return
     importError.value = error instanceof Error ? error.message : '无法读取此备份文件。'
   }
 }
