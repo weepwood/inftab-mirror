@@ -48,6 +48,7 @@ export function useStoredState<T>(
   const targetDocument = targetWindow?.document
   let persistTimer: ReturnType<typeof setTimeout> | undefined
   let isProcessingStorageEvents = false
+  let isDisposed = false
   const pendingStorageEvents: Array<{
     event: StorageEvent
     resolve: () => void
@@ -68,6 +69,13 @@ export function useStoredState<T>(
     writeValue(value.value)
   }
   function scheduleWrite() {
+    if (isDisposed) {
+      // A storage event already accepted before disposal can still be merging
+      // concurrent edits. Persist it now instead of creating a timer whose
+      // owner has already been torn down.
+      writeValue(value.value)
+      return
+    }
     if (persistTimer !== undefined) clearTimeout(persistTimer)
     persistTimer = setTimeout(() => {
       persistTimer = undefined
@@ -161,6 +169,7 @@ export function useStoredState<T>(
   targetWindow?.addEventListener('pagehide', flushPendingWrite)
   targetDocument?.addEventListener('visibilitychange', handleVisibilityChange)
   if (targetWindow && getCurrentScope()) onScopeDispose(() => {
+    isDisposed = true
     targetWindow.removeEventListener('storage', queueStorageEvent)
     targetWindow.removeEventListener('pagehide', flushPendingWrite)
     targetDocument?.removeEventListener('visibilitychange', handleVisibilityChange)

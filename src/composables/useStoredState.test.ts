@@ -171,6 +171,42 @@ describe('useStoredState', () => {
     expect(setItem).not.toHaveBeenCalled()
   })
 
+  it('persists queued storage merges immediately when their scope is disposed', async () => {
+    vi.useFakeTimers()
+    const previousValue = JSON.stringify({ first: 'before', second: 'before' })
+    const externalValue = JSON.stringify({ first: 'before', second: 'remote' })
+    const values = new Map([['state.v1', previousValue]])
+    const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
+    const setItem = vi.fn((key: string, value: string) => values.set(key, value))
+    vi.stubGlobal('window', {
+      addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem,
+      removeItem: (key: string) => { values.delete(key) },
+    })
+    const scope = effectScope()
+    const state = scope.run(() => useStoredState('state.v1', { first: 'before', second: 'before' }))!
+    state.value.first = 'local'
+    values.set('state.v1', externalValue)
+    const onStorage = listeners.get('storage')!
+    const pendingMerge = onStorage({ key: 'state.v1', oldValue: previousValue, newValue: externalValue } as StorageEvent)
+    const latestValue = JSON.stringify({ first: 'before', second: 'latest' })
+    values.set('state.v1', latestValue)
+    const queuedMerge = onStorage({ key: 'state.v1', oldValue: externalValue, newValue: latestValue } as StorageEvent)
+
+    scope.stop()
+    await Promise.all([pendingMerge, queuedMerge])
+
+    const mergedValue = { first: 'local', second: 'latest' }
+    expect(state.value).toEqual(mergedValue)
+    expect(JSON.parse(values.get('state.v1') ?? '{}')).toEqual(mergedValue)
+    expect(setItem).toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it('merges concurrent edits to different object fields and persists the combined value', async () => {
     vi.useFakeTimers()
     const previousValue = JSON.stringify({ first: 'before', second: 'before' })
