@@ -50,6 +50,43 @@ afterEach(() => {
 })
 
 describe('WeatherPanel request ordering', () => {
+  it('ignores an older permission check that resolves after a newer grant', async () => {
+    const revoked = deferred<boolean>()
+    const granted = deferred<boolean>()
+    const contains = vi.fn()
+      .mockResolvedValueOnce(true)
+      .mockReturnValueOnce(revoked.promise)
+      .mockReturnValueOnce(granted.promise)
+    const listeners = new Set<(details: { origins?: string[] }) => void>()
+    const permissionEvent = {
+      addListener: vi.fn((listener: (details: { origins?: string[] }) => void) => listeners.add(listener)),
+      removeListener: vi.fn((listener: (details: { origins?: string[] }) => void) => listeners.delete(listener)),
+      fire: () => listeners.forEach((listener) => listener({ origins: [...weatherHostPermissions] })),
+    }
+    const fetchMock = vi.fn().mockResolvedValue(response({ results: [] }))
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains, request: vi.fn(), onAdded: permissionEvent, onRemoved: permissionEvent },
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const wrapper = mount(WeatherPanel, { props: { city: '新加坡' } })
+    await flushPromises()
+
+    permissionEvent.fire()
+    permissionEvent.fire()
+    expect(contains).toHaveBeenCalledTimes(3)
+
+    granted.resolve(true)
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('需要你授权')
+
+    revoked.resolve(false)
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('需要你授权')
+    expect(wrapper.find('.weather-authorize').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('keeps the current forecast visible and stops refreshing after permission is revoked', async () => {
     let permissionGranted = true
     const contains = vi.fn(async () => permissionGranted)

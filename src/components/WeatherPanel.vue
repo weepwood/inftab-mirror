@@ -46,6 +46,7 @@ let activeRequest: AbortController | undefined
 let internallySelectedCity = ''
 const requestTimeoutMs = 15_000
 let isActive = false
+let permissionCheckVersion = 0
 let stopWatchingPermission: (() => void) | undefined
 
 const today = computed(() => forecast.value?.daily.time[0])
@@ -149,6 +150,7 @@ async function searchCity() {
 
 async function authorizeWeather() {
   if (!isActive || requestingPermission.value) return
+  permissionCheckVersion += 1
   requestingPermission.value = true
   error.value = ''
   try {
@@ -173,13 +175,14 @@ async function authorizeWeather() {
 
 async function syncWeatherPermission() {
   if (!isActive || requestingPermission.value) return
+  const version = ++permissionCheckVersion
   let granted = false
   try {
     granted = await hasWeatherPermission()
   } catch {
     // Treat an unavailable permission check as revoked and keep existing data visible.
   }
-  if (!isActive || requestingPermission.value) return
+  if (!isActive || requestingPermission.value || version !== permissionCheckVersion) return
   if (!granted) {
     activeRequest?.abort()
     activeRequest = undefined
@@ -282,6 +285,7 @@ onMounted(() => {
   void searchCity()
 })
 onBeforeUnmount(() => {
+  permissionCheckVersion += 1
   requestVersion += 1
   isActive = false
   activeRequest?.abort()
