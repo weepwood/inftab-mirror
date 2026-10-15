@@ -71,10 +71,11 @@ export async function requestBrowserHistoryPermission(): Promise<boolean> {
 export async function searchBrowserHistory(text = '', maxResults = maxHistoryResults): Promise<BrowserHistoryEntry[]> {
   const history = extensionApi()?.history
   if (!history) throw new Error('浏览历史功能当前不可用。')
+  const requestedLimit = Number.isFinite(maxResults) ? Math.floor(maxResults) : maxHistoryResults
   const results = await history.search({
     text: truncateCodePoints(text.trim(), 200),
     startTime: 0,
-    maxResults: Math.min(maxHistoryResults, Math.max(1, Math.floor(maxResults))),
+    maxResults: Math.min(maxHistoryResults, Math.max(1, requestedLimit)),
   })
   return results.filter((entry) => isWebUrl(entry.url)
     && typeof entry.id === 'string'

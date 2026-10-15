@@ -62,6 +62,19 @@ describe('optional browser history access', () => {
     expect(results).toEqual([{ id: 'web', url: 'https://example.com/path', title: `${'x'.repeat(499)}😀`, lastVisitTime: 1_700_000_000_000, visitCount: 3 }])
   })
 
+  it('uses the default result limit when a caller supplies a non-finite limit', async () => {
+    const search = vi.fn().mockResolvedValue([])
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, history: { search } })
+
+    await searchBrowserHistory('', Number.NaN)
+    await searchBrowserHistory('', Number.POSITIVE_INFINITY)
+    await searchBrowserHistory('', Number.NEGATIVE_INFINITY)
+
+    expect(search).toHaveBeenNthCalledWith(1, { text: '', startTime: 0, maxResults: 100 })
+    expect(search).toHaveBeenNthCalledWith(2, { text: '', startTime: 0, maxResults: 100 })
+    expect(search).toHaveBeenNthCalledWith(3, { text: '', startTime: 0, maxResults: 100 })
+  })
+
   it('subscribes to history and permission changes and cleans up listeners', () => {
     const onVisited = event()
     const onVisitRemoved = event()
