@@ -120,6 +120,24 @@ test('stable browsers show focus and readable colors on native settings selects'
   await expect.poll(() => theme.evaluate((element) => getComputedStyle(element).color)).toBe('rgb(226, 230, 237)')
 })
 
+test('stable browsers apply widget presets cleanly at narrow widths', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settings = page.getByRole('dialog', { name: '设置' })
+  const presets = settings.locator('.home-widget-presets')
+  await expect(presets).toBeVisible()
+  const buttonBounds = await presets.getByRole('button').evaluateAll((buttons) => buttons.map((button) => {
+    const bounds = button.getBoundingClientRect()
+    return { left: bounds.left, right: bounds.right, scrollWidth: button.scrollWidth, clientWidth: button.clientWidth }
+  }))
+
+  expect(buttonBounds).toHaveLength(3)
+  expect(buttonBounds.every(({ left, right, scrollWidth, clientWidth }) => left >= 0 && right <= 390 && scrollWidth <= clientWidth)).toBe(true)
+  await presets.getByRole('button', { name: '应用轻量速览组件方案' }).click()
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').homeWidgetIds))
+    .toEqual(['calendar-summary', 'todo-summary', 'notes-summary'])
+})
+
 test('stable browsers persist a new shortcut after reload at a narrow viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
