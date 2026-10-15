@@ -8,10 +8,42 @@ let wrapper: VueWrapper | undefined
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined
+  vi.useRealTimers()
   document.body.innerHTML = ''
 })
 
 describe('SearchBar keyboard navigation', () => {
+  it('does not submit a query when Enter confirms an IME composition candidate', async () => {
+    vi.useFakeTimers()
+    wrapper = mount(SearchBar, {
+      props: { modelValue: '拼音', engine: 'baidu', mode: 'html', visibleModes: [] },
+    })
+    const input = wrapper.get('input[type="search"]').element
+    input.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true }))
+    input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }))
+    await wrapper.get('form').trigger('submit')
+
+    expect(wrapper.emitted('search')).toBeUndefined()
+
+    await vi.advanceTimersByTimeAsync(0)
+    await wrapper.get('form').trigger('submit')
+    expect(wrapper.emitted('search')).toHaveLength(1)
+  })
+
+  it('handles browsers that identify the active IME with keyCode 229', async () => {
+    wrapper = mount(SearchBar, {
+      props: { modelValue: '拼音', engine: 'baidu', mode: 'html', visibleModes: [] },
+    })
+    const input = wrapper.get('input[type="search"]').element
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'keyCode', { value: 229 })
+    input.dispatchEvent(event)
+    await wrapper.get('form').trigger('submit')
+
+    expect(wrapper.emitted('search')).toBeUndefined()
+  })
+
   it('offers quick translation only when there is a query and outside local search', async () => {
     wrapper = mount(SearchBar, {
       props: { modelValue: '', engine: 'baidu', mode: 'html', visibleModes: [] },

@@ -36,6 +36,9 @@ const engineMenu = ref<HTMLElement>()
 const enginePicker = ref<HTMLButtonElement>()
 const engineMenuPosition = ref({ top: 0, left: 0, maxHeight: 0 })
 const searchInput = ref<HTMLInputElement>()
+const isComposingSearchQuery = ref(false)
+let ignoreCompositionSubmit: boolean = false
+let compositionSubmitGuardTimer: number | undefined
 
 function focusSearch() {
   searchInput.value?.focus()
@@ -96,6 +99,16 @@ function closeEngineMenu(restoreFocus = false) {
 }
 
 function handleLocalSearchKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter' && (isComposingSearchQuery.value || event.isComposing || event.keyCode === 229)) {
+    // Some browsers submit the surrounding form when Enter confirms an IME
+    // candidate. Ignore only the default submit from this key event.
+    ignoreCompositionSubmit = true
+    if (compositionSubmitGuardTimer !== undefined) window.clearTimeout(compositionSubmitGuardTimer)
+    compositionSubmitGuardTimer = window.setTimeout(() => {
+      ignoreCompositionSubmit = false
+      compositionSubmitGuardTimer = undefined
+    }, 0)
+  }
   if (props.localSearch && event.key === 'ArrowDown') {
     const firstResult = document.querySelector<HTMLButtonElement>('.local-search-result')
     if (firstResult) {
@@ -103,6 +116,16 @@ function handleLocalSearchKeydown(event: KeyboardEvent) {
       firstResult.focus()
     }
   }
+}
+
+function handleSearchSubmit() {
+  if (ignoreCompositionSubmit) {
+    ignoreCompositionSubmit = false
+    if (compositionSubmitGuardTimer !== undefined) window.clearTimeout(compositionSubmitGuardTimer)
+    compositionSubmitGuardTimer = undefined
+    return
+  }
+  emit('search')
 }
 
 function handleEngineOptionKeydown(event: KeyboardEvent) {
@@ -160,6 +183,7 @@ onMounted(() => {
   window.addEventListener('keydown', closeOnEscape)
 })
 onBeforeUnmount(() => {
+  if (compositionSubmitGuardTimer !== undefined) window.clearTimeout(compositionSubmitGuardTimer)
   window.removeEventListener('pointerdown', closeOnOutsidePointer)
   window.removeEventListener('keydown', closeOnEscape)
   window.removeEventListener('resize', updateEngineMenuPosition)
@@ -198,7 +222,7 @@ defineExpose({ focusSearch, showTranslationError })
       </button>
     </nav>
 
-    <form ref="searchBox" class="search-box" @submit.prevent="emit('search')">
+    <form ref="searchBox" class="search-box" @submit.prevent="handleSearchSubmit">
       <button
         ref="enginePicker"
         class="engine-picker"
@@ -221,6 +245,8 @@ defineExpose({ focusSearch, showTranslationError })
         :placeholder="localSearch ? '搜索快捷入口名称或网址' : '输入并搜索'"
         :aria-label="localSearch ? '搜索快捷入口名称或网址' : '输入并搜索'"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+        @compositionstart="isComposingSearchQuery = true"
+        @compositionend="isComposingSearchQuery = false"
         @keydown="handleLocalSearchKeydown"
       />
       <button v-if="!localSearch" class="quick-translate" type="button" :disabled="!modelValue.trim()" aria-label="翻译成简体中文" title="翻译成简体中文" @click="requestTranslation">译</button>
