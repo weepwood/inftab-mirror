@@ -90,7 +90,7 @@ describe('ShortcutGrid page cycling', () => {
     wrapper.unmount()
   })
 
-  it('skips configured page effects when reduced motion is requested', async () => {
+  it('keeps playing configured page effects with reduced motion, capping the duration', async () => {
     installAnimationEnvironment()
     vi.stubGlobal('matchMedia', () => ({ matches: true, addListener: () => {}, removeEventListener: () => {} }))
     const wrapper = mount(ShortcutGrid, {
@@ -110,9 +110,12 @@ describe('ShortcutGrid page cycling', () => {
 
     await wrapper.setProps({ currentPage: 1 })
 
-    expect(wrapper.find('.particles-in, .particles-out, .trails-out').exists()).toBe(false)
-    expect(document.getElementById('shortcut-particle-canvas')).toBeNull()
+    // The chosen effect still runs under reduced motion instead of being skipped.
+    expect(wrapper.find('.particles-out').exists()).toBe(true)
+    expect(wrapper.find('.particles-in').exists()).toBe(true)
     expect(wrapper.get('.shortcut-pages').attributes('style')).toContain('transform: none')
+    // Long durations are capped so the motion stays gentle.
+    expect(wrapper.get('.particles-out').attributes('style')).toContain('1200ms')
     wrapper.unmount()
   })
 

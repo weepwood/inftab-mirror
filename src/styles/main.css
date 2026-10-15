@@ -568,6 +568,13 @@ select { background-color: #fff; color: #343a40; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  /* The page-turn effect is an explicit choice in settings, so keep a gentle
+     (shorter, capped) version instead of removing it entirely. */
+  .shortcut-pages { transition-duration: var(--page-transition-duration, 620ms) !important; }
+  .shortcut-pages.motion-opt-in { transition-duration: min(var(--page-transition-duration, 620ms), 1200ms) !important; }
+  .shortcut-pages.motion-opt-in.is-resetting { transition-property: none !important; transition-duration: 0ms !important; transition-delay: 0ms !important; }
+  .trails-out .shortcut-open::before, .trails-out .shortcut-icon { animation-duration: min(var(--outgoing-duration, 620ms), 1200ms) !important; animation-iteration-count: 1 !important; }
+  .particles-mode .shortcut-page.particles-in .shortcut-cell { animation-duration: 780ms !important; animation-iteration-count: 1 !important; }
 }
 
 .folder-dialog { display: flex; flex-direction: column; max-height: min(84vh, 720px); }

@@ -833,7 +833,7 @@ test('launcher search shortcut works while the homepage search bar is hidden', a
   await expect(page.locator('.search-area')).toHaveCount(0)
 })
 
-test('reduced-motion preference skips page effects and long transitions', async ({ page }) => {
+test('reduced-motion preference keeps page effects but caps their duration', async ({ page }) => {
   await page.evaluate(() => {
     const key = 'inftab.preferences.v1'
     const preferences = JSON.parse(localStorage.getItem(key) ?? '{}')
@@ -846,10 +846,13 @@ test('reduced-motion preference skips page effects and long transitions', async 
   await expect(track).toHaveClass(/particles-mode/)
   await page.getByRole('button', { name: '下一页' }).click()
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
-  await expect(page.locator('#shortcut-particle-canvas')).toHaveCount(0)
-  await expect(page.locator('.particles-in, .particles-out, .trails-out')).toHaveCount(0)
-  const transitionDurationMs = await track.evaluate((element) => Number.parseFloat(getComputedStyle(element).transitionDuration) * 1000)
-  expect(transitionDurationMs).toBeLessThanOrEqual(0.02)
+  // The effect is an explicit choice in settings, so it still plays under reduced motion.
+  await expect(page.locator('#shortcut-particle-canvas')).toHaveCount(1)
+  await expect(page.locator('.particles-out')).toHaveCount(1)
+  await expect(page.locator('.particles-in')).toHaveCount(1)
+  // Long configured durations are capped so the motion stays gentle.
+  const outgoingStyle = await page.locator('.particles-out').evaluate((element) => element.getAttribute('style') ?? '')
+  expect(outgoingStyle).toContain('--outgoing-duration: 1200ms')
 })
 
 test('settings persist and the main view fits a narrow viewport', async ({ page }) => {

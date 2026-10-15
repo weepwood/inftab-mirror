@@ -324,13 +324,21 @@ function settleTrackTransition() {
   finishTrackReset()
 }
 
+function prefersReducedMotion() {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 function scheduleTrackSettleFallback() {
   if (!trackTransitionPending) return
+  const reducedMotion = prefersReducedMotion()
   const configuredDuration = Math.max(0, props.transitionDuration)
+  const trackDuration = reducedMotion && props.transitionEffect === 'trails'
+    ? Math.min(configuredDuration, 1200)
+    : configuredDuration
   const visualDuration = props.transitionEffect === 'trails'
-    ? Math.max(260, configuredDuration)
+    ? (reducedMotion ? Math.min(1200, Math.max(420, configuredDuration)) : Math.max(260, configuredDuration))
     : 0
-  trackSettleTimer = window.setTimeout(settleTrackTransition, Math.max(configuredDuration, visualDuration) + 180)
+  trackSettleTimer = window.setTimeout(settleTrackTransition, Math.max(trackDuration, visualDuration) + 180)
 }
 
 function handleTrackTransitionEnd(event: TransitionEvent) {
@@ -366,21 +374,10 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
   }
   trackTransitionPending = true
   resettingTrack.value = false
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    trackTransitionPending = false
-    outgoingPage.value = undefined
-    incomingPage.value = undefined
-    physicalPage.value = props.transitionEffect === 'particles' ? pageIndex : centeredPhysicalPage(pageIndex)
-    trackOffsetPx.value = 0
-    resettingTrack.value = true
-    resetFrame = requestAnimationFrame(() => {
-      resettingTrack.value = false
-      resetFrame = 0
-    })
-    return
-  }
   const direction = props.transitionDirection < 0 ? -1 : 1
-  const duration = Math.max(260, props.transitionDuration)
+  const duration = prefersReducedMotion()
+    ? Math.min(1200, Math.max(420, props.transitionDuration))
+    : Math.max(260, props.transitionDuration)
   incomingPage.value = props.transitionEffect === 'particles' ? pageIndex : undefined
   if (props.transitionEffect !== 'slide') {
     outgoingPage.value = {
