@@ -162,6 +162,7 @@ export async function fetchHackerNewsStories(signal: AbortSignal, fetcher: typeo
     const payload = await getJson(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, signal, fetcher)
     return parseStory(payload)
   }))
+  if (signal.aborted) throw signal.reason ?? new DOMException('The operation was aborted.', 'AbortError')
   const stories = results.flatMap((result) => result.status === 'fulfilled' && result.value ? [result.value] : [])
   if (ids.length && !stories.length) throw new Error('资讯暂时无法加载，请稍后重试。')
   return stories

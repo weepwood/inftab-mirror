@@ -101,6 +101,51 @@ describe('NewsSummaryWidget', () => {
     expect(onRemoved.removeListener).toHaveBeenCalledOnce()
   })
 
+  it('does not cache a partial feed when permission is revoked during concurrent story reads', async () => {
+    let topRequestCount = 0
+    let abortedSignal: AbortSignal | undefined
+    const fetcher = vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/topstories.json')) {
+        topRequestCount += 1
+        return Promise.resolve(response(topRequestCount === 1 ? [101] : [201, 202]))
+      }
+      if (url.endsWith('/101.json')) return Promise.resolve(response({
+        id: 101, type: 'story', title: 'Complete cached story', url: 'https://cached.example/',
+      }))
+      if (url.endsWith('/201.json')) return Promise.resolve(response({
+        id: 201, type: 'story', title: 'Partial stale story', url: 'https://stale.example/',
+      }))
+      abortedSignal = options?.signal ?? undefined
+      return new Promise<Response>((_resolve, reject) => {
+        const abort = () => reject(new DOMException('Aborted', 'AbortError'))
+        if (abortedSignal?.aborted) abort()
+        else abortedSignal?.addEventListener('abort', abort, { once: true })
+      })
+    })
+    const contains = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    const permissionListeners = new Set<(details: { origins?: string[] }) => void>()
+    const onRemoved = {
+      addListener: vi.fn((listener: (details: { origins?: string[] }) => void) => permissionListeners.add(listener)),
+      removeListener: vi.fn((listener: (details: { origins?: string[] }) => void) => permissionListeners.delete(listener)),
+    }
+    vi.stubGlobal('chrome', { runtime: { id: 'f'.repeat(32) }, permissions: { contains, request: vi.fn(), onRemoved } })
+    vi.stubGlobal('fetch', fetcher)
+    wrapper = mount(NewsSummaryWidget)
+    await vi.waitFor(() => expect(wrapper!.text()).toContain('Complete cached story'))
+    const previousCache = localStorage.getItem('inftab.hacker-news-cache.v1')
+
+    await wrapper.get('.news-summary-refresh').trigger('click')
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(5))
+    permissionListeners.forEach((listener) => listener({ origins: [hackerNewsHostPermission] }))
+    await vi.waitFor(() => expect(wrapper!.text()).toContain('资讯访问权限已关闭'))
+
+    expect(abortedSignal?.aborted).toBe(true)
+    expect(wrapper.text()).toContain('Complete cached story')
+    expect(wrapper.text()).not.toContain('Partial stale story')
+    expect(localStorage.getItem('inftab.hacker-news-cache.v1')).toBe(previousCache)
+  })
+
   it('ignores an old permission check that finishes after the host permission was revoked', async () => {
     let resolveInitialCheck!: (granted: boolean) => void
     const initialCheck = new Promise<boolean>((resolve) => { resolveInitialCheck = resolve })

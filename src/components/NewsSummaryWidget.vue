@@ -26,7 +26,9 @@ async function loadStories() {
   const requestTimeout = window.setTimeout(() => { timedOut = true; controller.abort() }, 10_000)
   timeout = requestTimeout
   try {
-    stories.value = await fetchHackerNewsStories(controller.signal)
+    const nextStories = await fetchHackerNewsStories(controller.signal)
+    if (!isActive || activeRequest !== controller || controller.signal.aborted) return
+    stories.value = nextStories
     lastUpdatedAt.value = Date.now()
     writeCachedHackerNewsFeed(stories.value, lastUpdatedAt.value)
   } catch (cause) {

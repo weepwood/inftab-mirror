@@ -54,6 +54,24 @@ describe('Hacker News feed', () => {
     } as unknown as Response))).rejects.toThrow('资讯数据无法解析')
   })
 
+  it('rejects a partially fulfilled feed when the request is aborted', async () => {
+    const controller = new AbortController()
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/topstories.json')) return Promise.resolve(jsonResponse([31, 32]))
+      if (url.endsWith('/31.json')) return Promise.resolve(jsonResponse({ id: 31, type: 'story', title: 'Partial story' }))
+      return new Promise<Response>((_resolve, reject) => {
+        controller.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+      })
+    })
+
+    const pendingFeed = fetchHackerNewsStories(controller.signal, fetcher)
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3))
+    controller.abort()
+
+    await expect(pendingFeed).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
   it('requests extension host access only through an explicit permission call', async () => {
     const contains = vi.fn().mockResolvedValue(false)
     const request = vi.fn().mockResolvedValue(true)
