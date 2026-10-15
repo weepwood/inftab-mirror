@@ -28,6 +28,33 @@ test('stable browsers load the homepage and quick translation flow', async ({ pa
   await expect(page).toHaveURL(/translate\.google\.com\/\?sl=auto&tl=zh-CN&text=stable%20browser&op=translate/)
 })
 
+test('stable browsers ignore same-key storage events from sessionStorage', async ({ page }) => {
+  await expect(page.locator('.home-clock')).toBeVisible()
+  const originalPreferences = await page.evaluate(() => localStorage.getItem('inftab.preferences.v1'))
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'inftab.preferences.v1',
+      oldValue: null,
+      newValue: JSON.stringify({ showClock: false }),
+      storageArea: sessionStorage,
+    }))
+  })
+  await expect(page.locator('.home-clock')).toBeVisible()
+  expect(await page.evaluate(() => localStorage.getItem('inftab.preferences.v1'))).toBe(originalPreferences)
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: null,
+      oldValue: null,
+      newValue: null,
+      storageArea: sessionStorage,
+    }))
+  })
+  await expect(page.locator('.home-clock')).toBeVisible()
+  expect(await page.evaluate(() => localStorage.getItem('inftab.preferences.v1'))).toBe(originalPreferences)
+})
+
 test('stable browsers preserve Tab focus when leaving the search engine menu', async ({ page }) => {
   const picker = page.getByRole('button', { name: '当前搜索引擎：Baidu' })
   const search = page.getByRole('searchbox', { name: '输入并搜索' })

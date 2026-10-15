@@ -46,6 +46,12 @@ export function useStoredState<T>(
   const value = ref(initial) as Ref<T>
   const targetWindow = typeof window === 'undefined' ? undefined : window
   const targetDocument = targetWindow?.document
+  let targetStorage: Storage | undefined
+  try {
+    targetStorage = localStorage
+  } catch {
+    // Storage can be blocked in restricted browsing contexts.
+  }
   let persistTimer: ReturnType<typeof setTimeout> | undefined
   let isProcessingStorageEvents = false
   let isDisposed = false
@@ -92,6 +98,7 @@ export function useStoredState<T>(
   }, { deep: true, flush: 'sync' })
 
   const handleStorage = async (event: StorageEvent) => {
+    if (event.storageArea && event.storageArea !== targetStorage) return
     if (event.key !== key && event.key !== null) return
     if (persistTimer !== undefined) clearTimeout(persistTimer)
     persistTimer = undefined

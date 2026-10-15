@@ -139,6 +139,36 @@ describe('useStoredState', () => {
     scope.stop()
   })
 
+  it('ignores matching keys and clear events from sessionStorage', async () => {
+    const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
+    const removeListener = vi.fn()
+    vi.stubGlobal('window', {
+      addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener),
+      removeEventListener: removeListener,
+    })
+    installMemoryStorage()
+    const scope = effectScope()
+    const value = scope.run(() => useStoredState('prefs.v1', { theme: 'local' }))!
+    const sessionStorage = {}
+
+    await listeners.get('storage')!({
+      key: 'prefs.v1',
+      oldValue: null,
+      newValue: JSON.stringify({ theme: 'session' }),
+      storageArea: sessionStorage,
+    } as StorageEvent)
+    await listeners.get('storage')!({
+      key: null,
+      oldValue: null,
+      newValue: null,
+      storageArea: sessionStorage,
+    } as StorageEvent)
+
+    expect(value.value).toEqual({ theme: 'local' })
+    scope.stop()
+    expect(removeListener).toHaveBeenCalledWith('storage', expect.any(Function))
+  })
+
   it('cancels stale writes and does not echo external storage updates', async () => {
     vi.useFakeTimers()
     const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
