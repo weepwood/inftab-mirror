@@ -1069,6 +1069,51 @@ test('simultaneous workspace creation in separate tabs preserves both workspaces
   await secondTab.close()
 })
 
+test('a concurrent shortcut stays visible when another tab deletes its workspace', async ({ page, context }) => {
+  const secondTab = await context.newPage()
+  await secondTab.goto('/')
+  await page.getByRole('button', { name: '新建工作区' }).click()
+  await expect(page.getByRole('button', { name: '工作区 1', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  const storageKey = 'inftab.home-workspaces.v1'
+  await expect.poll(() => page.evaluate((key) =>
+    (JSON.parse(localStorage.getItem(key) ?? '[]') as { name: string }[]).some((item) => item.name === '工作区 1'), storageKey,
+  )).toBe(true)
+  const previous = await page.evaluate((key) => localStorage.getItem(key), storageKey)
+
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByRole('button', { name: /添加快捷入口/ }).click()
+  const dialog = page.locator('.shortcut-dialog')
+  await dialog.getByPlaceholder('例如：GitHub').fill('Concurrent link')
+  await dialog.getByPlaceholder('https://example.com').fill('https://concurrent-workspace.example/')
+  await dialog.getByRole('button', { name: '保存' }).click()
+  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
+  await expect.poll(() => page.evaluate((key) => {
+    const workspaces = JSON.parse(localStorage.getItem(key) ?? '[]') as { name: string; itemIds: string[] }[]
+    const shortcut = (JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]') as { id: string; title: string }[])
+      .find((item) => item.title === 'Concurrent link')
+    return Boolean(shortcut && workspaces.find((item) => item.name === '工作区 1')?.itemIds.includes(shortcut.id))
+  }, storageKey)).toBe(true)
+
+  await page.evaluate(({ key, value }) => localStorage.setItem(key, value!), { key: storageKey, value: previous })
+  await secondTab.reload()
+  await secondTab.getByRole('button', { name: '工作区 1', exact: true }).click()
+  await secondTab.getByRole('button', { name: '删除当前工作区' }).click()
+  const confirmation = secondTab.getByRole('alertdialog', { name: '删除工作区？' })
+  await confirmation.getByRole('button', { name: '确认删除' }).click()
+
+  await expect(page.getByRole('button', { name: '主页', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('Control+f')
+  await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Concurrent link')
+  await expect(page.getByRole('option', { name: /Concurrent link/ })).toBeVisible()
+  await expect.poll(() => page.evaluate((key) => {
+    const workspaces = JSON.parse(localStorage.getItem(key) ?? '[]') as { id: string; itemIds: string[] }[]
+    const shortcut = (JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]') as { id: string; title: string }[])
+      .find((item) => item.title === 'Concurrent link')
+    return Boolean(shortcut && workspaces.find((item) => item.id === 'default')?.itemIds.includes(shortcut.id))
+  }, storageKey)).toBe(true)
+  await secondTab.close()
+})
+
 test('home widgets open their panel, reorder, and can be removed', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByLabel('显示待办概览小组件').check()

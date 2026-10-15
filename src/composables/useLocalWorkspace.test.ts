@@ -345,6 +345,32 @@ describe('useLocalWorkspace home workspaces', () => {
       .filter((item) => item.itemIds.includes(shortcut.id)).map((item) => item.id)).toEqual([externalWorkspaceId]))
   })
 
+  it('returns a concurrent new shortcut to the homepage when its workspace is deleted elsewhere', async () => {
+    vi.useFakeTimers()
+    const storageKey = 'inftab.home-workspaces.v1'
+    const previous = JSON.stringify([
+      { id: 'default', name: '主页', itemIds: [] },
+      { id: 'temporary-space', name: '临时工作区', itemIds: [] },
+    ])
+    localStorage.setItem(storageKey, previous)
+    localStorage.setItem('inftab.shortcuts.v1', '[]')
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const shortcut = { id: 'concurrent-link', title: '并发入口', url: 'https://concurrent.example/', color: '#abc', mark: 'C' }
+
+    expect(workspace.saveShortcut(shortcut, 'temporary-space')).toBe(true)
+    const external = JSON.stringify([{ id: 'default', name: '主页', itemIds: [] }])
+    localStorage.setItem(storageKey, external)
+    window.dispatchEvent(new StorageEvent('storage', { key: storageKey, oldValue: previous, newValue: external }))
+    await vi.waitFor(() => expect(workspace.homeWorkspaces.value.find((item) => item.id === 'default')?.itemIds).toContain(shortcut.id))
+
+    expect(workspace.shortcuts.value).toContainEqual(shortcut)
+    expect(workspace.homeWorkspaces.value.some((item) => item.itemIds.includes(shortcut.id))).toBe(true)
+    await vi.advanceTimersByTimeAsync(180)
+    const persisted = JSON.parse(localStorage.getItem(storageKey) ?? '[]') as { id: string; itemIds: string[] }[]
+    expect(persisted.find((item) => item.id === 'default')?.itemIds).toContain(shortcut.id)
+  })
+
   it('merges separate shortcut moves made concurrently in different workspaces', async () => {
     vi.useFakeTimers()
     scope = effectScope()

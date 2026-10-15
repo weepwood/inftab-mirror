@@ -57,6 +57,9 @@ export function useLocalWorkspace() {
     }
 
     const mergedWorkspaceIds = new Set(merged.map((workspace) => workspace.id))
+    for (const [itemId, ownerId] of ownerByItem) {
+      if (ownerId && !mergedWorkspaceIds.has(ownerId)) ownerByItem.set(itemId, defaultHomeWorkspaceId)
+    }
     const resolvedItemsByWorkspace = new Map<string, string[]>()
     for (const [itemId, ownerId] of ownerByItem) {
       if (!ownerId || !mergedWorkspaceIds.has(ownerId)) continue
