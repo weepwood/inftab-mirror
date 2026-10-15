@@ -47,6 +47,7 @@ let stopListening: (() => void) | undefined
 let stopWatchingPermission: (() => void) | undefined
 let refreshSequence = 0
 let permissionSequence = 0
+let bookmarkRefreshTimer: ReturnType<typeof setTimeout> | undefined
 
 const rows = computed(() => {
   const cleanQuery = query.value.trim().toLocaleLowerCase()
@@ -144,7 +145,21 @@ async function refreshBookmarks() {
 }
 
 function watchBookmarkChanges() {
-  if (!stopListening) stopListening = subscribeToBrowserBookmarks(() => { void refreshBookmarks() })
+  if (!stopListening) stopListening = subscribeToBrowserBookmarks(queueBookmarkRefresh)
+}
+
+function cancelQueuedBookmarkRefresh() {
+  if (bookmarkRefreshTimer !== undefined) clearTimeout(bookmarkRefreshTimer)
+  bookmarkRefreshTimer = undefined
+}
+
+function queueBookmarkRefresh() {
+  if (!permissionGranted.value) return
+  cancelQueuedBookmarkRefresh()
+  bookmarkRefreshTimer = setTimeout(() => {
+    bookmarkRefreshTimer = undefined
+    if (permissionGranted.value) void refreshBookmarks()
+  }, 100)
 }
 
 async function syncBookmarkPermission() {
@@ -157,6 +172,7 @@ async function syncBookmarkPermission() {
       watchBookmarkChanges()
       await refreshBookmarks()
     } else {
+      cancelQueuedBookmarkRefresh()
       refreshSequence += 1
       stopListening?.()
       stopListening = undefined
@@ -168,6 +184,7 @@ async function syncBookmarkPermission() {
     }
   } catch {
     if (sequence !== permissionSequence) return
+    cancelQueuedBookmarkRefresh()
     refreshSequence += 1
     stopListening?.()
     stopListening = undefined
@@ -267,6 +284,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   permissionSequence += 1
   refreshSequence += 1
+  cancelQueuedBookmarkRefresh()
   stopListening?.()
   stopWatchingPermission?.()
 })

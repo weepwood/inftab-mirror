@@ -15,6 +15,7 @@ let wrapper: VueWrapper | undefined
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   document.body.innerHTML = ''
 })
@@ -110,6 +111,66 @@ describe('BookmarksPanel', () => {
     await wrapper.get('input[aria-label="筛选浏览器书签"]').setValue('Site 999')
     expect(wrapper.findAll('.browser-bookmark-list > li')).toHaveLength(2)
     expect(wrapper.findAll('.browser-bookmark-link').map((link) => link.text())).toEqual(['Site 999'])
+  })
+
+  it('coalesces a burst of bookmark change events into one tree refresh', async () => {
+    vi.useFakeTimers()
+    const listeners = new Set<(...args: unknown[]) => void>()
+    const onCreated = {
+      addListener: vi.fn((listener: (...args: unknown[]) => void) => listeners.add(listener)),
+      removeListener: vi.fn((listener: (...args: unknown[]) => void) => listeners.delete(listener)),
+      fire: () => listeners.forEach((listener) => listener()),
+    }
+    const getTree = vi.fn().mockResolvedValue([{ id: '0', title: '', children: [] }])
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains: vi.fn().mockResolvedValue(true), request: vi.fn() },
+      bookmarks: { getTree, onCreated },
+    })
+    wrapper = mount(BookmarksPanel, { props: { availableSlots: 500, importBookmarks: vi.fn() } })
+    await flushPromises()
+    expect(getTree).toHaveBeenCalledOnce()
+
+    for (let index = 0; index < 20; index += 1) onCreated.fire()
+    await vi.advanceTimersByTimeAsync(99)
+    expect(getTree).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(1)
+    await flushPromises()
+
+    expect(getTree).toHaveBeenCalledTimes(2)
+  })
+
+  it('cancels a queued bookmark refresh when permission is revoked', async () => {
+    vi.useFakeTimers()
+    const listeners = new Set<(...args: unknown[]) => void>()
+    const onCreated = {
+      addListener: vi.fn((listener: (...args: unknown[]) => void) => listeners.add(listener)),
+      removeListener: vi.fn((listener: (...args: unknown[]) => void) => listeners.delete(listener)),
+      fire: () => listeners.forEach((listener) => listener()),
+    }
+    const permissionListeners = new Set<(...args: unknown[]) => void>()
+    const onRemoved = {
+      addListener: vi.fn((listener: (...args: unknown[]) => void) => permissionListeners.add(listener)),
+      removeListener: vi.fn((listener: (...args: unknown[]) => void) => permissionListeners.delete(listener)),
+      fire: () => permissionListeners.forEach((listener) => listener()),
+    }
+    const contains = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    const getTree = vi.fn().mockResolvedValue([{ id: '0', title: '', children: [] }])
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains, request: vi.fn(), onRemoved },
+      bookmarks: { getTree, onCreated },
+    })
+    wrapper = mount(BookmarksPanel, { props: { availableSlots: 500, importBookmarks: vi.fn() } })
+    await flushPromises()
+    onCreated.fire()
+    onRemoved.fire()
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(100)
+    await flushPromises()
+
+    expect(getTree).toHaveBeenCalledOnce()
+    expect(wrapper.text()).toContain('连接当前浏览器的书签')
   })
 
   it('searches deeply nested folders without overflowing the call stack', async () => {
