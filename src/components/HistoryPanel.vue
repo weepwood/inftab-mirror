@@ -38,8 +38,16 @@ async function refreshHistory() {
   }
 }
 
+function queueHistoryRefresh(delay = 100) {
+  if (refreshTimer !== undefined) clearTimeout(refreshTimer)
+  refreshTimer = setTimeout(() => {
+    refreshTimer = undefined
+    if (permissionGranted.value) void refreshHistory()
+  }, delay)
+}
+
 function watchHistoryChanges() {
-  if (!stopListening) stopListening = subscribeToBrowserHistory(() => { void refreshHistory() })
+  if (!stopListening) stopListening = subscribeToBrowserHistory(() => queueHistoryRefresh())
 }
 
 async function syncPermission() {
@@ -53,6 +61,8 @@ async function syncPermission() {
       await refreshHistory()
     } else {
       refreshSequence += 1
+      if (refreshTimer !== undefined) clearTimeout(refreshTimer)
+      refreshTimer = undefined
       stopListening?.()
       stopListening = undefined
       entries.value = []
@@ -116,15 +126,12 @@ function handlePermissionChange() {
 
 watch(query, () => {
   refreshSequence += 1
-  if (refreshTimer) clearTimeout(refreshTimer)
+  if (refreshTimer !== undefined) clearTimeout(refreshTimer)
   entries.value = []
   error.value = ''
   loading.value = permissionGranted.value
   if (!permissionGranted.value) return
-  refreshTimer = setTimeout(() => {
-    refreshTimer = undefined
-    if (permissionGranted.value) void refreshHistory()
-  }, 180)
+  queueHistoryRefresh(180)
 })
 
 function formatVisitTime(timestamp: number) {

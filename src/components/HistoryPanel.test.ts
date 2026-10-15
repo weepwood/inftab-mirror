@@ -8,7 +8,7 @@ const historyApi = vi.hoisted(() => ({
   hasBrowserHistoryPermission: vi.fn<() => Promise<boolean>>(),
   requestBrowserHistoryPermission: vi.fn<() => Promise<boolean>>(),
   searchBrowserHistory: vi.fn(),
-  subscribeToBrowserHistory: vi.fn<() => () => void>(() => vi.fn()),
+  subscribeToBrowserHistory: vi.fn<(listener: () => void) => () => void>(() => vi.fn()),
   subscribeToBrowserHistoryPermissionChanges: vi.fn<(listener: () => void) => () => void>(() => vi.fn()),
 }))
 
@@ -33,6 +33,36 @@ afterEach(() => {
 })
 
 describe('browser history panel', () => {
+  it('coalesces browser history change bursts and cancels queued refresh on unmount', async () => {
+    vi.useFakeTimers()
+    let onHistoryChange: (() => void) | undefined
+    const stopListening = vi.fn()
+    historyApi.hasBrowserHistoryPermission.mockResolvedValue(true)
+    historyApi.subscribeToBrowserHistory.mockImplementation((listener) => {
+      onHistoryChange = listener
+      return stopListening
+    })
+    historyApi.searchBrowserHistory.mockResolvedValue([])
+    const mounted = mount(HistoryPanel)
+    await flushPromises()
+    expect(historyApi.searchBrowserHistory).toHaveBeenCalledOnce()
+
+    onHistoryChange?.()
+    onHistoryChange?.()
+    onHistoryChange?.()
+    await vi.advanceTimersByTimeAsync(99)
+    expect(historyApi.searchBrowserHistory).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(1)
+    await flushPromises()
+    expect(historyApi.searchBrowserHistory).toHaveBeenCalledTimes(2)
+
+    onHistoryChange?.()
+    mounted.unmount()
+    await vi.advanceTimersByTimeAsync(100)
+    expect(historyApi.searchBrowserHistory).toHaveBeenCalledTimes(2)
+    expect(stopListening).toHaveBeenCalledOnce()
+  })
+
   it('requests permission only after user action and then searches local browser history', async () => {
     vi.useFakeTimers()
     historyApi.hasBrowserHistoryPermission.mockResolvedValue(false)
