@@ -152,7 +152,7 @@ describe('BookmarksPanel', () => {
     const onRemoved = {
       addListener: vi.fn((listener: (...args: unknown[]) => void) => permissionListeners.add(listener)),
       removeListener: vi.fn((listener: (...args: unknown[]) => void) => permissionListeners.delete(listener)),
-      fire: () => permissionListeners.forEach((listener) => listener()),
+      fire: (...args: unknown[]) => permissionListeners.forEach((listener) => listener(...args)),
     }
     const contains = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false)
     const getTree = vi.fn().mockResolvedValue([{ id: '0', title: '', children: [] }])
@@ -164,7 +164,7 @@ describe('BookmarksPanel', () => {
     wrapper = mount(BookmarksPanel, { props: { availableSlots: 500, importBookmarks: vi.fn() } })
     await flushPromises()
     onCreated.fire()
-    onRemoved.fire()
+    onRemoved.fire({ permissions: ['bookmarks'] })
     await flushPromises()
     await vi.advanceTimersByTimeAsync(100)
     await flushPromises()
@@ -250,7 +250,7 @@ describe('BookmarksPanel', () => {
       listeners: new Set<(...args: unknown[]) => void>(),
       addListener(listener: (...args: unknown[]) => void) { this.listeners.add(listener) },
       removeListener(listener: (...args: unknown[]) => void) { this.listeners.delete(listener) },
-      fire() { this.listeners.forEach((listener) => listener()) },
+      fire(...args: unknown[]) { this.listeners.forEach((listener) => listener(...args)) },
     }
     const contains = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false)
     vi.stubGlobal('chrome', {
@@ -265,10 +265,61 @@ describe('BookmarksPanel', () => {
     await flushPromises()
     expect(wrapper.find('.browser-bookmark-link').exists()).toBe(true)
 
-    permissionRemoved.fire()
+    permissionRemoved.fire({ permissions: ['bookmarks'] })
     await flushPromises()
     expect(wrapper.find('.browser-bookmark-link').exists()).toBe(false)
     expect(wrapper.text()).toContain('连接当前浏览器的书签')
+  })
+
+  it('hides bookmarks immediately when permission changes and ignores an in-flight refresh', async () => {
+    vi.useFakeTimers()
+    const permissionRecheck = deferred<boolean>()
+    const pendingTree = deferred<BrowserBookmarkNode[]>()
+    const permissionRemoved = {
+      listeners: new Set<(...args: unknown[]) => void>(),
+      addListener(listener: (...args: unknown[]) => void) { this.listeners.add(listener) },
+      removeListener(listener: (...args: unknown[]) => void) { this.listeners.delete(listener) },
+      fire(...args: unknown[]) { this.listeners.forEach((listener) => listener(...args)) },
+    }
+    const bookmarkCreated = {
+      listeners: new Set<(...args: unknown[]) => void>(),
+      addListener(listener: (...args: unknown[]) => void) { this.listeners.add(listener) },
+      removeListener(listener: (...args: unknown[]) => void) { this.listeners.delete(listener) },
+      fire(...args: unknown[]) { this.listeners.forEach((listener) => listener(...args)) },
+    }
+    const initialTree: BrowserBookmarkNode[] = [{ id: '0', title: '', children: [
+      { id: 'existing', title: 'Existing bookmark', url: 'https://existing.example/' },
+    ] }]
+    const getTree = vi.fn().mockResolvedValueOnce(initialTree).mockReturnValueOnce(pendingTree.promise)
+    const contains = vi.fn().mockResolvedValueOnce(true).mockReturnValueOnce(permissionRecheck.promise)
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains, request: vi.fn(), onRemoved: permissionRemoved },
+      bookmarks: { getTree, onCreated: bookmarkCreated },
+    })
+    wrapper = mount(BookmarksPanel, { props: { availableSlots: 500, importBookmarks: vi.fn() } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('Existing bookmark')
+
+    bookmarkCreated.fire()
+    await vi.advanceTimersByTimeAsync(100)
+    await flushPromises()
+    expect(getTree).toHaveBeenCalledTimes(2)
+
+    permissionRemoved.fire({ permissions: ['bookmarks'] })
+    await flushPromises()
+    expect(wrapper.text()).toContain('连接当前浏览器的书签')
+    expect(wrapper.text()).not.toContain('Existing bookmark')
+
+    permissionRecheck.resolve(false)
+    await flushPromises()
+    pendingTree.resolve([{ id: '0', title: '', children: [
+      { id: 'private', title: 'Private late bookmark', url: 'https://private.example/' },
+    ] }])
+    await flushPromises()
+
+    expect(wrapper.find('.browser-bookmark-link').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Private late bookmark')
   })
 
   it('clears protected bookmarks and listeners when a permission recheck fails', async () => {
@@ -276,7 +327,7 @@ describe('BookmarksPanel', () => {
       listeners: new Set<(...args: unknown[]) => void>(),
       addListener(listener: (...args: unknown[]) => void) { this.listeners.add(listener) },
       removeListener(listener: (...args: unknown[]) => void) { this.listeners.delete(listener) },
-      fire() { this.listeners.forEach((listener) => listener()) },
+      fire(...args: unknown[]) { this.listeners.forEach((listener) => listener(...args)) },
     }
     const bookmarkCreated = { addListener: vi.fn(), removeListener: vi.fn() }
     const contains = vi.fn()
@@ -296,7 +347,7 @@ describe('BookmarksPanel', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('Private bookmark')
 
-    permissionRemoved.fire()
+    permissionRemoved.fire({ permissions: ['bookmarks'] })
     await flushPromises()
 
     expect(wrapper.text()).toContain('连接当前浏览器的书签')
@@ -311,7 +362,7 @@ describe('BookmarksPanel', () => {
       listeners: new Set<(...args: unknown[]) => void>(),
       addListener(listener: (...args: unknown[]) => void) { this.listeners.add(listener) },
       removeListener(listener: (...args: unknown[]) => void) { this.listeners.delete(listener) },
-      fire() { this.listeners.forEach((listener) => listener()) },
+      fire(...args: unknown[]) { this.listeners.forEach((listener) => listener(...args)) },
     }
     const contains = vi.fn().mockReturnValueOnce(oldPermissionCheck.promise).mockResolvedValueOnce(false)
     const getTree = vi.fn()
@@ -321,7 +372,7 @@ describe('BookmarksPanel', () => {
       bookmarks: { getTree, onCreated: { addListener: vi.fn(), removeListener: vi.fn() } },
     })
     wrapper = mount(BookmarksPanel, { props: { availableSlots: 500, importBookmarks: vi.fn() } })
-    permissionRemoved.fire()
+    permissionRemoved.fire({ permissions: ['bookmarks'] })
     await flushPromises()
     oldPermissionCheck.resolve(true)
     await flushPromises()

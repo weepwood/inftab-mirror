@@ -8,7 +8,7 @@ function event() {
   return {
     addListener(listener: (...args: unknown[]) => void) { listeners.add(listener) },
     removeListener(listener: (...args: unknown[]) => void) { listeners.delete(listener) },
-    fire() { listeners.forEach((listener) => listener()) },
+    fire(...args: unknown[]) { listeners.forEach((listener) => listener(...args)) },
     listeners,
   }
 }
@@ -72,7 +72,7 @@ describe('BookmarksSummaryWidget', () => {
     await flushPromises()
     expect(getTree).toHaveBeenCalledTimes(2)
 
-    permissionRemoved.fire()
+    permissionRemoved.fire({ permissions: ['bookmarks'] })
     await flushPromises()
     expect(wrapper.findAll('a')).toHaveLength(0)
     expect(wrapper.text()).toContain('打开书签面板并启用权限')

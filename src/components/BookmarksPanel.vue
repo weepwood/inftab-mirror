@@ -197,6 +197,22 @@ async function syncBookmarkPermission() {
   }
 }
 
+function handleBookmarkPermissionChange() {
+  permissionSequence += 1
+  refreshSequence += 1
+  cancelQueuedBookmarkRefresh()
+  stopListening?.()
+  stopListening = undefined
+  permissionGranted.value = false
+  tree.value = []
+  bookmarkCandidatesById.value = new Map()
+  selectedIds.value = new Set()
+  loading.value = false
+  error.value = ''
+  importMessage.value = ''
+  void syncBookmarkPermission()
+}
+
 async function enableBookmarks() {
   if (requestingPermission.value) return
   const sequence = ++permissionSequence
@@ -277,7 +293,7 @@ function importSelectedBookmarks() {
 
 onMounted(async () => {
   if (!supported) return
-  stopWatchingPermission = subscribeToBrowserBookmarkPermissionChanges(() => { void syncBookmarkPermission() })
+  stopWatchingPermission = subscribeToBrowserBookmarkPermissionChanges(handleBookmarkPermissionChange)
   await syncBookmarkPermission()
 })
 

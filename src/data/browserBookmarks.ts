@@ -73,7 +73,12 @@ export function subscribeToBrowserBookmarks(listener: () => void): () => void {
 export function subscribeToBrowserBookmarkPermissionChanges(listener: () => void): () => void {
   const permissions = extensionApi()?.permissions
   if (!permissions) return () => {}
+  const handleChange = (details: unknown) => {
+    if (typeof details !== 'object' || details === null || !('permissions' in details)) return
+    const changedPermissions = details.permissions
+    if (Array.isArray(changedPermissions) && changedPermissions.includes('bookmarks')) listener()
+  }
   const events = [permissions.onAdded, permissions.onRemoved].filter((event): event is ChromeEvent => Boolean(event))
-  events.forEach((event) => event.addListener(listener))
-  return () => events.forEach((event) => event.removeListener(listener))
+  events.forEach((event) => event.addListener(handleChange))
+  return () => events.forEach((event) => event.removeListener(handleChange))
 }

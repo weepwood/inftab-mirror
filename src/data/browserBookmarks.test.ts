@@ -13,7 +13,7 @@ function event() {
   return {
     addListener: vi.fn((listener: (...args: unknown[]) => void) => listeners.add(listener)),
     removeListener: vi.fn((listener: (...args: unknown[]) => void) => listeners.delete(listener)),
-    fire: () => listeners.forEach((listener) => listener()),
+    fire: (...args: unknown[]) => listeners.forEach((listener) => listener(...args)),
     listeners,
   }
 }
@@ -61,7 +61,7 @@ describe('optional browser bookmark access', () => {
     expect(onRemoved.listeners.size).toBe(0)
   })
 
-  it('subscribes to optional permission changes and cleans them up', () => {
+  it('subscribes only to bookmark permission changes and cleans them up', () => {
     const onAdded = event()
     const onRemoved = event()
     vi.stubGlobal('chrome', {
@@ -72,7 +72,8 @@ describe('optional browser bookmark access', () => {
     const listener = vi.fn()
     const unsubscribe = subscribeToBrowserBookmarkPermissionChanges(listener)
 
-    onRemoved.fire()
+    onAdded.fire({ permissions: ['history'] })
+    onRemoved.fire({ permissions: ['bookmarks'] })
     expect(listener).toHaveBeenCalledOnce()
     unsubscribe()
     expect(onAdded.listeners.size).toBe(0)
