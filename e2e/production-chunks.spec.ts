@@ -34,6 +34,30 @@ test('quick translation retries a failed production chunk and opens the encoded 
   expect(translationChunkAttempts).toBe(2)
 })
 
+test('quick translation keeps the query that was submitted while its chunk loads', async ({ page }) => {
+  let releaseChunk!: () => void
+  let chunkRequested!: () => void
+  const chunkRequest = new Promise<void>((resolve) => { chunkRequested = resolve })
+  const chunkGate = new Promise<void>((resolve) => { releaseChunk = resolve })
+  await page.route('**/assets/translation-*.js', async (route) => {
+    chunkRequested()
+    await chunkGate
+    await route.continue()
+  })
+  await page.route('https://translate.google.com/**', (route) => route.fulfill({
+    contentType: 'text/html',
+    body: '<title>Translation test</title>',
+  }))
+  const search = page.getByRole('searchbox', { name: '输入并搜索' })
+  await search.fill('first query')
+  await page.getByRole('button', { name: '翻译成简体中文' }).click()
+  await chunkRequest
+  await search.fill('second query')
+  releaseChunk()
+
+  await expect(page).toHaveURL(/translate\.google\.com\/\?sl=auto&tl=zh-CN&text=first%20query&op=translate/)
+})
+
 test('quick translation reports an exhausted production chunk without an unhandled page error', async ({ page }) => {
   await page.route('**/assets/translation-*.js', (route) => route.fulfill({ status: 503, body: 'offline' }))
   await page.getByRole('searchbox', { name: '输入并搜索' }).fill('hello')

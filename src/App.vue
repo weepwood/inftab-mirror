@@ -439,9 +439,10 @@ function submitSearch() {
 
 async function submitTranslation() {
   if (localSearchMode.value) return
+  const submittedQuery = query.value
   try {
     const { buildTranslationUrl } = await retryAsyncLoad(() => import('./data/translation'))
-    const destination = buildTranslationUrl(query.value)
+    const destination = buildTranslationUrl(submittedQuery)
     if (destination) window.location.assign(destination)
   } catch {
     searchBar.value?.showTranslationError()
