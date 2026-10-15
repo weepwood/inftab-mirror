@@ -127,6 +127,23 @@ describe('new-tab short viewport layout', () => {
 })
 
 describe('new-tab shortcut dialog asynchronous work', () => {
+  it('preserves shortcut titles up to the shared 80-character data limit', async () => {
+    await mountApp()
+    await openLauncher('settings')
+    await wrapper.get('.settings-add-shortcut').trigger('click')
+
+    const title = '长'.repeat(80)
+    const titleInput = wrapper.get('.shortcut-dialog input[placeholder="例如：GitHub"]')
+    expect(titleInput.attributes('maxlength')).toBe('80')
+    await titleInput.setValue(title)
+    await wrapper.get('.shortcut-dialog input[placeholder="https://example.com"]').setValue('https://long-title.example/')
+    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await flushLocalStorageWrites()
+
+    const shortcuts = JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]') as Array<{ title: string; url: string }>
+    expect(shortcuts).toContainEqual(expect.objectContaining({ title, url: 'https://long-title.example/' }))
+  })
+
   it('ignores a shortcut icon upload after its dialog closes and reopens', async () => {
     let resolveCompression!: (dataUrl: string) => void
     vi.spyOn(imageProcessing, 'compressImageBlob').mockImplementation(() => new Promise((resolve) => { resolveCompression = resolve }))

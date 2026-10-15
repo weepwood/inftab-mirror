@@ -657,7 +657,7 @@ function handleShortcutDialogKeydown(event: KeyboardEvent) {
   }
 }
 function fillShortcutFromBrowserTab(tab: BrowserTabCandidate) {
-  shortcutTitle.value = truncateCodePoints(tab.title, 24)
+  shortcutTitle.value = truncateCodePoints(tab.title, 80)
   shortcutUrl.value = tab.url
   shortcutUrlError.value = ''
 }
@@ -1139,7 +1139,7 @@ onBeforeUnmount(() => {
     <div v-if="shortcutDialog" class="modal-backdrop" @click.self="shortcutDialog = false">
       <form ref="shortcutDialogElement" class="shortcut-dialog" role="dialog" aria-modal="true" aria-labelledby="shortcut-dialog-title" @keydown="handleShortcutDialogKeydown" @submit.prevent="saveShortcut">
         <header><div><h2 id="shortcut-dialog-title">{{ editingId ? '编辑快捷入口' : '添加快捷入口' }}</h2><p>名称和网址可以随时修改</p></div><button type="button" aria-label="关闭" @click="shortcutDialog = false"><X :size="19" /></button></header>
-        <label>名称<input ref="shortcutTitleInput" v-model="shortcutTitle" required maxlength="24" placeholder="例如：GitHub" :disabled="savingShortcut" /></label>
+        <label>名称<input ref="shortcutTitleInput" v-model="shortcutTitle" required maxlength="80" placeholder="例如：GitHub" :disabled="savingShortcut" /></label>
         <label>所属工作区<select v-model="shortcutWorkspaceId" :disabled="savingShortcut"><option v-for="workspace in homeWorkspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></select></label>
         <p v-if="shortcutLimitReached" class="backup-error" role="status">最多只能保存 500 个快捷入口。</p>
         <BrowserTabImport v-if="canImportBrowserTabs && !savingShortcut" @select="fillShortcutFromBrowserTab" />

@@ -125,6 +125,24 @@ test('creates a shortcut and keeps it after reloading the new tab', async ({ pag
   await expect(page.getByRole('button', { name: '打开E2E Example' })).toBeVisible()
 })
 
+test('accepts and preserves shortcut titles up to the shared 80-character limit', async ({ page }) => {
+  const title = '长'.repeat(80)
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByRole('button', { name: /添加快捷入口/ }).click()
+  const dialog = page.locator('.shortcut-dialog')
+  const titleInput = dialog.getByPlaceholder('例如：GitHub')
+  await expect(titleInput).toHaveAttribute('maxlength', '80')
+  await titleInput.pressSequentially(title)
+  await expect(titleInput).toHaveValue(title)
+  await dialog.getByPlaceholder('https://example.com').fill('https://long-title.example/')
+  await dialog.getByRole('button', { name: '保存' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => {
+    const shortcuts = JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]') as Array<{ title: string; url: string }>
+    return shortcuts.some((item) => item.title === '长'.repeat(80) && item.url === 'https://long-title.example/')
+  })).toBe(true)
+})
+
 test('creates and restores a shortcut when native randomUUID is unavailable', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(Crypto.prototype, 'randomUUID', { configurable: true, value: undefined })
