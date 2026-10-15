@@ -100,6 +100,20 @@ function retry() {
   else void syncPermission()
 }
 
+function handlePermissionChange() {
+  permissionSequence += 1
+  refreshSequence += 1
+  if (refreshTimer) clearTimeout(refreshTimer)
+  refreshTimer = undefined
+  stopListening?.()
+  stopListening = undefined
+  permissionGranted.value = false
+  entries.value = []
+  loading.value = false
+  error.value = ''
+  void syncPermission()
+}
+
 watch(query, () => {
   refreshSequence += 1
   if (refreshTimer) clearTimeout(refreshTimer)
@@ -127,7 +141,7 @@ function formatVisitTime(timestamp: number) {
 
 onMounted(async () => {
   if (!supported) return
-  stopWatchingPermission = subscribeToBrowserHistoryPermissionChanges(() => { void syncPermission() })
+  stopWatchingPermission = subscribeToBrowserHistoryPermissionChanges(handlePermissionChange)
   await syncPermission()
 })
 

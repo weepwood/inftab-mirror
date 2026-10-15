@@ -163,6 +163,38 @@ describe('browser history panel', () => {
     expect(mounted.find('[role="status"]').exists()).toBe(false)
   })
 
+  it('hides history immediately when permission changes and ignores an in-flight result', async () => {
+    const permissionRecheck = deferred<boolean>()
+    const pendingSearch = deferred<Awaited<ReturnType<typeof historyApi.searchBrowserHistory>>>()
+    let onPermissionChange: (() => void) | undefined
+    historyApi.hasBrowserHistoryPermission
+      .mockResolvedValueOnce(true)
+      .mockReturnValueOnce(permissionRecheck.promise)
+    historyApi.searchBrowserHistory.mockReturnValueOnce(pendingSearch.promise)
+    historyApi.subscribeToBrowserHistoryPermissionChanges.mockImplementation((listener: () => void) => {
+      onPermissionChange = listener
+      return vi.fn()
+    })
+    const mounted = mount(HistoryPanel)
+    await flushPromises()
+
+    onPermissionChange?.()
+    await flushPromises()
+    expect(mounted.text()).toContain('连接当前浏览器的历史记录')
+    expect(mounted.find('a').exists()).toBe(false)
+
+    permissionRecheck.resolve(false)
+    await flushPromises()
+    pendingSearch.resolve([
+      { id: 'private', title: 'Private late result', url: 'https://private.example/', lastVisitTime: 1_700_000_000_000, visitCount: 1 },
+    ])
+    await flushPromises()
+
+    expect(mounted.find('a').exists()).toBe(false)
+    expect(mounted.text()).not.toContain('Private late result')
+    mounted.unmount()
+  })
+
   it('clears the previous query results while the next search is debounced', async () => {
     vi.useFakeTimers()
     const nextSearch = deferred<Awaited<ReturnType<typeof historyApi.searchBrowserHistory>>>()

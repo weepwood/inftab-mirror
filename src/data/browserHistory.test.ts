@@ -13,7 +13,7 @@ function event() {
   return {
     addListener: vi.fn((listener: (...args: unknown[]) => void) => listeners.add(listener)),
     removeListener: vi.fn((listener: (...args: unknown[]) => void) => listeners.delete(listener)),
-    fire: () => listeners.forEach((listener) => listener()),
+    fire: (...args: unknown[]) => listeners.forEach((listener) => listener(...args)),
     listeners,
   }
 }
@@ -79,7 +79,8 @@ describe('optional browser history access', () => {
 
     onVisited.fire()
     onVisitRemoved.fire()
-    onRemoved.fire()
+    onAdded.fire({ permissions: ['bookmarks'] })
+    onRemoved.fire({ permissions: ['history'] })
     expect(historyListener).toHaveBeenCalledTimes(2)
     expect(permissionListener).toHaveBeenCalledOnce()
 

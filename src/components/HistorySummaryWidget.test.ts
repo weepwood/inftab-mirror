@@ -8,7 +8,7 @@ function event() {
   return {
     addListener(listener: (...args: unknown[]) => void) { listeners.add(listener) },
     removeListener(listener: (...args: unknown[]) => void) { listeners.delete(listener) },
-    fire() { listeners.forEach((listener) => listener()) },
+    fire(...args: unknown[]) { listeners.forEach((listener) => listener(...args)) },
     listeners,
   }
 }
@@ -82,7 +82,7 @@ describe('HistorySummaryWidget', () => {
     await flushPromises()
     expect(search).toHaveBeenCalledTimes(2)
 
-    permissionRemoved.fire()
+    permissionRemoved.fire({ permissions: ['history'] })
     await flushPromises()
     expect(wrapper.findAll('a')).toHaveLength(0)
     expect(wrapper.text()).toContain('打开浏览历史面板并启用权限')
@@ -100,7 +100,7 @@ describe('HistorySummaryWidget', () => {
     wrapper = mount(HistorySummaryWidget)
     await flushPromises()
 
-    permissionRemoved.fire()
+    permissionRemoved.fire({ permissions: ['history'] })
     await flushPromises()
     pendingSearch.resolve([{ id: 'secret', url: 'https://private.example/', title: 'Private page', lastVisitTime: Date.now(), visitCount: 1 }])
     await flushPromises()
