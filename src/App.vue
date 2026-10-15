@@ -1099,7 +1099,6 @@ onBeforeUnmount(() => {
 
     <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" @open="openItem" @remove="toggleDockItem" />
 
-    <img class="windmill" :src="`${baseUrl}windmill.svg`" alt="" />
     <div v-if="storageError" class="storage-error-toast" role="alert">
       <span>{{ storageError }}</span>
       <button class="storage-error-export" type="button" @click="downloadBackup">导出备份</button>
