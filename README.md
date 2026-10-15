@@ -74,6 +74,8 @@ reference/
 
 ## 已实现
 
+按平台和功能分类的当前能力清单见 [`docs/implemented-features.md`](docs/implemented-features.md)。
+
 - 百度、Google、Bing、搜狗、360、Yahoo 和 DuckDuckGo 搜索；支持网页、图片、新闻、视频和地图分类
 - 可添加最多 20 个自定义搜索引擎；HTTPS 查询模板会安全编码搜索词，并随本地数据一起备份和迁移
 - 浏览器扩展可按需授权读取浏览器书签、筛选并将条目预填到首页快捷入口；网站版本会说明该能力仅在扩展中可用
