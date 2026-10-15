@@ -8,6 +8,19 @@ function jsonResponse(value: unknown, ok = true): Response {
 }
 
 describe('Hacker News feed', () => {
+  it('keeps Unicode intact at the story title limit', async () => {
+    const title = `${'x'.repeat(239)}😀tail`
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/topstories.json')) return jsonResponse([99])
+      return jsonResponse({ id: 99, type: 'story', title, url: 'https://example.com/story' })
+    })
+
+    await expect(fetchHackerNewsStories(new AbortController().signal, fetcher)).resolves.toEqual([
+      { id: 99, title: `${'x'.repeat(239)}😀`, url: 'https://example.com/story', source: 'example.com', points: 0, comments: 0 },
+    ])
+  })
+
   it('loads a small ranked feed and labels each story with its source', async () => {
     const requestOptions: RequestInit[] = []
     const fetcher = vi.fn(async (input: RequestInfo | URL, options?: RequestInit) => {

@@ -2,6 +2,7 @@
 import { nextTick, ref } from 'vue'
 import { ArrowLeft, ArrowRight, Check, Plus, Pencil, Trash2, X } from '@lucide/vue'
 import { defaultHomeWorkspaceId, maxHomeWorkspaces, maxHomeWorkspaceNameLength, type HomeWorkspace } from '../data/homeWorkspaces'
+import { truncateCodePoints } from '../data/text'
 
 const props = defineProps<{
   workspaces: HomeWorkspace[]
@@ -38,7 +39,7 @@ function cancelRename() {
 
 function commitRename() {
   const workspace = activeWorkspace()
-  const name = draft.value.trim().slice(0, maxHomeWorkspaceNameLength)
+  const name = truncateCodePoints(draft.value.trim(), maxHomeWorkspaceNameLength)
   if (!workspace || !name) {
     nameError.value = '请输入工作区名称。'
     return

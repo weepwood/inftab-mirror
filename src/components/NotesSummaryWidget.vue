@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Note } from '../types'
+import { truncateCodePoints } from '../data/text'
 
 const props = defineProps<{ notes: Note[]; activeId: string }>()
 const note = computed(() => props.notes.find((item) => item.id === props.activeId) ?? props.notes[0])
-const preview = computed(() => note.value?.body.trim().replace(/\s+/g, ' ').slice(0, 100) ?? '')
+const preview = computed(() => note.value ? truncateCodePoints(note.value.body.trim().replace(/\s+/g, ' '), 100) : '')
 </script>
 
 <template>

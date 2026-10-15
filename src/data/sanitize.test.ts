@@ -10,7 +10,9 @@ import {
   sanitizePreferences,
   sanitizeShortcuts,
   sanitizeTodos,
+  sanitizeWeatherCity,
 } from './sanitize'
+import { sanitizeHabits } from './habits'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -81,6 +83,42 @@ describe('local state sanitization', () => {
 
     expect(shortcuts).toEqual([{ id: 'safe', title: 'Safe', url: 'https://example.com/', color: '#abc', mark: 'S', icon: undefined }])
     expect(sanitizeShortcuts([{ id: 'bundled', title: 'Bundled', url: 'https://example.com', color: '#abc', mark: 'B', icon: 'site-icon.png' }])[0]?.icon).toBe('site-icon.png')
+  })
+
+  it('keeps emoji intact at stored title and mark limits', () => {
+    const shortcut = sanitizeShortcuts([{
+      id: 'unicode', title: `${'x'.repeat(79)}😀tail`, url: 'https://example.com',
+      color: '#abc', mark: `${'m'.repeat(11)}😀tail`,
+    }])[0]
+    const todo = sanitizeTodos([{ id: 'todo', title: `${'x'.repeat(499)}😀tail`, done: false }])[0]
+    const note = sanitizeNotes([{
+      id: 'note', title: `${'x'.repeat(499)}😀tail`, body: `${'b'.repeat(499_999)}😀tail`, updatedAt: 1,
+    }])[0]
+
+    expect(shortcut?.title).toBe(`${'x'.repeat(79)}😀`)
+    expect(shortcut?.mark).toBe(`${'m'.repeat(11)}😀`)
+    expect(todo?.title).toBe(`${'x'.repeat(499)}😀`)
+    expect(note?.title).toBe(`${'x'.repeat(499)}😀`)
+    expect(note?.body).toBe('b'.repeat(499_999))
+  })
+
+  it('keeps bounded engine, folder, countdown, habit, and city labels intact', () => {
+    const emoji40 = `${'x'.repeat(39)}😀tail`
+    const emoji80 = `${'x'.repeat(79)}😀tail`
+    const emoji100 = `${'x'.repeat(99)}😀tail`
+    const folder = sanitizeFolders([{
+      id: 'folder', title: emoji80, shortcutIds: [], color: '#abc', mark: `${'m'.repeat(11)}😀tail`,
+    }], [])[0]
+
+    expect(sanitizeCustomSearchEngines([{ id: 'wiki', name: emoji40, template: 'https://example.com/?q={query}' }])[0]?.name)
+      .toBe(`${'x'.repeat(39)}😀`)
+    expect(folder?.title).toBe(`${'x'.repeat(79)}😀`)
+    expect(folder?.mark).toBe(`${'m'.repeat(11)}😀`)
+    expect(sanitizeCountdowns([{ id: 'countdown', title: emoji80, date: '2030-01-01', recurrence: 'once' }])[0]?.title)
+      .toBe(`${'x'.repeat(79)}😀`)
+    expect(sanitizeHabits([{ id: 'habit', title: emoji80, completedDates: [] }])[0]?.title)
+      .toBe(`${'x'.repeat(79)}😀`)
+    expect(sanitizeWeatherCity(emoji100)).toBe(`${'x'.repeat(99)}😀`)
   })
 
   it('keeps launchers when imported colors are invalid and accepts only CSS hex lengths', () => {

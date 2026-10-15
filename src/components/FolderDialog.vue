@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { FolderOpen, Pencil, Trash2, X } from '@lucide/vue'
 import type { Shortcut, ShortcutFolder } from '../types'
 import { createLocalId } from '../data/createId'
+import { truncateCodePoints } from '../data/text'
 
 const props = defineProps<{ folder?: ShortcutFolder; shortcuts: Shortcut[]; unavailableShortcutIds?: string[]; saveError?: string; limitReached?: boolean }>()
 const emit = defineEmits<{
@@ -104,7 +105,7 @@ function save() {
   }
   emit('save', {
     id: props.folder?.id ?? createLocalId(),
-    title: cleanTitle.slice(0, 80),
+    title: truncateCodePoints(cleanTitle, 80),
     shortcutIds: [...new Set(selectedIds.value)],
     color: color.value,
     mark: '▣',

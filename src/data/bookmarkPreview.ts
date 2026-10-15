@@ -1,5 +1,6 @@
 import type { BrowserBookmarkNode } from '../types'
 import { normalizeWebUrl } from './urls'
+import { truncateCodePoints } from './text'
 
 export interface BookmarkPreview {
   id: string
@@ -34,7 +35,7 @@ export function previewBookmarks(tree: BrowserBookmarkNode[]): BookmarkPreview[]
     }
 
     const url = normalizeWebUrl(node.url)
-    if (url) results.push({ id: node.id, title: node.title.trim().slice(0, 120) || url, url })
+    if (url) results.push({ id: node.id, title: truncateCodePoints(node.title.trim(), 120) || url, url })
   }
 
   return results

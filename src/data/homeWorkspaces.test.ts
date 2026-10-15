@@ -31,6 +31,19 @@ describe('homepage workspaces', () => {
     expect(sanitizeActiveHomeWorkspaceId('work-two', workspaces)).toBe('work-two')
   })
 
+  it('truncates workspace names at code point boundaries, including duplicate suffixes', () => {
+    const name = `${'x'.repeat(39)}😀tail`
+    const workspaces = sanitizeHomeWorkspaces([
+      { id: 'default', name, itemIds: [] },
+      { id: 'duplicate', name, itemIds: [] },
+    ])
+
+    expect(workspaces.map((workspace) => workspace.name)).toEqual([
+      `${'x'.repeat(39)}😀`,
+      `${'x'.repeat(36)} (2)`,
+    ])
+  })
+
   it('limits workspace count while preserving the required default space', () => {
     const input: HomeWorkspace[] = Array.from({ length: maxHomeWorkspaces + 5 }, (_, index) => ({
       id: `space-${index}`,

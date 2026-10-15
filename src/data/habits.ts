@@ -1,4 +1,5 @@
 import { isValidCalendarDate } from './countdown'
+import { truncateCodePoints } from './text'
 import type { Habit } from '../types'
 
 export const maxHabits = 100
@@ -22,7 +23,7 @@ export function sanitizeHabits(value: unknown): Habit[] {
     if (typeof item.id !== 'string' || !item.id || item.id.length > 128 || ids.has(item.id)
       || typeof item.title !== 'string' || !Array.isArray(item.completedDates)
       || item.completedDates.length > maxCompletionDatesPerHabit) continue
-    const title = item.title.trim().slice(0, maxHabitTitleLength)
+    const title = truncateCodePoints(item.title.trim(), maxHabitTitleLength)
     if (!title || !item.completedDates.every((date) => typeof date === 'string' && isValidCalendarDate(date))) continue
     ids.add(item.id)
     result.push({

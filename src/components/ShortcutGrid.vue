@@ -3,6 +3,7 @@ import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, r
 import { Bookmark, CalendarDays, Calculator, CloudSun, Folder, History, Image, ListTodo, PartyPopper, Settings, StickyNote } from '@lucide/vue'
 import type { Component } from 'vue'
 import { maxDockItems, type LauncherItem, type PageTransitionEffect } from '../types'
+import { truncateCodePoints } from '../data/text'
 
 const ShortcutContextMenu = defineAsyncComponent(() => import('./ShortcutContextMenu.vue'))
 
@@ -159,7 +160,7 @@ function iconParticles(icon: HTMLElement, direction: number, iconIndex: number, 
     context.font = `700 ${Math.min(25, Number.parseFloat(getComputedStyle(mark).fontSize) || 21)}px system-ui`
     context.textAlign = 'center'
     context.textBaseline = 'middle'
-    context.fillText(mark.textContent?.trim().slice(0, 5) ?? '', 24, 24, 42)
+    context.fillText(truncateCodePoints(mark.textContent?.trim() ?? '', 5), 24, 24, 42)
   }
   let pixels: ImageData
   try {

@@ -822,9 +822,9 @@ describe('useLocalWorkspace custom search engines', () => {
     workspace.addNote()
     expect(workspace.notes.value).toHaveLength(500)
     workspace.updateNote('note-0', 'title', 'T'.repeat(600))
-    workspace.updateNote('note-0', 'body', 'B'.repeat(500_001))
+    workspace.updateNote('note-0', 'body', `${'B'.repeat(499_999)}😀tail`)
     expect(workspace.notes.value[0]?.title).toHaveLength(500)
-    expect(workspace.notes.value[0]?.body).toHaveLength(500_000)
+    expect(workspace.notes.value[0]?.body).toBe('B'.repeat(499_999))
     expect(() => parseWorkspaceBackup(workspace.createBackup())).not.toThrow()
   })
 

@@ -36,4 +36,12 @@ describe('bookmark previews', () => {
       url: `https://example.com/${index}`,
     })))
   })
+
+  it('truncates imported bookmark titles without splitting emoji', () => {
+    expect(previewBookmarks([{
+      id: 'emoji', title: `${'x'.repeat(119)}😀tail`, url: 'https://example.com',
+    }])).toEqual([{
+      id: 'emoji', title: `${'x'.repeat(119)}😀`, url: 'https://example.com/',
+    }])
+  })
 })

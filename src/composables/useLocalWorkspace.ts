@@ -12,6 +12,7 @@ import { defaultHomeWorkspace, defaultHomeWorkspaceId, maxHomeWorkspaceNameLengt
 import type { CountdownItem, CountdownRecurrence, CustomSearchEngine, Habit, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
 import { getLocalDateKey, maxCompletionDatesPerHabit, maxHabits, maxHabitTitleLength } from '../data/habits'
 import { createLocalId } from '../data/createId'
+import { truncateCodePoints, truncateCodeUnits } from '../data/text'
 
 export function useLocalWorkspace() {
   const preferences = useStoredState<Preferences>('inftab.preferences.v1', defaultPreferences, sanitizePreferences)
@@ -236,7 +237,7 @@ export function useLocalWorkspace() {
 
   function createHomeWorkspace(name: string): string | undefined {
     if (homeWorkspaces.value.length >= maxHomeWorkspaces) return undefined
-    const cleanName = name.trim().slice(0, maxHomeWorkspaceNameLength)
+    const cleanName = truncateCodePoints(name.trim(), maxHomeWorkspaceNameLength)
     if (!cleanName || homeWorkspaces.value.some((workspace) => workspace.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase())) return undefined
     const id = createLocalId()
     homeWorkspaces.value = [...homeWorkspaces.value, { id, name: cleanName, itemIds: [...builtInLauncherIds] }]
@@ -245,7 +246,7 @@ export function useLocalWorkspace() {
   }
 
   function renameHomeWorkspace(id: string, name: string): boolean {
-    const cleanName = name.trim().slice(0, maxHomeWorkspaceNameLength)
+    const cleanName = truncateCodePoints(name.trim(), maxHomeWorkspaceNameLength)
     if (!cleanName || homeWorkspaces.value.some((workspace) => workspace.id !== id && workspace.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase())) return false
     const exists = homeWorkspaces.value.some((workspace) => workspace.id === id)
     if (!exists) return false
@@ -388,7 +389,7 @@ export function useLocalWorkspace() {
   }
 
   function addTodo(title: string) {
-    const cleanTitle = title.trim().slice(0, 500)
+    const cleanTitle = truncateCodePoints(title.trim(), 500)
     if (!cleanTitle || todos.value.length >= 500) return
     todos.value = [{ id: createLocalId(), title: cleanTitle, done: false }, ...todos.value]
   }
@@ -398,7 +399,7 @@ export function useLocalWorkspace() {
   }
 
   function updateTodo(id: string, title: string) {
-    const nextTitle = title.trim().slice(0, 500)
+    const nextTitle = truncateCodePoints(title.trim(), 500)
     if (!nextTitle) return
     todos.value = todos.value.map((item) => item.id === id ? { ...item, title: nextTitle } : item)
   }
@@ -412,13 +413,13 @@ export function useLocalWorkspace() {
   }
 
   function addHabit(title: string) {
-    const cleanTitle = title.trim().slice(0, maxHabitTitleLength)
+    const cleanTitle = truncateCodePoints(title.trim(), maxHabitTitleLength)
     if (!cleanTitle || habits.value.length >= maxHabits) return
     habits.value = [{ id: createLocalId(), title: cleanTitle, completedDates: [] }, ...habits.value]
   }
 
   function updateHabit(id: string, title: string) {
-    const cleanTitle = title.trim().slice(0, maxHabitTitleLength)
+    const cleanTitle = truncateCodePoints(title.trim(), maxHabitTitleLength)
     if (!cleanTitle) return
     habits.value = habits.value.map((habit) => habit.id === id ? { ...habit, title: cleanTitle } : habit)
   }
@@ -441,14 +442,14 @@ export function useLocalWorkspace() {
   }
 
   function addCountdown(title: string, date: string, recurrence: CountdownRecurrence) {
-    const cleanTitle = title.trim().slice(0, 80)
+    const cleanTitle = truncateCodePoints(title.trim(), 80)
     if (!cleanTitle || !isValidCalendarDate(date) || (recurrence !== 'once' && recurrence !== 'yearly')) return
     const next = sanitizeCountdowns([{ id: createLocalId(), title: cleanTitle, date, recurrence }, ...countdowns.value])
     if (next.length > countdowns.value.length) countdowns.value = next
   }
 
   function updateCountdown(id: string, title: string, date: string, recurrence: CountdownRecurrence) {
-    const cleanTitle = title.trim().slice(0, 80)
+    const cleanTitle = truncateCodePoints(title.trim(), 80)
     if (!cleanTitle || !isValidCalendarDate(date) || (recurrence !== 'once' && recurrence !== 'yearly')) return
     countdowns.value = sanitizeCountdowns(countdowns.value.map((item) => item.id === id
       ? { ...item, title: cleanTitle, date, recurrence }
@@ -467,7 +468,7 @@ export function useLocalWorkspace() {
   }
 
   function updateNote(id: string, field: 'title' | 'body', value: string) {
-    const boundedValue = value.slice(0, field === 'title' ? 500 : 500_000)
+    const boundedValue = field === 'title' ? truncateCodePoints(value, 500) : truncateCodeUnits(value, 500_000)
     notes.value = notes.value.map((note) => note.id === id ? { ...note, [field]: boundedValue, updatedAt: Date.now() } : note)
   }
 
@@ -481,7 +482,7 @@ export function useLocalWorkspace() {
   }
 
   function addCustomSearchEngine(name: string, template: string) {
-    const cleanName = name.trim().slice(0, 40)
+    const cleanName = truncateCodePoints(name.trim(), 40)
     const cleanTemplate = template.trim()
     if (!cleanName || !isValidCustomSearchTemplate(cleanTemplate) || customSearchEngines.value.length >= 20) return
     const engine: CustomSearchEngine = { id: createLocalId(), name: cleanName, template: cleanTemplate }

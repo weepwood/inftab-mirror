@@ -46,8 +46,9 @@ describe('optional browser history access', () => {
   })
 
   it('bounds searches and filters non-web or malformed history entries', async () => {
+    const longTitle = `${'x'.repeat(499)}😀tail`
     const search = vi.fn().mockResolvedValue([
-      { id: 'web', url: 'https://example.com/path', title: 'Example', lastVisitTime: 1_700_000_000_000, visitCount: 3 },
+      { id: 'web', url: 'https://example.com/path', title: longTitle, lastVisitTime: 1_700_000_000_000, visitCount: 3 },
       { id: 'settings', url: 'chrome://settings/', title: 'Settings', lastVisitTime: 1_700_000_000_000, visitCount: 1 },
       { id: 'credentialed', url: 'https://user:secret@example.com/', title: 'Example login', lastVisitTime: 1_700_000_000_000, visitCount: 1 },
       { id: 'missing-time', url: 'https://invalid.example/', title: 'Invalid', lastVisitTime: Number.NaN, visitCount: 1 },
@@ -58,7 +59,7 @@ describe('optional browser history access', () => {
     const results = await searchBrowserHistory('  example  ', 500)
 
     expect(search).toHaveBeenCalledWith({ text: 'example', startTime: 0, maxResults: 100 })
-    expect(results).toEqual([{ id: 'web', url: 'https://example.com/path', title: 'Example', lastVisitTime: 1_700_000_000_000, visitCount: 3 }])
+    expect(results).toEqual([{ id: 'web', url: 'https://example.com/path', title: `${'x'.repeat(499)}😀`, lastVisitTime: 1_700_000_000_000, visitCount: 3 }])
   })
 
   it('subscribes to history and permission changes and cleans up listeners', () => {

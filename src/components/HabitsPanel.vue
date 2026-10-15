@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Check, CheckCircle2, Pencil, Plus, Trash2, X } from '@lucide/vue'
 import { getLocalDateKey, isHabitCompleteOn, maxHabits, maxHabitTitleLength } from '../data/habits'
+import { truncateCodePoints } from '../data/text'
 import type { Habit } from '../types'
 
 const props = defineProps<{ items: Habit[] }>()
@@ -26,7 +27,7 @@ function resetForm() {
 }
 
 function submit() {
-  const title = (editingId.value ? editingTitle.value : draft.value).trim().slice(0, maxHabitTitleLength)
+  const title = truncateCodePoints((editingId.value ? editingTitle.value : draft.value).trim(), maxHabitTitleLength)
   if (!title) return
   if (editingId.value) emit('update', editingId.value, title)
   else emit('add', title)

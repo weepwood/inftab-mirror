@@ -1,3 +1,5 @@
+import { truncateCodePoints } from './text'
+
 interface ChromeEvent {
   addListener(listener: (...args: unknown[]) => void): void
   removeListener(listener: (...args: unknown[]) => void): void
@@ -70,7 +72,7 @@ export async function searchBrowserHistory(text = '', maxResults = maxHistoryRes
   const history = extensionApi()?.history
   if (!history) throw new Error('浏览历史功能当前不可用。')
   const results = await history.search({
-    text: text.trim().slice(0, 200),
+    text: truncateCodePoints(text.trim(), 200),
     startTime: 0,
     maxResults: Math.min(maxHistoryResults, Math.max(1, Math.floor(maxResults))),
   })
@@ -81,7 +83,7 @@ export async function searchBrowserHistory(text = '', maxResults = maxHistoryRes
     .map((entry) => ({
       id: entry.id,
       url: entry.url,
-      title: typeof entry.title === 'string' ? entry.title.slice(0, 500) : '',
+      title: typeof entry.title === 'string' ? truncateCodePoints(entry.title, 500) : '',
       lastVisitTime: entry.lastVisitTime,
       visitCount: Number.isFinite(entry.visitCount) ? Math.max(0, entry.visitCount) : 0,
     }))

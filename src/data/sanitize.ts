@@ -4,6 +4,7 @@ import { isValidCalendarDate } from './countdown'
 import { sanitizeHabits } from './habits'
 import { isValidCustomSearchTemplate } from './search'
 import { normalizeWebUrl } from './urls'
+import { truncateCodePoints, truncateCodeUnits } from './text'
 import { availableHomeWidgetIds, maxDockItems, type CountdownItem, type CustomSearchEngine, type HomeWidgetId, type Note, type Preferences, type SearchMode, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
 
 const engines = new Set(['google', 'baidu', 'bing', 'duckduckgo', 'sogou', 'yahoo', '360'])
@@ -28,7 +29,7 @@ function boundedNumber(value: unknown, fallback: number, min: number, max: numbe
 }
 
 function boundedText(value: unknown, fallback: string, maxLength: number) {
-  return typeof value === 'string' ? value.trim().slice(0, maxLength) : fallback
+  return typeof value === 'string' ? truncateCodePoints(value.trim(), maxLength) : fallback
 }
 
 function sanitizePaletteColor(value: unknown, fallback: string) {
@@ -129,7 +130,7 @@ export function sanitizeCustomSearchEngines(value: unknown): CustomSearchEngine[
   for (const candidate of value.slice(0, 20)) {
     if (!record(candidate) || typeof candidate.id !== 'string' || !customEngineId.test(candidate.id)
       || typeof candidate.name !== 'string' || typeof candidate.template !== 'string') continue
-    const name = candidate.name.trim().slice(0, 40)
+    const name = truncateCodePoints(candidate.name.trim(), 40)
     const template = candidate.template.trim()
     if (!name || !isValidCustomSearchTemplate(template) || result.has(candidate.id)) continue
     result.set(candidate.id, { id: candidate.id, name, template })
@@ -168,14 +169,14 @@ export function sanitizeShortcuts(value: unknown): Shortcut[] {
     const url = normalizeWebUrl(item.url)
     if (!validId(item.id) || reservedLauncherIds.has(item.id) || typeof item.title !== 'string'
       || typeof item.mark !== 'string' || !url) return undefined
-    const title = item.title.trim().slice(0, 80)
+    const title = truncateCodePoints(item.title.trim(), 80)
     if (!title) return undefined
     return {
       id: item.id,
       title,
       url,
       color: sanitizePaletteColor(item.color, fallbackShortcutColor),
-      mark: item.mark.trim().slice(0, 12),
+      mark: truncateCodePoints(item.mark.trim(), 12),
       icon: sanitizeShortcutIcon(item.icon),
     }
   })
@@ -203,9 +204,9 @@ export function sanitizeFolders(
     members.forEach((id) => claimedShortcutIds.add(id))
     result.push({
       id: item.id,
-      title: item.title.trim().slice(0, 80),
+      title: truncateCodePoints(item.title.trim(), 80),
       color: sanitizePaletteColor(item.color, fallbackFolderColor),
-      mark: item.mark.trim().slice(0, 12),
+      mark: truncateCodePoints(item.mark.trim(), 12),
       shortcutIds: [...new Set(members)],
     })
   }
@@ -215,7 +216,7 @@ export function sanitizeFolders(
 export function sanitizeTodos(value: unknown): TodoItem[] {
   return uniqueRecords(value, (item) => {
     if (!validId(item.id) || typeof item.title !== 'string' || typeof item.done !== 'boolean') return undefined
-    const title = item.title.trim().slice(0, 500)
+    const title = truncateCodePoints(item.title.trim(), 500)
     return title ? { id: item.id, title, done: item.done } : undefined
   })
 }
@@ -226,7 +227,7 @@ export function sanitizeCountdowns(value: unknown): CountdownItem[] {
   return uniqueRecords(value, (item) => {
     if (!validId(item.id) || typeof item.title !== 'string' || !isValidCalendarDate(item.date)
       || (item.recurrence !== 'once' && item.recurrence !== 'yearly')) return undefined
-    const title = item.title.trim().slice(0, 80)
+    const title = truncateCodePoints(item.title.trim(), 80)
     return title ? { id: item.id, title, date: item.date, recurrence: item.recurrence } : undefined
   })
 }
@@ -235,7 +236,7 @@ export function sanitizeNotes(value: unknown): Note[] {
   return uniqueRecords(value, (item) => {
     if (!validId(item.id) || typeof item.title !== 'string' || typeof item.body !== 'string'
       || typeof item.updatedAt !== 'number' || !Number.isFinite(item.updatedAt)) return undefined
-    return { id: item.id, title: item.title.slice(0, 500), body: item.body.slice(0, 500_000), updatedAt: Math.max(0, item.updatedAt) }
+    return { id: item.id, title: truncateCodePoints(item.title, 500), body: truncateCodeUnits(item.body, 500_000), updatedAt: Math.max(0, item.updatedAt) }
   })
 }
 

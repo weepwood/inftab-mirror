@@ -1,4 +1,5 @@
 import { normalizeWebUrl } from './urls'
+import { truncateCodePoints } from './text'
 
 export const hackerNewsHostPermission = 'https://hacker-news.firebaseio.com/*'
 export const hackerNewsCacheKey = 'inftab.hacker-news-cache.v1'
@@ -67,7 +68,7 @@ function parseStory(value: unknown): HackerNewsStory | undefined {
   const item = value as Record<string, unknown>
   if (!Number.isSafeInteger(item.id) || (item.id as number) <= 0 || item.type !== 'story'
     || item.deleted === true || item.dead === true || typeof item.title !== 'string') return undefined
-  const title = item.title.trim().slice(0, 240)
+  const title = truncateCodePoints(item.title.trim(), 240)
   if (!title) return undefined
   const articleUrl = normalizeWebUrl(item.url)
   const discussionUrl = `https://news.ycombinator.com/item?id=${item.id}`
@@ -87,7 +88,7 @@ function parseCachedStory(value: unknown): HackerNewsStory | undefined {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined
   const item = value as Record<string, unknown>
   if (!Number.isSafeInteger(item.id) || (item.id as number) <= 0 || typeof item.title !== 'string') return undefined
-  const title = item.title.trim().slice(0, 240)
+  const title = truncateCodePoints(item.title.trim(), 240)
   const url = normalizeWebUrl(item.url)
   if (!title || !url) return undefined
   const host = new URL(url).hostname

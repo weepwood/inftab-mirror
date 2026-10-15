@@ -1,3 +1,5 @@
+import { truncateCodePoints } from './text'
+
 export const defaultHomeWorkspaceId = 'default'
 export const maxHomeWorkspaces = 20
 export const maxHomeWorkspaceNameLength = 40
@@ -17,14 +19,14 @@ function validId(value: unknown): value is string {
 }
 
 function uniqueName(name: string, used: Set<string>, fallback: string): string {
-  const base = (name.trim() || fallback).slice(0, maxHomeWorkspaceNameLength)
+  const base = truncateCodePoints(name.trim() || fallback, maxHomeWorkspaceNameLength)
   if (!used.has(base.toLocaleLowerCase())) {
     used.add(base.toLocaleLowerCase())
     return base
   }
   for (let suffix = 2; suffix < 10_000; suffix += 1) {
     const tail = ` (${suffix})`
-    const candidate = `${base.slice(0, maxHomeWorkspaceNameLength - tail.length)}${tail}`
+    const candidate = `${truncateCodePoints(base, maxHomeWorkspaceNameLength - tail.length)}${tail}`
     if (!used.has(candidate.toLocaleLowerCase())) {
       used.add(candidate.toLocaleLowerCase())
       return candidate
@@ -37,7 +39,7 @@ function parseWorkspace(value: unknown): HomeWorkspace | undefined {
   if (!isRecord(value) || !validId(value.id) || !Array.isArray(value.itemIds)) return undefined
   return {
     id: value.id,
-    name: typeof value.name === 'string' ? value.name.trim().slice(0, maxHomeWorkspaceNameLength) : '',
+    name: typeof value.name === 'string' ? truncateCodePoints(value.name.trim(), maxHomeWorkspaceNameLength) : '',
     itemIds: [...new Set(value.itemIds.filter(validId))],
   }
 }
