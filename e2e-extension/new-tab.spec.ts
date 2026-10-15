@@ -131,6 +131,11 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
     await page.reload()
     await expect(page.locator('[data-widget-id="habits-summary"]')).toContainText('今天完成 1 / 1 个习惯')
 
+    await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+    const extensionSettings = page.getByRole('dialog', { name: '设置' })
+    await extensionSettings.getByRole('button', { name: '应用浏览发现组件方案' }).click()
+    await extensionSettings.getByRole('button', { name: '关闭' }).click()
+
     const optionalPermissions = await page.evaluate(() => {
       const permissions = (window as unknown as {
         chrome: { permissions: { contains: (details: { permissions: string[] }) => Promise<boolean> } }
@@ -144,15 +149,12 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
     })
     expect(optionalPermissions).toEqual([false, false, false, false])
 
-    await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
-    const extensionSettings = page.getByRole('dialog', { name: '设置' })
-    await extensionSettings.getByLabel('显示天气小组件').check()
-    await extensionSettings.getByLabel('显示热门资讯小组件').check()
-    await extensionSettings.getByLabel('显示常用网站小组件').check()
-    await extensionSettings.getByRole('button', { name: '关闭' }).click()
-    await expect(page.locator('[data-widget-id="weather-summary"] .weather-summary-authorize')).toContainText('授权并获取天气')
+    await expect(page.locator('[data-widget-id="weather-summary"]')).toContainText('天气联网功能尚未授权')
     await expect(page.locator('[data-widget-id="news-summary"]')).toContainText('需要单独授权网络访问')
     await expect(page.locator('[data-widget-id="top-sites-summary"] .top-sites-summary-enable')).toBeVisible()
+    await expect(page.locator('[data-widget-id="bookmarks-summary"]')).toContainText('此功能需要浏览器扩展')
+    await expect(page.locator('[data-widget-id="history-summary"]')).toContainText('此功能需要浏览器扩展')
+    await expect(page.locator('[data-widget-id="weather-summary"] .weather-summary-authorize')).toContainText('授权并获取天气')
     await expect(page.locator('[data-widget-id="top-sites-summary"] .top-sites-summary-list')).toHaveCount(0)
     const topSitesPermission = await page.evaluate(() => (window as unknown as {
       chrome: { permissions: { contains: (details: { permissions: string[] }) => Promise<boolean> } }
