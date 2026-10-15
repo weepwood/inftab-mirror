@@ -370,15 +370,15 @@ test('exports in-memory edits after browser storage rejects a save', async ({ pa
   await todoInput.press('Enter')
   await expect(page.locator('.storage-error-toast')).toContainText('本地数据未能保存')
   await page.getByRole('dialog', { name: '待办事项' }).getByRole('button', { name: '关闭' }).click()
-  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
 
   const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '导出 JSON 备份' }).click()
+  await page.locator('.storage-error-toast').getByRole('button', { name: '导出备份' }).click()
   const download = await downloadPromise
   const path = await download.path()
   expect(path).not.toBeNull()
   const backup = JSON.parse(await readFile(path!, 'utf8')) as { todos: { title: string }[] }
   expect(backup.todos).toContainEqual(expect.objectContaining({ title: 'Recover this unsaved note' }))
+  await expect(page.locator('.storage-error-toast')).toHaveCount(0)
 })
 
 test('names backup downloads with the local date near UTC midnight', async ({ browser }) => {

@@ -838,8 +838,10 @@ function downloadBackup() {
     anchor.remove()
     window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
     backupExportError.value = ''
+    storageError.value = ''
   } catch (error) {
     backupExportError.value = error instanceof Error ? `导出失败：${error.message}` : '导出失败，请稍后重试。'
+    storageError.value = backupExportError.value
   }
 }
 
@@ -1086,7 +1088,8 @@ onBeforeUnmount(() => {
     <img class="windmill" :src="`${baseUrl}windmill.svg`" alt="" />
     <div v-if="storageError" class="storage-error-toast" role="alert">
       <span>{{ storageError }}</span>
-      <button type="button" aria-label="关闭保存提示" @click="storageError = ''"><X :size="15" /></button>
+      <button class="storage-error-export" type="button" @click="downloadBackup">导出备份</button>
+      <button class="storage-error-dismiss" type="button" aria-label="关闭保存提示" @click="storageError = ''"><X :size="15" /></button>
     </div>
     <footer class="home-footer">渝ICP备15002199号-1</footer>
 
