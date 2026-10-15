@@ -318,6 +318,26 @@ test('search submits an encoded query to the selected engine and category', asyn
   await expect(page).toHaveURL(/bing\.com\/news\/search\?q=AI%20%26%20privacy/)
 })
 
+test('restores a visible search category when stored preferences select a hidden one', async ({ page }) => {
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    const preferences = JSON.parse(localStorage.getItem(key) ?? '{}')
+    localStorage.setItem(key, JSON.stringify({ ...preferences, mode: 'photos', visibleSearchModes: ['html', 'news'] }))
+  })
+  await page.reload()
+
+  await expect(page.getByRole('button', { name: '网页' })).toHaveAttribute('aria-pressed', 'true')
+  await page.route('https://www.baidu.com/**', (route) => route.fulfill({
+    status: 200,
+    contentType: 'text/html',
+    body: '<title>Mock search results</title>',
+  }))
+  const search = page.getByRole('searchbox', { name: '输入并搜索' })
+  await search.fill('visible category')
+  await search.press('Enter')
+  await expect(page).toHaveURL(/www\.baidu\.com\/s\?wd=visible%20category/)
+})
+
 test('a custom search engine can be added and used from the homepage', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByPlaceholder('例如：维基百科').fill('Example Search')

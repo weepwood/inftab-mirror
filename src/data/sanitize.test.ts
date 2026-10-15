@@ -26,7 +26,7 @@ describe('local state sanitization', () => {
     })
 
     expect(result.engine).toBe(defaultPreferences.engine)
-    expect(result.mode).toBe(defaultPreferences.mode)
+    expect(result.mode).toBe('map')
     expect(result.shade).toBe(0)
     expect(result.columns).toBe(12)
     expect(result.pageTransitionMs).toBe(defaultPreferences.pageTransitionMs)
@@ -37,6 +37,12 @@ describe('local state sanitization', () => {
     expect(sanitizePreferences({ themeMode: 'dark' }).themeMode).toBe('dark')
     expect(sanitizePreferences({ themeMode: 'system' }).themeMode).toBe('system')
     expect(sanitizePreferences({ themeMode: 'neon' }).themeMode).toBe('light')
+  })
+
+  it('keeps the selected search type visible and falls back when every type is hidden', () => {
+    expect(sanitizePreferences({ mode: 'photos', visibleSearchModes: ['html', 'news'] }).mode).toBe('html')
+    expect(sanitizePreferences({ mode: 'news', visibleSearchModes: ['html', 'news'] }).mode).toBe('news')
+    expect(sanitizePreferences({ mode: 'photos', visibleSearchModes: [] }).mode).toBe(defaultPreferences.mode)
   })
 
   it('keeps only unique hideable built-in launcher ids', () => {

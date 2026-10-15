@@ -32,6 +32,15 @@ describe('workspace backups', () => {
     expect(parsed.habits).toEqual([])
   })
 
+  it('repairs a selected search type that is hidden in the imported preferences', () => {
+    const parsed = parseWorkspaceBackup(backup({
+      preferences: { ...defaultPreferences, mode: 'photos', visibleSearchModes: ['html', 'news'] },
+    }))
+
+    expect(parsed.preferences.mode).toBe('html')
+    expect(parsed.preferences.visibleSearchModes).toContain(parsed.preferences.mode)
+  })
+
   it('strips layered wallpaper CSS that could trigger hidden remote image requests', () => {
     const parsed = parseWorkspaceBackup(backup({
       preferences: {

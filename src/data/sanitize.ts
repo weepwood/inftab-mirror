@@ -60,6 +60,12 @@ export function sanitizePreferences(value: unknown): Preferences {
   const visibleSearchModes = Array.isArray(raw.visibleSearchModes)
     ? [...new Set(raw.visibleSearchModes.filter((item): item is SearchMode => typeof item === 'string' && searchModes.has(item as SearchMode))) ]
     : [...defaultPreferences.visibleSearchModes]
+  const requestedSearchMode = typeof merged.mode === 'string' && searchModes.has(merged.mode as SearchMode)
+    ? merged.mode as SearchMode
+    : defaultPreferences.mode
+  const mode = visibleSearchModes.includes(requestedSearchMode)
+    ? requestedSearchMode
+    : visibleSearchModes[0] ?? defaultPreferences.mode
   const wallpaper = typeof raw.wallpaper === 'string' && wallpaperChoices.some((choice) => choice.value === raw.wallpaper)
     ? raw.wallpaper
     : defaultPreferences.wallpaper
@@ -88,7 +94,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     engine: typeof merged.engine === 'string' && (engines.has(merged.engine) || /^custom:[\w-]{1,128}$/.test(merged.engine))
       ? merged.engine as Preferences['engine']
       : defaultPreferences.engine,
-    mode: typeof merged.mode === 'string' && searchModes.has(merged.mode as SearchMode) ? merged.mode as SearchMode : defaultPreferences.mode,
+    mode,
     visibleSearchModes,
     showSearchBar: typeof merged.showSearchBar === 'boolean' ? merged.showSearchBar : defaultPreferences.showSearchBar,
     showClock: typeof merged.showClock === 'boolean' ? merged.showClock : defaultPreferences.showClock,
