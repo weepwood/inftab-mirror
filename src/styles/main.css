@@ -258,6 +258,8 @@ select { background-color: #fff; color: #343a40; }
 .section-heading h3 { margin: 0; color: #272b30; font-size: 14px; font-weight: 650; }
 .section-heading p { margin: 4px 0 0; color: #969ba2; font-size: 12px; }
 .settings-subheading { margin: 17px 0 5px; color: #8b9199; font-size: 11px; }
+.home-widget-presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 8px 0; }
+.home-widget-presets button { height: auto; min-height: 36px; padding: 6px; text-align: center; }
 .custom-engine-form { display: grid; gap: 9px; margin-top: 8px; }
 .custom-engine-form .wallpaper-note { margin: 0; }
 .custom-engine-list { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }

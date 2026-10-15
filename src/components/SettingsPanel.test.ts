@@ -56,6 +56,27 @@ describe('SettingsPanel home widgets', () => {
     await countdownLabel.get('input').setValue(false)
     expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({ homeWidgetIds: ['todo-summary'] })
   })
+
+  it('applies a curated widget preset without changing shortcut or widget size preferences', async () => {
+    wrapper = mount(SettingsPanel, {
+      props: {
+        preferences: {
+          ...defaultPreferences,
+          homeWidgetIds: ['countdown-summary'],
+          homeWidgetSizes: { ...defaultPreferences.homeWidgetSizes, 'calendar-summary': 'full' },
+          dockItemIds: ['calendar'],
+        },
+      },
+    })
+
+    await wrapper.get('button[aria-label="应用日常效率组件方案"]').trigger('click')
+
+    expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({
+      homeWidgetIds: ['todo-summary', 'habits-summary', 'focus-timer-summary', 'countdown-summary', 'notes-summary'],
+    })
+    expect(wrapper.emitted('update')?.at(-1)?.[0]).not.toHaveProperty('homeWidgetSizes')
+    expect(wrapper.emitted('update')?.at(-1)?.[0]).not.toHaveProperty('dockItemIds')
+  })
 })
 
 describe('SettingsPanel home dock', () => {

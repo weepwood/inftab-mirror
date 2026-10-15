@@ -7,6 +7,7 @@ import { maxImageUploadBytes, maxWallpaperDataUrlLength } from '../data/imageLim
 import { isValidCustomSearchTemplate } from '../data/search'
 import { availableHomeWidgetIds, maxDockItems, type CustomSearchEngine, type HomeWidgetId, type PageTransitionEffect, type Preferences, type SearchMode, type ThemeMode, type WallpaperRotation } from '../types'
 import { homeWidgetPlugins } from '../plugins/widgetRegistry'
+import { homeWidgetPresets } from '../data/homeWidgetPresets'
 
 const props = withDefaults(defineProps<{ preferences: Preferences; exportError?: string; customEngines?: CustomSearchEngine[] }>(), { customEngines: () => [] })
 const transitionEffects: { id: PageTransitionEffect; label: string }[] = [
@@ -83,6 +84,10 @@ function toggleHomeWidget(id: HomeWidgetId, enabled: boolean) {
   const widgets = props.preferences.homeWidgetIds.filter((widgetId) => widgetId !== id)
   if (enabled) widgets.push(id)
   update('homeWidgetIds', widgets)
+}
+
+function applyHomeWidgetPreset(widgetIds: readonly HomeWidgetId[]) {
+  update('homeWidgetIds', [...widgetIds])
 }
 
 function toggleDockItem(id: string, enabled: boolean) {
@@ -289,6 +294,12 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
     <section class="settings-section">
       <div class="section-heading"><div><h3>快捷入口</h3><p>调整图标网格外观</p></div></div>
       <p class="settings-subheading">首页小组件</p>
+      <div class="home-widget-presets" aria-label="首页小组件方案">
+        <button v-for="preset in homeWidgetPresets" :key="preset.title" class="button-secondary" type="button" :aria-label="`应用${preset.title}组件方案`" @click="applyHomeWidgetPreset(preset.widgetIds)">
+          {{ preset.title }}
+        </button>
+      </div>
+      <p class="wallpaper-note">应用方案会替换当前显示的小组件顺序，已调整的组件尺寸会保留；新闻和天气按各自授权规则运行。</p>
       <label v-for="id in availableHomeWidgetIds" :key="id" class="toggle-row">
         <span>{{ homeWidgetPlugins[id].title }}小组件</span><input type="checkbox" :aria-label="`显示${homeWidgetPlugins[id].title}小组件`" :checked="preferences.homeWidgetIds.includes(id)" @change="toggleHomeWidget(id, ($event.target as HTMLInputElement).checked)" />
       </label>

@@ -1599,6 +1599,38 @@ test('desktop widget shelf fits every enabled widget into a responsive grid', as
   expect(await page.locator('[data-widget-id="todo-summary"]').evaluate((element) => getComputedStyle(element).gridColumn)).toBe('auto')
 })
 
+test('applying a widget preset persists its order and keeps size and dock settings', async ({ page }) => {
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    const preferences = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<string, unknown>
+    const homeWidgetSizes = preferences.homeWidgetSizes as Record<string, string> | undefined
+    localStorage.setItem(key, JSON.stringify({
+      ...preferences,
+      homeWidgetIds: ['calendar-summary'],
+      homeWidgetSizes: { ...homeWidgetSizes, 'todo-summary': 'wide', 'calendar-summary': 'full' },
+      dockItemIds: ['calendar'],
+    }))
+  })
+  await page.reload()
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  const settings = page.getByRole('dialog', { name: '设置' })
+  await settings.getByRole('button', { name: '应用日常效率组件方案' }).click()
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').homeWidgetIds))
+    .toEqual(['todo-summary', 'habits-summary', 'focus-timer-summary', 'countdown-summary', 'notes-summary'])
+  await settings.getByRole('button', { name: '关闭' }).click()
+
+  await expect(page.locator('.home-widget-card')).toHaveCount(5)
+  await expect(page.locator('.home-widget-card').first()).toHaveAttribute('data-widget-id', 'todo-summary')
+  const savedPreferences = await page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}'))
+  expect(savedPreferences.homeWidgetSizes['todo-summary']).toBe('wide')
+  expect(savedPreferences.homeWidgetSizes['calendar-summary']).toBe('full')
+  expect(savedPreferences.dockItemIds).toEqual(['calendar'])
+
+  await page.reload()
+  await expect(page.locator('.home-widget-card')).toHaveCount(5)
+  await expect(page.locator('.home-widget-card').first()).toHaveAttribute('data-widget-id', 'todo-summary')
+})
+
 test('lazy folder editor creates and opens a folder with selected shortcuts', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByRole('button', { name: '新建文件夹' }).click()
