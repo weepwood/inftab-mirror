@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Bookmark, CalendarDays, Calculator, CloudSun, Folder, History, Image, ListTodo, PartyPopper, Settings, StickyNote } from '@lucide/vue'
+import { Bookmark, CalendarDays, Calculator, CloudSun, Folder, History, Image, ListTodo, PartyPopper, Settings, StickyNote, Timer } from '@lucide/vue'
 import type { Component } from 'vue'
 import { maxDockItems, type LauncherItem, type PageTransitionEffect } from '../types'
 import { truncateCodePoints } from '../data/text'
@@ -41,6 +41,7 @@ const itemIcons: Record<string, Component> = {
   countdowns: PartyPopper,
   habits: ListTodo,
   todos: ListTodo,
+  'focus-timer': Timer,
   notes: StickyNote,
   settings: Settings,
   wallpaper: Image,
