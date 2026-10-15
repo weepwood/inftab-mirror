@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { launcherItems, searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
 import { compressImageBlob } from '../data/images'
@@ -44,9 +44,58 @@ const searchEngineTemplate = ref('')
 const searchEngineError = ref('')
 const manageableLauncherItems = launcherItems.filter((item) => item.action && item.id !== 'settings')
 
+const settingsGroups = [
+  { id: 'appearance', label: '外观' },
+  { id: 'search', label: '搜索' },
+  { id: 'home', label: '首页' },
+  { id: 'components', label: '组件' },
+  { id: 'data', label: '数据' },
+] as const
+type SettingsGroupId = (typeof settingsGroups)[number]['id']
+const activeGroup = ref<SettingsGroupId>('appearance')
+const settingsRoot = ref<HTMLElement>()
+const settingsNav = ref<HTMLElement>()
+let panelScrollElement: HTMLElement | null = null
+
+function groupElement(id: SettingsGroupId) {
+  return settingsRoot.value?.querySelector<HTMLElement>(`[data-group="${id}"]`) ?? null
+}
+
+function scrollToGroup(id: SettingsGroupId) {
+  activeGroup.value = id
+  const element = groupElement(id)
+  if (element && typeof element.scrollIntoView === 'function') {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
+function syncActiveGroup() {
+  const panel = panelScrollElement
+  if (!panel) return
+  const navHeight = settingsNav.value?.offsetHeight ?? 0
+  const threshold = panel.getBoundingClientRect().top + 86 + navHeight + 16
+  let current: SettingsGroupId = settingsGroups[0].id
+  for (const group of settingsGroups) {
+    const element = groupElement(group.id)
+    if (element && element.getBoundingClientRect().top <= threshold) current = group.id
+  }
+  if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 4) {
+    current = settingsGroups[settingsGroups.length - 1].id
+  }
+  activeGroup.value = current
+}
+
+onMounted(() => {
+  panelScrollElement = settingsRoot.value?.closest('.side-panel') ?? null
+  panelScrollElement?.addEventListener('scroll', syncActiveGroup, { passive: true })
+  syncActiveGroup()
+})
+
 onBeforeUnmount(() => {
   wallpaperReadId += 1
   backupReadId += 1
+  panelScrollElement?.removeEventListener('scroll', syncActiveGroup)
+  panelScrollElement = null
 })
 
 watch(pendingBackup, async (backup, previous) => {
@@ -219,7 +268,20 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-  <div class="settings-content">
+  <div ref="settingsRoot" class="settings-content">
+    <nav ref="settingsNav" class="settings-nav" aria-label="设置分区">
+      <button
+        v-for="group in settingsGroups"
+        :key="group.id"
+        class="settings-nav-button"
+        :class="{ active: activeGroup === group.id }"
+        type="button"
+        :aria-current="activeGroup === group.id ? 'true' : undefined"
+        @click="scrollToGroup(group.id)"
+      >{{ group.label }}</button>
+    </nav>
+
+    <div class="settings-group" data-group="appearance">
     <section class="settings-section">
       <div class="section-heading"><div><h3>界面与主题</h3><p>选择外观并设置首页信息</p></div></div>
       <label class="toggle-row">颜色主题
@@ -235,7 +297,6 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
     <section class="settings-section">
       <div class="section-heading">
         <div><h3>背景图库</h3><p>选择归档壁纸或本地背景主题</p></div>
-        <button class="text-button" type="button" @click="$emit('reset')">恢复默认</button>
       </div>
       <div class="wallpaper-options">
         <button
@@ -272,6 +333,18 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
     </section>
 
     <section class="settings-section">
+      <div class="section-heading"><div><h3>动画与反馈</h3><p>控制翻页速度和图标悬停效果</p></div></div>
+      <p class="settings-subheading">翻页效果</p>
+      <label v-for="effect in transitionEffects" :key="effect.id" class="toggle-row transition-option">
+        <span>{{ effect.label }}</span><input type="radio" name="page-transition-effect" :checked="preferences.pageTransitionEffect === effect.id" @change="setTransitionEffect(effect.id)" />
+      </label>
+      <label class="range-label"><span>翻页动画时长</span><strong>{{ preferences.pageTransitionMs }} ms</strong><input type="range" min="0" max="2000" step="40" :value="preferences.pageTransitionMs" @input="update('pageTransitionMs', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>悬停光晕强度</span><strong>{{ preferences.hoverGlow }}%</strong><input type="range" min="0" max="100" step="5" :value="preferences.hoverGlow" @input="update('hoverGlow', Number(($event.target as HTMLInputElement).value))" /></label>
+    </section>
+    </div>
+
+    <div class="settings-group" data-group="search">
+    <section class="settings-section">
       <div class="section-heading"><div><h3>搜索栏</h3><p>控制首页搜索栏的显示和尺寸</p></div></div>
       <label class="toggle-row"><span>显示搜索栏</span><input type="checkbox" :checked="preferences.showSearchBar" @change="update('showSearchBar', ($event.target as HTMLInputElement).checked)" /></label>
       <label class="range-label"><span>搜索框宽度</span><strong>{{ preferences.searchWidth }} px</strong><input type="range" min="280" max="1000" step="10" :value="preferences.searchWidth" @input="update('searchWidth', Number(($event.target as HTMLInputElement).value))" /></label>
@@ -290,10 +363,32 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
         <li v-for="engine in customEngines" :key="engine.id"><span>{{ engine.name }}</span><button class="text-button" type="button" :aria-label="'删除搜索引擎' + engine.name" @click="emit('removeSearchEngine', engine.id)">删除</button></li>
       </ul>
     </section>
+    </div>
+
+    <div class="settings-group" data-group="home">
+    <section class="settings-section">
+      <div class="section-heading"><div><h3>快捷入口</h3><p>添加新的入口或把多个入口收进文件夹</p></div></div>
+      <button class="settings-add-shortcut" type="button" @click="emit('addShortcut')"><span>＋</span> 添加快捷入口</button>
+      <button class="settings-add-shortcut folder-add-button" type="button" @click="emit('addFolder')"><span>▣</span> 新建文件夹</button>
+      <p class="wallpaper-note">也可以直接在首页右键或长按图标进行编辑、拖动排序和固定到 Dock。</p>
+    </section>
 
     <section class="settings-section">
-      <div class="section-heading"><div><h3>快捷入口</h3><p>调整图标网格外观</p></div></div>
-      <p class="settings-subheading">首页小组件</p>
+      <div class="section-heading"><div><h3>图标与网格</h3><p>调整每页排布与图标外观</p></div></div>
+      <label class="range-label"><span>每行图标</span><strong>{{ preferences.columns }}</strong><input type="range" min="2" max="12" step="1" :value="preferences.columns" @input="update('columns', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>每页行数</span><strong>{{ preferences.rows }}</strong><input type="range" min="1" max="8" step="1" :value="preferences.rows" @input="update('rows', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>图标大小</span><strong>{{ preferences.iconSize }} px</strong><input type="range" min="32" max="160" step="2" :value="preferences.iconSize" @input="update('iconSize', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>圆角</span><strong>{{ preferences.iconRadius }} px</strong><input type="range" min="0" max="100" step="2" :value="preferences.iconRadius" @input="update('iconRadius', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>图标横向间距</span><strong>{{ preferences.gridGapX }} px</strong><input type="range" min="0" max="80" step="2" :value="preferences.gridGapX" @input="update('gridGapX', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>图标纵向间距</span><strong>{{ preferences.gridGapY }} px</strong><input type="range" min="0" max="100" step="2" :value="preferences.gridGapY" @input="update('gridGapY', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>搜索栏与图标间距</span><strong>{{ preferences.gridTopGap }} px</strong><input type="range" min="0" max="180" step="2" :value="preferences.gridTopGap" @input="update('gridTopGap', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="toggle-row"><span>显示网站名称</span><input type="checkbox" :checked="preferences.showNames" @change="update('showNames', ($event.target as HTMLInputElement).checked)" /></label>
+    </section>
+    </div>
+
+    <div class="settings-group" data-group="components">
+    <section class="settings-section">
+      <div class="section-heading"><div><h3>首页小组件</h3><p>选择要固定在首页的概览组件</p></div></div>
       <div class="home-widget-presets" aria-label="首页小组件方案">
         <button v-for="preset in homeWidgetPresets" :key="preset.title" class="button-secondary" type="button" :aria-label="`应用${preset.title}组件方案`" @click="applyHomeWidgetPreset(preset.widgetIds)">
           {{ preset.title }}
@@ -306,38 +401,26 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       <p class="wallpaper-note">小组件会保存在本机设置中，可在首页拖动排序，也可用上下按钮调整。</p>
       <p class="wallpaper-note">天气和资讯仅在启用后联网；Chrome 扩展还会在你点击组件中的授权按钮后，才请求对应数据源的访问权限。</p>
       <p class="wallpaper-note">浏览器书签、历史和常用网站仅在扩展中按需启用；权限可随时在浏览器扩展设置中撤销。</p>
-      <p class="settings-subheading">常驻 Dock</p>
+    </section>
+
+    <section class="settings-section">
+      <div class="section-heading"><div><h3>常驻 Dock</h3><p>把常用入口固定在页面底部</p></div></div>
       <label v-for="item in manageableLauncherItems" :key="`dock-${item.id}`" class="toggle-row">
         <span>固定{{ item.title }}到 Dock</span><input type="checkbox" :checked="preferences.dockItemIds.includes(item.id)" :disabled="!preferences.dockItemIds.includes(item.id) && preferences.dockItemIds.length >= maxDockItems" @change="toggleDockItem(item.id, ($event.target as HTMLInputElement).checked)" />
       </label>
       <p class="wallpaper-note">Dock 会固定显示在页面底部，翻页后也可直接打开。</p>
-      <p class="settings-subheading">内置面板</p>
+    </section>
+
+    <section class="settings-section">
+      <div class="section-heading"><div><h3>内置面板</h3><p>显示或隐藏首页的快捷面板</p></div></div>
       <label v-for="item in manageableLauncherItems" :key="item.id" class="toggle-row">
         <span>显示{{ item.title }}</span><input type="checkbox" :checked="!preferences.hiddenLauncherIds.includes(item.id)" @change="toggleLauncher(item.id, ($event.target as HTMLInputElement).checked)" />
       </label>
       <p class="wallpaper-note">设置入口始终保留，可随时恢复已隐藏的面板。</p>
-      <button class="settings-add-shortcut" type="button" @click="emit('addShortcut')"><span>＋</span> 添加快捷入口</button>
-      <button class="settings-add-shortcut folder-add-button" type="button" @click="emit('addFolder')"><span>▣</span> 新建文件夹</button>
-      <label class="range-label"><span>每行图标</span><strong>{{ preferences.columns }}</strong><input type="range" min="2" max="12" step="1" :value="preferences.columns" @input="update('columns', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>每页行数</span><strong>{{ preferences.rows }}</strong><input type="range" min="1" max="8" step="1" :value="preferences.rows" @input="update('rows', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>图标大小</span><strong>{{ preferences.iconSize }} px</strong><input type="range" min="32" max="160" step="2" :value="preferences.iconSize" @input="update('iconSize', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>圆角</span><strong>{{ preferences.iconRadius }} px</strong><input type="range" min="0" max="100" step="2" :value="preferences.iconRadius" @input="update('iconRadius', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>图标横向间距</span><strong>{{ preferences.gridGapX }} px</strong><input type="range" min="0" max="80" step="2" :value="preferences.gridGapX" @input="update('gridGapX', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>图标纵向间距</span><strong>{{ preferences.gridGapY }} px</strong><input type="range" min="0" max="100" step="2" :value="preferences.gridGapY" @input="update('gridGapY', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>搜索栏与图标间距</span><strong>{{ preferences.gridTopGap }} px</strong><input type="range" min="0" max="180" step="2" :value="preferences.gridTopGap" @input="update('gridTopGap', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="toggle-row"><span>显示网站名称</span><input type="checkbox" :checked="preferences.showNames" @change="update('showNames', ($event.target as HTMLInputElement).checked)" /></label>
     </section>
+    </div>
 
-    <section class="settings-section">
-      <div class="section-heading"><div><h3>动画与反馈</h3><p>控制翻页速度和图标悬停效果</p></div></div>
-      <p class="settings-subheading">翻页效果</p>
-      <label v-for="effect in transitionEffects" :key="effect.id" class="toggle-row transition-option">
-        <span>{{ effect.label }}</span><input type="radio" name="page-transition-effect" :checked="preferences.pageTransitionEffect === effect.id" @change="setTransitionEffect(effect.id)" />
-      </label>
-      <label class="range-label"><span>翻页动画时长</span><strong>{{ preferences.pageTransitionMs }} ms</strong><input type="range" min="0" max="2000" step="40" :value="preferences.pageTransitionMs" @input="update('pageTransitionMs', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>悬停光晕强度</span><strong>{{ preferences.hoverGlow }}%</strong><input type="range" min="0" max="100" step="5" :value="preferences.hoverGlow" @input="update('hoverGlow', Number(($event.target as HTMLInputElement).value))" /></label>
-    </section>
-
+    <div class="settings-group" data-group="data">
     <section class="settings-section">
       <div class="section-heading"><div><h3>备份与迁移</h3><p>导出或恢复本机数据</p></div></div>
       <div class="backup-actions">
@@ -349,6 +432,15 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       <p v-if="exportError" class="backup-error" role="alert">{{ exportError }}</p>
       <p class="backup-description">备份包含快捷入口、文件夹、主页工作区、待办、习惯、纪念日、笔记、自定义搜索引擎、专注计时状态和页面设置；浏览器书签与历史不包含在内。</p>
     </section>
+
+    <section class="settings-section">
+      <div class="section-heading"><div><h3>重置</h3><p>把外观、组件和布局设置恢复到初始状态</p></div></div>
+      <div class="backup-actions">
+        <button class="button-secondary reset-settings-button" type="button" @click="$emit('reset')">恢复默认设置</button>
+      </div>
+      <p class="wallpaper-note">只重置页面设置，不会删除快捷入口、待办、笔记等本机数据。</p>
+    </section>
+    </div>
     <p class="local-hint">设置保存在这台设备的浏览器中。</p>
 
     <div v-if="pendingBackup" class="modal-backdrop backup-backdrop" @click.self="pendingBackup = undefined">

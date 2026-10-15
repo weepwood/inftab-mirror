@@ -800,7 +800,7 @@ describe('new-tab keyboard search', () => {
     await openLauncher('settings')
     const columns = wrapper.findAll('.settings-content .range-label').find((label) => label.text().includes('每行图标'))!
     await columns.get('input').setValue('10')
-    await wrapper.get('.text-button').trigger('click')
+    await wrapper.findAll('.settings-content button').find((button) => button.text() === '恢复默认设置')!.trigger('click')
     await confirmPendingAction()
 
     expect(columns.get('input').element).toHaveProperty('value', '6')
