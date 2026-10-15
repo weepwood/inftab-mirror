@@ -8,8 +8,8 @@ const historyApi = vi.hoisted(() => ({
   hasBrowserHistoryPermission: vi.fn<() => Promise<boolean>>(),
   requestBrowserHistoryPermission: vi.fn<() => Promise<boolean>>(),
   searchBrowserHistory: vi.fn(),
-  subscribeToBrowserHistory: vi.fn(() => vi.fn()),
-  subscribeToBrowserHistoryPermissionChanges: vi.fn(() => vi.fn()),
+  subscribeToBrowserHistory: vi.fn<() => () => void>(() => vi.fn()),
+  subscribeToBrowserHistoryPermissionChanges: vi.fn<(listener: () => void) => () => void>(() => vi.fn()),
 }))
 
 vi.mock('../data/browserHistory', () => historyApi)
@@ -28,8 +28,8 @@ afterEach(() => {
   historyApi.hasBrowserHistoryPermission.mockReset()
   historyApi.requestBrowserHistoryPermission.mockReset()
   historyApi.searchBrowserHistory.mockReset()
-  historyApi.subscribeToBrowserHistory.mockClear()
-  historyApi.subscribeToBrowserHistoryPermissionChanges.mockClear()
+  historyApi.subscribeToBrowserHistory.mockReset().mockReturnValue(vi.fn())
+  historyApi.subscribeToBrowserHistoryPermissionChanges.mockReset().mockReturnValue(vi.fn())
 })
 
 describe('browser history panel', () => {
@@ -82,6 +82,35 @@ describe('browser history panel', () => {
     expect(wrapper.get('[role="alert"]').text()).toContain('未授予浏览历史权限')
     expect(historyApi.searchBrowserHistory).not.toHaveBeenCalled()
     wrapper.unmount()
+  })
+
+  it('clears protected history and listeners when a permission recheck fails', async () => {
+    let onPermissionChange: (() => void) | undefined
+    const stopHistoryListener = vi.fn()
+    historyApi.hasBrowserHistoryPermission
+      .mockResolvedValueOnce(true)
+      .mockRejectedValueOnce(new Error('permission API failed'))
+    historyApi.subscribeToBrowserHistory.mockReturnValue(stopHistoryListener)
+    historyApi.subscribeToBrowserHistoryPermissionChanges.mockImplementation((listener: () => void) => {
+      onPermissionChange = listener
+      return vi.fn()
+    })
+    historyApi.searchBrowserHistory.mockResolvedValue([
+      { id: 'private', title: 'Private page', url: 'https://private.example/', lastVisitTime: 1_700_000_000_000, visitCount: 1 },
+    ])
+    const mounted = mount(HistoryPanel)
+    await flushPromises()
+    expect(mounted.text()).toContain('Private page')
+
+    onPermissionChange?.()
+    await flushPromises()
+
+    expect(mounted.text()).toContain('连接当前浏览器的历史记录')
+    expect(mounted.text()).toContain('无法检查浏览历史权限')
+    expect(mounted.find('a').exists()).toBe(false)
+    expect(stopHistoryListener).toHaveBeenCalledOnce()
+    expect(historyApi.searchBrowserHistory).toHaveBeenCalledOnce()
+    mounted.unmount()
   })
 
   it('retries a failed history read without reopening the panel', async () => {

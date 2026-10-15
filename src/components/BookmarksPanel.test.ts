@@ -210,6 +210,40 @@ describe('BookmarksPanel', () => {
     expect(wrapper.text()).toContain('连接当前浏览器的书签')
   })
 
+  it('clears protected bookmarks and listeners when a permission recheck fails', async () => {
+    const permissionRemoved = {
+      listeners: new Set<(...args: unknown[]) => void>(),
+      addListener(listener: (...args: unknown[]) => void) { this.listeners.add(listener) },
+      removeListener(listener: (...args: unknown[]) => void) { this.listeners.delete(listener) },
+      fire() { this.listeners.forEach((listener) => listener()) },
+    }
+    const bookmarkCreated = { addListener: vi.fn(), removeListener: vi.fn() }
+    const contains = vi.fn()
+      .mockResolvedValueOnce(true)
+      .mockRejectedValueOnce(new Error('permission API failed'))
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      permissions: { contains, request: vi.fn(), onRemoved: permissionRemoved },
+      bookmarks: {
+        getTree: vi.fn().mockResolvedValue([{ id: '0', title: '', children: [
+          { id: 'private', title: 'Private bookmark', url: 'https://private.example/' },
+        ] }]),
+        onCreated: bookmarkCreated,
+      },
+    })
+    wrapper = mount(BookmarksPanel, { props: { availableSlots: 10, importBookmarks: vi.fn() } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('Private bookmark')
+
+    permissionRemoved.fire()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('连接当前浏览器的书签')
+    expect(wrapper.text()).toContain('无法检查浏览器书签权限')
+    expect(wrapper.find('.browser-bookmark-link').exists()).toBe(false)
+    expect(bookmarkCreated.removeListener).toHaveBeenCalledOnce()
+  })
+
   it('ignores an old permission check that finishes after permission was revoked', async () => {
     const oldPermissionCheck = deferred<boolean>()
     const permissionRemoved = {

@@ -60,7 +60,16 @@ async function syncPermission() {
       error.value = ''
     }
   } catch {
-    if (sequence === permissionSequence) error.value = '无法检查浏览历史权限。'
+    if (sequence !== permissionSequence) return
+    refreshSequence += 1
+    if (refreshTimer) clearTimeout(refreshTimer)
+    refreshTimer = undefined
+    stopListening?.()
+    stopListening = undefined
+    permissionGranted.value = false
+    entries.value = []
+    loading.value = false
+    error.value = '无法检查浏览历史权限。'
   }
 }
 

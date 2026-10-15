@@ -167,7 +167,16 @@ async function syncBookmarkPermission() {
       error.value = ''
     }
   } catch {
-    if (sequence === permissionSequence) error.value = '无法检查浏览器书签权限。'
+    if (sequence !== permissionSequence) return
+    refreshSequence += 1
+    stopListening?.()
+    stopListening = undefined
+    permissionGranted.value = false
+    tree.value = []
+    bookmarkCandidatesById.value = new Map()
+    selectedIds.value = new Set()
+    loading.value = false
+    error.value = '无法检查浏览器书签权限。'
   }
 }
 
