@@ -1,32 +1,10 @@
 <script setup lang="ts">
 import { Bookmark, ExternalLink } from '@lucide/vue'
 import { canAccessBrowserBookmarks, getBrowserBookmarkTree, hasBrowserBookmarksPermission, subscribeToBrowserBookmarkPermissionChanges, subscribeToBrowserBookmarks } from '../data/browserBookmarks'
-import { normalizeWebUrl } from '../data/urls'
 import { useOptionalBrowserResource } from '../composables/useOptionalBrowserResource'
-import type { BrowserBookmarkNode } from '../types'
+import { previewBookmarks } from '../data/bookmarkPreview'
 
-interface BookmarkPreview { id: string; title: string; url: string }
-
-function previewBookmarks(tree: BrowserBookmarkNode[]): BookmarkPreview[] {
-  const results: BookmarkPreview[] = []
-  let visited = 0
-  function visit(nodes: BrowserBookmarkNode[], depth: number) {
-    for (const node of nodes) {
-      visited += 1
-      if (visited > 5000 || results.length >= 5 || depth > 32) return
-      if (node.children) {
-        visit(node.children, depth + 1)
-        continue
-      }
-      const url = normalizeWebUrl(node.url)
-      if (url) results.push({ id: node.id, title: node.title.trim().slice(0, 120) || url, url })
-    }
-  }
-  visit(tree, 0)
-  return results
-}
-
-const { supported, permissionGranted, loading, error, data: items } = useOptionalBrowserResource<BookmarkPreview[]>({
+const { supported, permissionGranted, loading, error, data: items } = useOptionalBrowserResource<ReturnType<typeof previewBookmarks>>({
   supported: canAccessBrowserBookmarks(),
   initial: [],
   hasPermission: hasBrowserBookmarksPermission,
