@@ -92,8 +92,9 @@ async function authorizeAndLoad() {
 }
 
 function refreshIfStale() {
+  const now = Date.now()
   if (isActive && !loading.value && permissionGranted.value && document.visibilityState === 'visible'
-    && Date.now() - lastUpdatedAt.value >= 15 * 60 * 1000) void refreshStories()
+    && (lastUpdatedAt.value > now || now - lastUpdatedAt.value >= 15 * 60 * 1000)) void refreshStories()
 }
 
 onMounted(async () => {

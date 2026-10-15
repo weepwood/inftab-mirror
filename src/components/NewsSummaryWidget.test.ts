@@ -225,4 +225,33 @@ describe('NewsSummaryWidget', () => {
     await vi.waitFor(() => expect(wrapper!.text()).toContain('Recovered story'))
     expect(wrapper.text()).not.toContain('资讯服务暂时不可用')
   })
+
+  it('treats a future cache timestamp as stale after the device clock moves backwards', async () => {
+    const now = Date.parse('2026-10-12T00:00:00Z')
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    writeCachedHackerNewsFeed([{
+      id: 88,
+      title: 'Saved before the clock changed',
+      url: 'https://cached.example/story',
+      source: 'cached.example',
+      points: 9,
+      comments: 2,
+    }], now + 60 * 60 * 1000)
+    const fetcher = vi.fn(async () => response(null, false))
+    vi.stubGlobal('chrome', undefined)
+    vi.stubGlobal('fetch', fetcher)
+    wrapper = mount(NewsSummaryWidget)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Saved before the clock changed')
+    expect(fetcher).toHaveBeenCalledTimes(1)
+
+    vi.setSystemTime(now + 1_000)
+    window.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2))
+
+    expect(wrapper.text()).toContain('Saved before the clock changed')
+    expect(wrapper.text()).toContain('资讯服务暂时不可用')
+  })
 })
