@@ -26,7 +26,7 @@ const showEngines = ref(false)
 const translationError = ref(false)
 const availableEngines = computed(() => [
   ...engines,
-  ...props.customEngines.map((item) => ({ id: `custom:${item.id}` as const, label: item.name, mark: item.name.slice(0, 1) })),
+  ...props.customEngines.map((item) => ({ id: `custom:${item.id}` as const, label: item.name, mark: Array.from(item.name)[0] ?? '' })),
 ])
 const selectedEngine = computed(() => availableEngines.value.find((item) => item.id === props.engine) ?? availableEngines.value[0]!)
 const activeModes = computed(() => props.engine.startsWith('custom:') ? [] : searchModes.filter((item) => props.visibleModes.includes(item.id)))

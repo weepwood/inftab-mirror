@@ -210,4 +210,18 @@ describe('SearchBar keyboard navigation', () => {
     await wrapper.vm.$nextTick()
     expect(wrapper.emitted('update:engine')?.at(-1)).toEqual(['custom:wiki'])
   })
+
+  it('keeps an astral Unicode character intact in the custom engine mark', () => {
+    wrapper = mount(SearchBar, {
+      props: {
+        modelValue: '',
+        engine: 'custom:emoji',
+        mode: 'html',
+        visibleModes: [],
+        customEngines: [{ id: 'emoji', name: '🔎 Search', template: 'https://search.example/?q={query}' }],
+      },
+    })
+
+    expect(wrapper.get('.engine-initial').text()).toBe('🔎')
+  })
 })
