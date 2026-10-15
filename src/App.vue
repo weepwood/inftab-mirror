@@ -6,7 +6,7 @@ import SearchBar from './components/SearchBar.vue'
 import ClockWidget from './components/ClockWidget.vue'
 import { lazyPluginComponent, retryAsyncLoad } from './plugins/asyncComponent'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
-import { storageWriteErrorEvent } from './composables/useStoredState'
+import { storageWriteErrorEvent, storageWriteSuccessEvent } from './composables/useStoredState'
 import { launcherItems } from './data/defaults'
 import { maxImageUploadBytes } from './data/imageLimits'
 import { buildSearchUrl } from './data/search'
@@ -132,6 +132,7 @@ const panelRegistryError = ref('')
 let panelRegistryLoading: Promise<void> | undefined
 const backupExportError = ref('')
 const storageError = ref('')
+const failedStorageWriteKeys = new Set<string>()
 const pendingDestructiveAction = ref<{ title: string; description: string; confirmLabel?: string; run: () => void }>()
 let destructiveActionFocusTarget: HTMLElement | undefined
 const searchBar = ref<{ focusSearch: () => void; showTranslationError: () => void }>()
@@ -950,14 +951,24 @@ function handleFocusTimerVisibility() {
 
 watch(() => focusTimer.value.endsAt, syncFocusTimerInterval, { flush: 'sync' })
 
-function handleStorageWriteError() {
+function handleStorageWriteError(event: Event) {
+  const key = (event as CustomEvent<{ key?: unknown }>).detail?.key
+  if (typeof key === 'string') failedStorageWriteKeys.add(key)
   storageError.value = '本地数据未能保存。请检查浏览器存储空间，并先导出备份。'
+}
+
+function handleStorageWriteSuccess(event: Event) {
+  const key = (event as CustomEvent<{ key?: unknown }>).detail?.key
+  if (typeof key !== 'string') return
+  failedStorageWriteKeys.delete(key)
+  if (failedStorageWriteKeys.size === 0) storageError.value = backupExportError.value
 }
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('resize', updateViewport)
   window.addEventListener(storageWriteErrorEvent, handleStorageWriteError)
+  window.addEventListener(storageWriteSuccessEvent, handleStorageWriteSuccess)
   document.addEventListener('visibilitychange', handleWallpaperRotationVisibility)
   document.addEventListener('visibilitychange', handleFocusTimerVisibility)
   syncFocusTimerInterval()
@@ -973,6 +984,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', updateViewport)
   window.removeEventListener(storageWriteErrorEvent, handleStorageWriteError)
+  window.removeEventListener(storageWriteSuccessEvent, handleStorageWriteSuccess)
   document.removeEventListener('visibilitychange', handleWallpaperRotationVisibility)
   document.removeEventListener('visibilitychange', handleFocusTimerVisibility)
   if (focusTimerInterval !== undefined) window.clearInterval(focusTimerInterval)

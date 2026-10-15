@@ -381,6 +381,35 @@ test('exports in-memory edits after browser storage rejects a save', async ({ pa
   await expect(page.locator('.storage-error-toast')).toHaveCount(0)
 })
 
+test('clears a storage warning after the failed key saves successfully', async ({ page }) => {
+  await page.evaluate(() => {
+    const originalSetItem = Storage.prototype.setItem
+    let shouldFail = true
+    Storage.prototype.setItem = function (this: Storage, key: string, value: string) {
+      if (key === 'inftab.todos.v1' && shouldFail) throw new DOMException('Storage quota exceeded', 'QuotaExceededError')
+      return originalSetItem.call(this, key, value)
+    }
+    Object.defineProperty(window, '__setStorageWriteShouldFail', {
+      configurable: true,
+      value: (value: boolean) => { shouldFail = value },
+    })
+  })
+  await page.getByRole('button', { name: '打开待办事项' }).click()
+  const todoInput = page.getByRole('textbox', { name: '添加一项待办' })
+  await todoInput.fill('Save again after storage recovers')
+  await todoInput.press('Enter')
+  await expect(page.locator('.storage-error-toast')).toContainText('本地数据未能保存')
+
+  await page.evaluate(() => {
+    (window as unknown as Window & { __setStorageWriteShouldFail: (value: boolean) => void })
+      .__setStorageWriteShouldFail(false)
+  })
+  await page.getByRole('button', { name: '标记为完成' }).click()
+
+  await expect(page.locator('.storage-error-toast')).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('inftab.todos.v1'))).toContain('"done":true')
+})
+
 test('names backup downloads with the local date near UTC midnight', async ({ browser }) => {
   const context = await browser.newContext({ timezoneId: 'Asia/Shanghai' })
   try {

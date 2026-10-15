@@ -2,6 +2,7 @@ import { getCurrentScope, onScopeDispose, ref, watch, type Ref } from 'vue'
 import { sanitizeStoredValue } from '../data/sanitize'
 
 export const storageWriteErrorEvent = 'inftab:storage-write-error'
+export const storageWriteSuccessEvent = 'inftab:storage-write-success'
 
 export interface StoredStateOptions<T = unknown> {
   /** Keep the incoming value intact for state where external changes should always win. */
@@ -64,8 +65,9 @@ export function useStoredState<T>(
   function writeValue(next: T) {
     try {
       localStorage.setItem(key, JSON.stringify(next))
+      targetWindow?.dispatchEvent?.(new CustomEvent(storageWriteSuccessEvent, { detail: { key } }))
     } catch {
-      targetWindow?.dispatchEvent(new CustomEvent(storageWriteErrorEvent, { detail: { key } }))
+      targetWindow?.dispatchEvent?.(new CustomEvent(storageWriteErrorEvent, { detail: { key } }))
     }
   }
   function flushPendingWrite() {

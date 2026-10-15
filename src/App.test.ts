@@ -998,6 +998,28 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.find('.storage-error-toast').exists()).toBe(false)
   })
 
+  it('clears a storage warning after the failed key saves successfully', async () => {
+    const originalSetItem = Storage.prototype.setItem
+    let shouldFail = true
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+      if (key === 'inftab.preferences.v1' && shouldFail) throw new DOMException('Storage quota exceeded', 'QuotaExceededError')
+      return originalSetItem.call(this, key, value)
+    })
+    await mountApp()
+    await openLauncher('settings')
+    const clockToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().includes('显示时间和日期'))!
+    await clockToggle.get('input').setValue(false)
+    await flushLocalStorageWrites()
+    expect(wrapper.get('.storage-error-toast').text()).toContain('本地数据未能保存')
+
+    shouldFail = false
+    await clockToggle.get('input').setValue(true)
+    await flushLocalStorageWrites()
+
+    expect(localStorage.getItem('inftab.preferences.v1')).toContain('"showClock":true')
+    expect(wrapper.find('.storage-error-toast').exists()).toBe(false)
+  })
+
   it('previews and merges a selected backup without removing existing shortcuts', async () => {
     localStorage.setItem('inftab.shortcuts.v1', JSON.stringify([
       { id: 'existing', title: 'Existing', url: 'https://existing.example/', color: '#369', mark: 'E' },
