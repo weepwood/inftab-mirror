@@ -23,17 +23,29 @@ afterEach(() => {
 describe('top-sites homepage widget', () => {
   it('waits for an explicit permission click and displays only safe browser sites', async () => {
     let permissionGranted = false
-    const request = vi.fn(async () => { permissionGranted = true; return true })
     const get = vi.fn().mockResolvedValue([
       { title: 'Frequently visited docs', url: 'https://docs.example/guide' },
       { title: 'Unsafe result', url: 'javascript:alert(1)' },
       { title: '', url: 'http://fallback.example:80/' },
     ])
-    vi.stubGlobal('chrome', {
+    const chromeApi: {
+      runtime: { id: string }
+      permissions: { request: () => Promise<boolean>; contains: () => Promise<boolean> }
+      topSites?: { get: typeof get }
+    } = {
       runtime: { id: 'extension-id' },
-      permissions: { request, contains: vi.fn(async () => permissionGranted) },
-      topSites: { get },
+      permissions: {
+        request: async () => false,
+        contains: async () => permissionGranted,
+      },
+    }
+    const request = vi.fn(async () => {
+      permissionGranted = true
+      chromeApi.topSites = { get }
+      return true
     })
+    chromeApi.permissions.request = request
+    vi.stubGlobal('chrome', chromeApi)
     wrapper = mount(TopSitesSummaryWidget)
     await flushPromises()
 
