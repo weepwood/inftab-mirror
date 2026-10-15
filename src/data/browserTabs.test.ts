@@ -46,6 +46,18 @@ describe('browser tab candidates', () => {
     expect(get).toHaveBeenCalledOnce()
   })
 
+  it('keeps a Unicode character intact when a browser title reaches its limit', async () => {
+    const title = `${'a'.repeat(499)}😀tail`
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'extension-id' },
+      tabs: { query: vi.fn().mockResolvedValue([{ id: 1, title, url: 'https://example.com/' }]) },
+    })
+
+    const [candidate] = await getCurrentWindowTabCandidates()
+
+    expect(candidate?.title).toBe(`${'a'.repeat(499)}😀`)
+  })
+
   it('rejects when the extension top-sites API is unavailable', async () => {
     vi.stubGlobal('chrome', { runtime: { id: 'extension-id' } })
     await expect(getMostVisitedSiteCandidates()).rejects.toThrow('浏览器常用网站功能当前不可用。')

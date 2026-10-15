@@ -14,6 +14,7 @@ import { getPageNavigation } from './data/pagination'
 import { toLocalDateKey } from './data/calendar'
 import { createLocalId } from './data/createId'
 import { normalizeWebUrl } from './data/urls'
+import { truncateCodePoints } from './data/text'
 import type { BrowserTabCandidate } from './data/browserTabs'
 import { launcherPanelRoutes, shortcutPanelRoutes } from './plugins/routes'
 import type { PanelId, PanelPluginContext } from './plugins/registry'
@@ -255,13 +256,13 @@ const panelContext = computed<PanelPluginContext>(() => ({
   importBookmarks: (items) => {
     if (shortcuts.value.length + items.length > 500) return { added: 0, error: '快捷入口已达到 500 个上限，请先删除一些再导入。' }
     const newShortcuts: Shortcut[] = items.map(({ title, url }) => {
-      const cleanTitle = title.trim().slice(0, 80) || url
+      const cleanTitle = truncateCodePoints(title.trim(), 80) || url
       return {
         id: createLocalId(),
         title: cleanTitle,
         url,
         color: '#3d82f6',
-        mark: [...cleanTitle].slice(0, 2).join(' ').toUpperCase(),
+        mark: Array.from(truncateCodePoints(cleanTitle, 2)).join(' ').toUpperCase(),
       }
     })
     if (!addShortcutsData(newShortcuts, activeHomeWorkspaceId.value)) {
@@ -655,7 +656,7 @@ function handleShortcutDialogKeydown(event: KeyboardEvent) {
   }
 }
 function fillShortcutFromBrowserTab(tab: BrowserTabCandidate) {
-  shortcutTitle.value = tab.title.slice(0, 24)
+  shortcutTitle.value = truncateCodePoints(tab.title, 24)
   shortcutUrl.value = tab.url
   shortcutUrlError.value = ''
 }
@@ -708,7 +709,7 @@ async function saveShortcut() {
   const shortcutId = editingId.value || createLocalId()
   const destinationWorkspaceId = shortcutWorkspaceId.value
   const color = shortcutColor.value
-  const mark = shortcutMark.value.trim() || title.slice(0, 2)
+  const mark = shortcutMark.value.trim() || truncateCodePoints(title, 2)
   shortcutUrlError.value = ''
   let icon = shortcutIcon.value.trim()
   shortcutIconError.value = ''

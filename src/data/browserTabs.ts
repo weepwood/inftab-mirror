@@ -1,3 +1,5 @@
+import { truncateCodePoints } from './text'
+
 export interface BrowserTabCandidate {
   id: string
   title: string
@@ -40,7 +42,7 @@ function createCandidate(id: string, title: unknown, value: unknown): BrowserTab
   const url = new URL(value)
   return {
     id,
-    title: (typeof title === 'string' && title.trim() ? title.trim() : url.hostname).slice(0, 500),
+    title: truncateCodePoints(typeof title === 'string' && title.trim() ? title.trim() : url.hostname, 500),
     url: url.href,
     hostname: url.hostname,
   }
