@@ -77,6 +77,14 @@ select { background-color: #fff; color: #343a40; }
 .history-summary-list a span { min-width: 0; overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
 .history-summary-list time { flex: 0 0 auto; color: #828b97; font-size: 9px; font-variant-numeric: tabular-nums; }
 .history-summary-retry { border: 0; padding: 0; background: transparent; color: #3974d6; font: inherit; cursor: pointer; }
+.top-sites-summary-list { display: grid; gap: 5px; margin: 0; padding: 2px 5px 0 20px; list-style: none; }
+.top-sites-summary-list a { min-width: 0; display: flex; align-items: center; gap: 7px; color: #414954; font-size: 11px; text-decoration: none; }
+.top-sites-summary-list a:hover { color: #3974d6; }
+.top-sites-summary-copy { min-width: 0; flex: 1; display: grid; gap: 2px; }
+.top-sites-summary-copy strong, .top-sites-summary-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-sites-summary-copy strong { font-size: 11px; font-weight: 600; }
+.top-sites-summary-copy small { color: #828b97; font-size: 9px; }
+.top-sites-summary-enable, .top-sites-summary-retry { border: 0; padding: 2px 0; background: transparent; color: #3974d6; font: inherit; font-size: 10px; cursor: pointer; }
 .news-summary-widget { display: grid; gap: 5px; padding: 2px 5px 2px 20px; }
 .news-summary-attribution { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 0; color: #89919c; font-size: 9px; }
 .news-summary-attribution a { color: #657181; text-decoration: none; }
@@ -606,10 +614,12 @@ select { background-color: #fff; color: #343a40; }
 .theme-dark .focus-timer-summary-clock,
 .theme-dark .bookmarks-summary-list a,
 .theme-dark .history-summary-list a,
+.theme-dark .top-sites-summary-list a,
 .theme-dark .news-summary-list a,
 .theme-dark .home-widget-preview li { color: #e0e4eb; }
 .theme-dark .history-summary-list time { color: #a4adba; }
 .theme-dark .news-summary-copy small,
+.theme-dark .top-sites-summary-copy small,
 .theme-dark .news-summary-updated,
 .theme-dark .news-summary-attribution,
 .theme-dark .news-summary-attribution a { color: #a4adba; }

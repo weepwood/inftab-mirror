@@ -113,6 +113,7 @@ const expectedWidgetProps = {
   'bookmarks-summary': [],
   'history-summary': [],
   'news-summary': [],
+  'top-sites-summary': [],
 } satisfies Record<typeof availableHomeWidgetIds[number], string[]>
 
 const expectedWidgetContextKeys = {
@@ -126,6 +127,7 @@ const expectedWidgetContextKeys = {
   'bookmarks-summary': [],
   'history-summary': [],
   'news-summary': [],
+  'top-sites-summary': [],
 } satisfies Record<typeof availableHomeWidgetIds[number], string[]>
 
 describe('built-in panel plugin registry', () => {

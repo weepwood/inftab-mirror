@@ -29,6 +29,7 @@ export interface HomeWidgetContextById {
   'bookmarks-summary': NoContext
   'history-summary': NoContext
   'news-summary': NoContext
+  'top-sites-summary': NoContext
 }
 
 export interface HomeWidgetPropsById {
@@ -42,6 +43,7 @@ export interface HomeWidgetPropsById {
   'bookmarks-summary': NoProps
   'history-summary': NoProps
   'news-summary': NoProps
+  'top-sites-summary': NoProps
 }
 
 export type HomeWidgetPlugin<Id extends HomeWidgetId = HomeWidgetId> = {
@@ -137,6 +139,13 @@ export const homeWidgetPlugins = {
     title: '热门资讯',
     description: '查看 Hacker News 热门技术资讯；启用后按需联网',
     component: lazyWidget(() => import('../components/NewsSummaryWidget.vue')),
+    props: (_context) => ({}),
+  },
+  'top-sites-summary': {
+    context: () => ({}),
+    title: '常用网站',
+    description: '按需读取浏览器提供的常用网站；仅在本机显示',
+    component: lazyWidget(() => import('../components/TopSitesSummaryWidget.vue')),
     props: (_context) => ({}),
   },
 } satisfies HomeWidgetPluginRegistry

@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url'
 
 const outputDirectory = fileURLToPath(new URL('../dist/', import.meta.url))
 const budgets = {
-  javascriptGzip: 128 * 1024,
+  // Allows the opt-in top-sites widget to remain in its lazy chunk without moving it into startup code.
+  javascriptGzip: 130 * 1024,
   // Keeps the backup parser in the lazy settings chunk and preserves headroom for startup code.
   javascriptEntryGzip: 58 * 1024,
   cssGzip: 64 * 1024,

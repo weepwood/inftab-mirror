@@ -148,9 +148,16 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
     const extensionSettings = page.getByRole('dialog', { name: '设置' })
     await extensionSettings.getByLabel('显示天气小组件').check()
     await extensionSettings.getByLabel('显示热门资讯小组件').check()
+    await extensionSettings.getByLabel('显示常用网站小组件').check()
     await extensionSettings.getByRole('button', { name: '关闭' }).click()
     await expect(page.locator('[data-widget-id="weather-summary"] .weather-summary-authorize')).toContainText('授权并获取天气')
     await expect(page.locator('[data-widget-id="news-summary"]')).toContainText('需要单独授权网络访问')
+    await expect(page.locator('[data-widget-id="top-sites-summary"] .top-sites-summary-enable')).toBeVisible()
+    await expect(page.locator('[data-widget-id="top-sites-summary"] .top-sites-summary-list')).toHaveCount(0)
+    const topSitesPermission = await page.evaluate(() => (window as unknown as {
+      chrome: { permissions: { contains: (details: { permissions: string[] }) => Promise<boolean> } }
+    }).chrome.permissions.contains({ permissions: ['topSites'] }))
+    expect(topSitesPermission).toBe(false)
     const newsPermission = await page.evaluate(() => {
       const permissions = (window as unknown as {
         chrome: { permissions: { contains: (details: { origins: string[] }) => Promise<boolean> } }

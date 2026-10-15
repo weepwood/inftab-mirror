@@ -873,6 +873,23 @@ test('settings persist and the main view fits a narrow viewport', async ({ page 
   await expect(page.getByRole('region', { name: '首页小组件' })).toBeVisible()
 })
 
+test('the browser top-sites widget is opt-in and explains website limitations', async ({ page }) => {
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByLabel('显示常用网站小组件').check()
+  await page.getByRole('button', { name: '关闭' }).click()
+
+  const widget = page.locator('[data-widget-id="top-sites-summary"]')
+  await expect(widget).toBeVisible()
+  await expect(widget.getByText('此功能需要浏览器扩展')).toBeVisible()
+  await expect(widget.getByRole('button', { name: '启用常用网站' })).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').homeWidgetIds))
+    .toEqual(['top-sites-summary'])
+
+  await page.reload()
+  await expect(page.locator('[data-widget-id="top-sites-summary"]')).toBeVisible()
+  await expect(page.locator('[data-widget-id="top-sites-summary"] .top-sites-summary-list')).toHaveCount(0)
+})
+
 test('unsafe wallpaper CSS from browser storage cannot trigger a hidden remote image request', async ({ page }) => {
   const remoteRequests: string[] = []
   await page.route('https://tracker.example/**', async (route) => {

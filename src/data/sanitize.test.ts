@@ -68,7 +68,7 @@ describe('local state sanitization', () => {
 
   it('keeps only supported home widget sizes and defaults older settings to standard', () => {
     expect(sanitizePreferences({ homeWidgetSizes: { 'todo-summary': 'wide', 'notes-summary': 'full', 'calendar-summary': 'huge', unknown: 'wide' } }).homeWidgetSizes)
-      .toEqual({ 'todo-summary': 'wide', 'countdown-summary': 'standard', 'notes-summary': 'full', 'calendar-summary': 'standard', 'weather-summary': 'standard', 'focus-timer-summary': 'standard', 'bookmarks-summary': 'standard', 'history-summary': 'standard', 'habits-summary': 'standard', 'news-summary': 'standard' })
+      .toEqual({ 'todo-summary': 'wide', 'countdown-summary': 'standard', 'notes-summary': 'full', 'calendar-summary': 'standard', 'weather-summary': 'standard', 'focus-timer-summary': 'standard', 'bookmarks-summary': 'standard', 'history-summary': 'standard', 'habits-summary': 'standard', 'news-summary': 'standard', 'top-sites-summary': 'standard' })
     expect(sanitizePreferences({}).homeWidgetSizes).toEqual(defaultPreferences.homeWidgetSizes)
   })
 

@@ -294,6 +294,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       </label>
       <p class="wallpaper-note">小组件会保存在本机设置中，可在首页拖动排序，也可用上下按钮调整。</p>
       <p class="wallpaper-note">天气和资讯仅在启用后联网；Chrome 扩展还会在你点击组件中的授权按钮后，才请求对应数据源的访问权限。</p>
+      <p class="wallpaper-note">浏览器书签、历史和常用网站仅在扩展中按需启用；权限可随时在浏览器扩展设置中撤销。</p>
       <p class="settings-subheading">常驻 Dock</p>
       <label v-for="item in manageableLauncherItems" :key="`dock-${item.id}`" class="toggle-row">
         <span>固定{{ item.title }}到 Dock</span><input type="checkbox" :checked="preferences.dockItemIds.includes(item.id)" :disabled="!preferences.dockItemIds.includes(item.id) && preferences.dockItemIds.length >= maxDockItems" @change="toggleDockItem(item.id, ($event.target as HTMLInputElement).checked)" />

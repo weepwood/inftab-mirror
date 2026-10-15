@@ -1,9 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getCurrentWindowTabCandidates, getMostVisitedSiteCandidates } from './browserTabs'
+import { canAccessMostVisitedSites, getCurrentWindowTabCandidates, getMostVisitedSiteCandidates } from './browserTabs'
 
 afterEach(() => vi.unstubAllGlobals())
 
 describe('browser tab candidates', () => {
+  it('recognizes extension support before the optional API namespace is exposed', () => {
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, permissions: { contains: vi.fn() } })
+    expect(canAccessMostVisitedSites()).toBe(true)
+
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, topSites: { get: vi.fn() } })
+    expect(canAccessMostVisitedSites()).toBe(false)
+    vi.stubGlobal('chrome', { topSites: { get: vi.fn() }, permissions: { contains: vi.fn() } })
+    expect(canAccessMostVisitedSites()).toBe(false)
+  })
+
   it('requests only the current window and filters non-web or unsafe tab URLs', async () => {
     const query = vi.fn().mockResolvedValue([
       { id: 1, title: 'Docs', url: 'https://docs.example/path' },

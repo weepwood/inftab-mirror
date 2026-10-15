@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { requestBrowserTabsPermission, requestMostVisitedSitesPermission } from './browserTabPermissions'
+import { hasMostVisitedSitesPermission, requestBrowserTabsPermission, requestMostVisitedSitesPermission, subscribeToMostVisitedSitesPermissionChanges } from './browserTabPermissions'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -27,5 +27,43 @@ describe('browser tabs permission', () => {
     await expect(requestMostVisitedSitesPermission()).resolves.toBe(true)
     expect(request).toHaveBeenCalledOnce()
     expect(request).toHaveBeenCalledWith({ permissions: ['topSites'] })
+  })
+
+  it('checks topSites access without requesting it from the website', async () => {
+    const contains = vi.fn().mockResolvedValue(true)
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, permissions: { contains } })
+
+    await expect(hasMostVisitedSitesPermission()).resolves.toBe(true)
+    expect(contains).toHaveBeenCalledWith({ permissions: ['topSites'] })
+
+    vi.stubGlobal('chrome', { permissions: { contains } })
+    await expect(hasMostVisitedSitesPermission()).resolves.toBe(false)
+    expect(contains).toHaveBeenCalledOnce()
+  })
+
+  it('notifies topSites permission changes and ignores unrelated grants', () => {
+    const createEvent = () => {
+      const listeners = new Set<(details: unknown) => void>()
+      return {
+        addListener: (listener: (details: unknown) => void) => listeners.add(listener),
+        removeListener: (listener: (details: unknown) => void) => listeners.delete(listener),
+        fire: (details: unknown) => listeners.forEach((notify) => notify(details)),
+      }
+    }
+    const onAdded = createEvent()
+    const onRemoved = createEvent()
+    const listener = vi.fn()
+    vi.stubGlobal('chrome', { runtime: { id: 'extension-id' }, permissions: { onAdded, onRemoved } })
+    const stop = subscribeToMostVisitedSitesPermissionChanges(listener)
+
+    onAdded.fire({ permissions: ['tabs'] })
+    expect(listener).not.toHaveBeenCalled()
+    onAdded.fire({ permissions: ['topSites'] })
+    onRemoved.fire({ permissions: ['topSites'] })
+    expect(listener).toHaveBeenCalledTimes(2)
+    stop()
+    onAdded.fire({ permissions: ['topSites'] })
+    onRemoved.fire({ permissions: ['topSites'] })
+    expect(listener).toHaveBeenCalledTimes(2)
   })
 })

@@ -17,11 +17,18 @@ interface ChromeExtensionApi {
   runtime?: { id?: string }
   tabs?: { query(query: { currentWindow: boolean }): Promise<BrowserTab[]> }
   topSites?: { get(): Promise<Array<{ title?: string; url?: string }>> }
+  permissions?: { contains(details: { permissions: string[] }): Promise<boolean> }
 }
 
 function extensionApi(): ChromeExtensionApi | undefined {
   const api = (globalThis as typeof globalThis & { chrome?: ChromeExtensionApi }).chrome
   return api?.runtime?.id ? api : undefined
+}
+
+export function canAccessMostVisitedSites(): boolean {
+  const api = extensionApi()
+  // Optional API namespaces may be hidden until the user grants the permission.
+  return Boolean(api?.permissions)
 }
 
 function isWebUrl(value: unknown): value is string {
