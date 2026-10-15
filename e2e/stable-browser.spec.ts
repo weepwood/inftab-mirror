@@ -44,6 +44,40 @@ test('stable browsers preserve Tab focus when leaving the search engine menu', a
   await expect(picker).toBeFocused()
 })
 
+test('stable browsers keep long search engine menus visible and scrollable', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 600 })
+  await page.evaluate(() => {
+    localStorage.setItem('inftab.custom-search-engines.v1', JSON.stringify(Array.from({ length: 20 }, (_, index) => ({
+      id: `custom-${index}`,
+      name: `Custom ${index}`,
+      template: `https://search${index}.example/?q={query}`,
+    }))))
+  })
+  await page.reload()
+  await page.evaluate(() => {
+    const searchBox = document.querySelector<HTMLElement>('.search-box')!
+    Object.defineProperty(searchBox, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 740, right: 800, top: 570, bottom: 610, width: 60, height: 40, x: 740, y: 570, toJSON: () => ({}) }),
+    })
+  })
+
+  await page.getByRole('button', { name: '当前搜索引擎：Baidu' }).click()
+  const menu = page.getByRole('listbox', { name: '选择搜索引擎' })
+  await expect(menu.getByRole('option')).toHaveCount(27)
+  const bounds = await menu.boundingBox()
+  expect(bounds).not.toBeNull()
+  expect(bounds!.x).toBeGreaterThanOrEqual(0)
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(800)
+  expect(bounds!.y).toBeGreaterThanOrEqual(0)
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(600)
+  await expect(menu).toHaveCSS('overflow-y', 'auto')
+
+  await page.keyboard.press('End')
+  await expect(menu.getByRole('option', { name: /Custom 19/ })).toBeFocused()
+  expect(await menu.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+})
+
 test('stable browsers show focus and readable colors on native settings selects', async ({ page }) => {
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const settings = page.getByRole('dialog', { name: '设置' })

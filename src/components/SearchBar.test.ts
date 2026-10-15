@@ -125,6 +125,45 @@ describe('SearchBar keyboard navigation', () => {
     expect(removeListener.mock.calls.filter(([type]) => type === 'scroll')).toHaveLength(2)
   })
 
+  it('keeps a long custom-engine list inside a short viewport', async () => {
+    const heightDescriptor = Object.getOwnPropertyDescriptor(window, 'innerHeight')
+    const widthDescriptor = Object.getOwnPropertyDescriptor(window, 'innerWidth')
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 })
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 800 })
+    try {
+      wrapper = mount(SearchBar, {
+        attachTo: document.body,
+        props: {
+          modelValue: '',
+          engine: 'baidu',
+          mode: 'html',
+          visibleModes: [],
+          customEngines: Array.from({ length: 20 }, (_, index) => ({
+            id: `custom-${index}`,
+            name: `Custom ${index}`,
+            template: `https://search${index}.example/?q={query}`,
+          })),
+        },
+      })
+      const bounds = { left: 740, bottom: 610, top: 570, right: 800, width: 60, height: 40, x: 740, y: 570, toJSON: () => ({}) }
+      vi.spyOn(wrapper.get('.search-box').element, 'getBoundingClientRect').mockReturnValue(bounds)
+
+      await wrapper.get('.engine-picker').trigger('click')
+      await wrapper.vm.$nextTick()
+
+      const menu = document.querySelector<HTMLElement>('.engine-menu')!
+      expect(menu.style.top).toBe('8px')
+      expect(menu.style.left).toBe('602px')
+      expect(menu.style.maxHeight).toBe('554px')
+      expect(menu.querySelectorAll('[role="option"]')).toHaveLength(27)
+    } finally {
+      if (heightDescriptor) Object.defineProperty(window, 'innerHeight', heightDescriptor)
+      else Reflect.deleteProperty(window, 'innerHeight')
+      if (widthDescriptor) Object.defineProperty(window, 'innerWidth', widthDescriptor)
+      else Reflect.deleteProperty(window, 'innerWidth')
+    }
+  })
+
   it('closes the engine listbox on Tab and preserves logical forward and reverse focus order', async () => {
     wrapper = mount(SearchBar, {
       attachTo: document.body,

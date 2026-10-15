@@ -34,7 +34,7 @@ const baseUrl = import.meta.env.BASE_URL
 const searchBox = ref<HTMLElement>()
 const engineMenu = ref<HTMLElement>()
 const enginePicker = ref<HTMLButtonElement>()
-const engineMenuPosition = ref({ top: 0, left: 0 })
+const engineMenuPosition = ref({ top: 0, left: 0, maxHeight: 0 })
 const searchInput = ref<HTMLInputElement>()
 
 function focusSearch() {
@@ -52,7 +52,20 @@ function showTranslationError() {
 
 function updateEngineMenuPosition() {
   const bounds = searchBox.value?.getBoundingClientRect()
-  if (bounds) engineMenuPosition.value = { top: bounds.bottom + 8, left: bounds.left + 8 }
+  if (!bounds) return
+  const viewportHeight = document.documentElement.clientHeight || window.innerHeight
+  const viewportWidth = document.documentElement.clientWidth || window.innerWidth
+  const belowTop = Math.min(viewportHeight - 8, bounds.bottom + 8)
+  const belowSpace = Math.max(0, viewportHeight - belowTop - 8)
+  const aboveSpace = Math.max(0, bounds.top - 16)
+  const menuHeight = engineMenu.value?.scrollHeight || availableEngines.value.length * 42 + 2
+  const openAbove = menuHeight > belowSpace && aboveSpace > belowSpace
+  const availableSpace = openAbove ? aboveSpace : belowSpace
+  const maxHeight = Math.min(menuHeight, availableSpace)
+  const top = openAbove ? Math.max(8, bounds.top - 8 - maxHeight) : belowTop
+  const maxLeft = Math.max(8, viewportWidth - 198)
+  const left = Math.min(Math.max(8, bounds.left + 8), maxLeft)
+  engineMenuPosition.value = { top, left, maxHeight }
 }
 
 function toggleEngines() {
@@ -62,7 +75,10 @@ function toggleEngines() {
   }
   updateEngineMenuPosition()
   showEngines.value = true
-  void nextTick(() => focusSelectedEngine())
+  void nextTick(() => {
+    updateEngineMenuPosition()
+    focusSelectedEngine()
+  })
 }
 
 function engineOptions() {
@@ -214,7 +230,7 @@ defineExpose({ focusSearch, showTranslationError })
     <slot v-if="localSearch" name="local-results" />
     <Teleport to="body">
       <Transition name="engine-menu">
-        <div v-if="showEngines" ref="engineMenu" class="engine-menu" :class="{ 'theme-dark': darkTheme }" role="listbox" aria-label="选择搜索引擎" :style="{ top: `${engineMenuPosition.top}px`, left: `${engineMenuPosition.left}px` }">
+        <div v-if="showEngines" ref="engineMenu" class="engine-menu" :class="{ 'theme-dark': darkTheme }" role="listbox" aria-label="选择搜索引擎" :style="{ top: `${engineMenuPosition.top}px`, left: `${engineMenuPosition.left}px`, maxHeight: `${engineMenuPosition.maxHeight}px` }">
           <button
             v-for="item in availableEngines"
             :key="item.id"
