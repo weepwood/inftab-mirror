@@ -219,6 +219,22 @@ describe('SettingsPanel custom search engines', () => {
 })
 
 describe('SettingsPanel backup preview', () => {
+  it('rejects oversized backup files before reading or parsing their contents', async () => {
+    const parseBackup = vi.spyOn(backupParsing, 'parseWorkspaceBackup')
+    const text = vi.fn()
+    const oversizedFile = { size: 10 * 1024 * 1024 + 1, text } as unknown as File
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+    const input = wrapper.get('input[accept="application/json,.json"]')
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [oversizedFile] })
+
+    await input.trigger('change')
+
+    expect(wrapper.get('[role="alert"]').text()).toBe('备份文件不能超过 10 MB。')
+    expect(text).not.toHaveBeenCalled()
+    expect(parseBackup).not.toHaveBeenCalled()
+    expect(wrapper.find('[role="dialog"][aria-labelledby="backup-title"]').exists()).toBe(false)
+  })
+
   it('shows the complete backup scope and previews habits and workspaces', async () => {
     wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
     expect(wrapper.get('.backup-description').text()).toContain('习惯')
