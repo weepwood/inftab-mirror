@@ -61,6 +61,13 @@ function toggleShortcut(id: string, checked: boolean) {
     : selectedIds.value.filter((itemId) => itemId !== id)
 }
 
+function shortcutIconSource(shortcut: Shortcut) {
+  if (!shortcut.icon) return undefined
+  return /^(https?:|data:|\/)/i.test(shortcut.icon)
+    ? shortcut.icon
+    : `${import.meta.env.BASE_URL}inftab-icons/${shortcut.icon}`
+}
+
 function cancelEditing() {
   if (!props.folder) {
     emit('close')
@@ -115,7 +122,7 @@ function save() {
 
 <template>
   <div class="modal-backdrop folder-backdrop" @click.self="emit('close')">
-    <section ref="dialog" class="shortcut-dialog folder-dialog" role="dialog" aria-modal="true" :aria-labelledby="editing ? 'folder-edit-title' : 'folder-view-title'" @keydown="handleDialogKeydown">
+    <section ref="dialog" class="shortcut-dialog folder-dialog" :class="{ 'folder-view-mode': !editing }" role="dialog" aria-modal="true" :aria-labelledby="editing ? 'folder-edit-title' : 'folder-view-title'" @keydown="handleDialogKeydown">
       <header>
         <div v-if="editing"><h2 id="folder-edit-title">{{ folder ? '编辑文件夹' : '新建文件夹' }}</h2><p>把常用网站整理到一个入口中</p></div>
         <div v-else class="folder-dialog-heading"><FolderOpen :size="21" :style="{ color: folder?.color }" /><div><h2 id="folder-view-title">{{ folder?.title }}</h2><p>{{ folderShortcutItems.length }} 个快捷入口</p></div></div>
@@ -147,10 +154,13 @@ function save() {
           <span>将在 {{ folderShortcutItems.length }} 个新标签页打开</span>
           <button class="button-secondary" type="button" @click="emit('openAllShortcuts', folderShortcutItems)">打开全部</button>
         </div>
-        <div class="folder-link-list">
-          <button v-for="shortcut in folderShortcutItems" :key="shortcut.id" type="button" class="folder-link" @click="emit('openShortcut', shortcut)">
-            <span class="folder-choice-mark" :style="{ backgroundColor: shortcut.color }">{{ shortcut.mark }}</span>
-            <span class="folder-link-title">{{ shortcut.title }}</span><span class="folder-link-url">{{ shortcut.url }}</span>
+        <div class="folder-launcher-grid">
+          <button v-for="shortcut in folderShortcutItems" :key="shortcut.id" type="button" class="folder-launcher" @click="emit('openShortcut', shortcut)">
+            <span class="folder-launcher-icon" :style="{ backgroundColor: shortcut.color }">
+              <img v-if="shortcutIconSource(shortcut)" :src="shortcutIconSource(shortcut)" alt="" />
+              <span v-else>{{ shortcut.mark }}</span>
+            </span>
+            <span class="folder-launcher-title">{{ shortcut.title }}</span>
           </button>
           <p v-if="!folderShortcutItems.length" class="folder-empty">这个文件夹还没有快捷入口。</p>
         </div>

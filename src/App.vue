@@ -201,6 +201,7 @@ const folderedShortcutIds = computed(() => new Set(folders.value.flatMap((folder
 const allLauncherItems = computed(() => availableLauncherItems.value.filter((item) => activeHomeWorkspaceItemIds.value.has(item.id)
   && !preferences.value.hiddenLauncherIds.includes(item.id)
   && (!item.shortcut || !folderedShortcutIds.value.has(item.id))))
+const folderPreviewItems = computed(() => availableLauncherItems.value.filter((item) => item.shortcut))
 const homeDockItems = computed(() => preferences.value.dockItemIds.flatMap((id) => {
   if (!activeHomeWorkspaceItemIds.value.has(id)) return []
   const item = availableLauncherItems.value.find((candidate) => candidate.id === id)
@@ -1068,6 +1069,7 @@ onBeforeUnmount(() => {
       <ShortcutGrid
         v-if="!minimalMode"
         :items="allLauncherItems"
+        :folder-shortcuts="folderPreviewItems"
         :dock-item-ids="preferences.dockItemIds"
         :columns="preferences.columns"
         :rows="preferences.rows"
@@ -1097,7 +1099,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? preferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :glow-strength="preferences.hoverGlow" :dark-theme="effectiveTheme === 'dark'" @open="openItem" @remove="toggleDockItem" />
+    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? preferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
       <span>{{ storageError }}</span>

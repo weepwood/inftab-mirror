@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { nextTick } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { LauncherItem } from '../types'
 import HomeDock from './HomeDock.vue'
 
@@ -115,5 +115,46 @@ describe('HomeDock context menu', () => {
     await wrapper.get('.home-dock-item').trigger('contextmenu')
 
     expect(document.body.querySelector('.dock-context-theme.theme-dark .dock-context-menu')).not.toBeNull()
+  })
+})
+
+describe('HomeDock magnification', () => {
+  it('uses stable icon positions while magnifying and clears styles on leave', () => {
+    wrapper = mount(HomeDock, {
+      props: {
+        items: [item, { ...item, id: 'mail', title: '邮件' }, { ...item, id: 'maps', title: '地图' }],
+        magnificationEnabled: true,
+      },
+    })
+    const entries = wrapper.findAll('.home-dock-entry')
+    entries.forEach((entry, index) => {
+      vi.spyOn(entry.element, 'getBoundingClientRect').mockReturnValue({
+        left: index * 50, width: 48, right: index * 50 + 48, top: 0, bottom: 48,
+        height: 48, x: index * 50, y: 0, toJSON: () => ({}),
+      } as DOMRect)
+    })
+    let runFrame: FrameRequestCallback | undefined
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      runFrame = callback
+      return 1
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+
+    wrapper.get('.home-dock').element.dispatchEvent(pointerEvent('pointermove', {
+      pointerType: 'mouse', clientX: 24,
+    }))
+    runFrame?.(0)
+
+    expect((entries[0]!.element as HTMLElement).style.getPropertyValue('--dock-scale')).toBe('1.500')
+    expect((entries[1]!.element as HTMLElement).style.getPropertyValue('--dock-scale')).toBe('1.361')
+    expect((entries[1]!.element as HTMLElement).style.getPropertyValue('--dock-shift-x')).toBe('8.66px')
+    expect((entries[1]!.element as HTMLElement).style.width).toBe('')
+    expect(wrapper.get('.home-dock').classes()).toContain('is-magnifying')
+
+    wrapper.get('.home-dock').element.dispatchEvent(pointerEvent('pointerleave', {}))
+
+    expect((entries[0]!.element as HTMLElement).style.getPropertyValue('--dock-scale')).toBe('')
+    expect((entries[1]!.element as HTMLElement).style.getPropertyValue('--dock-shift-x')).toBe('')
+    expect(wrapper.get('.home-dock').classes()).not.toContain('is-magnifying')
   })
 })

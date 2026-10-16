@@ -458,3 +458,42 @@ describe('ShortcutGrid keyboard reordering', () => {
     wrapper.unmount()
   })
 })
+
+describe('ShortcutGrid folder previews', () => {
+  it('shows up to four contained shortcuts in the folder tile', () => {
+    const shortcuts: LauncherItem[] = Array.from({ length: 5 }, (_, index) => ({
+      id: `nested-${index}`,
+      title: `网站 ${index + 1}`,
+      color: '#3567aa',
+      mark: String(index + 1),
+      icon: `/icons/${index}.png`,
+      shortcut: { id: `nested-${index}`, title: `网站 ${index + 1}`, url: `https://example${index}.com/`, color: '#3567aa', mark: String(index + 1), icon: `/icons/${index}.png` },
+    }))
+    const folder: LauncherItem = {
+      id: 'folder',
+      title: '工作',
+      color: '#4176e8',
+      mark: '▣',
+      folder: { id: 'folder', title: '工作', color: '#4176e8', mark: '▣', shortcutIds: shortcuts.map((shortcut) => shortcut.id) },
+    }
+    const wrapper = mount(ShortcutGrid, {
+      props: {
+        items: [folder],
+        folderShortcuts: shortcuts,
+        columns: 2,
+        rows: 1,
+        iconSize: 64,
+        iconRadius: 24,
+        showNames: true,
+        currentPage: 0,
+        transitionDirection: 1,
+        transitionEffect: 'slide',
+        transitionDuration: 0,
+      },
+    })
+
+    expect(wrapper.findAll('.folder-preview-tile')).toHaveLength(4)
+    expect(wrapper.findAll('.folder-preview-tile img')).toHaveLength(4)
+    wrapper.unmount()
+  })
+})

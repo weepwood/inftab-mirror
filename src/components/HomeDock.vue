@@ -3,11 +3,10 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { X } from '@lucide/vue'
 import type { LauncherItem } from '../types'
 
-const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; glowStrength?: number; darkTheme?: boolean }>(), {
+const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean }>(), {
   magnificationEnabled: false,
   iconSize: 44,
   iconGap: 2,
-  glowStrength: 100,
   darkTheme: false,
 })
 const emit = defineEmits<{ open: [item: LauncherItem]; remove: [id: string] }>()
@@ -125,10 +124,16 @@ function updateDockMagnification(event: PointerEvent) {
       const bounds = entry.getBoundingClientRect()
       return bounds.left + bounds.width / 2
     })
+    const itemSize = entries[0]?.getBoundingClientRect().width ?? 48
+    const influenceRadius = itemSize * 3
+    dock.value?.classList.add('is-magnifying')
     entries.forEach((entry, index) => {
-      const influence = Math.max(0, 1 - Math.abs(pointerX - centers[index]!) / 112)
-      const scale = 1 + influence * .24
-      entry.style.setProperty('--dock-scale', scale.toFixed(3))
+      const distance = pointerX - centers[index]!
+      const proximity = Math.max(0, 1 - Math.abs(distance) / influenceRadius)
+      const influence = proximity * proximity * (3 - 2 * proximity)
+      entry.style.setProperty('--dock-scale', (1 + influence * .5).toFixed(3))
+      entry.style.setProperty('--dock-shift-x', `${(-Math.sign(distance) * influence * itemSize * .25).toFixed(2)}px`)
+      entry.style.zIndex = influence > .05 ? '2' : ''
     })
   })
 }
@@ -136,8 +141,11 @@ function updateDockMagnification(event: PointerEvent) {
 function clearDockMagnification() {
   if (magnificationFrame) window.cancelAnimationFrame(magnificationFrame)
   magnificationFrame = 0
+  dock.value?.classList.remove('is-magnifying')
   dock.value?.querySelectorAll<HTMLElement>('.home-dock-entry').forEach((entry) => {
     entry.style.removeProperty('--dock-scale')
+    entry.style.removeProperty('--dock-shift-x')
+    entry.style.removeProperty('z-index')
   })
 }
 
@@ -184,23 +192,25 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <nav v-if="items.length" ref="dock" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px`, '--dock-glow-strength': String(props.glowStrength / 100) }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="clearDockMagnification" @click.capture="preventGestureClick">
-    <div v-for="item in items" :key="item.id" class="home-dock-entry" :data-title="item.title">
-      <button
-        type="button"
-        class="home-dock-item"
-        :data-dock-item-id="item.id"
-        :aria-label="`打开${item.title}`"
-        :title="item.title"
-        @click="emit('open', item)"
-        @contextmenu="showContextMenu($event, item, $event.clientX, $event.clientY)"
-        @keydown="handleItemKeydown($event, item)"
-      >
-        <span class="home-dock-icon" :style="{ backgroundColor: item.color, '--dock-glow-color': item.color }">
-          <img v-if="item.icon" :src="item.icon" alt="" />
-          <span v-else>{{ item.mark }}</span>
-        </span>
-      </button>
+  <nav v-if="items.length" ref="dock" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px` }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="clearDockMagnification" @click.capture="preventGestureClick">
+    <div class="home-dock-track">
+      <div v-for="item in items" :key="item.id" class="home-dock-entry" :data-title="item.title">
+        <button
+          type="button"
+          class="home-dock-item"
+          :data-dock-item-id="item.id"
+          :aria-label="`打开${item.title}`"
+          :title="item.title"
+          @click="emit('open', item)"
+          @contextmenu="showContextMenu($event, item, $event.clientX, $event.clientY)"
+          @keydown="handleItemKeydown($event, item)"
+        >
+          <span class="home-dock-icon" :style="{ backgroundColor: item.color, '--dock-glow-color': item.color }">
+            <img v-if="item.icon" :src="item.icon" alt="" />
+            <span v-else>{{ item.mark }}</span>
+          </span>
+        </button>
+      </div>
     </div>
   </nav>
   <Teleport to="body">

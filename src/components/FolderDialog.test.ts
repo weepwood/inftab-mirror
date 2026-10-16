@@ -70,6 +70,6 @@ describe('FolderDialog accessibility', () => {
     await wrapper.get('.folder-toolbar button').trigger('click')
 
     expect(wrapper.emitted('openAllShortcuts')).toEqual([[[second, first]]])
-    expect(wrapper.findAll('.folder-link')).toHaveLength(2)
+    expect(wrapper.findAll('.folder-launcher')).toHaveLength(2)
   })
 })

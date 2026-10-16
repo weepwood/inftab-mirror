@@ -9,6 +9,7 @@ const ShortcutContextMenu = defineAsyncComponent(() => import('./ShortcutContext
 
 const props = defineProps<{
   items: LauncherItem[]
+  folderShortcuts?: LauncherItem[]
   dockItemIds?: string[]
   columns: number
   rows: number
@@ -659,6 +660,14 @@ function hasUsableIcon(item: LauncherItem) {
   return Boolean(item.icon && failedIconUrls.value.get(item.id) !== item.icon)
 }
 
+function folderPreviewItems(item: LauncherItem) {
+  if (!item.folder) return []
+  return item.folder.shortcutIds.flatMap((id) => {
+    const shortcut = props.folderShortcuts?.find((candidate) => candidate.id === id)
+    return shortcut ? [shortcut] : []
+  }).slice(0, 4)
+}
+
 function handleIconError(item: LauncherItem) {
   if (!item.icon) return
   const failed = new Map(failedIconUrls.value)
@@ -800,7 +809,13 @@ onBeforeUnmount(() => {
               <span class="shortcut-icon" :class="{ builtin: item.action }" :style="{ backgroundColor: item.color }">
                 <img v-if="hasUsableIcon(item)" class="shortcut-picture" :src="item.icon" alt="" draggable="false" @error="handleIconError(item)" />
                 <component v-else-if="item.action && itemIcons[item.action]" :is="itemIcons[item.action]" :size="35" :stroke-width="2.6" />
-                <Folder v-else-if="item.folder" :size="35" :stroke-width="2.2" />
+                <span v-else-if="item.folder" class="folder-preview-grid">
+                  <span v-for="shortcut in folderPreviewItems(item)" :key="shortcut.id" class="folder-preview-tile" :style="{ backgroundColor: shortcut.color }">
+                    <img v-if="hasUsableIcon(shortcut)" :src="shortcut.icon" alt="" draggable="false" @error="handleIconError(shortcut)" />
+                    <span v-else>{{ shortcut.mark }}</span>
+                  </span>
+                  <Folder v-if="!folderPreviewItems(item).length" :size="35" :stroke-width="2.2" />
+                </span>
                 <span v-else class="shortcut-mark">{{ item.mark }}</span>
                 <span v-if="item.badge" class="shortcut-badge">{{ item.badge }}</span>
               </span>
