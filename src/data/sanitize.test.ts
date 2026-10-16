@@ -65,10 +65,16 @@ describe('local state sanitization', () => {
     expect(sanitizePreferences({ dockMagnification: 'off' }).dockMagnification).toBe(false)
   })
 
+  it('defaults Dock icon sizing to follow the launcher and validates its toggle', () => {
+    expect(sanitizePreferences({}).dockFollowLauncherSize).toBe(true)
+    expect(sanitizePreferences({ dockFollowLauncherSize: false }).dockFollowLauncherSize).toBe(false)
+    expect(sanitizePreferences({ dockFollowLauncherSize: 'match' }).dockFollowLauncherSize).toBe(true)
+  })
+
   it('bounds and rounds the configurable dock icon size', () => {
     expect(sanitizePreferences({}).dockIconSize).toBe(44)
     expect(sanitizePreferences({ dockIconSize: 53.5 }).dockIconSize).toBe(54)
-    expect(sanitizePreferences({ dockIconSize: 100 }).dockIconSize).toBe(64)
+    expect(sanitizePreferences({ dockIconSize: 100 }).dockIconSize).toBe(60)
     expect(sanitizePreferences({ dockIconGap: 14 }).dockIconGap).toBe(14)
     expect(sanitizePreferences({ dockIconGap: 30 }).dockIconGap).toBe(16)
   })

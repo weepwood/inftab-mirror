@@ -82,6 +82,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
     hiddenLauncherIds: (item) => Array.isArray(item) && item.every((id) => typeof id === 'string' && launcherItems.some((launcher) => launcher.id === id && launcher.action && launcher.id !== 'settings')),
     dockItemIds: (item) => Array.isArray(item) && item.length <= maxDockItems && item.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 128),
     dockMagnification: (item) => typeof item === 'boolean',
+    dockFollowLauncherSize: (item) => typeof item === 'boolean',
     dockIconSize: (item) => typeof item === 'number' && Number.isFinite(item),
     dockIconGap: (item) => typeof item === 'number' && Number.isFinite(item),
     homeWidgetIds: (item) => Array.isArray(item) && item.every((id) => typeof id === 'string' && availableHomeWidgetIds.includes(id as typeof availableHomeWidgetIds[number])),

@@ -8,6 +8,7 @@ export const defaultPreferences: Preferences = {
   hiddenLauncherIds: [],
   dockItemIds: [],
   dockMagnification: false,
+  dockFollowLauncherSize: true,
   dockIconSize: 44,
   dockIconGap: 2,
   homeWidgetIds: [],

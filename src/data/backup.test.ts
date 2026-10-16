@@ -227,9 +227,10 @@ describe('workspace backups', () => {
   })
 
   it('preserves Dock size, spacing and magnification preferences', () => {
-    const preferences = { ...defaultPreferences, dockMagnification: true, dockIconSize: 58, dockIconGap: 10 }
+    const preferences = { ...defaultPreferences, dockMagnification: true, dockFollowLauncherSize: false, dockIconSize: 58, dockIconGap: 10 }
     expect(parseWorkspaceBackup(backup({ preferences })).preferences).toMatchObject({
       dockMagnification: true,
+      dockFollowLauncherSize: false,
       dockIconSize: 58,
       dockIconGap: 10,
     })

@@ -86,6 +86,7 @@ export interface Preferences {
   hiddenLauncherIds: string[]
   dockItemIds: string[]
   dockMagnification: boolean
+  dockFollowLauncherSize: boolean
   dockIconSize: number
   dockIconGap: number
   homeWidgetIds: HomeWidgetId[]
