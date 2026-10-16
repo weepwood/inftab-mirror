@@ -226,6 +226,17 @@ describe('workspace backups', () => {
     }))).toThrow(/页面设置无法识别/)
   })
 
+  it('preserves Dock size, spacing and magnification preferences', () => {
+    const preferences = { ...defaultPreferences, dockMagnification: true, dockIconSize: 58, dockIconGap: 10 }
+    expect(parseWorkspaceBackup(backup({ preferences })).preferences).toMatchObject({
+      dockMagnification: true,
+      dockIconSize: 58,
+      dockIconGap: 10,
+    })
+    expect(() => parseWorkspaceBackup(backup({ preferences: { ...preferences, dockIconGap: 'wide' as unknown as number } })))
+      .toThrow(/页面设置无法识别/)
+  })
+
   it('backs up valid home widgets and rejects unknown widget ids', () => {
     expect(parseWorkspaceBackup(backup({
       preferences: { ...defaultPreferences, homeWidgetIds: ['todo-summary', 'countdown-summary', 'notes-summary'] },

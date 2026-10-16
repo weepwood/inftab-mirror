@@ -117,15 +117,19 @@ select { background-color: #fff; color: #343a40; }
 .weather-summary-authorize { width: auto; padding: 0 8px; background: rgba(76, 93, 116, .1); font-size: 10px; white-space: nowrap; }
 .weather-summary-refresh:hover:not(:disabled) { background: rgba(76, 93, 116, .12); color: #26313e; }
 .weather-summary-refresh:disabled { opacity: .45; cursor: wait; }
-.home-dock { position: fixed; z-index: 2; bottom: 42px; left: 50%; display: flex; gap: 5px; max-width: calc(100vw - 88px); overflow-x: auto; padding: 7px; transform: translateX(-50%); border: 1px solid rgba(255, 255, 255, .46); border-radius: 16px; background: rgba(30, 35, 39, .52); box-shadow: 0 8px 24px rgba(0, 0, 0, .2); backdrop-filter: blur(16px); scrollbar-width: thin; touch-action: pan-x pinch-zoom; }
-.home-dock-entry { position: relative; width: 56px; flex: 0 0 56px; }
-.home-dock-item { width: 56px; min-height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; border-radius: 10px; padding: 4px 2px; background: transparent; color: #fff; cursor: pointer; }
-.home-dock-item:hover, .home-dock-item:focus-visible { background: rgba(255, 255, 255, .2); }
-.home-dock-remove { position: absolute; z-index: 1; top: -3px; right: -3px; width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .7); border-radius: 50%; padding: 0; background: rgba(36, 42, 48, .88); color: #fff; cursor: pointer; opacity: 0; pointer-events: none; }
-.home-dock-entry:hover .home-dock-remove, .home-dock-entry:focus-within .home-dock-remove { opacity: 1; pointer-events: auto; }
-.home-dock-icon { width: 30px; height: 30px; display: grid; place-items: center; overflow: hidden; border-radius: 9px; color: #303640; font-size: 19px; }
+/* CSS viewport units naturally reduce the Dock under browser zoom and narrow display layouts. */
+.home-dock { --dock-icon-size: min(var(--dock-size-setting, 44px), clamp(36px, calc(3vw + 28px), 64px)); --dock-item-size: calc(var(--dock-icon-size) + 4px); position: fixed; z-index: 2; bottom: 42px; left: 50%; display: flex; align-items: center; gap: min(var(--dock-gap-setting, 2px), clamp(0px, 1vw, 16px)); max-width: calc(100vw - 88px); overflow-x: auto; padding: 8px; transform: translateX(-50%); border: 1px solid rgba(255, 255, 255, .38); border-radius: 18px; background: rgba(28, 32, 38, .54); box-shadow: 0 12px 32px rgba(12, 16, 21, .26), inset 0 1px 0 rgba(255, 255, 255, .18); backdrop-filter: blur(22px) saturate(140%); scrollbar-width: none; touch-action: pan-x pinch-zoom; }
+.home-dock::-webkit-scrollbar { display: none; }
+.home-dock-entry { position: relative; z-index: 0; width: var(--dock-item-size, 48px); flex: 0 0 var(--dock-item-size, 48px); --dock-scale: 1; }
+.home-dock-entry:hover, .home-dock-entry:focus-within { z-index: 2; }
+.home-dock-entry:focus-within { --dock-scale: 1.2; }
+.home-dock.magnification-off .home-dock-entry { --dock-scale: 1 !important; }
+.home-dock-item { width: var(--dock-item-size, 48px); height: var(--dock-item-size, 48px); display: grid; place-items: center; border: 0; border-radius: 10px; padding: 0; background: transparent; color: #fff; cursor: pointer; }
+.home-dock-item:focus-visible { outline-offset: 3px; }
+.home-dock-icon { width: var(--dock-icon-size, 44px); height: var(--dock-icon-size, 44px); display: grid; place-items: center; overflow: hidden; border-radius: 12px; color: #303640; font-size: 19px; box-shadow: 0 3px 9px rgba(8, 12, 17, .24); transform: scale(var(--dock-scale, 1)); transform-origin: center; transition: transform .18s cubic-bezier(.2, .85, .3, 1), filter .18s ease; }
+.home-dock-entry:hover .home-dock-icon, .home-dock-item:focus-visible .home-dock-icon { filter: drop-shadow(0 0 calc(10px * var(--dock-glow-strength, 1)) var(--dock-glow-color, rgba(255, 255, 255, .6))); }
 .home-dock-icon img { width: 100%; height: 100%; object-fit: contain; }
-.home-dock-label { width: 100%; overflow: hidden; font-size: 9px; line-height: 1.15; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.dock-context-menu { width: 176px; }
 
 .home-content { position: relative; z-index: 1; width: min(1440px, calc(100vw - 64px)); margin: 0 auto; padding-top: clamp(72px, 9vh, 112px); }
 .home-content.home-content-minimal { position: absolute; top: 50%; left: 50%; width: min(960px, calc(100vw - 64px)); margin: 0; padding: 0; transform: translate(-50%, -50%); }
@@ -207,7 +211,7 @@ select { background-color: #fff; color: #343a40; }
 .particles-mode .shortcut-page { grid-area: 1 / 1; opacity: 0; pointer-events: none; }
 .particles-mode .shortcut-page[aria-hidden='false'], .particles-mode .shortcut-page.particles-out { opacity: 1; pointer-events: auto; }
 .shortcut-page.particles-out .shortcut-cell { visibility: hidden; }
-.particles-mode .shortcut-page.particles-in .shortcut-cell { animation: particle-fade-in 780ms cubic-bezier(.18, .72, .2, 1) both; animation-delay: calc(min(var(--entry-index, 0), 18) * 24ms); }
+.particles-mode .shortcut-page.particles-in .shortcut-cell { animation: particle-fade-in 780ms cubic-bezier(.18, .72, .2, 1) both; }
 @keyframes particle-fade-in {
   0% { opacity: 0; transform: translateY(7px) scale(.985); filter: blur(2px); }
   100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
@@ -544,11 +548,7 @@ select { background-color: #fff; color: #343a40; }
   .page-dots { margin-top: 20px; }
   .home-widget-shelf { width: min(100%, 620px); grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: min(82%, 320px); justify-content: start; overflow-x: auto; margin-bottom: 16px; padding: 0 2px 4px; scroll-snap-type: x mandatory; scrollbar-width: thin; touch-action: pan-x; }
   .home-widget-card { grid-column: auto; scroll-snap-align: start; }
-  .home-dock { bottom: 40px; max-width: calc(100vw - 24px); }
-}
-
-@media (hover: none) {
-  .home-dock-remove { opacity: 1; pointer-events: auto; }
+  .home-dock { bottom: 40px; max-width: calc(100vw - 24px); padding: 6px; border-radius: 17px; }
 }
 
 .home.home-scrollable .home-widget-shelf { touch-action: auto; }
@@ -647,7 +647,7 @@ select { background-color: #fff; color: #343a40; }
 }
 .theme-dark .search-box { border-color: rgba(255, 255, 255, .35); }
 .theme-dark .home-widget-card { border-color: rgba(255, 255, 255, .14); background: rgba(28, 32, 40, .88); color: #e7eaf0; }
-.theme-dark .home-dock { border-color: rgba(255, 255, 255, .2); background: rgba(20, 23, 28, .82); }
+.theme-dark .home-dock { border-color: rgba(255, 255, 255, .24); background: rgba(20, 23, 28, .72); box-shadow: 0 12px 32px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255, 255, 255, .12); }
 .theme-dark .home-widget-title,
 .theme-dark .weather-summary-copy strong,
 .theme-dark .home-widget-highlight,

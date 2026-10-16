@@ -1097,7 +1097,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" @open="openItem" @remove="toggleDockItem" />
+    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :glow-strength="preferences.hoverGlow" :dark-theme="effectiveTheme === 'dark'" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
       <span>{{ storageError }}</span>

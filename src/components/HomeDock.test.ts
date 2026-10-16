@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { nextTick } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { LauncherItem } from '../types'
@@ -66,5 +67,53 @@ describe('HomeDock touch gestures', () => {
     wrapper.get('.home-dock-item').element.dispatchEvent(touchClick(2))
 
     expect(wrapper.emitted('open')).toHaveLength(1)
+  })
+})
+
+describe('HomeDock context menu', () => {
+  it('hides dock labels while keeping accessible names and tooltips', () => {
+    wrapper = mount(HomeDock, { props: { items: [item] } })
+
+    const button = wrapper.get('.home-dock-item')
+    expect(wrapper.find('.home-dock-label').exists()).toBe(false)
+    expect(button.attributes('aria-label')).toBe('打开天气')
+    expect(button.attributes('title')).toBe('天气')
+    expect(wrapper.find('.home-dock-remove').exists()).toBe(false)
+    expect(wrapper.get('.home-dock').classes()).toContain('magnification-off')
+  })
+
+  it('can disable icon magnification', () => {
+    wrapper = mount(HomeDock, { props: { items: [item], magnificationEnabled: false } })
+
+    expect(wrapper.get('.home-dock').classes()).toContain('magnification-off')
+  })
+
+  it('sizes the icon and its button together', () => {
+    wrapper = mount(HomeDock, { props: { items: [item], iconSize: 58 } })
+
+    expect(wrapper.get('.home-dock').attributes('style')).toContain('--dock-size-setting: 58px')
+    expect(wrapper.get('.home-dock').attributes('style')).toContain('--dock-gap-setting: 2px')
+  })
+
+  it('removes an item from its right-click menu', async () => {
+    wrapper = mount(HomeDock, { attachTo: document.body, props: { items: [item] } })
+
+    await wrapper.get('.home-dock-item').trigger('contextmenu')
+    const menu = document.body.querySelector('.dock-context-menu')
+    expect(menu).not.toBeNull()
+    expect(menu?.getAttribute('role')).toBe('menu')
+    expect(menu?.textContent).toContain('从 Dock 移除')
+    menu?.querySelector('button')?.click()
+    await nextTick()
+
+    expect(wrapper.emitted('remove')).toEqual([['weather']])
+    expect(document.body.querySelector('.dock-context-menu')).toBeNull()
+  })
+
+  it('applies the dark theme to its teleported context menu', async () => {
+    wrapper = mount(HomeDock, { attachTo: document.body, props: { items: [item], darkTheme: true } })
+    await wrapper.get('.home-dock-item').trigger('contextmenu')
+
+    expect(document.body.querySelector('.dock-context-theme.theme-dark .dock-context-menu')).not.toBeNull()
   })
 })

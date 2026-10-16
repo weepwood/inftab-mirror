@@ -59,6 +59,20 @@ describe('local state sanitization', () => {
     expect(sanitizePreferences({}).dockItemIds).toEqual([])
   })
 
+  it('defaults dock magnification off and validates its toggle', () => {
+    expect(sanitizePreferences({}).dockMagnification).toBe(false)
+    expect(sanitizePreferences({ dockMagnification: false }).dockMagnification).toBe(false)
+    expect(sanitizePreferences({ dockMagnification: 'off' }).dockMagnification).toBe(false)
+  })
+
+  it('bounds and rounds the configurable dock icon size', () => {
+    expect(sanitizePreferences({}).dockIconSize).toBe(44)
+    expect(sanitizePreferences({ dockIconSize: 53.5 }).dockIconSize).toBe(54)
+    expect(sanitizePreferences({ dockIconSize: 100 }).dockIconSize).toBe(64)
+    expect(sanitizePreferences({ dockIconGap: 14 }).dockIconGap).toBe(14)
+    expect(sanitizePreferences({ dockIconGap: 30 }).dockIconGap).toBe(16)
+  })
+
   it('keeps enabled home widgets unique and limited to registered ids', () => {
     expect(sanitizePreferences({ homeWidgetIds: ['todo-summary', 'todo-summary', 'unknown', 3, 'countdown-summary'] }).homeWidgetIds)
       .toEqual(['todo-summary', 'countdown-summary'])

@@ -90,6 +90,9 @@ export function sanitizePreferences(value: unknown): Preferences {
       : defaultPreferences.themeMode,
     hiddenLauncherIds,
     dockItemIds,
+    dockMagnification: typeof merged.dockMagnification === 'boolean' ? merged.dockMagnification : defaultPreferences.dockMagnification,
+    dockIconSize: Math.round(boundedNumber(raw.dockIconSize, defaultPreferences.dockIconSize, 32, 64)),
+    dockIconGap: Math.round(boundedNumber(raw.dockIconGap, defaultPreferences.dockIconGap, 0, 16)),
     homeWidgetIds,
     homeWidgetSizes,
     engine: typeof merged.engine === 'string' && (engines.has(merged.engine) || /^custom:[\w-]{1,128}$/.test(merged.engine))

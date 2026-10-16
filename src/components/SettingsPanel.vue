@@ -333,12 +333,16 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
     </section>
 
     <section class="settings-section">
-      <div class="section-heading"><div><h3>动画与反馈</h3><p>控制翻页速度和图标悬停效果</p></div></div>
+      <div class="section-heading"><div><h3>动画与反馈</h3><p>控制翻页效果和 Dock 悬停动效</p></div></div>
       <p class="settings-subheading">翻页效果</p>
       <label v-for="effect in transitionEffects" :key="effect.id" class="toggle-row transition-option">
         <span>{{ effect.label }}</span><input type="radio" name="page-transition-effect" :checked="preferences.pageTransitionEffect === effect.id" @change="setTransitionEffect(effect.id)" />
       </label>
       <label class="range-label"><span>翻页动画时长</span><strong>{{ preferences.pageTransitionMs }} ms</strong><input type="range" min="0" max="2000" step="40" :value="preferences.pageTransitionMs" @input="update('pageTransitionMs', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="toggle-row"><span>Dock 图标放大效果</span><input type="checkbox" :checked="preferences.dockMagnification" @change="update('dockMagnification', ($event.target as HTMLInputElement).checked)" /></label>
+      <label class="range-label"><span>Dock 图标大小</span><strong>{{ preferences.dockIconSize }} px</strong><input type="range" min="32" max="64" step="2" :value="preferences.dockIconSize" @input="update('dockIconSize', Number(($event.target as HTMLInputElement).value))" /></label>
+      <p class="wallpaper-note">窄屏或浏览器放大时，图标会自动缩小以适配 Dock。</p>
+      <label class="range-label"><span>Dock 图标间距</span><strong>{{ preferences.dockIconGap }} px</strong><input type="range" min="0" max="16" step="2" :value="preferences.dockIconGap" @input="update('dockIconGap', Number(($event.target as HTMLInputElement).value))" /></label>
       <label class="range-label"><span>悬停光晕强度</span><strong>{{ preferences.hoverGlow }}%</strong><input type="range" min="0" max="100" step="5" :value="preferences.hoverGlow" @input="update('hoverGlow', Number(($event.target as HTMLInputElement).value))" /></label>
     </section>
     </div>

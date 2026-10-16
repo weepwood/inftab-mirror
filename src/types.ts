@@ -85,6 +85,9 @@ export interface Preferences {
   themeMode: ThemeMode
   hiddenLauncherIds: string[]
   dockItemIds: string[]
+  dockMagnification: boolean
+  dockIconSize: number
+  dockIconGap: number
   homeWidgetIds: HomeWidgetId[]
   homeWidgetSizes: Record<HomeWidgetId, HomeWidgetSize>
   engine: SearchEngineSelection
