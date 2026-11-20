@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { Component } from 'vue'
-import { ArrowLeft, House, Menu, X } from '@lucide/vue'
+import { ArrowLeft, House, Menu, Plus, Search, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
 import ClockWidget from './components/ClockWidget.vue'
 import { lazyPluginComponent, retryAsyncLoad } from './plugins/asyncComponent'
@@ -341,8 +341,8 @@ const fitMetrics = computed(() => {
   const clockSize = compactHeight ? 40 : showHomeWidgets.value ? 48 : mobile ? 64 : height <= 800 ? 72 : 88
   const clockBottomGap = compactHeight ? 16 : 28
   const clockClearance = preferences.value.showClock && !veryShortHeight ? clockSize + 12 + 20 + clockBottomGap : 0
-  const searchVisible = preferences.value.showSearchBar
-  const tabHeight = searchVisible && preferences.value.visibleSearchModes.length ? (veryShortHeight ? 26 : smallMobile ? 28 : 33) : 0
+  const searchVisible = preferences.value.showSearchBar || localSearchMode.value || minimalMode.value
+  const tabHeight = searchVisible && !localSearchMode.value && preferences.value.visibleSearchModes.length ? (veryShortHeight ? 26 : smallMobile ? 28 : 33) : 0
   const searchHeight = searchVisible ? Math.min(preferences.value.searchHeight, veryShortHeight ? 44 : mobile ? 48 : 100) : 0
   const configuredTopGap = searchVisible ? preferences.value.gridTopGap * (mobile && !compactHeight ? 0.68 : 1) : 0
   const gridTopGap = veryShortHeight ? Math.min(configuredTopGap, 16) : compactHeight ? Math.min(configuredTopGap, 28) : configuredTopGap
@@ -458,15 +458,30 @@ async function submitTranslation() {
   }
 }
 
+function setLocalSearch(enabled: boolean) {
+  localSearchMode.value = enabled
+  query.value = ''
+  void nextTick(() => {
+    if (searchBar.value) searchBar.value.focusSearch()
+    else document.querySelector<HTMLButtonElement>('.home-search-toggle')?.focus()
+  })
+}
+
 function openLocalSearchResult(item: LauncherItem) {
   localSearchMode.value = false
   query.value = ''
+  document.querySelector<HTMLButtonElement>('.home-search-toggle')?.focus()
   openItem(item)
 }
 
 function handleLocalSearchResultKeydown(event: KeyboardEvent) {
   const results = [...document.querySelectorAll<HTMLButtonElement>('.local-search-result')]
   const index = results.indexOf(event.currentTarget as HTMLButtonElement)
+  if (event.key === 'ArrowUp' && index === 0) {
+    event.preventDefault()
+    searchBar.value?.focusSearch()
+    return
+  }
   const nextIndex = event.key === 'ArrowDown' ? Math.min(index + 1, results.length - 1)
     : event.key === 'ArrowUp' ? Math.max(index - 1, 0)
       : event.key === 'Home' ? 0
@@ -549,11 +564,17 @@ async function cancelDestructiveAction() {
   destructiveActionFocusTarget = undefined
 }
 
-function confirmDestructiveAction() {
+async function confirmDestructiveAction() {
   const action = pendingDestructiveAction.value
+  const previousTarget = destructiveActionFocusTarget
   pendingDestructiveAction.value = undefined
   destructiveActionFocusTarget = undefined
   action?.run()
+  await nextTick()
+  const target = previousTarget?.isConnected ? previousTarget
+    : sidePanel.value?.querySelector<HTMLButtonElement>('.panel-close')
+      ?? document.querySelector<HTMLButtonElement>('.home-search-toggle')
+  target?.focus()
 }
 
 function saveFolder(folder: ShortcutFolder) {
@@ -864,11 +885,6 @@ function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode:
 function handleKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented || pendingDestructiveAction.value) return
   if (event.key === 'Escape') {
-    if (localSearchMode.value) {
-      localSearchMode.value = false
-      query.value = ''
-      return
-    }
     if (shortcutDialog.value) {
       shortcutDialog.value = false
       return
@@ -879,6 +895,10 @@ function handleKeydown(event: KeyboardEvent) {
     }
     if (activePanel.value) {
       activePanel.value = null
+      return
+    }
+    if (localSearchMode.value) {
+      setLocalSearch(false)
       return
     }
     if (minimalMode.value) {
@@ -893,9 +913,7 @@ function handleKeydown(event: KeyboardEvent) {
   if (localSearchShortcut && (!editingText || target?.closest('.search-area'))
     && !activePanel.value && !shortcutDialog.value && !folderDialogOpen.value) {
     event.preventDefault()
-    localSearchMode.value = true
-    query.value = ''
-    void nextTick(() => searchBar.value?.focusSearch())
+    setLocalSearch(true)
     return
   }
   const focusSearchShortcut = event.key === '/' && !event.altKey && !event.ctrlKey && !event.metaKey
@@ -1017,6 +1035,8 @@ onBeforeUnmount(() => {
     <div class="background-shade"></div>
     <div class="home-brand" aria-label="Infinity 新标签页"><span class="brand-mark" aria-hidden="true">∞</span><span class="brand-word">infinity</span><span class="brand-label">新标签页</span></div>
     <header class="home-actions">
+      <button v-if="!minimalMode" type="button" class="round-action home-create-shortcut" aria-label="新建快捷入口" title="新建快捷入口" @click="openShortcutDialog()"><Plus :size="19" /></button>
+      <button type="button" class="round-action home-search-toggle" aria-label="查找快捷入口" title="查找快捷入口（Ctrl/⌘+F）" :aria-pressed="localSearchMode" @click="setLocalSearch(!localSearchMode)"><Search :size="18" /></button>
       <button type="button" class="round-action minimal-mode-toggle" :aria-label="minimalMode ? '退出极简模式' : '进入极简模式'" :aria-pressed="minimalMode" :title="minimalMode ? '退出极简模式' : '进入极简模式'" @click="toggleMinimalMode"><X v-if="minimalMode" :size="18" /><span v-else class="minimal-mode-symbol" aria-hidden="true"></span></button>
       <button type="button" class="round-action" aria-label="回到首页" title="回到首页" @click="goToPage(0)"><House :size="19" /></button>
       <button type="button" class="round-action" aria-label="打开设置" title="打开设置" @click="openPanel('settings')"><Menu :size="21" /></button>
@@ -1054,6 +1074,7 @@ onBeforeUnmount(() => {
         :custom-engines="customSearchEngines"
         :dark-theme="effectiveTheme === 'dark'"
         :local-search="localSearchMode"
+        @exit-local-search="setLocalSearch(false)"
         @search="submitSearch"
         @translate="submitTranslation"
       >

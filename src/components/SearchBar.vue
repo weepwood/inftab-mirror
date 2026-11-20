@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ChevronDown, Search } from '@lucide/vue'
+import { ArrowLeft, ChevronDown, Search } from '@lucide/vue'
 import { engines, searchModes } from '../data/defaults'
 import type { CustomSearchEngine, SearchEngineSelection, SearchMode } from '../types'
 
@@ -20,6 +20,7 @@ const emit = defineEmits<{
   'update:mode': [value: SearchMode]
   search: []
   translate: []
+  exitLocalSearch: []
 }>()
 
 const showEngines = ref(false)
@@ -229,6 +230,7 @@ defineExpose({ focusSearch, showTranslationError })
     </nav>
 
     <form ref="searchBox" class="search-box" @submit.prevent="handleSearchSubmit">
+      <button v-if="localSearch" class="local-search-back" type="button" aria-label="退出快捷入口搜索" title="返回网页搜索（Esc）" @click="emit('exitLocalSearch')"><ArrowLeft :size="18" /></button>
       <button
         ref="enginePicker"
         class="engine-picker"

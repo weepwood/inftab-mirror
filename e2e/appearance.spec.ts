@@ -9,6 +9,7 @@ for (const viewport of [
   { width: 1440, height: 1000 },
   { width: 800, height: 900 },
   { width: 390, height: 844 },
+  { width: 320, height: 760 },
   { width: 1280, height: 600 },
   { width: 390, height: 360 },
 ]) {
