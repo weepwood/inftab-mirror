@@ -2,9 +2,9 @@
 
 当前插件注册表用于组织仓库内受信任的功能模块，不会加载远程 JavaScript。新增模块时保持按需加载，并让数据校验、备份和交互测试跟上功能实现。
 
-面板 adapter 的最小状态/操作上下文、属性和事件参数类型集中在 `src/plugins/registry.ts` 的 `PanelContextById`、`PanelPropsById`、`PanelEventsById`；首页小组件对应定义在 `src/plugins/widgetRegistry.ts` 的 `HomeWidgetContextById`、`HomeWidgetPropsById`。每个注册项将 `context`、`props` 和事件适配器与组件元数据放在同一处，TypeScript 会按 ID 限制可访问的上下文并检查返回值。为新模块只暴露它实际需要的状态和操作。若更改组件契约，同步更新这些类型和 `src/plugins/registry.test.ts` 中的键名断言，并为实际组件交互保留端到端回归。`npm run check` 会执行插件测试的静态类型检查。
+面板 adapter 的最小状态/操作上下文、属性和事件参数类型集中在 `src/plugins/registry.ts` 的 `PanelContextById`、`PanelPropsById`、`PanelEventsById`；首页小组件对应定义在 `src/plugins/widgetRegistry.ts` 的 `HomeWidgetContextById`、`HomeWidgetPropsById`、`HomeWidgetEventsById`。每个注册项将 `context`、`props` 和事件适配器与组件元数据放在同一处，TypeScript 会按 ID 限制可访问的上下文并检查返回值。为新模块只暴露它实际需要的状态和操作。若更改组件契约，同步更新这些类型和 `src/plugins/registry.test.ts` 中的键名断言，并为实际组件交互保留端到端回归。`npm run check` 会执行插件测试的静态类型检查。
 
-首页组件架使用的注册表会同时决定该组件的上下文适配器和属性适配器；测试替代注册项时，两者必须来自同一份 `HomeWidgetPluginRegistry`，以避免验证到默认全局注册项。
+首页组件架使用的注册表会同时决定该组件的上下文、属性和可选的 `listeners` 事件适配器；`getHomeWidgetProps` 与 `getHomeWidgetListeners` 必须接收同一份 `HomeWidgetPluginRegistry`。测试替代注册项时也要遵守此规则，避免操作被错误路由至默认全局注册项。只读组件可省略 `listeners`，组件架会使用空对象。
 
 ## 新增工具面板
 
@@ -17,12 +17,35 @@
 ## 新增首页小组件
 
 1. 在 `src/plugins/ids.ts` 的 `availableHomeWidgetIds` 中加入稳定、唯一的 ID。
-2. 在 `src/plugins/widgetRegistry.ts` 用同 ID 注册最小 `context` 适配器、标题、说明、可选的关联面板、异步组件和属性适配器。通过文件内的 `lazyWidget(() => import('…'))` 注册组件；该包装器同样使用 `lazyPluginComponent`，为组件保留一致的加载和重试反馈。
+2. 在 `src/plugins/widgetRegistry.ts` 用同 ID 注册最小 `context` 适配器、标题、说明、可选的关联面板、异步组件和属性适配器；交互式组件还需声明 `HomeWidgetEventsById` 的事件签名与 `listeners` 适配器。通过文件内的 `lazyWidget(() => import('…'))` 注册组件；该包装器同样使用 `lazyPluginComponent`，为组件保留一致的加载和重试反馈。
 3. 在 `src/components/` 新建小组件。若需要详情视图，在注册信息中填写关联面板，标题会打开它；独立小组件省略 `panel`，标题显示为非操作文本。首页排序和移除由组件架统一处理。
 4. 调整 `src/data/sanitize.ts` 与 `src/data/backup.ts` 的兼容逻辑（若 ID 由清单自动接受则仍需验证备份行为），确认旧备份缺少此项时仍能正常导入。
 5. 为小组件显示、打开面板、排序、移除、窄视口布局和备份往返添加覆盖。
 6. 新增 ID 会自动获得标准宽度默认值；若要为组件指定其他默认宽度或新增宽度变体，需同步更新 `Preferences.homeWidgetSizes`、清理逻辑和测试，并覆盖桌面网格行数及移动端横向滚动布局。
 7. 对随日期变化的组件，在标签页重新获得焦点、恢复可见或跨过本地午夜时刷新内容，并在卸载时清理计时器和事件监听器。
+
+### 示例：待办概览的共享操作
+
+`todo-summary` 使用同一份 `useLocalWorkspace` 状态与操作；组件只接收数据和发出意图，不直接读写 `localStorage`：
+
+```ts
+// HomeWidgetContextById['todo-summary']
+// Pick<HomeWidgetContext, 'todos' | 'addTodo' | 'toggleTodo'>
+// HomeWidgetPropsById['todo-summary'] = { items: TodoItem[] }
+// HomeWidgetEventsById['todo-summary']
+// { add: (title: string) => void; toggle: (id: string) => void }
+context: (context) => ({
+  todos: context.todos,
+  addTodo: context.addTodo,
+  toggleTodo: context.toggleTodo,
+}),
+props: (context) => ({ items: context.todos }),
+listeners: (context) => ({ add: context.addTodo, toggle: context.toggleTodo }),
+```
+
+组件声明 `defineEmits<{ add: [title: string]; toggle: [id: string] }>()`；组件架通过 `v-on="getHomeWidgetListeners(id, context, plugins)"` 绑定。新增与完成操作复用面板已有校验、数量限制和跨标签页合并。最近完成 ID、草稿和操作提示只属于当前组件，不纳入备份；撤销前检查目标仍存在且已完成，避免其他标签页删除或重新打开后误操作。
+
+组件封装在可重试的异步边界内，不依赖对内部实例方法的直接调用。需要跨边界交互时优先使用 props / emits；入口查找的 Enter 通过已渲染首条结果执行同一打开路径，模块仍在加载或无结果时安全留在本地。
 
 ## 状态与质量要求
 

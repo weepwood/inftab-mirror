@@ -135,3 +135,82 @@ test('recovers a cached production homepage widget chunk failure after reloading
   await expect(page.locator('[data-widget-id="todo-summary"]')).toBeVisible()
   expect(chunkRequests).toBeGreaterThan(failedWidgetRequests)
 })
+
+test('launcher search stays lazy and safely ignores Enter until visible results are ready', async ({ page }) => {
+  const searchRequests: string[] = []
+  page.on('request', (request) => {
+    if (/\/assets\/LauncherSearchResults-[^/]+\.js(?:\?|$)/.test(request.url())) searchRequests.push(request.url())
+  })
+  await page.reload()
+  await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toBeVisible()
+  expect(searchRequests).toEqual([])
+
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => { release = resolve })
+  await page.route('**/assets/LauncherSearchResults-*.js', async (route) => {
+    await gate
+    await route.continue()
+  })
+  try {
+    await page.getByRole('button', { name: '查找快捷入口', exact: true }).click()
+    const input = page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })
+    await input.fill('no-result-while-loading')
+    await expect(page.getByRole('status').filter({ hasText: '正在加载入口查找' })).toBeVisible()
+    await input.press('Enter')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await input.fill('计算器')
+    release()
+    await expect(page.getByRole('option', { name: '计算器', exact: true })).toBeVisible()
+    await input.press('Enter')
+    await expect(page.getByRole('dialog', { name: '计算器', exact: true }).locator('.calculator-content')).toBeVisible()
+    expect(searchRequests).toHaveLength(1)
+  } finally { release() }
+})
+
+test('launcher search can leave a failed chunk and recover after a document reload', async ({ page }) => {
+  let fail = true
+  await page.route('**/assets/LauncherSearchResults-*.js', async (route) => {
+    if (fail) await route.fulfill({ status: 503, body: 'offline' })
+    else await route.continue()
+  })
+  await page.getByRole('button', { name: '查找快捷入口', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ hasText: '入口查找暂时无法加载' })).toBeVisible()
+  await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('计算器')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: '退出快捷入口搜索', exact: true }).click()
+  await expect(page.getByRole('searchbox', { name: '输入并搜索' })).toBeFocused()
+  fail = false
+  await page.reload()
+  await page.getByRole('button', { name: '查找快捷入口', exact: true }).click()
+  await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('计算器')
+  await expect(page.getByRole('option', { name: '计算器', exact: true })).toBeVisible()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog', { name: '计算器', exact: true }).locator('.calculator-content')).toBeVisible()
+})
+
+test('widget and browser-tool groups download only on demand without mounting sibling views', async ({ page }) => {
+  const groups: string[] = []
+  page.on('request', (request) => {
+    const group = /\/assets\/(local-widgets|browser-widgets|browser-tools)-[^/]+\.js(?:\?|$)/.exec(request.url())?.[1]
+    if (group) groups.push(group)
+  })
+  await page.reload()
+  await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toBeVisible()
+  expect(groups).toEqual([])
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('pagehide'))
+    const key = 'inftab.preferences.v1'
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key) ?? '{}'), homeWidgetIds: ['todo-summary'] }))
+  })
+  await page.reload()
+  await expect(page.getByRole('textbox', { name: '快速添加待办', exact: true })).toBeVisible()
+  expect(groups).toEqual(['local-widgets'])
+  await expect(page.locator('.home-widget-card')).toHaveCount(1)
+  await page.getByRole('button', { name: '查找快捷入口', exact: true }).click()
+  await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('书签')
+  await page.getByRole('option', { name: '书签', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: '浏览器书签', exact: true }).getByText('此功能需要浏览器扩展', { exact: true })).toBeVisible()
+  expect(groups).toEqual(['local-widgets', 'browser-tools'])
+  await expect(page.locator('.home-widget-card')).toHaveCount(1)
+})

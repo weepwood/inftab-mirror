@@ -277,3 +277,20 @@ describe('SearchBar keyboard navigation', () => {
     expect(wrapper.get('.engine-initial').text()).toBe('🔎')
   })
 })
+
+
+it('keeps IME ArrowDown inside the local search input rather than moving into results', async () => {
+  wrapper = mount(SearchBar, {
+    attachTo: document.body,
+    props: { modelValue: '', engine: 'baidu', mode: 'html', visibleModes: [], localSearch: true },
+    slots: { 'local-results': '<button class="local-search-result" type="button">Result</button>' },
+  })
+  const input = wrapper.get<HTMLInputElement>('input[type="search"]')
+  input.element.focus()
+  await input.trigger('compositionstart')
+  await input.trigger('keydown', { key: 'ArrowDown', isComposing: true })
+  expect(document.activeElement).toBe(input.element)
+  await input.trigger('compositionend')
+  await input.trigger('keydown', { key: 'ArrowDown' })
+  expect(document.activeElement).toBe(wrapper.get('.local-search-result').element)
+})

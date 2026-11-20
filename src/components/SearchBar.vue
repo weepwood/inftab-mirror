@@ -116,7 +116,7 @@ function handleLocalSearchKeydown(event: KeyboardEvent) {
       compositionSubmitGuardTimer = undefined
     }, 0)
   }
-  if (props.localSearch && event.key === 'ArrowDown') {
+  if (props.localSearch && event.key === 'ArrowDown' && !isComposingSearchQuery.value && !event.isComposing && event.keyCode !== 229) {
     const firstResult = document.querySelector<HTMLButtonElement>('.local-search-result')
     if (firstResult) {
       event.preventDefault()
@@ -250,6 +250,9 @@ defineExpose({ focusSearch, showTranslationError })
         :value="modelValue"
         type="search"
         autocomplete="off"
+        :maxlength="localSearch ? 200 : undefined"
+        :aria-controls="localSearch ? 'launcher-search-list' : undefined"
+        :aria-describedby="localSearch ? 'launcher-search-help' : undefined"
         :placeholder="localSearch ? '搜索快捷入口名称或网址' : '输入并搜索'"
         :aria-label="localSearch ? '搜索快捷入口名称或网址' : '输入并搜索'"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
