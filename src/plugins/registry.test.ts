@@ -7,7 +7,7 @@ import { defaultFocusTimerState } from '../data/focusTimer'
 
 afterEach(() => vi.useRealTimers())
 
-// @ts-expect-error Panels with no declared state must reject accidental context growth.
+// @ts-expect-error Panels must reject state outside their declared context.
 const invalidEmptyPanelContext: PanelContextById['history'] = { todos: [] }
 // @ts-expect-error Standalone widgets with no declared state must reject accidental context growth.
 const invalidEmptyWidgetContext: HomeWidgetContextById['calendar-summary'] = { todos: [] }
@@ -62,6 +62,7 @@ function createPanelContext(): PanelPluginContext {
 }
 
 const homeWidgetContext: HomeWidgetContext = {
+  preferences: defaultPreferences,
   todos: [],
   habits: [],
   countdowns: [],
@@ -72,8 +73,8 @@ const homeWidgetContext: HomeWidgetContext = {
 }
 
 const expectedPanelAdapters = {
-  bookmarks: { props: ['availableSlots', 'importBookmarks'], events: ['addShortcut'] },
-  history: { props: [], events: [] },
+  bookmarks: { props: ['availableSlots', 'importBookmarks', 'openInNewTab'], events: ['addShortcut'] },
+  history: { props: ['openInNewTab'], events: [] },
   calculator: { props: [], events: [] },
   calendar: { props: [], events: [] },
   settings: {
@@ -89,8 +90,8 @@ const expectedPanelAdapters = {
 } satisfies Record<PanelId, { props: string[]; events: string[] }>
 
 const expectedPanelContextKeys = {
-  bookmarks: ['openShortcutFromBookmark', 'importBookmarks', 'availableShortcutSlots'],
-  history: [],
+  bookmarks: ['openShortcutFromBookmark', 'importBookmarks', 'availableShortcutSlots', 'openInNewTab'],
+  history: ['openInNewTab'],
   calculator: [],
   calendar: [],
   settings: ['preferences', 'backupExportError', 'customSearchEngines', 'updatePreferences', 'resetPreferences', 'openShortcut', 'openFolder', 'exportBackup', 'importBackup', 'addCustomSearchEngine', 'removeCustomSearchEngine'],
@@ -110,10 +111,10 @@ const expectedWidgetProps = {
   'calendar-summary': [],
   'weather-summary': ['city'],
   'focus-timer-summary': ['state'],
-  'bookmarks-summary': [],
-  'history-summary': [],
+  'bookmarks-summary': ['openInNewTab'],
+  'history-summary': ['openInNewTab'],
   'news-summary': [],
-  'top-sites-summary': [],
+  'top-sites-summary': ['openInNewTab'],
 } satisfies Record<typeof availableHomeWidgetIds[number], string[]>
 
 const expectedWidgetContextKeys = {
@@ -124,10 +125,10 @@ const expectedWidgetContextKeys = {
   'calendar-summary': [],
   'weather-summary': ['weatherCity'],
   'focus-timer-summary': ['focusTimer'],
-  'bookmarks-summary': [],
-  'history-summary': [],
+  'bookmarks-summary': ['openInNewTab'],
+  'history-summary': ['openInNewTab'],
   'news-summary': [],
-  'top-sites-summary': [],
+  'top-sites-summary': ['openInNewTab'],
 } satisfies Record<typeof availableHomeWidgetIds[number], string[]>
 
 describe('built-in panel plugin registry', () => {
@@ -225,12 +226,23 @@ describe('built-in panel plugin registry', () => {
 
   it('connects the optional browser bookmark widget to the permission-aware panel', () => {
     expect(homeWidgetPlugins['bookmarks-summary'].panel).toBe('bookmarks')
-    expect(getHomeWidgetProps('bookmarks-summary', homeWidgetContext)).toEqual({})
+    expect(getHomeWidgetProps('bookmarks-summary', homeWidgetContext)).toEqual({ openInNewTab: true })
   })
 
   it('connects the optional history widget to its panel', () => {
     expect(homeWidgetPlugins['history-summary'].panel).toBe('history')
-    expect(getHomeWidgetProps('history-summary', homeWidgetContext)).toEqual({})
+    expect(getHomeWidgetProps('history-summary', homeWidgetContext)).toEqual({ openInNewTab: true })
+  })
+
+  it('scopes current-tab targets to the corresponding panel and homepage widget', () => {
+    const preferences = { ...defaultPreferences, openShortcutsInNewTab: false, openBookmarksInNewTab: false, openHistoryInNewTab: false }
+    const panelContext = { ...createPanelContext(), preferences }
+    for (const id of ['bookmarks', 'history'] as const) {
+      expect(getPanelProps(id, panelContext)).toMatchObject({ openInNewTab: false })
+    }
+    for (const id of ['bookmarks-summary', 'history-summary', 'top-sites-summary'] as const) {
+      expect(getHomeWidgetProps(id, { ...homeWidgetContext, preferences })).toEqual({ openInNewTab: false })
+    }
   })
 
   it('routes the legacy wallpaper shortcut to settings', () => {
@@ -239,7 +251,7 @@ describe('built-in panel plugin registry', () => {
 
   it('adapts bookmark actions through the plugin context', () => {
     const addShortcut = vi.fn()
-    const context = { ...createPanelContext(), openShortcutFromBookmark: addShortcut }
+    const context = { ...getPanelContextForPlugin('bookmarks', createPanelContext()), openShortcutFromBookmark: addShortcut }
     const listeners = panelPlugins.bookmarks.listeners(context)
 
     listeners.addShortcut?.('Vue Docs', 'https://vuejs.org/')
@@ -248,7 +260,7 @@ describe('built-in panel plugin registry', () => {
 
   it('passes the available capacity and bulk-import callback to the bookmarks panel', () => {
     const importBookmarks = vi.fn()
-    const context = { ...createPanelContext(), availableShortcutSlots: 12, importBookmarks }
-    expect(panelPlugins.bookmarks.props(context)).toEqual({ availableSlots: 12, importBookmarks })
+    const context = { ...getPanelContextForPlugin('bookmarks', createPanelContext()), availableShortcutSlots: 12, importBookmarks }
+    expect(panelPlugins.bookmarks.props(context)).toEqual({ availableSlots: 12, importBookmarks, openInNewTab: true })
   })
 })

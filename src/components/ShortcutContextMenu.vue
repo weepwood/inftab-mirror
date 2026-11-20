@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import { Copy, Pencil, Pin, Trash2 } from '@lucide/vue'
 import { maxDockItems, type LauncherItem } from '../types'
+import { closeMenuOnFocusout, navigateMenu } from './menuNavigation'
 
 const props = defineProps<{
   item: LauncherItem
@@ -18,43 +19,12 @@ const emit = defineEmits<{
 
 const menu = ref<HTMLElement>()
 const activeIndex = ref(0)
-const menuItemCount = computed(() => props.item.shortcut ? 4 : 3)
-
-function focusItem(index: number, direction = 1) {
-  const items = menu.value?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')
-  if (!items?.length) return
-  for (let offset = 0; offset < items.length; offset += 1) {
-    const next = (index + offset * direction + items.length) % items.length
-    if (items[next]!.disabled) continue
-    activeIndex.value = next
-    void nextTick(() => items[next]?.focus())
-    return
-  }
-}
-
 function handleFocusin(event: FocusEvent) {
   const items = menu.value?.querySelectorAll<HTMLElement>('[role="menuitem"]')
   if (items) activeIndex.value = [...items].indexOf(event.target as HTMLElement)
 }
 
-function handleKeydown(event: KeyboardEvent) {
-  let nextIndex: number | undefined
-  if (event.key === 'ArrowDown') nextIndex = (activeIndex.value + 1) % menuItemCount.value
-  else if (event.key === 'ArrowUp') nextIndex = (activeIndex.value - 1 + menuItemCount.value) % menuItemCount.value
-  else if (event.key === 'Home') nextIndex = 0
-  else if (event.key === 'End') nextIndex = menuItemCount.value - 1
-  if (nextIndex !== undefined) {
-    event.preventDefault()
-    focusItem(nextIndex, event.key === 'ArrowUp' || event.key === 'End' ? -1 : 1)
-  }
-}
-
-function handleFocusout(event: FocusEvent) {
-  const nextTarget = event.relatedTarget
-  if (!(nextTarget instanceof Node) || !menu.value?.contains(nextTarget)) emit('close')
-}
-
-onMounted(() => focusItem(0))
+onMounted(() => { void nextTick(() => menu.value?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus()) })
 </script>
 
 <template>
@@ -62,11 +32,12 @@ onMounted(() => focusItem(0))
     ref="menu"
     class="shortcut-context-menu"
     role="menu"
+    :aria-label="`${item.title} 的操作`"
     :style="{ left: `${position.left}px`, top: `${position.top}px` }"
     @click.stop
-    @keydown="handleKeydown"
+    @keydown="navigateMenu"
     @focusin="handleFocusin"
-    @focusout="handleFocusout"
+    @focusout="closeMenuOnFocusout($event, () => emit('close'))"
   >
     <button type="button" role="menuitem" :tabindex="activeIndex === 0 ? 0 : -1" @click="emit('edit')"><Pencil :size="14" /> 编辑{{ item.folder ? '文件夹' : '快捷入口' }}</button>
     <button v-if="item.shortcut" type="button" role="menuitem" :tabindex="activeIndex === 1 ? 0 : -1" @click="emit('copy')"><Copy :size="14" /> 复制网址</button>

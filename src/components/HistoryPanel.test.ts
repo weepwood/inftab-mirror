@@ -83,6 +83,9 @@ describe('browser history panel', () => {
     expect(wrapper.text()).toContain('Example docs')
     expect(wrapper.get('a').attributes('href')).toBe('https://example.com/docs')
     expect(wrapper.get('a').attributes('rel')).toBe('noopener noreferrer')
+    expect(wrapper.get('a').attributes('target')).toBe('_blank')
+    await wrapper.setProps({ openInNewTab: false })
+    expect(wrapper.get('a').attributes('target')).toBe('_self')
 
     await wrapper.get('input[aria-label="搜索浏览历史"]').setValue('  docs  ')
     await vi.advanceTimersByTimeAsync(180)

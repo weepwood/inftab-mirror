@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SelectField from './SelectField.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Pause, Play, RotateCcw } from '@lucide/vue'
 import { getFocusTimerRemainingMs, type FocusTimerState, type FocusPhase } from '../data/focusTimerState'
@@ -68,11 +69,11 @@ onBeforeUnmount(() => {
       <button class="button-secondary" type="button" aria-label="重置计时" @click="emit('reset')"><RotateCcw :size="16" /> 重置</button>
     </div>
     <label class="focus-timer-duration">专注时长
-      <select aria-label="专注时长" :value="state.focusMinutes" :disabled="running || state.phase !== 'focus'" @change="emit('setDuration', Number(($event.target as HTMLSelectElement).value))">
+      <SelectField aria-label="专注时长" :model-value="state.focusMinutes" :disabled="running || state.phase !== 'focus'" @update:model-value="emit('setDuration', Number($event))">
         <option :value="15">15 分钟</option>
         <option :value="25">25 分钟</option>
         <option :value="50">50 分钟</option>
-      </select>
+      </SelectField>
     </label>
     <p class="focus-timer-note">计时保存在本机，关闭面板或重新打开标签页后会继续。</p>
   </div>

@@ -83,6 +83,10 @@ export interface Note {
 
 export interface Preferences {
   themeMode: ThemeMode
+  openShortcutsInNewTab: boolean
+  openSearchInNewTab: boolean
+  openBookmarksInNewTab: boolean
+  openHistoryInNewTab: boolean
   hiddenLauncherIds: string[]
   dockItemIds: string[]
   dockMagnification: boolean

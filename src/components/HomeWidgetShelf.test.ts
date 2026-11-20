@@ -4,6 +4,7 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { HomeWidgetContext, HomeWidgetPluginRegistry } from '../plugins/widgetRegistry'
 import { homeWidgetPlugins } from '../plugins/widgetRegistry'
+import { defaultPreferences } from '../data/defaults'
 import { defaultFocusTimerState } from '../data/focusTimer'
 import HomeWidgetShelf from './HomeWidgetShelf.vue'
 
@@ -16,7 +17,7 @@ afterEach(() => {
 
 describe('home widget shelf plugin activation', () => {
   it('limits pointer dragging to an accessible handle and keeps controls outside it', () => {
-    const context: HomeWidgetContext = { todos: [], habits: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海', focusTimer: defaultFocusTimerState }
+    const context: HomeWidgetContext = { preferences: defaultPreferences, todos: [], habits: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海', focusTimer: defaultFocusTimerState }
     wrapper = mount(HomeWidgetShelf, {
       props: {
         widgetIds: ['todo-summary'],
@@ -45,7 +46,7 @@ describe('home widget shelf plugin activation', () => {
         props: (context: Pick<HomeWidgetContext, 'todos'>) => ({ items: context.todos }),
       },
     } satisfies HomeWidgetPluginRegistry
-    const context: HomeWidgetContext = { todos: [], habits: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海', focusTimer: defaultFocusTimerState }
+    const context: HomeWidgetContext = { preferences: defaultPreferences, todos: [], habits: [], countdowns: [], notes: [], activeNoteId: '', weatherCity: '上海', focusTimer: defaultFocusTimerState }
     wrapper = mount(HomeWidgetShelf, {
       props: {
         widgetIds: ['todo-summary'],

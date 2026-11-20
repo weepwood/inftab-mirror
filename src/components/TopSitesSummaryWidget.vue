@@ -5,6 +5,8 @@ import { useOptionalBrowserResource } from '../composables/useOptionalBrowserRes
 import { canAccessMostVisitedSites, getMostVisitedSiteCandidates, type BrowserTabCandidate } from '../data/browserTabs'
 import { hasMostVisitedSitesPermission, requestMostVisitedSitesPermission, subscribeToMostVisitedSitesPermissionChanges } from '../data/browserTabPermissions'
 
+withDefaults(defineProps<{ openInNewTab?: boolean }>(), { openInNewTab: true })
+
 const {
   supported,
   permissionGranted,
@@ -76,7 +78,7 @@ onBeforeUnmount(() => {
     </p>
     <ul v-else-if="sites.length" class="top-sites-summary-list" aria-label="浏览器常用网站列表">
       <li v-for="site in sites" :key="site.id">
-        <a :href="site.url" target="_blank" rel="noopener noreferrer" :title="site.url">
+        <a :href="site.url" :target="openInNewTab ? '_blank' : '_self'" rel="noopener noreferrer" :title="site.url">
           <span class="top-sites-summary-copy"><strong>{{ site.title }}</strong><small>{{ site.hostname }}</small></span>
           <ExternalLink :size="12" aria-hidden="true" />
         </a>

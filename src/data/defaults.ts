@@ -5,6 +5,10 @@ const base = import.meta.env.BASE_URL
 
 export const defaultPreferences: Preferences = {
   themeMode: 'light',
+  openShortcutsInNewTab: true,
+  openSearchInNewTab: false,
+  openBookmarksInNewTab: true,
+  openHistoryInNewTab: true,
   hiddenLauncherIds: [],
   dockItemIds: [],
   dockMagnification: false,

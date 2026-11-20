@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SelectField from './SelectField.vue'
 import { onBeforeUnmount, ref } from 'vue'
 import { requestBrowserTabsPermission, requestMostVisitedSitesPermission } from '../data/browserTabPermissions'
 import { getCurrentWindowTabCandidates, getMostVisitedSiteCandidates, type BrowserTabCandidate } from '../data/browserTabs'
@@ -80,7 +81,7 @@ onBeforeUnmount(() => {
       <button class="button-secondary" type="button" :disabled="loading" @click="loadMostVisitedSites">{{ loading ? '正在读取…' : '从常用网站导入' }}</button>
     </div>
     <span>首次使用时按所选来源申请权限，只读取网页名称和网址；也可直接手动填写。</span>
-    <label v-if="candidates.length">选择标签页<select v-model="selectedId"><option v-for="tab in candidates" :key="tab.id" :value="tab.id">{{ tab.title }} — {{ tab.hostname }}</option></select></label>
+    <label v-if="candidates.length">选择标签页<SelectField v-model="selectedId" aria-label="选择标签页"><option v-for="tab in candidates" :key="tab.id" :value="tab.id">{{ tab.title }} — {{ tab.hostname }}</option></SelectField></label>
     <button v-if="candidates.length" class="button-secondary" type="button" :disabled="!selectedId" @click="importSelectedTab">填入名称和网址</button>
     <p v-if="error" class="backup-error" role="status" aria-live="polite">{{ error }}</p>
   </div>

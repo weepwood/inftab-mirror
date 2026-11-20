@@ -117,7 +117,7 @@ test('stable browsers show focus and readable colors on native settings selects'
   await expect.poll(() => theme.evaluate((element) => getComputedStyle(element).outlineWidth)).toBe('2px')
   await theme.selectOption('dark')
   await expect.poll(() => theme.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(38, 50, 42)')
-  await expect.poll(() => theme.evaluate((element) => getComputedStyle(element).color)).toBe('rgb(226, 230, 237)')
+  await expect.poll(() => theme.evaluate((element) => getComputedStyle(element).color)).toBe('rgb(224, 233, 226)')
 })
 
 test('stable browsers apply widget presets cleanly at narrow widths', async ({ page }) => {
@@ -234,7 +234,7 @@ test('stable browsers open every shortcut in a folder from one click', async ({ 
   await editor.getByRole('checkbox', { name: /天猫精选/ }).check()
   await editor.getByRole('button', { name: '保存文件夹' }).click()
   await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
-  await page.getByRole('button', { name: '下一页' }).click()
+  await page.getByRole('button', { name: '第2页', exact: true }).click()
   await page.getByRole('button', { name: '打开批量打开' }).click()
   const folder = page.getByRole('dialog', { name: '批量打开' })
   const openedPages: Page[] = []

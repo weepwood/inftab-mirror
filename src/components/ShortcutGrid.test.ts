@@ -25,6 +25,21 @@ afterEach(() => {
 })
 
 describe('ShortcutGrid page cycling', () => {
+  it('reserves the fullest page row count even when particle mode renders only one last-page item', async () => {
+    installAnimationEnvironment()
+    const manyItems = Array.from({ length: 7 }, (_, index) => ({ ...items[index % items.length]!, id: `row-${index}` }))
+    const wrapper = mount(ShortcutGrid, {
+      props: { items: manyItems, columns: 2, rows: 3, iconSize: 64, iconRadius: 24, showNames: true, currentPage: 1, transitionDirection: 1, transitionEffect: 'particles', transitionDuration: 0 },
+    })
+    expect(wrapper.findAll('.shortcut-cell')).toHaveLength(1)
+    expect(wrapper.get('.shortcut-page').attributes('style')).toContain('--grid-rows: 3')
+    await wrapper.setProps({ showNames: false, currentPage: 0 })
+    expect(wrapper.get('.shortcut-page').attributes('style')).toContain('--grid-rows: 3')
+    await wrapper.setProps({ items: manyItems.slice(0, 3) })
+    expect(wrapper.get('.shortcut-page').attributes('style')).toContain('--grid-rows: 2')
+    wrapper.unmount()
+  })
+
   it('keeps keyboard focus on the matching slot after a page turn', async () => {
     installAnimationEnvironment()
     const wrapper = mount(ShortcutGrid, {

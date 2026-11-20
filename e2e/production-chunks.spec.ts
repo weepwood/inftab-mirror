@@ -100,6 +100,7 @@ test('offline tools share a lazy chunk without adding homepage requests', async 
   for (const [title, content] of [
     ['待办事项', '.todo-content'], ['笔记', '.notes-layout'],
     ['日历', '.calendar-content'], ['纪念日', '.countdown-content'],
+    ['计算器', '.calculator-content'], ['专注计时', '.focus-timer-content'],
   ] as const) {
     await page.getByRole('button', { name: '查找快捷入口', exact: true }).click()
     await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill(title)

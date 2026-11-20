@@ -81,6 +81,27 @@ afterEach(() => {
 })
 
 describe('new-tab landmarks', () => {
+  it('offers only direct page dots without previous/next arrow controls', async () => {
+    await mountApp()
+    expect(wrapper.find('.page-arrow').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="上一页"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="下一页"]').exists()).toBe(false)
+    expect(wrapper.findAll('.page-dot').length).toBeGreaterThan(1)
+  })
+
+  it.each([
+    { type: 'click', options: { ctrlKey: true } },
+    { type: 'click', options: { metaKey: true } },
+    { type: 'click', options: { shiftKey: true } },
+    { type: 'auxclick', options: { button: 1 } },
+  ])('keeps modifier and middle-click shortcut opening available: $type $options', async ({ type, options }) => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ openShortcutsInNewTab: false }))
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    await mountApp()
+    await wrapper.get('[data-item-id="jd"] .shortcut-open').trigger(type, options)
+    expect(open).toHaveBeenCalledWith('https://www.jd.com/', '_blank', 'noopener,noreferrer')
+  })
+
   it('provides a skip link and a screen-reader page heading', async () => {
     await mountApp()
 
@@ -1011,7 +1032,7 @@ describe('new-tab keyboard search', () => {
 
     expect(setItem).toHaveBeenCalled()
     expect(wrapper.get('.storage-error-toast').text()).toContain('本地数据未能保存')
-    await wrapper.get('.storage-error-toast button').trigger('click')
+    await wrapper.get('.storage-error-dismiss').trigger('click')
     expect(wrapper.find('.storage-error-toast').exists()).toBe(false)
   })
 

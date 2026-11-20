@@ -20,6 +20,21 @@ function backup(overrides: Record<string, unknown> = {}) {
 }
 
 describe('workspace backups', () => {
+  it('round-trips all link-opening choices while keeping older v1 backups compatible', () => {
+    const choices = { openShortcutsInNewTab: false, openSearchInNewTab: true, openBookmarksInNewTab: false, openHistoryInNewTab: false }
+    const parsed = parseWorkspaceBackup(backup({ preferences: { ...defaultPreferences, ...choices } }))
+    expect(parseWorkspaceBackup(JSON.parse(JSON.stringify(parsed))).preferences).toMatchObject(choices)
+    const legacy: Record<string, unknown> = { ...defaultPreferences }
+    for (const key of Object.keys(choices)) delete legacy[key]
+    expect(parseWorkspaceBackup(backup({ preferences: legacy })).preferences).toMatchObject({
+      openShortcutsInNewTab: true, openSearchInNewTab: false, openBookmarksInNewTab: true, openHistoryInNewTab: true,
+    })
+  })
+
+  it.each(['openShortcutsInNewTab', 'openSearchInNewTab', 'openBookmarksInNewTab', 'openHistoryInNewTab'])('rejects an invalid %s in backups instead of changing its meaning', (key) => {
+    expect(() => parseWorkspaceBackup(backup({ preferences: { ...defaultPreferences, [key]: 'false' } }))).toThrow(/页面设置无法识别/)
+  })
+
   it('normalizes preferences and repairs broken entry and note references', () => {
     const parsed = parseWorkspaceBackup(backup({
       preferences: { ...defaultPreferences, columns: 999, shade: -1 },

@@ -69,6 +69,10 @@ describe('BookmarksPanel', () => {
     expect(request).toHaveBeenCalledWith({ permissions: ['bookmarks'] })
     expect(wrapper.findAll('.browser-bookmark-link').map((link) => link.text())).toEqual(['Vue Docs'])
     expect(wrapper.text()).not.toContain('Unsafe')
+    expect(wrapper.findAll('.browser-bookmark-link').every((link) => link.attributes('target') === '_blank')).toBe(true)
+    await wrapper.setProps({ openInNewTab: false })
+    expect(wrapper.findAll('.browser-bookmark-link').every((link) => link.attributes('target') === '_self')).toBe(true)
+    expect(wrapper.findAll('.browser-bookmark-link').every((link) => link.attributes('rel') === 'noopener noreferrer')).toBe(true)
     expect(wrapper.text()).toContain('Empty Folder')
 
     await wrapper.get('input[aria-label="筛选浏览器书签"]').setValue('vuejs')

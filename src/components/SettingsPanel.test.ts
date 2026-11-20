@@ -17,6 +17,19 @@ afterEach(() => {
 })
 
 describe('SettingsPanel theme preference', () => {
+  it.each([
+    ['在新标签页中打开网站', 'openShortcutsInNewTab'],
+    ['在新标签页中打开搜索结果', 'openSearchInNewTab'],
+    ['在新标签页中打开书签链接', 'openBookmarksInNewTab'],
+    ['在新标签页中打开历史记录', 'openHistoryInNewTab'],
+  ] as const)('updates only the independent opening choice: %s', async (label, key) => {
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+    const row = wrapper.findAll('label.toggle-row').find((row) => row.text() === label)!
+    expect((row.get('input').element as HTMLInputElement).checked).toBe(defaultPreferences[key])
+    await row.get('input').setValue(!defaultPreferences[key])
+    expect(wrapper.emitted('update')?.at(-1)).toEqual([{ [key]: !defaultPreferences[key] }])
+  })
+
   it('emits the selected light, dark, or system theme', async () => {
     wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
 

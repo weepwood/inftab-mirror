@@ -4,6 +4,8 @@ import { canAccessBrowserBookmarks, getBrowserBookmarkTree, hasBrowserBookmarksP
 import { useOptionalBrowserResource } from '../composables/useOptionalBrowserResource'
 import { previewBookmarks } from '../data/bookmarkPreview'
 
+withDefaults(defineProps<{ openInNewTab?: boolean }>(), { openInNewTab: true })
+
 const { supported, permissionGranted, loading, error, data: items } = useOptionalBrowserResource<ReturnType<typeof previewBookmarks>>({
   supported: canAccessBrowserBookmarks(),
   initial: [],
@@ -24,7 +26,7 @@ const { supported, permissionGranted, loading, error, data: items } = useOptiona
     <p v-else-if="error" class="home-widget-empty" role="alert">{{ error }}</p>
     <ul v-else-if="items.length" class="bookmarks-summary-list" aria-label="书签快捷入口">
       <li v-for="item in items" :key="item.id">
-        <a :href="item.url" target="_blank" rel="noopener noreferrer" :title="item.url">
+        <a :href="item.url" :target="openInNewTab ? '_blank' : '_self'" rel="noopener noreferrer" :title="item.url">
           <Bookmark :size="14" aria-hidden="true" />
           <span>{{ item.title }}</span>
           <ExternalLink :size="12" aria-hidden="true" />

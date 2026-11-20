@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { closeMenuOnFocusout, navigateMenu } from './menuNavigation'
 import { ArrowLeft, ArrowRight, Check, LayoutGrid, Pencil, Plus, Trash2, X } from '@lucide/vue'
 import { defaultHomeWorkspaceId, maxHomeWorkspaces, maxHomeWorkspaceNameLength, type HomeWorkspace } from '../data/homeWorkspaces'
 import { truncateCodePoints } from '../data/text'
@@ -143,13 +144,20 @@ function scheduleClose() {
   if (closeTimer) window.clearTimeout(closeTimer)
   closeTimer = window.setTimeout(() => {
     closeTimer = 0
+    if (root.value?.contains(document.activeElement)) return
     menuOpen.value = false
     cancelRename()
   }, 260)
 }
 
-function closeContextMenu() {
+function focusWorkspace(id: string) {
+  void nextTick(() => [...(chipList.value?.querySelectorAll<HTMLButtonElement>('[data-workspace-tab]') ?? [])].find((item) => item.dataset.workspaceTab === id)?.focus())
+}
+
+function closeContextMenu(restoreFocus = false) {
   if (!contextWorkspace.value) return
+  const id = contextWorkspace.value.id
+  if (restoreFocus) focusWorkspace(id)
   contextWorkspace.value = undefined
   if (!root.value?.matches(':hover')) scheduleClose()
 }
@@ -210,6 +218,7 @@ function commitRename() {
   }
   emit('rename', workspace.id, name)
   cancelRename()
+  focusWorkspace(workspace.id)
 }
 
 function requestMove(id: string, direction: -1 | 1) {
@@ -259,6 +268,7 @@ onBeforeUnmount(() => {
     @pointerenter="handlePointerEnter"
     @pointerleave="handlePointerLeave"
     @focusin="handleFocusIn"
+    @focusout="closeMenuOnFocusout($event, scheduleClose)"
     @keydown.esc="closeMenu"
   >
     <button
@@ -315,7 +325,9 @@ onBeforeUnmount(() => {
       :aria-label="`${contextWorkspace.name} 的操作`"
       :style="{ left: `${contextPosition.left}px`, top: `${contextPosition.top}px` }"
       @click.stop
-      @keydown.esc.stop.prevent="closeContextMenu"
+      @keydown="navigateMenu"
+      @focusout="closeMenuOnFocusout($event, closeContextMenu)"
+      @keydown.esc.stop.prevent="closeContextMenu(true)"
     >
       <p class="context-menu-title" role="presentation">{{ contextWorkspace.name }}</p>
       <button type="button" role="menuitem" @click="beginRename(contextWorkspace)"><Pencil :size="14" /> 重命名</button>

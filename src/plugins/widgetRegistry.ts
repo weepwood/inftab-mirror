@@ -1,11 +1,12 @@
 import type { Component } from 'vue'
-import type { CountdownItem, Habit, Note, TodoItem } from '../types'
+import type { CountdownItem, Habit, Note, Preferences, TodoItem } from '../types'
 import type { FocusTimerState } from '../data/focusTimer'
 import type { PanelId } from './ids'
 import type { HomeWidgetId } from './ids'
 import { lazyPluginComponent } from './asyncComponent'
 
 export interface HomeWidgetContext {
+  preferences: Pick<Preferences, 'openBookmarksInNewTab' | 'openHistoryInNewTab' | 'openShortcutsInNewTab'>
   todos: TodoItem[]
   habits: Habit[]
   countdowns: CountdownItem[]
@@ -26,10 +27,10 @@ export interface HomeWidgetContextById {
   'calendar-summary': NoContext
   'weather-summary': Pick<HomeWidgetContext, 'weatherCity'>
   'focus-timer-summary': Pick<HomeWidgetContext, 'focusTimer'>
-  'bookmarks-summary': NoContext
-  'history-summary': NoContext
+  'bookmarks-summary': { openInNewTab: boolean }
+  'history-summary': { openInNewTab: boolean }
   'news-summary': NoContext
-  'top-sites-summary': NoContext
+  'top-sites-summary': { openInNewTab: boolean }
 }
 
 export interface HomeWidgetPropsById {
@@ -40,10 +41,10 @@ export interface HomeWidgetPropsById {
   'calendar-summary': NoProps
   'weather-summary': { city: string }
   'focus-timer-summary': { state: FocusTimerState }
-  'bookmarks-summary': NoProps
-  'history-summary': NoProps
+  'bookmarks-summary': { openInNewTab: boolean }
+  'history-summary': { openInNewTab: boolean }
   'news-summary': NoProps
-  'top-sites-summary': NoProps
+  'top-sites-summary': { openInNewTab: boolean }
 }
 
 export type HomeWidgetPlugin<Id extends HomeWidgetId = HomeWidgetId> = {
@@ -119,20 +120,20 @@ export const homeWidgetPlugins = {
     props: (context) => ({ state: context.focusTimer }),
   },
   'bookmarks-summary': {
-    context: () => ({}),
+    context: (context) => ({ openInNewTab: context.preferences.openBookmarksInNewTab }),
     title: '书签概览',
     description: '在首页快速打开浏览器书签中的前几项',
     panel: 'bookmarks',
     component: lazyWidget(() => import('../components/BookmarksSummaryWidget.vue')),
-    props: (_context) => ({}),
+    props: (context) => ({ openInNewTab: context.openInNewTab }),
   },
   'history-summary': {
-    context: () => ({}),
+    context: (context) => ({ openInNewTab: context.preferences.openHistoryInNewTab }),
     title: '最近访问',
     description: '在首页快速打开最近访问的网页',
     panel: 'history',
     component: lazyWidget(() => import('../components/HistorySummaryWidget.vue')),
-    props: (_context) => ({}),
+    props: (context) => ({ openInNewTab: context.openInNewTab }),
   },
   'news-summary': {
     context: () => ({}),
@@ -142,11 +143,11 @@ export const homeWidgetPlugins = {
     props: (_context) => ({}),
   },
   'top-sites-summary': {
-    context: () => ({}),
+    context: (context) => ({ openInNewTab: context.preferences.openShortcutsInNewTab }),
     title: '常用网站',
     description: '按需读取浏览器提供的常用网站；仅在本机显示',
     component: lazyWidget(() => import('../components/TopSitesSummaryWidget.vue')),
-    props: (_context) => ({}),
+    props: (context) => ({ openInNewTab: context.openInNewTab }),
   },
 } satisfies HomeWidgetPluginRegistry
 

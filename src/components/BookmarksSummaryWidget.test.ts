@@ -66,6 +66,10 @@ describe('BookmarksSummaryWidget', () => {
 
     expect(wrapper.findAll('a').map((link) => link.text())).toEqual(['Vue Docs', 'GitHub'])
     expect(wrapper.html()).not.toContain('javascript:')
+    expect(wrapper.findAll('a').every((link) => link.attributes('target') === '_blank')).toBe(true)
+    await wrapper.setProps({ openInNewTab: false })
+    expect(wrapper.findAll('a').every((link) => link.attributes('target') === '_self')).toBe(true)
+    expect(wrapper.findAll('a').every((link) => link.attributes('rel') === 'noopener noreferrer')).toBe(true)
     vi.useFakeTimers()
     bookmarkCreated.fire()
     await vi.advanceTimersByTimeAsync(100)

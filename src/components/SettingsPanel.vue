@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import SelectField from './SelectField.vue'
+import { Check, Database, FolderPlus, House, LayoutGrid, Palette, Plus, Search, X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { launcherItems, searchModes, wallpaperChoices } from '../data/defaults'
 import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
@@ -45,11 +47,11 @@ const searchEngineError = ref('')
 const manageableLauncherItems = launcherItems.filter((item) => item.action && item.id !== 'settings')
 
 const settingsGroups = [
-  { id: 'appearance', label: '外观' },
-  { id: 'search', label: '搜索' },
-  { id: 'home', label: '首页' },
-  { id: 'components', label: '组件' },
-  { id: 'data', label: '数据' },
+  { id: 'appearance', icon: Palette, label: '外观' },
+  { id: 'search', icon: Search, label: '搜索' },
+  { id: 'home', icon: House, label: '首页' },
+  { id: 'components', icon: LayoutGrid, label: '组件' },
+  { id: 'data', icon: Database, label: '数据' },
 ] as const
 type SettingsGroupId = (typeof settingsGroups)[number]['id']
 const activeGroup = ref<SettingsGroupId>('appearance')
@@ -279,18 +281,18 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
         type="button"
         :aria-current="activeGroup === group.id ? 'true' : undefined"
         @click="scrollToGroup(group.id)"
-      >{{ group.label }}</button>
+      ><component :is="group.icon" :size="16" aria-hidden="true" /><span>{{ group.label }}</span></button>
     </nav>
 
     <div class="settings-group" data-group="appearance">
     <section class="settings-section">
       <div class="section-heading"><div><h3>界面与主题</h3><p>选择外观并设置首页信息</p></div></div>
       <label class="toggle-row">颜色主题
-        <select aria-label="颜色主题" :value="preferences.themeMode" @change="update('themeMode', ($event.target as HTMLSelectElement).value as ThemeMode)">
+        <SelectField aria-label="颜色主题" :model-value="preferences.themeMode" @update:model-value="update('themeMode', $event as ThemeMode)">
           <option value="light">浅色</option>
           <option value="dark">深色</option>
           <option value="system">跟随系统</option>
-        </select>
+        </SelectField>
       </label>
       <label class="toggle-row"><span>显示时间和日期</span><input type="checkbox" :checked="preferences.showClock" @change="update('showClock', ($event.target as HTMLInputElement).checked)" /></label>
     </section>
@@ -310,15 +312,15 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
           :aria-label="choice.label"
           :aria-pressed="preferences.wallpaper === choice.value && !preferences.customWallpaper"
           @click="setWallpaper(choice.value)"
-        ><span>{{ choice.label }}</span></button>
+        ><Check v-if="preferences.wallpaper === choice.value && !preferences.customWallpaper" class="wallpaper-check" :size="17" aria-hidden="true" /><span>{{ choice.label }}</span></button>
       </div>
       <p class="wallpaper-note">图库图片保存在项目中，无需依赖外站加载。</p>
       <label class="toggle-row">定时轮换内置壁纸
-        <select aria-label="壁纸轮换" :value="preferences.wallpaperRotation" @change="setWallpaperRotation(($event.target as HTMLSelectElement).value as WallpaperRotation)">
+        <SelectField aria-label="壁纸轮换" :model-value="preferences.wallpaperRotation" @update:model-value="setWallpaperRotation($event as WallpaperRotation)">
           <option value="off">关闭</option>
           <option value="hourly">每小时</option>
           <option value="daily">每天</option>
-        </select>
+        </SelectField>
       </label>
       <p class="wallpaper-note">轮换顺序与图库一致；使用自定义背景期间会暂停，移除后重新计时。</p>
       <label class="field-label">自定义背景图片网址
@@ -375,9 +377,18 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
     <div class="settings-group" data-group="home">
     <section class="settings-section">
       <div class="section-heading"><div><h3>快捷入口</h3><p>添加新的入口或把多个入口收进文件夹</p></div></div>
-      <button class="settings-add-shortcut" type="button" @click="emit('addShortcut')"><span>＋</span> 添加快捷入口</button>
-      <button class="settings-add-shortcut folder-add-button" type="button" @click="emit('addFolder')"><span>▣</span> 新建文件夹</button>
+      <button class="settings-add-shortcut" type="button" @click="emit('addShortcut')"><span aria-hidden="true"><Plus :size="16" /></span> 添加快捷入口</button>
+      <button class="settings-add-shortcut folder-add-button" type="button" @click="emit('addFolder')"><span aria-hidden="true"><FolderPlus :size="16" /></span> 新建文件夹</button>
       <p class="wallpaper-note">也可以直接在首页右键或长按图标进行编辑、拖动排序和固定到 Dock。</p>
+    </section>
+
+    <section class="settings-section">
+      <div class="section-heading"><div><h3>打开方式</h3><p>分别选择网站、搜索和浏览器链接的打开位置</p></div></div>
+      <label class="toggle-row"><span>在新标签页中打开网站</span><input type="checkbox" :checked="preferences.openShortcutsInNewTab" @change="update('openShortcutsInNewTab', ($event.target as HTMLInputElement).checked)" /></label>
+      <label class="toggle-row"><span>在新标签页中打开搜索结果</span><input type="checkbox" :checked="preferences.openSearchInNewTab" @change="update('openSearchInNewTab', ($event.target as HTMLInputElement).checked)" /></label>
+      <label class="toggle-row"><span>在新标签页中打开书签链接</span><input type="checkbox" :checked="preferences.openBookmarksInNewTab" @change="update('openBookmarksInNewTab', ($event.target as HTMLInputElement).checked)" /></label>
+      <label class="toggle-row"><span>在新标签页中打开历史记录</span><input type="checkbox" :checked="preferences.openHistoryInNewTab" @change="update('openHistoryInNewTab', ($event.target as HTMLInputElement).checked)" /></label>
+      <p class="wallpaper-note">关闭后在当前标签页打开；Ctrl/⌘ + 点击或鼠标中键仍可新开标签。文件夹“打开全部”始终新开标签。</p>
     </section>
 
     <section class="settings-section">
@@ -452,7 +463,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
 
     <div v-if="pendingBackup" class="modal-backdrop backup-backdrop" @click.self="pendingBackup = undefined">
       <section ref="backupDialog" class="shortcut-dialog backup-dialog" role="dialog" aria-modal="true" aria-labelledby="backup-title" @keydown="handleBackupDialogKeydown">
-        <header><div><h2 id="backup-title">恢复本地备份</h2><p>请先确认导入的数据</p></div><button type="button" aria-label="取消导入" @click="pendingBackup = undefined">×</button></header>
+        <header><div><h2 id="backup-title">恢复本地备份</h2><p>请先确认导入的数据</p></div><button type="button" aria-label="取消导入" @click="pendingBackup = undefined"><X :size="19" aria-hidden="true" /></button></header>
         <p class="backup-preview">备份时间：{{ backupExportedAtLabel }}</p>
         <ul class="backup-counts">
           <li>{{ pendingBackup.shortcuts.length }} 个快捷入口</li>
