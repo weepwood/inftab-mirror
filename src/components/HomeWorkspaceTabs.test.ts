@@ -61,6 +61,25 @@ describe('HomeWorkspaceTabs', () => {
     expect(trigger.attributes('aria-label')).toBe('指向工作区')
   })
 
+  it('does not collapse under a stationary mouse when closing a menu schedules focusout', async () => {
+    vi.useFakeTimers()
+    wrapper = mount(HomeWorkspaceTabs, { attachTo: document.body, props: { workspaces, activeId: 'default' } })
+    const root = wrapper.get('.home-workspace-bar')
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    let hovered = true
+    const matches = vi.spyOn(root.element, 'matches').mockImplementation((selector) => selector === ':hover' && hovered)
+    await root.trigger('pointerenter', { pointerType: 'mouse' })
+    await root.trigger('focusout', { relatedTarget: outside })
+    await vi.advanceTimersByTimeAsync(300)
+    expect(root.classes()).toContain('is-open')
+    hovered = false
+    await root.trigger('pointerleave', { pointerType: 'mouse' })
+    await vi.advanceTimersByTimeAsync(300)
+    expect(root.classes()).not.toContain('is-open')
+    matches.mockRestore()
+  })
+
   it('fills each ring before expanding outward, up to four rings', async () => {
     const manyWorkspaces = Array.from({ length: 20 }, (_, index) => ({
       id: index === 0 ? 'default' : `workspace-${index}`,

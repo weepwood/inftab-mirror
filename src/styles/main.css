@@ -389,7 +389,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .panel-header p, .shortcut-dialog header p { margin: 6px 0 0; color: var(--ui-muted); font-size: 11px; line-height: 1.6; }
 .panel-close, .back-button, .shortcut-dialog header button { width: 34px; height: 34px; display: grid; flex: 0 0 auto; place-items: center; border: 1px solid var(--ui-border); border-radius: 11px; background: var(--ui-surface); color: var(--ui-muted); cursor: pointer; transition: background .15s, color .15s; }
 .panel-close { margin-left: auto; }
-.panel-close:hover, .back-button:hover, .shortcut-dialog header button:hover { background: var(--ui-hover); color: var(--ui-text); }
+.panel-close:hover, .back-button:hover, .shortcut-dialog:not(.shortcut-editor) header button:hover { background: var(--ui-hover); color: var(--ui-text); }
 .settings-content { padding: 0 18px 26px; }
 .settings-nav { position: sticky; top: var(--panel-header-height); z-index: 2; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 0 -18px 4px; padding: 12px 18px; border-bottom: 1px solid var(--ui-border); background: var(--ui-panel); }
 .settings-nav-button { min-width: 0; min-height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border: 1px solid transparent; border-radius: 10px; padding: 4px 8px; background: transparent; color: var(--ui-muted); font-size: 12px; cursor: pointer; transition: background .15s, color .15s, box-shadow .15s; }
@@ -987,7 +987,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .theme-dark .back-button { color: #b8c0cb; }
 .theme-dark .panel-close:hover,
 .theme-dark .back-button:hover,
-.theme-dark .shortcut-dialog header button:hover { background: var(--ui-hover); color: #fff; }
+.theme-dark .shortcut-dialog:not(.shortcut-editor) header button:hover { background: var(--ui-hover); color: #fff; }
 .theme-dark .browser-bookmark-folder:hover,
 .theme-dark .browser-bookmark-link:hover,
 .theme-dark .browser-bookmark-add:hover { background: var(--ui-hover); }
@@ -1049,4 +1049,91 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
   .toggle-row input[type='checkbox']::after { display: none; }
   .page-dot::after { background: ButtonText; }
   .page-dot.active::after { background: Highlight; }
+}
+
+/* Shortcut creation: native modal containment, a single scroll region, and
+   opt-in appearance controls. Keep this scope separate from folder/backup dialogs. */
+.shortcut-editor { --editor-control-border: #819588; --editor-focus: var(--ui-accent-hover); --editor-action-fill: var(--ui-accent); position: fixed; inset: 0; width: min(520px, calc(100% - 32px)); max-width: none; max-height: calc(100dvh - 32px); margin: auto; padding: 0; overflow: hidden; overscroll-behavior: contain; border-radius: 24px; animation: none; }
+.shortcut-editor[open] { display: flex; flex-direction: column; }
+.shortcut-editor:not([open]) { display: none; }
+.shortcut-editor::backdrop { background: rgba(8, 22, 14, .32); backdrop-filter: blur(6px); }
+.theme-dark .shortcut-editor { --editor-control-border: #6f8676; --editor-focus: var(--ui-accent-text); --editor-action-fill: var(--ui-accent-hover); }
+.shortcut-editor > header { flex: 0 0 auto; gap: 16px; margin: 0; padding: 24px 24px 20px; border-bottom: 1px solid var(--ui-border); }
+.shortcut-editor > header > div { min-width: 0; }
+.shortcut-editor > header h2 { font-size: 1.25rem; line-height: 1.3; overflow-wrap: anywhere; }
+.shortcut-editor > header p { font-size: .8125rem; line-height: 1.5; }
+.shortcut-editor > header button { width: 44px; height: 44px; border-radius: 12px; background: var(--ui-surface); color: var(--ui-muted); }
+.shortcut-editor-form { min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.shortcut-editor-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 20px 24px 24px; scroll-padding-block: 16px; }
+.shortcut-editor-status, .shortcut-field-hint { margin: 0; color: var(--ui-muted); font-size: .8125rem; line-height: 1.6; overflow-wrap: anywhere; }
+.shortcut-form-field { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.shortcut-form-field + .shortcut-form-field { margin-top: 20px; }
+.shortcut-editor .shortcut-form-field > label { margin: 0; color: var(--ui-text); font-size: .875rem; font-weight: 500; line-height: 1.5; }
+.shortcut-editor .shortcut-form-field > input, .shortcut-editor .ui-select { width: 100%; min-width: 0; min-height: 44px; height: auto; margin: 0; padding: 10px 12px; border: 1px solid var(--editor-control-border); border-radius: 11px; background: var(--ui-field); color: var(--ui-text); font-size: .875rem; line-height: 1.5; transition: border-color .12s ease, background-color .12s ease; }
+.shortcut-editor .ui-select { padding-inline-end: 36px; }
+.shortcut-editor .select-field > .ui-select:hover:not(:disabled) { border-color: var(--editor-control-border); }
+.shortcut-editor .shortcut-form-field > input::placeholder { color: var(--ui-muted); opacity: 1; }
+.shortcut-editor .shortcut-form-field > input[aria-invalid='true'] { border-color: var(--ui-danger); }
+.shortcut-editor .shortcut-field-error { margin: 0; color: var(--ui-danger); font-size: .8125rem; line-height: 1.6; overflow-wrap: anywhere; }
+.shortcut-editor .shortcut-form-error { margin-bottom: 20px; padding: 12px; border: 1px solid var(--ui-danger); border-radius: 11px; background: var(--ui-danger-soft); }
+.shortcut-appearance { margin-top: 24px; border: 1px solid var(--ui-border); border-radius: 15px; }
+.shortcut-appearance > summary { display: flex; align-items: center; gap: 12px; min-height: 80px; padding: 14px; border-radius: 14px; list-style: none; cursor: pointer; transition: background-color .12s ease; }
+.shortcut-appearance > summary::-webkit-details-marker { display: none; }
+.shortcut-icon-preview { width: 44px; height: 44px; flex: 0 0 auto; display: grid; place-items: center; overflow: hidden; border-radius: 12px; color: #fff; font-size: .875rem; font-weight: 600; }
+.shortcut-icon-preview img { width: 100%; height: 100%; object-fit: cover; }
+.shortcut-appearance-heading { min-width: 0; display: grid; gap: 4px; }
+.shortcut-appearance-heading strong { color: var(--ui-text); font-size: .875rem; font-weight: 550; line-height: 1.5; }
+.shortcut-appearance-heading > span { color: var(--ui-muted); font-size: .75rem; line-height: 1.5; }
+.shortcut-appearance-chevron { flex: 0 0 auto; margin-inline-start: auto; color: var(--ui-muted); }
+.shortcut-appearance[open] > summary { border-radius: 14px 14px 0 0; background: var(--ui-panel); }
+.shortcut-appearance[open] .shortcut-appearance-chevron { transform: rotate(180deg); }
+.shortcut-appearance-fields { display: grid; gap: 16px; padding: 16px; }
+.shortcut-appearance-fields .dialog-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.shortcut-appearance-fields .dialog-row > .shortcut-form-field { margin-top: 0; }
+.shortcut-editor .color-field > input { height: 44px; padding: 5px; cursor: pointer; }
+.shortcut-editor .icon-file-actions { flex-wrap: wrap; gap: 8px 12px; margin: 0; }
+.shortcut-editor .icon-file-actions .text-button { min-height: 44px; padding: 8px 0; color: var(--ui-accent-text); font-size: .8125rem; text-decoration: underline; text-underline-offset: 3px; }
+.shortcut-editor .shortcut-editor-footer { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 0; padding: 16px 24px; border-top: 1px solid var(--ui-border); background: var(--ui-surface); }
+.shortcut-editor-actions { display: flex; gap: 8px; margin-inline-start: auto; }
+.shortcut-editor .button-secondary, .shortcut-editor .button-primary { min-height: 44px; height: auto; padding: 10px 18px; font-size: .875rem; line-height: 1.5; }
+.shortcut-editor .button-secondary, .shortcut-editor .button-secondary:hover { background: var(--ui-surface); color: var(--ui-text); }
+.shortcut-editor .button-primary, .shortcut-editor .button-primary:hover { border-color: var(--editor-action-fill); background: var(--editor-action-fill); }
+.shortcut-editor :is(button, input, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--editor-focus); outline-offset: 3px; box-shadow: none; }
+.shortcut-editor :is(input, select):disabled { opacity: .6; cursor: not-allowed; }
+.shortcut-editor button[aria-disabled='true'] { opacity: .7; cursor: progress; }
+.shortcut-editor button:disabled { cursor: not-allowed; }
+.shortcut-editor > .panel-loading { min-height: 160px; }
+@media (hover: hover) and (pointer: fine) {
+  .shortcut-editor .select-field > .ui-select:hover:not(:disabled) { border-color: var(--editor-focus); }
+  .shortcut-editor > header button:hover, .shortcut-editor .button-secondary:hover:not(:disabled), .shortcut-appearance > summary:hover { background: var(--ui-hover); color: var(--ui-text); }
+  .shortcut-editor .button-primary:hover:not(:disabled):not([aria-disabled='true']) { border-color: var(--ui-accent-hover); background: var(--ui-accent-hover); box-shadow: 0 0 0 2px var(--ui-accent-soft); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .shortcut-editor :is(.button-primary, .button-secondary, header button) { transition: transform .15s cubic-bezier(.2, 0, 0, 1), background-color .12s ease; }
+  .shortcut-editor :is(.button-primary, .button-secondary, header button):not(:disabled):not([aria-disabled='true']):not(:focus-visible):active { transform: scale(.97); }
+}
+@media (max-width: 600px), (pointer: coarse) {
+  .shortcut-editor .shortcut-form-field > input, .shortcut-editor .ui-select { font-size: 1rem; }
+}
+@media (max-width: 480px) {
+  .shortcut-editor { width: calc(100% - 24px); max-height: calc(100dvh - 24px); border-radius: 20px; }
+  .shortcut-editor > header { padding: 20px; }
+  .shortcut-editor-body { padding: 16px 20px; }
+  .shortcut-editor-body > .shortcut-form-field + .shortcut-form-field { margin-top: 16px; }
+  .shortcut-editor-body > .shortcut-appearance { margin-top: 20px; }
+  .shortcut-editor .shortcut-editor-footer { padding: 14px 20px; }
+  .shortcut-editor-status { flex-basis: 100%; font-size: .75rem; }
+  .shortcut-editor-actions { width: 100%; }
+  .shortcut-editor-actions > button { flex: 1; }
+  .shortcut-appearance > summary { gap: 10px; padding: 12px; }
+  .shortcut-appearance-fields { padding: 12px; }
+}
+@media (forced-colors: active) {
+  .shortcut-editor { border-color: CanvasText; }
+  .shortcut-editor :is(button, input, select, summary, [tabindex]):focus-visible { outline-color: Highlight; }
+  .shortcut-editor .shortcut-form-field > input, .shortcut-editor .ui-select { border-color: ButtonText; }
+  .shortcut-editor .shortcut-field-error { color: CanvasText; }
+  .shortcut-editor .shortcut-form-field > input[aria-invalid='true'] { border: 2px dashed CanvasText; }
+  .shortcut-editor .button-primary { border-color: ButtonText; }
+  .shortcut-appearance { border-color: ButtonText; }
 }

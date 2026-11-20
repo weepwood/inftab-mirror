@@ -8,14 +8,11 @@ import { lazyPluginComponent, retryAsyncLoad } from './plugins/asyncComponent'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent, storageWriteSuccessEvent } from './composables/useStoredState'
 import { launcherItems } from './data/defaults'
-import { maxImageUploadBytes } from './data/imageLimits'
 import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
 import { createLocalId } from './data/createId'
-import { normalizeWebUrl } from './data/urls'
 import { truncateCodePoints } from './data/text'
 import type { LauncherSearchMatch } from './data/launcherSearch'
-import type { BrowserTabCandidate } from './data/browserTabs'
 import { launcherPanelRoutes, shortcutPanelRoutes } from './plugins/routes'
 import type { PanelId, PanelPluginContext } from './plugins/registry'
 import { maxDockItems, type HomeWidgetId, type HomeWidgetSize, type LauncherItem, type Shortcut, type ShortcutFolder } from './types'
@@ -52,15 +49,10 @@ const ConfirmDialog = lazyPluginComponent(
   '正在加载确认对话框…',
   '确认对话框暂时无法加载，请重试。',
 )
-const SelectField = lazyPluginComponent(
-  () => import('./components/SelectField.vue'),
-  '正在加载选项…',
-  '选项暂时无法加载，请重试。',
-)
-const BrowserTabImport = lazyPluginComponent(
-  () => import('./components/BrowserTabImport.vue'),
-  '正在加载标签页导入…',
-  '标签页导入暂时无法加载，请重试。',
+const ShortcutEditor = lazyPluginComponent(
+  () => import('./components/ShortcutEditor.vue'),
+  '正在加载快捷入口表单…',
+  '快捷入口表单暂时无法加载，请重试。',
 )
 const HomeWorkspaceTabs = lazyPluginComponent(
   () => import('./components/HomeWorkspaceTabs.vue'),
@@ -143,36 +135,22 @@ const pendingDestructiveAction = ref<{ title: string; description: string; confi
 let destructiveActionFocusTarget: HTMLElement | undefined
 const searchBar = ref<{ focusSearch: () => void; showTranslationError: () => void }>()
 const sidePanel = ref<HTMLElement>()
-const shortcutDialogElement = ref<HTMLFormElement>()
-const shortcutTitleInput = ref<HTMLInputElement>()
+const shortcutDialogElement = ref<HTMLDialogElement>()
 const folderDialogOpen = ref(false)
 const activeFolder = ref<ShortcutFolder>()
 const folderSaveError = ref('')
 const shortcutDialog = ref(false)
 let shortcutDialogReturnFocusTarget: HTMLElement | undefined
-const editingId = ref('')
+const shortcutDraft = ref<Partial<Shortcut>>()
 const shortcutWorkspaceId = ref('default')
-const shortcutTitle = ref('')
-const shortcutUrl = ref('https://')
-const shortcutColor = ref('#3d82f6')
-const shortcutMark = ref('')
-const shortcutIcon = ref('')
-const shortcutUrlError = ref('')
 const shortcutSaveError = ref('')
-const shortcutIconFile = ref<HTMLInputElement>()
-const shortcutIconError = ref('')
-const savingShortcut = ref(false)
-const loadingShortcutIcon = ref(false)
-let shortcutSaveRequestId = 0
-let shortcutIconUploadRequestId = 0
-const canImportBrowserTabs = location.protocol === 'chrome-extension:'
 const viewport = ref({ width: window.innerWidth, height: window.innerHeight })
 // Keep the saved desktop grid preference while giving touch targets room on phones.
 const layoutColumns = computed(() => Math.min(preferences.value.columns, viewport.value.width <= 480 ? 4 : viewport.value.width <= 780 ? 5 : 12))
 const pageSize = computed(() => layoutColumns.value * preferences.value.rows)
 const activeHomeWorkspace = computed(() => homeWorkspaces.value.find((workspace) => workspace.id === activeHomeWorkspaceId.value) ?? homeWorkspaces.value[0]!)
 const activeHomeWorkspaceItemIds = computed(() => new Set(activeHomeWorkspace.value?.itemIds ?? []))
-const shortcutLimitReached = computed(() => !editingId.value && shortcuts.value.length >= 500)
+const shortcutLimitReached = computed(() => !shortcutDraft.value?.id && shortcuts.value.length >= 500)
 const folderLimitReached = computed(() => !activeFolder.value && folders.value.length >= 500)
 let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
 let homeWheelLocked = false
@@ -245,8 +223,7 @@ const panelContext = computed<PanelPluginContext>(() => ({
   openShortcut: () => openShortcutDialog(),
   openShortcutFromBookmark: (title, url) => {
     openShortcutDialog()
-    shortcutTitle.value = title
-    shortcutUrl.value = url
+    shortcutDraft.value = { title, url }
   },
   importBookmarks: (items) => {
     if (shortcuts.value.length + items.length > 500) return { added: 0, error: '快捷入口已达到 500 个上限，请先删除一些再导入。' }
@@ -389,18 +366,9 @@ watch(activePanel, async (panel, previousPanel) => {
 })
 watch(shortcutDialog, async (isOpen) => {
   if (isOpen) {
-    await nextTick()
-    const prefersTouch = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
-    const initialFocus = prefersTouch
-      ? shortcutDialogElement.value?.querySelector<HTMLElement>('button[aria-label="关闭"]')
-      : shortcutTitleInput.value
-    initialFocus?.focus()
+    shortcutDialogElement.value?.showModal()
     return
   }
-  shortcutSaveRequestId += 1
-  shortcutIconUploadRequestId += 1
-  savingShortcut.value = false
-  loadingShortcutIcon.value = false
   const target = shortcutDialogReturnFocusTarget
   shortcutDialogReturnFocusTarget = undefined
   await nextTick()
@@ -628,28 +596,21 @@ function openFolderShortcuts(items: Shortcut[]) {
 }
 
 function openShortcutDialog(item?: LauncherItem) {
-  shortcutSaveRequestId += 1
-  shortcutIconUploadRequestId += 1
-  savingShortcut.value = false
-  loadingShortcutIcon.value = false
   shortcutDialogReturnFocusTarget = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
-  editingId.value = item?.shortcut?.id ?? ''
+  shortcutDraft.value = item?.shortcut
   shortcutWorkspaceId.value = item?.shortcut
     ? homeWorkspaces.value.find((workspace) => workspace.itemIds.includes(item.shortcut!.id))?.id ?? activeHomeWorkspaceId.value
     : activeHomeWorkspaceId.value
-  shortcutTitle.value = item?.shortcut?.title ?? ''
-  shortcutUrl.value = item?.shortcut?.url ?? 'https://'
-  shortcutUrlError.value = ''
   shortcutSaveError.value = ''
-  shortcutColor.value = item?.shortcut?.color ?? '#3d82f6'
-  shortcutMark.value = item?.shortcut?.mark ?? ''
-  shortcutIcon.value = item?.shortcut?.icon ?? ''
-  shortcutIconError.value = ''
-  if (shortcutIconFile.value) shortcutIconFile.value.value = ''
   shortcutDialog.value = true
 }
 
 function handleShortcutDialogKeydown(event: KeyboardEvent) {
+  if (event.isComposing || event.keyCode === 229) {
+    event.stopPropagation()
+    return
+  }
+  if (event.defaultPrevented) return
   if (event.key === 'Escape') {
     event.preventDefault()
     event.stopPropagation()
@@ -658,15 +619,12 @@ function handleShortcutDialogKeydown(event: KeyboardEvent) {
   }
   if (event.key !== 'Tab' || !shortcutDialogElement.value) return
   const focusable = [...shortcutDialogElement.value.querySelectorAll<HTMLElement>(
-    'button:not([disabled]), input:not([disabled]):not([type="hidden"]):not(.visually-hidden), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]):not(.visually-hidden)',
-  )]
-  if (!focusable.length) {
-    event.preventDefault()
-    return
-  }
-  const first = focusable[0]!
-  const last = focusable.at(-1)!
-  if (event.shiftKey && document.activeElement === first) {
+    'button:enabled, input:enabled:not([type="file"]), select:enabled, summary',
+  )].filter((element) => !element.closest('details:not([open])') || element.matches('summary'))
+  const first = focusable[0]
+  const last = focusable.at(-1)
+  if (!first || !last) event.preventDefault()
+  else if (event.shiftKey && document.activeElement === first) {
     event.preventDefault()
     last.focus()
   } else if (!event.shiftKey && document.activeElement === last) {
@@ -674,102 +632,10 @@ function handleShortcutDialogKeydown(event: KeyboardEvent) {
     first.focus()
   }
 }
-function fillShortcutFromBrowserTab(tab: BrowserTabCandidate) {
-  shortcutTitle.value = truncateCodePoints(tab.title, 80)
-  shortcutUrl.value = tab.url
-  shortcutUrlError.value = ''
-}
 
-function handleShortcutIconInput() {
-  shortcutIconUploadRequestId += 1
-  loadingShortcutIcon.value = false
-  shortcutIconError.value = ''
-}
-
-async function loadShortcutIconFile(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  const requestId = ++shortcutIconUploadRequestId
-  loadingShortcutIcon.value = false
-  shortcutIconError.value = ''
-  if (!file) return
-  if (file.size > maxImageUploadBytes) {
-    shortcutIconError.value = '图片不能超过 10 MB。'
-    return
-  }
-  loadingShortcutIcon.value = true
-  try {
-    const { compressImageBlob } = await import('./data/images')
-    if (requestId !== shortcutIconUploadRequestId || !shortcutDialog.value) return
-    const icon = await compressImageBlob(file, 192)
-    if (requestId !== shortcutIconUploadRequestId || !shortcutDialog.value) return
-    shortcutIcon.value = icon
-  } catch (error) {
-    if (requestId !== shortcutIconUploadRequestId || !shortcutDialog.value) return
-    shortcutIconError.value = error instanceof Error ? error.message : '无法处理这张图片。'
-  } finally {
-    if (requestId === shortcutIconUploadRequestId) loadingShortcutIcon.value = false
-  }
-}
-
-async function saveShortcut() {
-  if (savingShortcut.value || loadingShortcutIcon.value) return
-  const title = shortcutTitle.value.trim()
-  let destination = shortcutUrl.value.trim()
-  if (!title || !destination) return
-  const normalizedDestination = normalizeWebUrl(destination)
-  if (!normalizedDestination) {
-    shortcutUrlError.value = '请输入有效的 HTTP 或 HTTPS 网址。'
-    return
-  }
-  destination = normalizedDestination
-  const saveRequestId = ++shortcutSaveRequestId
-  const shortcutId = editingId.value || createLocalId()
-  const destinationWorkspaceId = shortcutWorkspaceId.value
-  const color = shortcutColor.value
-  const mark = shortcutMark.value.trim() || truncateCodePoints(title, 2)
-  shortcutUrlError.value = ''
-  let icon = shortcutIcon.value.trim()
-  shortcutIconError.value = ''
-  if (/^(?:https?:)?\/\//i.test(icon)) {
-    const normalizedIcon = normalizeWebUrl(icon)
-    if (!normalizedIcon) {
-      shortcutIconError.value = '请输入有效的 HTTP 或 HTTPS 图片网址。'
-      return
-    }
-    icon = normalizedIcon
-  }
-  // Extension pages have narrowly scoped host permissions for weather only.
-  // Keep user supplied remote icons as image URLs instead of requesting broad host access.
-  if (/^https?:\/\//i.test(icon) && location.protocol !== 'chrome-extension:') {
-    savingShortcut.value = true
-    try {
-      const { fetchAndCompressImage } = await import('./data/images')
-      if (saveRequestId !== shortcutSaveRequestId || !shortcutDialog.value) return
-      icon = await fetchAndCompressImage(icon, 192)
-    } catch (error) {
-      if (saveRequestId !== shortcutSaveRequestId || !shortcutDialog.value) return
-      shortcutIconError.value = error instanceof Error && !error.message.includes('Failed to fetch')
-        ? error.message
-        : '无法从这个网址读取图片（可能被跨域限制）。请上传本地图片后再保存。'
-      savingShortcut.value = false
-      return
-    }
-    if (saveRequestId !== shortcutSaveRequestId || !shortcutDialog.value) return
-    savingShortcut.value = false
-  }
-  const next: Shortcut = {
-    id: shortcutId,
-    title,
-    url: destination,
-    color,
-    mark,
-    icon: icon || undefined,
-  }
-  if (saveRequestId !== shortcutSaveRequestId || !shortcutDialog.value) return
-  if (!saveShortcutData(next, destinationWorkspaceId)) {
-    shortcutSaveError.value = '最多只能保存 500 个快捷入口。'
+function saveShortcut(shortcut: Shortcut, workspaceId: string) {
+  if (!saveShortcutData(shortcut, workspaceId)) {
+    shortcutSaveError.value = '最多只能保存 500 个快捷入口，可先删除不用的入口。'
     return
   }
   shortcutSaveError.value = ''
@@ -999,8 +865,6 @@ onBeforeUnmount(() => {
   if (wallpaperRotationTimer !== undefined) window.clearTimeout(wallpaperRotationTimer)
   wallpaperRotationTimer = undefined
   wallpaperRotationRequest += 1
-  shortcutSaveRequestId += 1
-  shortcutIconUploadRequestId += 1
   if (systemThemeQuery?.removeEventListener) systemThemeQuery.removeEventListener('change', updateSystemTheme)
   else systemThemeQuery?.removeListener?.(updateSystemTheme)
   systemThemeQuery = undefined
@@ -1143,31 +1007,10 @@ onBeforeUnmount(() => {
       @open-all-shortcuts="openFolderShortcuts"
     />
 
-    <div v-if="shortcutDialog" class="modal-backdrop" @click.self="shortcutDialog = false">
-      <form ref="shortcutDialogElement" class="shortcut-dialog" role="dialog" aria-modal="true" aria-labelledby="shortcut-dialog-title" @keydown="handleShortcutDialogKeydown" @submit.prevent="saveShortcut">
-        <header><div><h2 id="shortcut-dialog-title">{{ editingId ? '编辑快捷入口' : '添加快捷入口' }}</h2><p>名称和网址可以随时修改</p></div><button type="button" aria-label="关闭" @click="shortcutDialog = false"><X :size="19" /></button></header>
-        <label>名称<input ref="shortcutTitleInput" v-model="shortcutTitle" required maxlength="80" placeholder="例如：GitHub" :disabled="savingShortcut" /></label>
-        <label>所属工作区<SelectField v-model="shortcutWorkspaceId" aria-label="所属工作区" :disabled="savingShortcut"><option v-for="workspace in homeWorkspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></SelectField></label>
-        <p v-if="shortcutLimitReached" class="backup-error" role="status">最多只能保存 500 个快捷入口。</p>
-        <BrowserTabImport v-if="canImportBrowserTabs && !savingShortcut" @select="fillShortcutFromBrowserTab" />
-        <label>网址<input v-model="shortcutUrl" required maxlength="2048" placeholder="https://example.com" @input="shortcutUrlError = ''" :disabled="savingShortcut" /></label>
-        <p v-if="shortcutUrlError" class="backup-error" role="alert">{{ shortcutUrlError }}</p>
-        <p v-if="shortcutSaveError" class="backup-error" role="alert">{{ shortcutSaveError }}</p>
-        <div class="dialog-row">
-          <label>图标文字<input v-model="shortcutMark" maxlength="5" placeholder="自动取名称" :disabled="savingShortcut" /></label>
-          <label class="color-field">图标颜色<input v-model="shortcutColor" type="color" :disabled="savingShortcut" /></label>
-        </div>
-        <label>图标图片地址（可选）<input v-model="shortcutIcon" placeholder="素材文件名、图片网址或 Base64" @input="handleShortcutIconInput" :disabled="savingShortcut" /></label>
-        <div class="icon-file-actions">
-          <input ref="shortcutIconFile" class="visually-hidden" type="file" tabindex="-1" aria-hidden="true" accept="image/png,image/jpeg,image/webp,image/gif" :disabled="savingShortcut" @change="loadShortcutIconFile" />
-          <button class="button-secondary" type="button" :disabled="savingShortcut || loadingShortcutIcon" @click="shortcutIconFile?.click()">{{ loadingShortcutIcon ? '正在处理图片…' : '上传本地图片' }}</button>
-          <span>图片会压缩为 Base64 保存在本机，离线可用</span>
-        </div>
-        <p v-if="loadingShortcutIcon" class="panel-footnote" role="status">正在压缩图片，请稍候再保存。</p>
-        <p v-if="shortcutIconError" class="backup-error" role="alert">{{ shortcutIconError }}</p>
-        <footer><button class="button-secondary" type="button" @click="shortcutDialog = false">取消</button><button class="button-primary" type="submit" :disabled="savingShortcut || loadingShortcutIcon || shortcutLimitReached">{{ savingShortcut ? '正在转存图标…' : loadingShortcutIcon ? '正在处理图片…' : '保存' }}</button></footer>
-      </form>
-    </div>
+    <dialog v-if="shortcutDialog" ref="shortcutDialogElement" class="shortcut-dialog shortcut-editor" closedby="any" aria-labelledby="shortcut-dialog-title" aria-describedby="shortcut-dialog-description" @cancel.prevent="shortcutDialog = false" @keydown="handleShortcutDialogKeydown">
+      <header><div><h2 id="shortcut-dialog-title">{{ shortcutDraft?.id ? '编辑快捷入口' : '添加快捷入口' }}</h2><p id="shortcut-dialog-description">名称和网址为必填项</p></div><button type="button" aria-label="关闭" @click="shortcutDialog = false"><X :size="19" /></button></header>
+      <ShortcutEditor :shortcut="shortcutDraft" :initial-workspace-id="shortcutWorkspaceId" :workspaces="homeWorkspaces" :limit-reached="shortcutLimitReached" :save-error="shortcutSaveError" @save="saveShortcut" @close="shortcutDialog = false" />
+    </dialog>
 
     <ConfirmDialog
       v-if="pendingDestructiveAction"

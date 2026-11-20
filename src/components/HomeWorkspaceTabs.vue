@@ -144,7 +144,9 @@ function scheduleClose() {
   if (closeTimer) window.clearTimeout(closeTimer)
   closeTimer = window.setTimeout(() => {
     closeTimer = 0
-    if (root.value?.contains(document.activeElement)) return
+    // Closing a context menu can emit focusout while the pointer is still
+    // inside this control. Do not let that stale timer collapse a hovered menu.
+    if (root.value?.contains(document.activeElement) || (!touchInteraction && root.value?.matches(':hover'))) return
     menuOpen.value = false
     cancelRename()
   }, 260)

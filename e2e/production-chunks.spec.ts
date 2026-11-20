@@ -214,3 +214,57 @@ test('widget and browser-tool groups download only on demand without mounting si
   expect(groups).toEqual(['local-widgets', 'browser-tools'])
   await expect(page.locator('.home-widget-card')).toHaveCount(1)
 })
+
+test('shortcut editor stays lazy while its native modal remains usable during loading', async ({ page }) => {
+  let requests = 0
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => { release = resolve })
+  await page.route('**/assets/local-editors-*.js', async (route) => {
+    requests += 1
+    await gate
+    await route.continue()
+  })
+  await page.reload()
+  await expect(page.locator('.shortcut-grid-wrap')).toBeVisible()
+  expect(requests).toBe(0)
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置', exact: true }).click()
+  const panel = page.getByRole('dialog', { name: '设置', exact: true })
+  await expect(panel.locator('.settings-content')).toBeVisible()
+  expect(requests).toBe(0)
+  await panel.getByRole('button', { name: '关闭', exact: true }).click()
+  const trigger = page.getByRole('button', { name: '新建快捷入口', exact: true })
+  await trigger.click()
+  const dialog = page.getByRole('dialog', { name: '添加快捷入口', exact: true })
+  await expect(dialog.getByRole('status')).toContainText('正在加载快捷入口表单')
+  await expect(dialog.getByRole('button', { name: '关闭', exact: true })).toBeFocused()
+  await expect.poll(() => dialog.evaluate((element) => element.matches(':modal'))).toBe(true)
+  await page.keyboard.press('Tab')
+  await expect(dialog.getByRole('button', { name: '关闭', exact: true })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+  release()
+  await trigger.click()
+  await expect(dialog.locator('#shortcut-name')).toBeFocused()
+  expect(requests).toBe(1)
+})
+
+test('a failed shortcut editor can be dismissed safely and recovers after an explicit reload', async ({ page }) => {
+  let failing = true
+  await page.route('**/assets/local-editors-*.js', (route) => failing
+    ? route.fulfill({ status: 503, body: 'offline' })
+    : route.continue())
+  const trigger = page.getByRole('button', { name: '新建快捷入口', exact: true })
+  await trigger.click()
+  const dialog = page.getByRole('dialog', { name: '添加快捷入口', exact: true })
+  await expect(dialog.getByRole('alert')).toContainText('快捷入口表单暂时无法加载')
+  await expect(dialog.getByRole('button', { name: '重试加载', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(trigger).toBeFocused()
+  await trigger.click()
+  await expect(dialog.getByRole('button', { name: '重新加载页面', exact: true })).toBeVisible()
+  failing = false
+  await dialog.getByRole('button', { name: '重新加载页面', exact: true }).click()
+  await trigger.click()
+  await expect(dialog.locator('#shortcut-name')).toBeFocused()
+})

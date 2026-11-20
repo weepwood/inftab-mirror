@@ -33,7 +33,12 @@ test.afterEach(async ({ page }) => {
 // The workspace switcher is a circular control in the corner that fans open on hover/focus.
 async function openWorkspaceMenu(page: Page) {
   await page.locator('.home-workspace-trigger').hover()
-  await expect(page.locator('.home-workspace-bar')).toHaveClass(/is-open/)
+  const menu = page.locator('.home-workspace-bar')
+  await expect(menu).toHaveClass(/is-open/)
+  // The open class precedes the fan-out transition. Clicking a chip while it
+  // still overlaps the trigger can move the pointer out and start auto-close.
+  await expect.poll(() => menu.evaluate((element) => element.getAnimations({ subtree: true })
+    .every((animation) => animation.playState !== 'running'))).toBe(true)
 }
 
 // Chips are circles showing the first character; the full name stays on aria-label.
