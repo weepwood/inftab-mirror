@@ -1,3 +1,4 @@
+import { isRecord, isValidRecordId } from './validation'
 import { truncateCodePoints } from './text'
 
 export const defaultHomeWorkspaceId = 'default'
@@ -8,14 +9,6 @@ export interface HomeWorkspace {
   id: string
   name: string
   itemIds: string[]
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function validId(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0 && value.length <= 128
 }
 
 function uniqueName(name: string, used: Set<string>, fallback: string): string {
@@ -36,16 +29,16 @@ function uniqueName(name: string, used: Set<string>, fallback: string): string {
 }
 
 function parseWorkspace(value: unknown): HomeWorkspace | undefined {
-  if (!isRecord(value) || !validId(value.id) || !Array.isArray(value.itemIds)) return undefined
+  if (!isRecord(value) || !isValidRecordId(value.id) || !Array.isArray(value.itemIds)) return undefined
   return {
     id: value.id,
     name: typeof value.name === 'string' ? truncateCodePoints(value.name.trim(), maxHomeWorkspaceNameLength) : '',
-    itemIds: [...new Set(value.itemIds.filter(validId))],
+    itemIds: [...new Set(value.itemIds.filter(isValidRecordId))],
   }
 }
 
 export function defaultHomeWorkspace(itemIds: string[] = []): HomeWorkspace {
-  return { id: defaultHomeWorkspaceId, name: '主页', itemIds: [...new Set(itemIds.filter(validId))] }
+  return { id: defaultHomeWorkspaceId, name: '主页', itemIds: [...new Set(itemIds.filter(isValidRecordId))] }
 }
 
 export function sanitizeHomeWorkspaces(
@@ -62,7 +55,7 @@ export function sanitizeHomeWorkspaces(
   const usedIds = new Set<string>()
   const usedNames = new Set<string>()
   const assignedItemIds = new Set<string>()
-  const builtInIds = new Set(builtInItemIds.filter(validId))
+  const builtInIds = new Set(builtInItemIds.filter(isValidRecordId))
 
   return capped.flatMap((workspace, index) => {
     if (usedIds.has(workspace.id)) return []
@@ -72,7 +65,7 @@ export function sanitizeHomeWorkspaces(
       : workspace.itemIds
     const itemIds = [...new Set(rawIds.filter((id) => builtInIds.has(id) || !assignedItemIds.has(id)))]
     itemIds.filter((id) => !builtInIds.has(id)).forEach((id) => assignedItemIds.add(id))
-    itemIds.push(...builtInItemIds.filter((id) => validId(id) && !itemIds.includes(id)))
+    itemIds.push(...builtInItemIds.filter((id) => isValidRecordId(id) && !itemIds.includes(id)))
     return [{
       id: workspace.id,
       name: uniqueName(workspace.name, usedNames, index === 0 ? '主页' : `工作区 ${index + 1}`),

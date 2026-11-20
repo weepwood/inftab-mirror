@@ -20,9 +20,21 @@ const menu = ref<HTMLElement>()
 const activeIndex = ref(0)
 const menuItemCount = computed(() => props.item.shortcut ? 4 : 3)
 
-function focusItem(index: number) {
-  activeIndex.value = index
-  void nextTick(() => menu.value?.querySelectorAll<HTMLElement>('[role="menuitem"]')[index]?.focus())
+function focusItem(index: number, direction = 1) {
+  const items = menu.value?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')
+  if (!items?.length) return
+  for (let offset = 0; offset < items.length; offset += 1) {
+    const next = (index + offset * direction + items.length) % items.length
+    if (items[next]!.disabled) continue
+    activeIndex.value = next
+    void nextTick(() => items[next]?.focus())
+    return
+  }
+}
+
+function handleFocusin(event: FocusEvent) {
+  const items = menu.value?.querySelectorAll<HTMLElement>('[role="menuitem"]')
+  if (items) activeIndex.value = [...items].indexOf(event.target as HTMLElement)
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -33,7 +45,7 @@ function handleKeydown(event: KeyboardEvent) {
   else if (event.key === 'End') nextIndex = menuItemCount.value - 1
   if (nextIndex !== undefined) {
     event.preventDefault()
-    focusItem(nextIndex)
+    focusItem(nextIndex, event.key === 'ArrowUp' || event.key === 'End' ? -1 : 1)
   }
 }
 
@@ -53,6 +65,7 @@ onMounted(() => focusItem(0))
     :style="{ left: `${position.left}px`, top: `${position.top}px` }"
     @click.stop
     @keydown="handleKeydown"
+    @focusin="handleFocusin"
     @focusout="handleFocusout"
   >
     <button type="button" role="menuitem" :tabindex="activeIndex === 0 ? 0 : -1" @click="emit('edit')"><Pencil :size="14" /> 编辑{{ item.folder ? '文件夹' : '快捷入口' }}</button>

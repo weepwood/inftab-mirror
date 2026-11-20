@@ -56,6 +56,7 @@ describe('SearchBar keyboard navigation', () => {
     wrapper.vm.$.exposed?.showTranslationError()
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[role="status"]').text()).toContain('暂时无法加载')
+    expect(wrapper.get('[role="status"] button').text()).toBe('重新加载页面')
     await wrapper.get('.quick-translate').trigger('click')
     expect(wrapper.find('[role="status"]').exists()).toBe(false)
 

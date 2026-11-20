@@ -45,6 +45,25 @@ describe('FolderDialog accessibility', () => {
     expect(document.activeElement).toBe(opener)
   })
 
+  it('focuses the first contained shortcut and restores focus after cancelling edits', async () => {
+    wrapper = mount(FolderDialog, {
+      attachTo: document.body,
+      props: {
+        folder: { id: 'work', title: 'Work', shortcutIds: ['first'], color: '#369', mark: 'W' },
+        shortcuts: [{ id: 'first', title: 'First', url: 'https://first.example/', color: '#369', mark: 'F' }],
+      },
+    })
+    await wrapper.vm.$nextTick()
+    expect(document.activeElement).toBe(wrapper.get('.folder-launcher').element)
+
+    await wrapper.get('.folder-dialog footer .button-secondary:not(.danger-action)').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(document.activeElement).toBe(wrapper.get('input[placeholder="例如：工作"]').element)
+    await wrapper.get('.folder-dialog footer .button-secondary').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(document.activeElement).toBe(wrapper.get('.folder-launcher').element)
+  })
+
   it('focuses the folder name field when editing', async () => {
     wrapper = mount(FolderDialog, {
       attachTo: document.body,

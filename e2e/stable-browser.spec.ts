@@ -223,6 +223,9 @@ test('stable browsers restore and reload a confirmed valid backup', async ({ pag
 })
 
 test('stable browsers open every shortcut in a folder from one click', async ({ page }) => {
+  await page.context().route(/^https:\/\/www\.(?:jd|tmall)\.com\//, (route) => route.fulfill({
+    contentType: 'text/html', body: '<title>Folder shortcut test</title>',
+  }))
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByRole('button', { name: '新建文件夹' }).click()
   const editor = page.getByRole('dialog', { name: '新建文件夹' })
@@ -239,7 +242,7 @@ test('stable browsers open every shortcut in a folder from one click', async ({ 
 
   await folder.getByRole('button', { name: '打开全部' }).click()
   await expect.poll(() => openedPages.length).toBe(2)
-  expect(openedPages.map((openedPage) => openedPage.url()).sort()).toEqual([
+  await expect.poll(() => openedPages.map((openedPage) => openedPage.url()).sort()).toEqual([
     'https://www.jd.com/',
     'https://www.tmall.com/',
   ])

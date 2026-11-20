@@ -645,7 +645,7 @@ describe('new-tab keyboard search', () => {
     await openLauncher('工作')
     expect(wrapper.get('.folder-dialog').text()).toContain('京东商城')
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
-    await wrapper.get('.folder-link').trigger('click')
+    await wrapper.get('.folder-launcher').trigger('click')
     expect(open).toHaveBeenCalledWith('https://www.jd.com/', '_blank', 'noopener,noreferrer')
     await wrapper.get('.folder-toolbar button').trigger('click')
     expect(open).toHaveBeenCalledTimes(3)
@@ -681,7 +681,7 @@ describe('new-tab keyboard search', () => {
     await wrapper.get('.folder-dialog footer .button-secondary:not(.danger-action)').trigger('click')
 
     expect(wrapper.get('#folder-view-title').text()).toBe('工作')
-    expect(wrapper.get('.folder-link').text()).toContain('京东商城')
+    expect(wrapper.get('.folder-launcher').text()).toContain('京东商城')
     expect(JSON.parse(localStorage.getItem('inftab.folders.v1') ?? '[]')[0].title).toBe('工作')
   })
 

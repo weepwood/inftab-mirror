@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isRecord } from '../data/validation'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Droplets, RefreshCw, Search, Snowflake, Sun, Wind } from '@lucide/vue'
 import { isValidCalendarDate } from '../data/countdown'
@@ -228,10 +229,6 @@ async function requestJson(url: string, unavailableMessage: string): Promise<unk
 
 function isAbortError(cause: unknown) {
   return cause instanceof DOMException && cause.name === 'AbortError'
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function isLocationResult(value: unknown): value is LocationResult {

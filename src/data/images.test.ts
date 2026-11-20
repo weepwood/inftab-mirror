@@ -34,8 +34,7 @@ describe('local image compression', () => {
     vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(bitmap))
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D)
     vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => callback(new Blob(['webp'], { type: 'image/webp' })))
-    const image = new Blob(['source'], { type: 'image/png' })
-    const fetcher = vi.fn().mockResolvedValue(new Response(image, { headers: { 'content-type': 'image/png' } }))
+    const fetcher = vi.fn().mockResolvedValue(new Response(new TextEncoder().encode('source'), { headers: { 'content-type': 'image/png' } }))
 
     const dataUrl = await fetchAndCompressImage('https://images.example/icon.png', 192, fetcher)
 

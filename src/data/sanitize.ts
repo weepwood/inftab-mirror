@@ -1,3 +1,4 @@
+import { isRecord, isValidRecordId } from './validation'
 import { defaultLauncherOrder, defaultPreferences, launcherItems, wallpaperChoices } from './defaults'
 import { maxWallpaperDataUrlLength } from './imageLimits'
 import { isValidCalendarDate } from './countdown'
@@ -20,10 +21,6 @@ const gradientStop = `${gradientColor}(?:\\s+\\d+(?:\\.\\d+)?%)?`
 const gradientDirection = '(?:(?:\\d+(?:\\.\\d+)?deg|to (?:top|right|bottom|left)(?: (?:top|right|bottom|left))?)\\s*,\\s*)?'
 const safeLinearGradient = new RegExp(`^linear-gradient\\(\\s*${gradientDirection}${gradientStop}(?:\\s*,\\s*${gradientStop})+\\s*\\)$`, 'i')
 
-function record(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
 function boundedNumber(value: unknown, fallback: number, min: number, max: number) {
   return typeof value === 'number' && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback
 }
@@ -41,19 +38,19 @@ export function isValidLauncherColor(value: unknown): value is string {
 }
 
 export function sanitizePreferences(value: unknown): Preferences {
-  const raw = record(value) ? value : {}
+  const raw = isRecord(value) ? value : {}
   const merged = { ...defaultPreferences, ...raw }
   const manageableLauncherIds = new Set(launcherItems.filter((item) => item.action && item.id !== 'settings').map((item) => item.id))
   const hiddenLauncherIds = Array.isArray(raw.hiddenLauncherIds)
     ? [...new Set(raw.hiddenLauncherIds.filter((item): item is string => typeof item === 'string' && manageableLauncherIds.has(item)))]
     : [...defaultPreferences.hiddenLauncherIds]
   const dockItemIds = Array.isArray(raw.dockItemIds)
-    ? [...new Set(raw.dockItemIds.filter(validId))].slice(0, maxDockItems)
+    ? [...new Set(raw.dockItemIds.filter(isValidRecordId))].slice(0, maxDockItems)
     : [...defaultPreferences.dockItemIds]
   const homeWidgetIds = Array.isArray(raw.homeWidgetIds)
     ? [...new Set(raw.homeWidgetIds.filter((item): item is HomeWidgetId => typeof item === 'string' && availableHomeWidgetIds.includes(item as HomeWidgetId)))]
     : [...defaultPreferences.homeWidgetIds]
-  const rawWidgetSizes = record(raw.homeWidgetSizes) ? raw.homeWidgetSizes : {}
+  const rawWidgetSizes = isRecord(raw.homeWidgetSizes) ? raw.homeWidgetSizes : {}
   const homeWidgetSizes = Object.fromEntries(availableHomeWidgetIds.map((id) => [
     id,
     rawWidgetSizes[id] === 'wide' || rawWidgetSizes[id] === 'full' ? rawWidgetSizes[id] : 'standard',
@@ -132,7 +129,7 @@ export function sanitizeCustomSearchEngines(value: unknown): CustomSearchEngine[
   if (!Array.isArray(value)) return []
   const result = new Map<string, CustomSearchEngine>()
   for (const candidate of value.slice(0, 20)) {
-    if (!record(candidate) || typeof candidate.id !== 'string' || !customEngineId.test(candidate.id)
+    if (!isRecord(candidate) || typeof candidate.id !== 'string' || !customEngineId.test(candidate.id)
       || typeof candidate.name !== 'string' || typeof candidate.template !== 'string') continue
     const name = truncateCodePoints(candidate.name.trim(), 40)
     const template = candidate.template.trim()
@@ -146,15 +143,11 @@ function uniqueRecords<T extends { id: string }>(values: unknown, parse: (value:
   if (!Array.isArray(values)) return []
   const result = new Map<string, T>()
   for (const value of values.slice(0, 500)) {
-    if (!record(value)) continue
+    if (!isRecord(value)) continue
     const item = parse(value)
     if (item && !result.has(item.id)) result.set(item.id, item)
   }
   return [...result.values()]
-}
-
-function validId(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0 && value.length <= 128
 }
 
 function sanitizeShortcutIcon(value: unknown): string | undefined {
@@ -171,7 +164,7 @@ function sanitizeShortcutIcon(value: unknown): string | undefined {
 export function sanitizeShortcuts(value: unknown): Shortcut[] {
   return uniqueRecords(value, (item) => {
     const url = normalizeWebUrl(item.url)
-    if (!validId(item.id) || reservedLauncherIds.has(item.id) || typeof item.title !== 'string'
+    if (!isValidRecordId(item.id) || reservedLauncherIds.has(item.id) || typeof item.title !== 'string'
       || typeof item.mark !== 'string' || !url) return undefined
     const title = truncateCodePoints(item.title.trim(), 80)
     if (!title) return undefined
@@ -197,9 +190,9 @@ export function sanitizeFolders(
   const result: ShortcutFolder[] = []
   if (!Array.isArray(value)) return result
   for (const candidate of value.slice(0, 500)) {
-    if (!record(candidate)) continue
+    if (!isRecord(candidate)) continue
     const item = candidate
-    if (!validId(item.id) || seenFolderIds.has(item.id) || reservedLauncherIds.has(item.id) || shortcutIds.has(item.id)
+    if (!isValidRecordId(item.id) || seenFolderIds.has(item.id) || reservedLauncherIds.has(item.id) || shortcutIds.has(item.id)
       || typeof item.title !== 'string' || !item.title.trim()
       || typeof item.mark !== 'string' || !Array.isArray(item.shortcutIds) || item.shortcutIds.length > 500
       || !item.shortcutIds.every((id) => typeof id === 'string' && id.length <= 128)) continue
@@ -219,7 +212,7 @@ export function sanitizeFolders(
 
 export function sanitizeTodos(value: unknown): TodoItem[] {
   return uniqueRecords(value, (item) => {
-    if (!validId(item.id) || typeof item.title !== 'string' || typeof item.done !== 'boolean') return undefined
+    if (!isValidRecordId(item.id) || typeof item.title !== 'string' || typeof item.done !== 'boolean') return undefined
     const title = truncateCodePoints(item.title.trim(), 500)
     return title ? { id: item.id, title, done: item.done } : undefined
   })
@@ -229,7 +222,7 @@ export { sanitizeHabits }
 
 export function sanitizeCountdowns(value: unknown): CountdownItem[] {
   return uniqueRecords(value, (item) => {
-    if (!validId(item.id) || typeof item.title !== 'string' || !isValidCalendarDate(item.date)
+    if (!isValidRecordId(item.id) || typeof item.title !== 'string' || !isValidCalendarDate(item.date)
       || (item.recurrence !== 'once' && item.recurrence !== 'yearly')) return undefined
     const title = truncateCodePoints(item.title.trim(), 80)
     return title ? { id: item.id, title, date: item.date, recurrence: item.recurrence } : undefined
@@ -238,7 +231,7 @@ export function sanitizeCountdowns(value: unknown): CountdownItem[] {
 
 export function sanitizeNotes(value: unknown): Note[] {
   return uniqueRecords(value, (item) => {
-    if (!validId(item.id) || typeof item.title !== 'string' || typeof item.body !== 'string'
+    if (!isValidRecordId(item.id) || typeof item.title !== 'string' || typeof item.body !== 'string'
       || typeof item.updatedAt !== 'number' || !Number.isFinite(item.updatedAt)) return undefined
     return { id: item.id, title: truncateCodePoints(item.title, 500), body: truncateCodeUnits(item.body, 500_000), updatedAt: Math.max(0, item.updatedAt) }
   })
@@ -268,6 +261,6 @@ export function sanitizeLauncherOrder(value: unknown, shortcuts: Shortcut[], fol
 
 export function sanitizeStoredValue<T>(value: unknown, fallback: T): T {
   if (Array.isArray(fallback)) return (Array.isArray(value) ? value : fallback) as T
-  if (record(fallback) && record(value)) return { ...fallback, ...value } as T
+  if (isRecord(fallback) && isRecord(value)) return { ...fallback, ...value } as T
   return value === undefined || value === null ? fallback : value as T
 }

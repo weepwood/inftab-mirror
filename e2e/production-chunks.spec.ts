@@ -15,11 +15,12 @@ test.afterEach(async ({ page }) => {
   expect(pageErrorsByPage.get(page) ?? []).toEqual([])
 })
 
-test('quick translation retries a failed production chunk and opens the encoded query', async ({ page }) => {
+test('quick translation recovers a cached production chunk failure and opens the encoded query', async ({ page }) => {
   let translationChunkAttempts = 0
+  let failTranslationChunk = true
   await page.route('**/assets/translation-*.js', async (route) => {
     translationChunkAttempts += 1
-    if (translationChunkAttempts === 1) return route.fulfill({ status: 503, body: 'temporary failure' })
+    if (failTranslationChunk) return route.fulfill({ status: 503, body: 'temporary failure' })
     await route.continue()
   })
   await page.route('https://translate.google.com/**', (route) => route.fulfill({
@@ -29,9 +30,17 @@ test('quick translation retries a failed production chunk and opens the encoded 
   await page.getByRole('searchbox', { name: '输入并搜索' }).fill('hello & 世界')
   await page.getByRole('button', { name: '翻译成简体中文' }).click()
 
+  await expect(page.getByRole('status').filter({ hasText: '翻译工具暂时无法加载' })).toBeVisible()
+  // A document reload clears the browser's failed native import() cache.
+  failTranslationChunk = false
+  const failedTranslationRequests = translationChunkAttempts
+  await page.getByRole('button', { name: '重新加载页面', exact: true }).click()
+  await page.getByRole('searchbox', { name: '输入并搜索' }).fill('hello & 世界')
+  await page.getByRole('button', { name: '翻译成简体中文' }).click()
+
   await expect(page).toHaveURL(/translate\.google\.com\/\?sl=auto&tl=zh-CN&text=hello%20%26%20%E4%B8%96%E7%95%8C&op=translate/)
   await expect(page).toHaveTitle('Translation test')
-  expect(translationChunkAttempts).toBe(2)
+  expect(translationChunkAttempts).toBe(failedTranslationRequests + 1)
 })
 
 test('quick translation keeps the query that was submitted while its chunk loads', async ({ page }) => {
@@ -79,11 +88,12 @@ test('loads the panel plugin registry only after a panel is opened', async ({ pa
   expect(registryRequests).toHaveLength(1)
 })
 
-test('retries a transient production homepage widget chunk failure', async ({ page }) => {
+test('recovers a cached production homepage widget chunk failure after reloading', async ({ page }) => {
   let chunkRequests = 0
+  let failWidgetChunk = true
   await page.route(/\/HomeWidgetShelf-[^/]+\.js(?:\?.*)?$/, async (route) => {
     chunkRequests += 1
-    if (chunkRequests === 1) await route.abort('failed')
+    if (failWidgetChunk) await route.abort('failed')
     else await route.continue()
   })
   await page.evaluate(() => {
@@ -93,6 +103,10 @@ test('retries a transient production homepage widget chunk failure', async ({ pa
   })
   await page.reload()
 
+  await expect(page.getByRole('alert').filter({ hasText: '首页组件暂时无法加载' })).toBeVisible()
+  failWidgetChunk = false
+  const failedWidgetRequests = chunkRequests
+  await page.getByRole('button', { name: '重新加载页面', exact: true }).click()
   await expect(page.locator('[data-widget-id="todo-summary"]')).toBeVisible()
-  expect(chunkRequests).toBeGreaterThanOrEqual(2)
+  expect(chunkRequests).toBeGreaterThan(failedWidgetRequests)
 })

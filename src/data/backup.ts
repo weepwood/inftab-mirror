@@ -1,3 +1,4 @@
+import { isRecord } from './validation'
 import { availableHomeWidgetIds, maxDockItems, type CountdownItem, type CustomSearchEngine, type Habit, type Note, type Preferences, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
 import { launcherItems } from './defaults'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeHabits, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from './sanitize'
@@ -23,10 +24,6 @@ export interface WorkspaceBackup {
   focusTimer?: FocusTimerState
   homeWorkspaces?: HomeWorkspace[]
   activeHomeWorkspaceId?: string
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 const maxItems = 500

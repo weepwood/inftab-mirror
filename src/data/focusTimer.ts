@@ -1,29 +1,18 @@
-import { getFocusTimerRemainingMs, type FocusTimerState } from './focusTimerState'
+import { boundedInteger } from './validation'
+import { getFocusTimerDurationMs, getFocusTimerRemainingMs, type FocusTimerState } from './focusTimerState'
 
 export { defaultFocusTimerState, getFocusTimerRemainingMs, sanitizeFocusTimerState } from './focusTimerState'
 export type { FocusPhase, FocusTimerState } from './focusTimerState'
 
 const millisecondsPerMinute = 60_000
 
-function phaseDuration(state: FocusTimerState, phase = state.phase): number {
-  if (phase === 'short-break') return state.shortBreakMinutes * millisecondsPerMinute
-  if (phase === 'long-break') return state.longBreakMinutes * millisecondsPerMinute
-  return state.focusMinutes * millisecondsPerMinute
-}
-
-function boundedInteger(value: unknown, fallback: number, min: number, max: number): number {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? Math.min(max, Math.max(min, Math.round(value)))
-    : fallback
-}
-
 function nextPhase(state: FocusTimerState): FocusTimerState {
   if (state.phase === 'focus') {
     const completedSessions = state.completedSessions + 1
     const phase = completedSessions % 4 === 0 ? 'long-break' : 'short-break'
-    return { ...state, phase, completedSessions, remainingMs: phaseDuration(state, phase), endsAt: null }
+    return { ...state, phase, completedSessions, remainingMs: getFocusTimerDurationMs(state, phase), endsAt: null }
   }
-  return { ...state, phase: 'focus', remainingMs: phaseDuration(state, 'focus'), endsAt: null }
+  return { ...state, phase: 'focus', remainingMs: getFocusTimerDurationMs(state, 'focus'), endsAt: null }
 }
 
 export function advanceFocusTimer(state: FocusTimerState, now: number): FocusTimerState {
@@ -43,7 +32,7 @@ export function pauseFocusTimer(state: FocusTimerState, now: number): FocusTimer
 }
 
 export function resetFocusTimer(state: FocusTimerState): FocusTimerState {
-  return { ...state, phase: 'focus', remainingMs: phaseDuration(state, 'focus'), endsAt: null }
+  return { ...state, phase: 'focus', remainingMs: getFocusTimerDurationMs(state, 'focus'), endsAt: null }
 }
 
 export function setFocusDuration(state: FocusTimerState, minutes: number): FocusTimerState {

@@ -108,21 +108,27 @@ test('keyboard page turns keep focus on the corresponding shortcut', async ({ pa
   await expect(page.locator('.shortcut-page[aria-hidden="false"] .shortcut-open').nth(1)).toBeFocused()
 })
 
-test('recovers the shortcut grid after its chunk fails and manual retry succeeds', async ({ page }) => {
+test('recovers a browser-cached shortcut chunk failure with an explicit page reload', async ({ page }) => {
   let chunkRequests = 0
+  let failChunk = true
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
   await page.route(/(?:ShortcutGrid-[^/]+\.js|src\/components\/ShortcutGrid\.vue)(?:\?.*)?$/, async (route) => {
     chunkRequests += 1
-    if (chunkRequests <= 3) await route.abort('failed')
+    if (failChunk) await route.abort('failed')
     else await route.continue()
   })
   await page.reload()
 
   await expect(page.getByRole('alert').filter({ hasText: '快捷入口暂时无法加载' })).toBeVisible()
-  await page.getByRole('button', { name: '重试加载' }).click()
+  await expect(page.getByRole('button', { name: '重试加载', exact: true })).toBeVisible()
+  // Native import() can retain the failed module in the document's module map.
+  // A fresh document must recover even when retrying the same URL cannot.
+  failChunk = false
+  const failedRequests = chunkRequests
+  await page.getByRole('button', { name: '重新加载页面', exact: true }).click()
   await expect(page.locator('.shortcut-grid-wrap')).toBeVisible()
-  expect(chunkRequests).toBeGreaterThanOrEqual(4)
+  expect(chunkRequests).toBeGreaterThan(failedRequests)
   expect(pageErrors).toEqual([])
 })
 
@@ -1389,7 +1395,7 @@ test('touch gestures over the mobile dock allow both page and dock scrolling', a
     })
     await touchPage.goto(new URL(page.url()).origin)
     const home = touchPage.locator('.home.home-scrollable')
-    const dock = touchPage.locator('.home-dock')
+    const dock = touchPage.locator('.home-dock-track')
     const dockItem = touchPage.locator('.home-dock-item').first()
     await expect(home).toBeVisible()
     await expect(dock).toBeVisible()
@@ -1690,6 +1696,9 @@ test('lazy folder editor creates and opens a folder with selected shortcuts', as
 })
 
 test('opening every shortcut in a folder creates a new browser tab for each site', async ({ page }) => {
+  await page.context().route(/^https:\/\/www\.(?:jd|tmall)\.com\//, (route) => route.fulfill({
+    contentType: 'text/html', body: '<title>Folder shortcut test</title>',
+  }))
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByRole('button', { name: '新建文件夹' }).click()
   const editor = page.getByRole('dialog', { name: '新建文件夹' })
@@ -1706,7 +1715,7 @@ test('opening every shortcut in a folder creates a new browser tab for each site
 
   await folder.getByRole('button', { name: '打开全部' }).click()
   await expect.poll(() => openedPages.length).toBe(2)
-  expect(openedPages.map((openedPage) => openedPage.url()).sort()).toEqual([
+  await expect.poll(() => openedPages.map((openedPage) => openedPage.url()).sort()).toEqual([
     'https://www.jd.com/',
     'https://www.tmall.com/',
   ])
@@ -1862,7 +1871,7 @@ test('dock icons omit labels and use a context menu for removal', async ({ page 
   const responsiveIcon = await item.locator('.home-dock-icon').boundingBox()
   expect(responsiveIcon?.width).toBeCloseTo(40, 0)
   await item.hover()
-  await expect.poll(() => item.locator('.home-dock-icon').evaluate((icon) => getComputedStyle(icon).filter)).toContain('drop-shadow')
+  await expect.poll(() => item.locator('.home-dock-icon').evaluate((icon) => getComputedStyle(icon).outlineStyle)).toBe('solid')
   await item.click({ button: 'right' })
   const remove = page.getByRole('menuitem', { name: '从 Dock 移除京东商城' })
   await expect(remove).toBeVisible()
