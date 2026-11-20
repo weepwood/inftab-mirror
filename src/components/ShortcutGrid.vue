@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Bookmark, CalendarDays, Calculator, CloudSun, Folder, History, Image, ListTodo, PartyPopper, Settings, StickyNote, Timer } from '@lucide/vue'
-import type { Component } from 'vue'
+import { Folder } from '@lucide/vue'
+import { launcherIcons } from './launcherIcons'
 import { maxDockItems, type LauncherItem, type PageTransitionEffect } from '../types'
 import { truncateCodePoints } from '../data/text'
 
@@ -32,21 +32,6 @@ const emit = defineEmits<{
   moveByKeyboard: [itemId: string, direction: -1 | 1]
   swipe: [direction: number]
 }>()
-
-const itemIcons: Record<string, Component> = {
-  bookmarks: Bookmark,
-  history: History,
-  calendar: CalendarDays,
-  calculator: Calculator,
-  weather: CloudSun,
-  countdowns: PartyPopper,
-  habits: ListTodo,
-  todos: ListTodo,
-  'focus-timer': Timer,
-  notes: StickyNote,
-  settings: Settings,
-  wallpaper: Image,
-}
 
 const pageSize = computed(() => props.columns * props.rows)
 const cycleCount = 5
@@ -751,9 +736,9 @@ onBeforeUnmount(() => {
       aria-hidden="true"
       :style="{ left: `${dragPosition.x}px`, top: `${dragPosition.y}px`, '--shortcut-size': `${iconSize}px`, '--shortcut-radius': `${iconRadius}px` }"
     >
-      <span class="shortcut-icon" :class="{ builtin: draggedItem.action }" :style="{ backgroundColor: draggedItem.color }">
-        <img v-if="hasUsableIcon(draggedItem)" class="shortcut-picture" :src="draggedItem.icon" alt="" draggable="false" @error="handleIconError(draggedItem)" />
-        <component v-else-if="draggedItem.action && itemIcons[draggedItem.action]" :is="itemIcons[draggedItem.action]" :size="35" :stroke-width="2.6" />
+      <span class="shortcut-icon" :class="{ builtin: draggedItem.action }" :data-action="draggedItem.action" :style="{ backgroundColor: draggedItem.action ? undefined : draggedItem.color }">
+        <component v-if="draggedItem.action && launcherIcons[draggedItem.action]" :is="launcherIcons[draggedItem.action]" :size="35" :stroke-width="1.8" />
+        <img v-else-if="hasUsableIcon(draggedItem)" class="shortcut-picture" :src="draggedItem.icon" alt="" draggable="false" @error="handleIconError(draggedItem)" />
         <Folder v-else-if="draggedItem.folder" :size="35" :stroke-width="2.2" />
         <span v-else class="shortcut-mark">{{ draggedItem.mark }}</span>
         <span v-if="draggedItem.badge" class="shortcut-badge">{{ draggedItem.badge }}</span>
@@ -806,9 +791,9 @@ onBeforeUnmount(() => {
             @contextmenu="openContextMenu($event, item)"
           >
             <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" aria-describedby="launcher-reorder-hint" aria-keyshortcuts="Shift+ArrowLeft Shift+ArrowRight" :aria-haspopup="item.folder ? 'dialog' : item.shortcut ? 'menu' : undefined" @click="openItem($event, item)" @keydown="handleShortcutKeydown($event, item)">
-              <span class="shortcut-icon" :class="{ builtin: item.action }" :style="{ backgroundColor: item.color }">
-                <img v-if="hasUsableIcon(item)" class="shortcut-picture" :src="item.icon" alt="" draggable="false" @error="handleIconError(item)" />
-                <component v-else-if="item.action && itemIcons[item.action]" :is="itemIcons[item.action]" :size="35" :stroke-width="2.6" />
+              <span class="shortcut-icon" :class="{ builtin: item.action }" :data-action="item.action" :style="{ backgroundColor: item.action ? undefined : item.color }">
+                <component v-if="item.action && launcherIcons[item.action]" :is="launcherIcons[item.action]" :size="35" :stroke-width="1.8" />
+                <img v-else-if="hasUsableIcon(item)" class="shortcut-picture" :src="item.icon" alt="" draggable="false" @error="handleIconError(item)" />
                 <span v-else-if="item.folder" class="folder-preview-grid">
                   <span v-for="shortcut in folderPreviewItems(item)" :key="shortcut.id" class="folder-preview-tile" :style="{ backgroundColor: shortcut.color }">
                     <img v-if="hasUsableIcon(shortcut)" :src="shortcut.icon" alt="" draggable="false" @error="handleIconError(shortcut)" />

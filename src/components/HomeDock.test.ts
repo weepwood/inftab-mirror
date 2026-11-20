@@ -70,6 +70,20 @@ describe('HomeDock touch gestures', () => {
   })
 })
 
+describe('HomeDock icons', () => {
+  it('uses the same vector tool icons as the grid while preserving website artwork', () => {
+    wrapper = mount(HomeDock, { props: { items: [
+      { ...item, icon: '/legacy-weather.png' },
+      { id: 'site', title: '网站', color: '#123456', mark: 'S', icon: '/site.png' },
+    ] } })
+    const tool = wrapper.get('[data-dock-item-id="weather"] .home-dock-icon')
+    expect(tool.attributes('data-action')).toBe('weather')
+    expect(tool.find('svg').exists()).toBe(true)
+    expect(tool.find('img').exists()).toBe(false)
+    expect(wrapper.get('[data-dock-item-id="site"] img').attributes('src')).toBe('/site.png')
+  })
+})
+
 describe('HomeDock context menu', () => {
   it('hides dock labels while keeping accessible names and tooltips', () => {
     wrapper = mount(HomeDock, { props: { items: [item] } })

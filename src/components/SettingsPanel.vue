@@ -73,7 +73,8 @@ function syncActiveGroup() {
   const panel = panelScrollElement
   if (!panel) return
   const navHeight = settingsNav.value?.offsetHeight ?? 0
-  const threshold = panel.getBoundingClientRect().top + 86 + navHeight + 16
+  const headerHeight = panel.querySelector<HTMLElement>('.panel-header')?.offsetHeight ?? 0
+  const threshold = panel.getBoundingClientRect().top + headerHeight + navHeight + 16
   let current: SettingsGroupId = settingsGroups[0].id
   for (const group of settingsGroups) {
     const element = groupElement(group.id)
@@ -303,10 +304,11 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
           v-for="choice in wallpaperChoices"
           :key="choice.value"
           class="wallpaper-option"
-          :class="{ selected: preferences.wallpaper === choice.value }"
+          :class="{ selected: preferences.wallpaper === choice.value && !preferences.customWallpaper }"
           :style="{ background: choice.preview }"
           type="button"
           :aria-label="choice.label"
+          :aria-pressed="preferences.wallpaper === choice.value && !preferences.customWallpaper"
           @click="setWallpaper(choice.value)"
         ><span>{{ choice.label }}</span></button>
       </div>

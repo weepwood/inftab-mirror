@@ -137,7 +137,10 @@ describe('ShortcutGrid page cycling', () => {
     })
 
     for (const item of launcherItems.filter((launcherItem) => launcherItem.action)) {
-      expect(wrapper.get(`[data-item-id="${item.id}"] .shortcut-icon`).find('svg, img, .shortcut-mark').exists(), item.id).toBe(true)
+      const icon = wrapper.get(`[data-item-id="${item.id}"] .shortcut-icon`)
+      expect(icon.find('svg').exists(), item.id).toBe(true)
+      expect(icon.attributes('data-action')).toBe(item.action)
+      expect(icon.find('img').exists()).toBe(false)
     }
     expect(wrapper.get('[data-item-id="weather"] .shortcut-open').attributes('aria-label')).toBe('打开天气')
     expect(wrapper.get('[data-item-id="settings"] .shortcut-open').attributes('aria-label')).toBe('打开设置')

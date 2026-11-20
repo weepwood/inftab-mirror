@@ -161,7 +161,9 @@ let shortcutSaveRequestId = 0
 let shortcutIconUploadRequestId = 0
 const canImportBrowserTabs = location.protocol === 'chrome-extension:'
 const viewport = ref({ width: window.innerWidth, height: window.innerHeight })
-const pageSize = computed(() => preferences.value.columns * preferences.value.rows)
+// Keep the saved desktop grid preference while giving touch targets room on phones.
+const layoutColumns = computed(() => Math.min(preferences.value.columns, viewport.value.width <= 480 ? 4 : viewport.value.width <= 780 ? 5 : 12))
+const pageSize = computed(() => layoutColumns.value * preferences.value.rows)
 const activeHomeWorkspace = computed(() => homeWorkspaces.value.find((workspace) => workspace.id === activeHomeWorkspaceId.value) ?? homeWorkspaces.value[0]!)
 const activeHomeWorkspaceItemIds = computed(() => new Set(activeHomeWorkspace.value?.itemIds ?? []))
 const shortcutLimitReached = computed(() => !editingId.value && shortcuts.value.length >= 500)
@@ -327,7 +329,7 @@ const homeWidgetRows = computed(() => {
   }
   return rows
 })
-const compactRows = computed(() => Math.min(preferences.value.rows, Math.max(1, Math.ceil(allLauncherItems.value.length / preferences.value.columns))))
+const compactRows = computed(() => Math.min(preferences.value.rows, Math.max(1, Math.ceil(allLauncherItems.value.length / layoutColumns.value))))
 const fitMetrics = computed(() => {
   const { width, height } = viewport.value
   const mobile = width <= 780
@@ -335,7 +337,10 @@ const fitMetrics = computed(() => {
   const compactHeight = height <= 680
   const veryShortHeight = height <= 560
   const rows = compactRows.value
-  const topPadding = veryShortHeight ? 38 : compactHeight ? Math.min(64, Math.max(48, height * 0.09)) : smallMobile ? height * 0.18 : mobile ? height * 0.17 : Math.min(112, Math.max(72, height * 0.09))
+  const topPadding = veryShortHeight ? 38 : compactHeight ? Math.min(64, Math.max(48, height * 0.09)) : mobile ? Math.min(128, Math.max(80, height * 0.14)) : Math.min(112, Math.max(80, height * 0.1))
+  const clockSize = compactHeight ? 40 : showHomeWidgets.value ? 48 : mobile ? 64 : height <= 800 ? 72 : 88
+  const clockBottomGap = compactHeight ? 16 : 28
+  const clockClearance = preferences.value.showClock && !veryShortHeight ? clockSize + 12 + 20 + clockBottomGap : 0
   const searchVisible = preferences.value.showSearchBar
   const tabHeight = searchVisible && preferences.value.visibleSearchModes.length ? (veryShortHeight ? 26 : smallMobile ? 28 : 33) : 0
   const searchHeight = searchVisible ? Math.min(preferences.value.searchHeight, veryShortHeight ? 44 : mobile ? 48 : 100) : 0
@@ -349,11 +354,11 @@ const fitMetrics = computed(() => {
   const widgetClearance = showHomeWidgets.value && !shortHomeScrollEnabled.value
     ? homeWidgetRows.value * 112 + Math.max(0, homeWidgetRows.value - 1) * 12 + 22
     : 0
-  const available = height - topPadding - widgetClearance - dockClearance - workspaceTabsClearance - tabHeight - searchHeight - gridTopGap - paginationHeight - footerClearance - rows * nameHeight
+  const available = height - topPadding - clockClearance - widgetClearance - dockClearance - workspaceTabsClearance - tabHeight - searchHeight - gridTopGap - paginationHeight - footerClearance - rows * nameHeight
   const requestedGap = Math.min(preferences.value.gridGapY, smallMobile ? 20 : mobile ? 24 : preferences.value.gridGapY)
-  const fittedGap = rows > 1 ? Math.min(requestedGap, Math.max(4, (available - rows * 32) / (rows - 1))) : requestedGap
+  const fittedGap = rows > 1 ? Math.min(requestedGap, Math.max(4, (available - rows * Math.min(preferences.value.iconSize, 48)) / (rows - 1))) : requestedGap
   const fittedIcon = Math.max(28, Math.min(preferences.value.iconSize, (available - (rows - 1) * fittedGap) / rows))
-  return { fittedGap, fittedIcon }
+  return { fittedGap, fittedIcon, topPadding, clockSize, clockBottomGap }
 })
 const backgroundStyle = computed(() => {
   const value = preferences.value.customWallpaper.trim() || preferences.value.wallpaper
@@ -361,7 +366,10 @@ const backgroundStyle = computed(() => {
   return {
     backgroundImage,
     '--page-shade': String(preferences.value.shade),
-    '--grid-columns': String(preferences.value.columns),
+    '--home-top-padding': `${fitMetrics.value.topPadding}px`,
+    '--clock-size': `${fitMetrics.value.clockSize}px`,
+    '--clock-bottom-gap': `${fitMetrics.value.clockBottomGap}px`,
+    '--grid-columns': String(layoutColumns.value),
     '--shortcut-size': `${preferences.value.iconSize}px`,
     '--shortcut-radius': `${preferences.value.iconRadius}px`,
     '--search-width': `${preferences.value.searchWidth}px`,
@@ -1003,18 +1011,19 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': shortHomeScrollEnabled, 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode }" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
+  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': !minimalMode && (showHomeWidgets || shortHomeScrollEnabled), 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode }" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
     <a class="skip-link" href="#main-content">跳到快捷入口</a>
     <h1 class="visually-hidden">Infinity 新标签页</h1>
     <div class="background-shade"></div>
+    <div class="home-brand" aria-label="Infinity 新标签页"><span class="brand-mark" aria-hidden="true">∞</span><span class="brand-word">infinity</span><span class="brand-label">新标签页</span></div>
     <header class="home-actions">
-      <button type="button" class="round-action minimal-mode-toggle" :aria-label="minimalMode ? '退出极简模式' : '进入极简模式'" :aria-pressed="minimalMode" :title="minimalMode ? '退出极简模式' : '进入极简模式'" @click="toggleMinimalMode"><span aria-hidden="true">{{ minimalMode ? '×' : '◉' }}</span></button>
-      <button type="button" class="round-action" aria-label="回到首页" @click="goToPage(0)"><House :size="19" /></button>
-      <button type="button" class="round-action" aria-label="打开设置" @click="openPanel('settings')"><Menu :size="21" /></button>
+      <button type="button" class="round-action minimal-mode-toggle" :aria-label="minimalMode ? '退出极简模式' : '进入极简模式'" :aria-pressed="minimalMode" :title="minimalMode ? '退出极简模式' : '进入极简模式'" @click="toggleMinimalMode"><X v-if="minimalMode" :size="18" /><span v-else class="minimal-mode-symbol" aria-hidden="true"></span></button>
+      <button type="button" class="round-action" aria-label="回到首页" title="回到首页" @click="goToPage(0)"><House :size="19" /></button>
+      <button type="button" class="round-action" aria-label="打开设置" title="打开设置" @click="openPanel('settings')"><Menu :size="21" /></button>
     </header>
 
-    <ClockWidget v-if="preferences.showClock" />
     <section id="main-content" class="home-content" :class="{ 'home-content-minimal': minimalMode }" tabindex="-1">
+      <ClockWidget v-if="preferences.showClock" />
       <HomeWidgetShelf
         v-if="showHomeWidgets && !minimalMode"
         :widget-ids="preferences.homeWidgetIds"
@@ -1071,7 +1080,7 @@ onBeforeUnmount(() => {
         :items="allLauncherItems"
         :folder-shortcuts="folderPreviewItems"
         :dock-item-ids="preferences.dockItemIds"
-        :columns="preferences.columns"
+        :columns="layoutColumns"
         :rows="preferences.rows"
         :icon-size="preferences.iconSize"
         :icon-radius="preferences.iconRadius"
