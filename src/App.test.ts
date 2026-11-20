@@ -7,6 +7,15 @@ import * as imageProcessing from './data/images'
 import WeatherPanel from './components/WeatherPanel.vue'
 import App from './App.vue'
 
+// jsdom does not implement the modal top layer; real inertness/pickers are E2E checks.
+Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+  configurable: true,
+  value(this: HTMLDialogElement) {
+    this.open = true
+    this.querySelector<HTMLElement>('button')?.focus()
+  },
+})
+
 let wrapper: VueWrapper = null!
 
 async function mountApp(): Promise<VueWrapper> {
@@ -32,6 +41,12 @@ async function openLauncher(id: string) {
   await trigger.trigger('click')
   await flushPromises()
   await vi.waitFor(() => expect(wrapper.find('.panel-loading').exists()).toBe(false), { timeout: 5_000 })
+}
+
+async function openShortcutEditor() {
+  await wrapper.get('.settings-add-shortcut').trigger('click')
+  await vi.waitFor(() => expect(wrapper.find('.shortcut-editor-form').exists()).toBe(true), { timeout: 5_000 })
+  await flushPromises()
 }
 
 async function openFolderDialog() {
@@ -155,14 +170,14 @@ describe('new-tab shortcut dialog asynchronous work', () => {
   it('preserves shortcut titles up to the shared 80-character data limit', async () => {
     await mountApp()
     await openLauncher('settings')
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
 
     const title = '长'.repeat(80)
     const titleInput = wrapper.get('.shortcut-dialog input[placeholder="例如：GitHub"]')
     expect(titleInput.attributes('maxlength')).toBe('80')
     await titleInput.setValue(title)
     await wrapper.get('.shortcut-dialog input[placeholder="https://example.com"]').setValue('https://long-title.example/')
-    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await wrapper.get('.shortcut-editor-form').trigger('submit')
     await flushLocalStorageWrites()
 
     const shortcuts = JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]') as Array<{ title: string; url: string }>
@@ -174,7 +189,7 @@ describe('new-tab shortcut dialog asynchronous work', () => {
     vi.spyOn(imageProcessing, 'compressImageBlob').mockImplementation(() => new Promise((resolve) => { resolveCompression = resolve }))
     await mountApp()
     await openLauncher('settings')
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
     const fileInput = wrapper.get('.shortcut-dialog input[type="file"]')
     Object.defineProperty(fileInput.element, 'files', {
       configurable: true,
@@ -184,7 +199,7 @@ describe('new-tab shortcut dialog asynchronous work', () => {
     await vi.waitFor(() => expect(imageProcessing.compressImageBlob).toHaveBeenCalledOnce())
 
     await wrapper.get('.shortcut-dialog button[aria-label="关闭"]').trigger('click')
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
     resolveCompression('data:image/webp;base64,c3RhbGU=')
     await flushPromises()
 
@@ -198,15 +213,15 @@ describe('new-tab shortcut dialog asynchronous work', () => {
     vi.spyOn(imageProcessing, 'fetchAndCompressImage').mockImplementation(() => new Promise((resolve) => { resolveImageFetch = resolve }))
     await mountApp()
     await openLauncher('settings')
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
     await wrapper.get('.shortcut-dialog input[placeholder="例如：GitHub"]').setValue('Cancelled shortcut')
     await wrapper.get('.shortcut-dialog input[placeholder="https://example.com"]').setValue('https://cancelled.example/')
     await wrapper.get('.shortcut-dialog input[placeholder="素材文件名、图片网址或 Base64"]').setValue('https://images.example/icon.png')
-    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await wrapper.get('.shortcut-editor-form').trigger('submit')
     await vi.waitFor(() => expect(imageProcessing.fetchAndCompressImage).toHaveBeenCalledOnce())
 
     await wrapper.get('.shortcut-dialog button[aria-label="关闭"]').trigger('click')
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
     resolveImageFetch('data:image/webp;base64,c3RhbGU=')
     await flushPromises()
     await flushLocalStorageWrites()
@@ -446,7 +461,7 @@ describe('new-tab keyboard search', () => {
   it('closes only the top shortcut dialog before its settings panel', async () => {
     await mountApp()
     await openLauncher('settings')
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await nextTick()
@@ -551,10 +566,11 @@ describe('new-tab keyboard search', () => {
     await mountApp()
     await openLauncher('书签')
     await wrapper.get('[aria-label="添加Vue Docs到快捷入口"]').trigger('click')
+    await vi.waitFor(() => expect(wrapper.find('.shortcut-editor-form').exists()).toBe(true))
 
     expect((wrapper.get('input[placeholder="例如：GitHub"]').element as HTMLInputElement).value).toBe('Vue Docs')
     expect((wrapper.get('input[placeholder="https://example.com"]').element as HTMLInputElement).value).toBe('https://vuejs.org/')
-    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await wrapper.get('.shortcut-editor-form').trigger('submit')
     await flushLocalStorageWrites()
 
     expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]')).toContainEqual(expect.objectContaining({
@@ -618,21 +634,21 @@ describe('new-tab keyboard search', () => {
   it('rejects unsafe shortcut URLs and restores a valid shortcut after remount', async () => {
     await mountApp()
     await openLauncher('settings')
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
     await wrapper.get('input[placeholder="例如：GitHub"]').setValue('Example')
     await wrapper.get('input[placeholder="https://example.com"]').setValue('javascript:alert(1)')
-    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await wrapper.get('.shortcut-editor-form').trigger('submit')
 
     expect(wrapper.get('.shortcut-dialog [role="alert"]').text()).toContain('HTTP 或 HTTPS')
     expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]').some((item: { title: string }) => item.title === 'Example')).toBe(false)
 
     await wrapper.get('input[placeholder="https://example.com"]').setValue('https://example.com@evil.example/')
-    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await wrapper.get('.shortcut-editor-form').trigger('submit')
     expect(wrapper.get('.shortcut-dialog [role="alert"]').text()).toContain('有效的 HTTP 或 HTTPS 网址')
     expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]').some((item: { title: string }) => item.title === 'Example')).toBe(false)
 
     await wrapper.get('input[placeholder="https://example.com"]').setValue('example.com')
-    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await wrapper.get('.shortcut-editor-form').trigger('submit')
     await flushLocalStorageWrites()
     expect(JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]')).toContainEqual(expect.objectContaining({
       title: 'Example',
@@ -734,7 +750,7 @@ describe('new-tab keyboard search', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => callback(new Blob(['webp-icon'], { type: 'image/webp' })))
     await mountApp()
     await openLauncher('settings')
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
 
     const file = new File(['source-icon'], 'icon.png', { type: 'image/png' })
     const input = wrapper.get('.shortcut-dialog input[accept="image/png,image/jpeg,image/webp,image/gif"]')
@@ -752,11 +768,11 @@ describe('new-tab keyboard search', () => {
     const fetch = vi.spyOn(globalThis, 'fetch')
     await mountApp()
     await openLauncher('settings')
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
     await wrapper.get('input[placeholder="例如：GitHub"]').setValue('Example')
     await wrapper.get('input[placeholder="https://example.com"]').setValue('https://example.com')
     await wrapper.get('.shortcut-dialog input[placeholder="素材文件名、图片网址或 Base64"]').setValue('https://images.example/icon.png')
-    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await wrapper.get('.shortcut-editor-form').trigger('submit')
     await flushLocalStorageWrites()
 
     expect(fetch).not.toHaveBeenCalled()
@@ -780,11 +796,11 @@ describe('new-tab keyboard search', () => {
     } as Response)
     await mountApp()
     await openLauncher('settings')
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
     await wrapper.get('input[placeholder="例如：GitHub"]').setValue('Example')
     await wrapper.get('input[placeholder="https://example.com"]').setValue('https://example.com')
     await wrapper.get('.shortcut-dialog input[placeholder="素材文件名、图片网址或 Base64"]').setValue('//images.example/icon.png')
-    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await wrapper.get('.shortcut-editor-form').trigger('submit')
 
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledWith('https://images.example/icon.png', expect.objectContaining({
       credentials: 'omit',
@@ -803,7 +819,7 @@ describe('new-tab keyboard search', () => {
   it('restores shortcut controls after a remote icon request times out', async () => {
     await mountApp()
     await openLauncher('settings')
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
     await wrapper.get('input[placeholder="例如：GitHub"]').setValue('Example')
     await wrapper.get('input[placeholder="https://example.com"]').setValue('https://example.com')
     await wrapper.get('.shortcut-dialog input[placeholder="素材文件名、图片网址或 Base64"]').setValue('https://images.example/slow.png')
@@ -812,9 +828,10 @@ describe('new-tab keyboard search', () => {
       init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
     }))
 
-    await wrapper.get('.shortcut-dialog').trigger('submit')
+    await wrapper.get('.shortcut-editor-form').trigger('submit')
     await flushPromises()
-    expect(wrapper.get('.shortcut-dialog button[type="submit"]').element).toHaveProperty('disabled', true)
+    expect(wrapper.get('.shortcut-dialog button[type="submit"]').attributes('aria-disabled')).toBe('true')
+    expect(document.activeElement).toBe(wrapper.get('.shortcut-dialog button[type="submit"]').element)
     await vi.advanceTimersByTimeAsync(10_000)
     await flushPromises()
 
@@ -956,7 +973,7 @@ describe('new-tab keyboard search', () => {
     await mountApp()
     await openLauncher('settings')
 
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
     expect(wrapper.get('.shortcut-dialog').text()).toContain('最多只能保存 500 个快捷入口')
     expect(wrapper.get('.shortcut-dialog button[type="submit"]').element).toHaveProperty('disabled', true)
     await wrapper.get('.shortcut-dialog button[type="button"]').trigger('click')
@@ -1149,14 +1166,14 @@ describe('new-tab keyboard search', () => {
   it('focuses the shortcut name on desktop and avoids opening a mobile keyboard', async () => {
     await mountApp()
     await openLauncher('settings')
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
     await flushPromises()
 
     expect(document.activeElement).toBe(wrapper.get('.shortcut-dialog input[placeholder="例如：GitHub"]').element)
     await wrapper.get('.shortcut-dialog button[aria-label="关闭"]').trigger('click')
 
     vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
-    await wrapper.get('.settings-add-shortcut').trigger('click')
+    await openShortcutEditor()
     await flushPromises()
 
     expect(document.activeElement).toBe(wrapper.get('.shortcut-dialog button[aria-label="关闭"]').element)
@@ -1170,6 +1187,8 @@ describe('homepage quick actions', () => {
     const trigger = wrapper.get<HTMLButtonElement>('[aria-label="新建快捷入口"]')
     trigger.element.focus()
     await trigger.trigger('click')
+    await vi.waitFor(() => expect(wrapper.find('.shortcut-editor-form').exists()).toBe(true))
+    await flushPromises()
     expect(wrapper.find('.side-panel').exists()).toBe(false)
     expect(wrapper.get('.shortcut-dialog h2').text()).toBe('添加快捷入口')
     expect(document.activeElement).toBe(wrapper.get('.shortcut-dialog input[placeholder="例如：GitHub"]').element)
