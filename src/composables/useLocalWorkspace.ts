@@ -280,7 +280,8 @@ export function useLocalWorkspace() {
   }
 
   function saveShortcut(shortcut: Shortcut, workspaceId = activeHomeWorkspaceId.value): boolean {
-    if (!homeWorkspaces.value.some((workspace) => workspace.id === workspaceId)
+    const targetWorkspace = homeWorkspaces.value.find((workspace) => workspace.id === workspaceId)
+    if (!targetWorkspace
       || folders.value.some((folder) => folder.id === shortcut.id)
       || !isValidLauncherColor(shortcut.color)) return false
     const exists = shortcuts.value.some((item) => item.id === shortcut.id)
@@ -292,6 +293,10 @@ export function useLocalWorkspace() {
     shortcuts.value = sanitized
     if (!exists && !launcherOrder.value.includes(shortcut.id)) launcherOrder.value = [...launcherOrder.value, shortcut.id]
     updateWorkspaceLauncherMembership(shortcut.id, workspaceId)
+    // A link moved to another workspace must not stay hidden inside its old folder.
+    folders.value = folders.value.map((folder) => !targetWorkspace.itemIds.includes(folder.id) && folder.shortcutIds.includes(shortcut.id)
+      ? { ...folder, shortcutIds: folder.shortcutIds.filter((id) => id !== shortcut.id) }
+      : folder)
     return true
   }
 

@@ -8,6 +8,15 @@ Infinity New Tab 的可维护前端重建。页面使用 Vue 3、TypeScript 和 
 
 ![雾林轻透风格的桌面首页](docs/screenshots/home-desktop.webp)
 
+## 常用操作
+
+- **更快创建与查找**：右上角 `+` 可直接新建快捷入口，放大镜可查找当前工作区的入口（包括文件夹中的网址），不必先进入设置或记住快捷键。搜索结果支持方向键选择，从第一项按 `↑` 回到输入框；返回按钮或 `Esc` 可退出入口搜索。即使平时隐藏搜索栏，也能临时查找，且不会更改原设置。
+- **整理待办**：在“全部 / 待完成 / 已完成”之间切换，并可叠加关键词搜索。筛选后新增会清除搜索条件并显示新任务；编辑、取消和完成后的焦点会留在可继续操作的位置。“清除已完成”始终针对全部已完成任务，并需二次确认。
+- **查找与编辑笔记**：按标题或正文搜索，选择默认顺序、最近编辑或标题排序。筛选只影响左侧列表，不会切换正在编辑的笔记；新建时清除搜索并聚焦标题，底部显示正文字符数和本机自动保存说明。
+- **分层退出**：待办、笔记的查找框中，第一次 `Esc` 清除非空搜索，搜索为空时再按才关闭面板；待办编辑中按 `Esc` 只取消当前编辑。删除确认取消或完成后也会恢复操作焦点。
+
+筛选和排序是当前面板的临时视图，不会重排或删除原始数据，也不会修改备份格式；笔记内容和当前选中项继续保存在本机浏览器。
+
 ## 本地开发
 
 需要 Node.js 22.22.2+（22.x）、24.15.0+（24.x）或 26+，推荐使用 Node.js 24 LTS。仓库提供 `.nvmrc`，可先运行 `nvm install` / `nvm use` 切换到推荐版本。版本要求覆盖开发、构建和 jsdom 测试环境。
@@ -37,7 +46,7 @@ npm run verify
 npm audit
 ```
 
-首屏 JS gzip 预算为 58.5 KiB，全部 JS gzip 预算为 133.5 KiB。构建会合并静态启动依赖以减少碎片请求；工具面板、小组件和备份解析仍按需加载。加载失败时可重试；如果浏览器缓存了失败模块，可主动选择“重新加载页面”恢复。
+首屏 JS gzip 预算为 58.5 KiB，全部 JS gzip 预算为 133.5 KiB。构建会合并静态启动依赖以减少碎片请求；待办、笔记、月历和纪念日组成一个按需下载的本地工具包，减少重复导入和压缩开销。其余工具面板、小组件和备份解析仍按需加载。加载失败时可重试；如果浏览器缓存了失败模块，可主动选择“重新加载页面”恢复。
 
 `package.json` 为开发依赖 `js-beautify` 的 `editorconfig`、`glob` 子依赖指定了修复版本，并在锁文件中升级了 `undici`，用于消除已知安全问题。这些依赖不进入网站或扩展的运行时代码；上游依赖升级后应复查并移除不再需要的 overrides。
 
@@ -49,7 +58,7 @@ npm run test:e2e
 npm run test:e2e:stable
 ```
 
-The default end-to-end suite covers shortcut creation and persistence, keyboard launcher search, panel open/close, widget add/reorder/remove and persistence, settings persistence, and narrow-screen overflow. `test:e2e:stable` builds the production site, then runs focused homepage, translation, responsive-layout, and shortcut-persistence checks in installed stable Chrome and Edge channels. GitHub Actions runs these website checks, the production preview, and the packaged-extension suite for pull requests and before publishing to Pages; browser reports and failure traces are retained as workflow artifacts.
+The default end-to-end suite covers shortcut creation and persistence, visible/keyboard launcher search, todo filtering and edit focus, note search and sorting, panel open/close, widget add/reorder/remove and persistence, settings persistence, and narrow-screen overflow. `test:e2e:stable` builds the production site, then runs focused homepage, translation, responsive-layout, and shortcut-persistence checks in installed stable Chrome and Edge channels. GitHub Actions runs these website checks, the production preview, and the packaged-extension suite for pull requests and before publishing to Pages; browser reports and failure traces are retained as workflow artifacts.
 
 To run the same user flows against the production build and its lazy-loaded assets, run:
 
@@ -102,11 +111,13 @@ reference/
 - 快捷入口的添加、编辑、删除、拖动排序和分页；支持右键菜单、触屏长按排序、左右滑动/触控板切页，以及微粒消散、光迹拖尾和平滑滑动三种翻页效果；系统开启减少动态效果时仍播放所选翻页效果，但会缩短时长让动画更轻柔
 - 可创建快捷入口文件夹，将多个已有入口收纳在一起；文件夹与入口共用拖动排序，并包含在 JSON 备份中
 - 主页工作区支持创建、切换、重命名、排序和删除；快捷入口与文件夹按工作区隔离，默认主页固定在首位，切换和排序会保存在本机并写入备份。右下角工作区按钮悬停或聚焦后展开 1/4 圆菜单，工作区以圆形首字标签最多分布在四圈弧线上，外圈容量更大；展开后触发按钮变为新建加号，悬停工作区时变成指向鼠标位置的箭头；右键标签可重命名、排序或删除
-- 按 `/` 或 `Ctrl+K`（macOS 为 `⌘+K`）可快速聚焦网页搜索；按 `Ctrl+F`（macOS 为 `⌘+F`）可查找快捷入口，支持按名称和网址筛选
+- 按 `/` 或 `Ctrl+K`（macOS 为 `⌘+K`）可快速聚焦网页搜索；按 `Ctrl+F`（macOS 为 `⌘+F`）或右上角放大镜可查找当前工作区的快捷入口，支持按名称、网址和文件夹名称筛选
 - 首页显示本地时间和日期，并可在设置中关闭；页面恢复到前台时会重新校准时钟
 - 网站入口优先使用旧镜像保存的站点图标，内置工具使用统一的线性图标；自定义入口支持上传图片并压缩为 Base64 存入本机，离线可用（远程图标网址会在保存时尝试转存，遇到跨域限制时请上传图片）
 - 首页内容会随宽度扩展到 1040px；手机端最多四列、平板窄屏最多五列，并按窗口高度和当前入口数量自适应图标与行距，尽量让完整图标页、页码和底部信息同时可见
-- 本地待办（新增、编辑、完成、删除、清除已完成）、笔记和离线四则计算器（支持括号、键盘输入与按键操作）
+- 本地待办支持新增、编辑、完成、删除、清除已完成，以及关键词与完成状态组合筛选；保留任务总数和当前筛选数量提示
+- 本地笔记支持标题/正文搜索、默认/最近编辑/标题排序、新建后立即编辑，以及 Unicode 正文字符计数；内容自动保存在本机
+- 离线四则计算器支持括号、键盘输入与按键操作
 - 本地习惯打卡（添加、重命名、删除与按本地日期完成/撤销；首页小组件显示当日进度，记录纳入 JSON 备份并兼容旧备份）
 - 专注计时器支持 15、25、50 分钟专注时长；结束后按四轮节奏进入短休息或长休息，关闭面板和刷新页面后继续计时
 - 首页可固定待办概览、纪念日倒计时、笔记预览、月历、当前天气、专注计时、浏览器书签概览、最近访问、浏览器常用网站和 Hacker News 热门资讯小组件；天气和资讯仅在用户启用组件后请求数据，Chrome 扩展还需用户点击组件中的授权按钮，分别申请 Open-Meteo 或 Hacker News 的精确主机权限，并标明数据来源。资讯会在本地缓存最近成功的五条内容及更新时间，离线时可查看缓存并重试。书签、历史和常用网站组件只在扩展授权后显示数据；常用网站按需申请 `topSites` 权限，可随时在浏览器扩展设置中撤销。计时状态在小组件和面板间保持同步。所有小组件支持拖动排序、键盘上下调整、宽度调整和单独移除，关联面板的小组件可从标题直接打开；配置和计时器状态纳入备份，并按需加载

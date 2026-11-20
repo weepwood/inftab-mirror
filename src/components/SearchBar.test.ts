@@ -13,6 +13,20 @@ afterEach(() => {
 })
 
 describe('SearchBar keyboard navigation', () => {
+  it('offers a non-submitting back action only during local search', async () => {
+    wrapper = mount(SearchBar, {
+      props: { modelValue: '保留的查询', engine: 'baidu', mode: 'html', visibleModes: [] },
+    })
+    expect(wrapper.find('.local-search-back').exists()).toBe(false)
+    await wrapper.setProps({ localSearch: true })
+    const back = wrapper.get('[aria-label="退出快捷入口搜索"]')
+    expect(back.attributes('type')).toBe('button')
+    await back.trigger('click')
+    expect(wrapper.emitted('exitLocalSearch')).toEqual([[]])
+    expect(wrapper.emitted('search')).toBeUndefined()
+    expect(wrapper.find('.engine-picker').exists()).toBe(false)
+  })
+
   it('does not submit a query when Enter confirms an IME composition candidate', async () => {
     vi.useFakeTimers()
     wrapper = mount(SearchBar, {

@@ -908,3 +908,63 @@ describe('useLocalWorkspace custom search engines', () => {
     expect(workspace.folders.value.some((item) => item.id === existingShortcut.id)).toBe(false)
   })
 })
+
+
+describe('shortcut workspace moves and folders', () => {
+  it('detaches a moved shortcut from its old folder while preserving the folder and its other members', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const targetId = workspace.createHomeWorkspace('目标工作区')!
+    const moving = { id: 'moving', title: 'Moving', url: 'https://moving.example/', color: '#abc', mark: 'M' }
+    const staying = { id: 'staying', title: 'Staying', url: 'https://staying.example/', color: '#abc', mark: 'S' }
+    workspace.saveShortcut(moving, 'default')
+    workspace.saveShortcut(staying, 'default')
+    const folder = { id: 'source-folder', title: '原文件夹', shortcutIds: [moving.id, staying.id], color: '#369', mark: 'F' }
+    workspace.saveFolder(folder, 'default')
+    const order = [...workspace.launcherOrder.value]
+
+    expect(workspace.saveShortcut(moving, targetId)).toBe(true)
+    expect(workspace.folders.value).toEqual([{ ...folder, shortcutIds: [staying.id] }])
+    expect(workspace.shortcuts.value).toContainEqual(moving)
+    expect(workspace.shortcuts.value).toContainEqual(staying)
+    expect(workspace.homeWorkspaces.value.filter((item) => item.itemIds.includes(moving.id)).map((item) => item.id)).toEqual([targetId])
+    expect(workspace.homeWorkspaces.value[0]!.itemIds).toEqual(expect.arrayContaining([folder.id, staying.id]))
+    expect(workspace.launcherOrder.value.filter((id) => id !== moving.id)).toEqual(order)
+    expect(workspace.launcherOrder.value).toContain(moving.id)
+
+    const backup = parseWorkspaceBackup(workspace.createBackup())
+    expect(workspace.restoreBackup(backup, 'replace')).toBeUndefined()
+    expect(workspace.folders.value.find((item) => item.id === folder.id)?.shortcutIds).toEqual([staying.id])
+    expect(workspace.homeWorkspaces.value.find((item) => item.id === targetId)?.itemIds).toContain(moving.id)
+  })
+
+  it('keeps a folder membership when editing a shortcut within the same workspace', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const shortcut = { id: 'kept', title: 'Original', url: 'https://kept.example/', color: '#abc', mark: 'K' }
+    workspace.saveShortcut(shortcut)
+    const folder = { id: 'keep-folder', title: '收纳', shortcutIds: [shortcut.id], color: '#369', mark: 'F' }
+    workspace.saveFolder(folder)
+
+    expect(workspace.saveShortcut({ ...shortcut, title: 'Renamed' })).toBe(true)
+    expect(workspace.folders.value).toEqual([folder])
+    expect(workspace.shortcuts.value.find((item) => item.id === shortcut.id)?.title).toBe('Renamed')
+  })
+
+  it('does not detach or move anything when the destination or shortcut is invalid', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const targetId = workspace.createHomeWorkspace('目标')!
+    const shortcut = { id: 'unchanged', title: 'Original', url: 'https://unchanged.example/', color: '#abc', mark: 'U' }
+    workspace.saveShortcut(shortcut, 'default')
+    const folder = { id: 'unchanged-folder', title: '收纳', shortcutIds: [shortcut.id], color: '#369', mark: 'F' }
+    workspace.saveFolder(folder, 'default')
+    const originalWorkspaces = JSON.parse(JSON.stringify(workspace.homeWorkspaces.value))
+
+    expect(workspace.saveShortcut(shortcut, 'missing-workspace')).toBe(false)
+    expect(workspace.saveShortcut({ ...shortcut, url: 'javascript:alert(1)' }, targetId)).toBe(false)
+    expect(workspace.folders.value).toEqual([folder])
+    expect(workspace.homeWorkspaces.value).toEqual(originalWorkspaces)
+    expect(workspace.shortcuts.value.find((item) => item.id === shortcut.id)).toEqual(shortcut)
+  })
+})

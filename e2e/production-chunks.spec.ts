@@ -88,6 +88,30 @@ test('loads the panel plugin registry only after a panel is opened', async ({ pa
   expect(registryRequests).toHaveLength(1)
 })
 
+test('offline tools share a lazy chunk without adding homepage requests', async ({ page }) => {
+  const toolRequests: string[] = []
+  page.on('request', (request) => {
+    if (/\/assets\/local-tools-[^/]+\.js(?:\?|$)/.test(request.url())) toolRequests.push(request.url())
+  })
+  await page.reload()
+  await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toBeVisible()
+  expect(toolRequests).toEqual([])
+
+  for (const [title, content] of [
+    ['待办事项', '.todo-content'], ['笔记', '.notes-layout'],
+    ['日历', '.calendar-content'], ['纪念日', '.countdown-content'],
+  ] as const) {
+    await page.getByRole('button', { name: '查找快捷入口', exact: true }).click()
+    await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill(title)
+    await page.getByRole('option', { name: title, exact: true }).click()
+    const panel = page.getByRole('dialog', { name: title === '纪念日' ? '纪念日与倒计时' : title, exact: true })
+    // The header can render before the async component starts loading.
+    await expect(panel.locator(content)).toBeVisible()
+    await expect.poll(() => toolRequests.length).toBe(1)
+    await panel.getByRole('button', { name: '关闭', exact: true }).click()
+  }
+})
+
 test('recovers a cached production homepage widget chunk failure after reloading', async ({ page }) => {
   let chunkRequests = 0
   let failWidgetChunk = true
