@@ -8,6 +8,8 @@ import { lazyPluginComponent } from './asyncComponent'
 export interface HomeWidgetContext {
   preferences: Pick<Preferences, 'openBookmarksInNewTab' | 'openHistoryInNewTab' | 'openShortcutsInNewTab'>
   todos: TodoItem[]
+  addTodo: (title: string) => void
+  toggleTodo: (id: string) => void
   habits: Habit[]
   countdowns: CountdownItem[]
   notes: Note[]
@@ -20,7 +22,7 @@ type NoProps = Record<string, never>
 type NoContext = Record<string, never>
 
 export interface HomeWidgetContextById {
-  'todo-summary': Pick<HomeWidgetContext, 'todos'>
+  'todo-summary': Pick<HomeWidgetContext, 'todos' | 'addTodo' | 'toggleTodo'>
   'habits-summary': Pick<HomeWidgetContext, 'habits'>
   'countdown-summary': Pick<HomeWidgetContext, 'countdowns'>
   'notes-summary': Pick<HomeWidgetContext, 'notes' | 'activeNoteId'>
@@ -47,6 +49,11 @@ export interface HomeWidgetPropsById {
   'top-sites-summary': { openInNewTab: boolean }
 }
 
+export type HomeWidgetEventsById = {
+  [Id in HomeWidgetId]: Id extends 'todo-summary'
+    ? { add: (title: string) => void; toggle: (id: string) => void } : NoProps
+}
+
 export type HomeWidgetPlugin<Id extends HomeWidgetId = HomeWidgetId> = {
   context: (context: HomeWidgetContext) => HomeWidgetContextById[Id]
   title: string
@@ -54,6 +61,7 @@ export type HomeWidgetPlugin<Id extends HomeWidgetId = HomeWidgetId> = {
   panel?: PanelId
   component: Component
   props: (context: HomeWidgetContextById[Id]) => HomeWidgetPropsById[Id]
+  listeners?: (context: HomeWidgetContextById[Id]) => Partial<HomeWidgetEventsById[Id]>
 }
 
 export type HomeWidgetPluginRegistry = { [Id in HomeWidgetId]: HomeWidgetPlugin<Id> }
@@ -64,12 +72,13 @@ function lazyWidget(loader: () => Promise<{ default: Component }>) {
 
 export const homeWidgetPlugins = {
   'todo-summary': {
-    context: (context) => ({ todos: context.todos }),
+    context: (context) => ({ todos: context.todos, addTodo: context.addTodo, toggleTodo: context.toggleTodo }),
     title: '待办概览',
-    description: '显示未完成事项和最近任务',
+    description: '直接添加、完成和撤销完成待办',
     panel: 'todos',
     component: lazyWidget(() => import('../components/TodoSummaryWidget.vue')),
     props: (context) => ({ items: context.todos }),
+    listeners: (context) => ({ add: context.addTodo, toggle: context.toggleTodo }),
   },
   'habits-summary': {
     context: (context) => ({ habits: context.habits }),
@@ -168,4 +177,13 @@ export function getHomeWidgetProps<Id extends HomeWidgetId>(
   const plugin = plugins[id] as HomeWidgetPlugin<Id>
   const pluginContext = getHomeWidgetContextForPlugin(id, context, plugins)
   return plugin.props(pluginContext)
+}
+
+export function getHomeWidgetListeners<Id extends HomeWidgetId>(
+  id: Id,
+  context: HomeWidgetContext,
+  plugins: HomeWidgetPluginRegistry = homeWidgetPlugins,
+): Partial<HomeWidgetEventsById[Id]> {
+  const plugin = plugins[id] as HomeWidgetPlugin<Id>
+  return plugin.listeners?.(getHomeWidgetContextForPlugin(id, context, plugins)) ?? {}
 }

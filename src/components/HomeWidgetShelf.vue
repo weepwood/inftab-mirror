@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ArrowDown, ArrowUp, GripVertical, X } from '@lucide/vue'
-import { getHomeWidgetProps, homeWidgetPlugins, type HomeWidgetContext, type HomeWidgetPluginRegistry } from '../plugins/widgetRegistry'
+import { getHomeWidgetListeners, getHomeWidgetProps, homeWidgetPlugins, type HomeWidgetContext, type HomeWidgetPluginRegistry } from '../plugins/widgetRegistry'
 import type { PanelId } from '../plugins/registry'
 import type { HomeWidgetId, HomeWidgetSize } from '../types'
 
@@ -99,7 +99,7 @@ function widgetSizeButtonText(size: HomeWidgetSize) {
         <button class="home-widget-size" type="button" :aria-label="widgetSizeActionLabel(id)" @click="emit('resize', id, nextWidgetSize(widgetSizes[id]))">{{ widgetSizeButtonText(widgetSizes[id]) }}</button>
         <button class="home-widget-remove" type="button" :aria-label="`移除${props.plugins[id].title}`" @click="emit('remove', id)"><X :size="15" /></button>
       </header>
-      <component :is="props.plugins[id].component" v-bind="getHomeWidgetProps(id, context, props.plugins)" />
+      <component :is="props.plugins[id].component" v-bind="getHomeWidgetProps(id, context, props.plugins)" v-on="getHomeWidgetListeners(id, context, props.plugins)" />
     </article>
   </section>
 </template>

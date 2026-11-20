@@ -22,6 +22,23 @@ export default defineConfig({
               priority: 10,
               includeDependenciesRecursively: false,
             },
+            // Related opt-in widgets share templates and imports, but never pull
+            // a panel or a permission request into the startup graph.
+            {
+              name: 'local-widgets',
+              test: /\/src\/components\/(?:Todo|Habits|Notes|Countdown|Calendar|FocusTimer)SummaryWidget\.vue/,
+              includeDependenciesRecursively: false,
+            },
+            {
+              name: 'browser-widgets',
+              test: /\/src\/components\/(?:Bookmarks|History|TopSites)SummaryWidget\.vue/,
+              includeDependenciesRecursively: false,
+            },
+            {
+              name: 'browser-tools',
+              test: /\/src\/components\/(?:BookmarksPanel|HistoryPanel|BrowserTabImport)\.vue/,
+              includeDependenciesRecursively: false,
+            },
             // Small offline tools share Vue/icon imports and repeated form markup.
             // Group them for gzip efficiency, but fetch none on the homepage.
             {

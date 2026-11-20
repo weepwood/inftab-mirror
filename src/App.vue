@@ -14,17 +14,19 @@ import { getPageNavigation } from './data/pagination'
 import { createLocalId } from './data/createId'
 import { normalizeWebUrl } from './data/urls'
 import { truncateCodePoints } from './data/text'
+import type { LauncherSearchMatch } from './data/launcherSearch'
 import type { BrowserTabCandidate } from './data/browserTabs'
 import { launcherPanelRoutes, shortcutPanelRoutes } from './plugins/routes'
 import type { PanelId, PanelPluginContext } from './plugins/registry'
 import { maxDockItems, type HomeWidgetId, type HomeWidgetSize, type LauncherItem, type Shortcut, type ShortcutFolder } from './types'
 
 type Panel = PanelId | null
-interface LocalSearchMatch {
-  item: LauncherItem
-  folderTitle?: string
-}
 
+const LauncherSearchResults = lazyPluginComponent(
+  () => import('./components/LauncherSearchResults.vue'),
+  '正在加载入口查找…',
+  '入口查找暂时无法加载，请重试。',
+)
 const ShortcutGrid = lazyPluginComponent(
   () => import('./components/ShortcutGrid.vue'),
   '正在加载快捷入口…',
@@ -221,21 +223,6 @@ const folderEditorShortcuts = computed(() => shortcuts.value.filter((shortcut) =
 const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
 const pageNavigation = computed(() => getPageNavigation(pageCount.value, currentPage.value))
 watch(activeHomeWorkspaceId, () => { currentPage.value = 0 })
-const localSearchMatches = computed<LocalSearchMatch[]>(() => {
-  const needle = query.value.trim().toLowerCase()
-  if (!needle) return []
-  const matches: LocalSearchMatch[] = allLauncherItems.value.map((item) => ({ item }))
-  for (const folder of folders.value) {
-    if (!activeHomeWorkspaceItemIds.value.has(folder.id)) continue
-    for (const shortcutId of folder.shortcutIds) {
-      const item = availableLauncherItems.value.find((candidate) => candidate.id === shortcutId && candidate.shortcut)
-      if (item) matches.push({ item, folderTitle: folder.title })
-    }
-  }
-  return matches.filter(({ item, folderTitle }) => item.title.toLowerCase().includes(needle)
-    || item.shortcut?.url.toLowerCase().includes(needle)
-    || folderTitle?.toLowerCase().includes(needle)).slice(0, 8)
-})
 let panelReturnFocusTarget: HTMLElement | undefined
 let systemThemeQuery: MediaQueryList | undefined
 function updateSystemTheme(event?: MediaQueryListEvent) {
@@ -313,7 +300,7 @@ const activePanelProps = computed<Record<string, unknown>>(() => activePanel.val
 const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanel.value && panelRegistry.value
   ? panelRegistry.value.getPanelListeners(activePanel.value, panelContext.value)
   : {})
-const homeWidgetContext = computed(() => ({ preferences: preferences.value, todos: todos.value, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
+const homeWidgetContext = computed(() => ({ preferences: preferences.value, todos: todos.value, addTodo, toggleTodo, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
 const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0)
 const shortHomeScrollEnabled = computed(() => !minimalMode.value && (showHomeWidgets.value || homeDockItems.value.length > 0) && viewport.value.height <= 560)
 const homeWidgetRows = computed(() => {
@@ -448,8 +435,7 @@ function openWebUrl(url: string, newTab: boolean, event?: MouseEvent) {
 
 function submitSearch() {
   if (localSearchMode.value) {
-    const [firstMatch] = localSearchMatches.value
-    if (firstMatch) openLocalSearchResult(firstMatch.item)
+    document.querySelector<HTMLButtonElement>('.local-search-result')?.click()
     return
   }
   const destination = buildSearchUrl(preferences.value.engine, preferences.value.mode, query.value, customSearchEngines.value)
@@ -477,29 +463,20 @@ function setLocalSearch(enabled: boolean) {
   })
 }
 
-function openLocalSearchResult(item: LauncherItem, event?: MouseEvent) {
+function openLocalSearchResult(match: LauncherSearchMatch, event?: MouseEvent) {
+  activeHomeWorkspaceId.value = match.workspaceId
   localSearchMode.value = false
   query.value = ''
   document.querySelector<HTMLButtonElement>('.home-search-toggle')?.focus()
-  openItem(item, event)
+  openItem(match.item, event)
 }
 
-function handleLocalSearchResultKeydown(event: KeyboardEvent) {
-  const results = [...document.querySelectorAll<HTMLButtonElement>('.local-search-result')]
-  const index = results.indexOf(event.currentTarget as HTMLButtonElement)
-  if (event.key === 'ArrowUp' && index === 0) {
-    event.preventDefault()
-    searchBar.value?.focusSearch()
-    return
-  }
-  const nextIndex = event.key === 'ArrowDown' ? Math.min(index + 1, results.length - 1)
-    : event.key === 'ArrowUp' ? Math.max(index - 1, 0)
-      : event.key === 'Home' ? 0
-        : event.key === 'End' ? results.length - 1
-          : -1
-  if (nextIndex < 0 || !results.length) return
-  event.preventDefault()
-  results[nextIndex]?.focus()
+function createFromSearch(folder = false) {
+  localSearchMode.value = false
+  query.value = ''
+  document.querySelector<HTMLButtonElement>('.home-search-toggle')?.focus()
+  if (folder) openFolderEditor()
+  else openShortcutDialog()
 }
 
 function loadPanelRegistry() {
@@ -812,7 +789,7 @@ function goToPage(page: number) {
 }
 
 function startHomeSwipe(event: PointerEvent) {
-  if (minimalMode.value || event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf, .home-dock'))) return
+  if (minimalMode.value || event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf, .home-dock, .search-area'))) return
   homeTouchStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
 }
 
@@ -827,7 +804,7 @@ function finishHomeSwipe(event: PointerEvent) {
 function handleHomeWheel(event: WheelEvent) {
   if (minimalMode.value || shortHomeScrollEnabled.value) return
   if (activePanel.value || shortcutDialog.value || homeWheelLocked
-    || (event.target instanceof Element && event.target.closest('.home-widget-shelf, .home-dock'))) return
+    || (event.target instanceof Element && event.target.closest('.home-widget-shelf, .home-dock, .search-area'))) return
   const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY)
   const delta = horizontal ? event.deltaX : event.deltaY
   if (Math.abs(delta) <= 24) return
@@ -1081,22 +1058,19 @@ onBeforeUnmount(() => {
         @translate="submitTranslation"
       >
         <template #local-results>
-          <div v-if="query.trim()" class="local-search-results" role="listbox" aria-label="快捷入口搜索结果">
-            <p v-if="!localSearchMatches.length" class="local-search-empty" role="status">没有匹配的快捷入口</p>
-            <button
-              v-for="match in localSearchMatches"
-              :key="match.item.id"
-              type="button"
-              role="option"
-              class="local-search-result"
-              @click="openLocalSearchResult(match.item, $event)"
-              @auxclick.middle.prevent="openLocalSearchResult(match.item, $event)"
-              @keydown="handleLocalSearchResultKeydown"
-            >
-              <span class="local-search-result-title">{{ match.folderTitle ? `${match.folderTitle} · ${match.item.title}` : match.item.title }}</span>
-              <span v-if="match.item.shortcut" class="local-search-result-url">{{ match.item.shortcut.url }}</span>
-            </button>
-          </div>
+          <LauncherSearchResults
+            v-if="localSearchMode"
+            :query="query"
+            :items="availableLauncherItems"
+            :folders="folders"
+            :workspaces="homeWorkspaces"
+            :active-workspace-id="activeHomeWorkspaceId"
+            :hidden-item-ids="preferences.hiddenLauncherIds"
+            @open="openLocalSearchResult"
+            @focus-search="searchBar?.focusSearch()"
+            @add-shortcut="createFromSearch()"
+            @add-folder="createFromSearch(true)"
+          />
         </template>
       </SearchBar>
       <ShortcutGrid

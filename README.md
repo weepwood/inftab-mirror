@@ -13,12 +13,15 @@ Infinity New Tab 的可维护前端重建。页面使用 Vue 3、TypeScript 和 
 - **更简洁的翻页**：底部仅保留可点击的分页圆点，不再显示左右箭头。末页入口不足时仍预留相同行高，圆点不再上跳；方向键、滑动、触控板和三种翻页效果继续可用。
 - **独立打开方式**：设置 → 首页 → 打开方式中，可分别选择网站、搜索结果、书签和历史记录是否在新标签页打开。原有默认行为不变，选择会保存在本机并随 JSON 备份迁移。
 - **统一菜单**：下拉框、右键菜单和搜索引擎列表采用统一的配色、圆角和 Lucide 线性图标；支持键盘操作、深色主题和窄屏。
-- **更快创建与查找**：右上角 `+` 可直接新建快捷入口，放大镜可查找当前工作区的入口（包括文件夹中的网址），不必先进入设置或记住快捷键。搜索结果支持方向键选择，从第一项按 `↑` 回到输入框；返回按钮或 `Esc` 可退出入口搜索。即使平时隐藏搜索栏，也能临时查找，且不会更改原设置。
-- **整理待办**：在“全部 / 待完成 / 已完成”之间切换，并可叠加关键词搜索。筛选后新增会清除搜索条件并显示新任务；编辑、取消和完成后的焦点会留在可继续操作的位置。“清除已完成”始终针对全部已完成任务，并需二次确认。
+- **更快创建与查找**：右上角 `+` 直接新建入口，放大镜查找本地网站、文件夹和工具。可切换当前/全部工作区，按名称相关性排序，显示工作区、文件夹位置和网址；支持全角字符、多词匹配与分批展开。方向键选择、Enter 打开、`Esc` 返回，无匹配时可直接添加入口或创建文件夹；不会自动转为网络搜索。隐藏搜索栏时也可临时查找，退出后恢复原设置。
+- **首页直接处理待办**：在设置中启用“待办概览”，即可快速添加、勾选完成和撤销最近一次完成，无需打开面板。与完整待办面板及其他标签页共享同一份本地数据，保留数量限制、备份、输入法和键盘焦点支持。
+- **整理待办**：面板中在“全部 / 待完成 / 已完成”之间切换，并可叠加关键词搜索。筛选后新增会清除搜索条件并显示新任务；编辑、取消和完成后的焦点会留在可继续操作的位置。“清除已完成”始终针对全部已完成任务，并需二次确认。
 - **查找与编辑笔记**：按标题或正文搜索，选择默认顺序、最近编辑或标题排序。筛选只影响左侧列表，不会切换正在编辑的笔记；新建时清除搜索并聚焦标题，底部显示正文字符数和本机自动保存说明。
 - **分层退出**：待办、笔记的查找框中，第一次 `Esc` 清除非空搜索，搜索为空时再按才关闭面板；待办编辑中按 `Esc` 只取消当前编辑。删除确认取消或完成后也会恢复操作焦点。
 
-筛选和排序是当前面板的临时视图，不会重排或删除原始数据，也不会修改备份格式；笔记内容和当前选中项继续保存在本机浏览器。
+筛选和排序是临时视图，不会重排或删除原始数据，也不会修改备份格式；本地入口查找的关键词不保存、不联网。笔记内容和当前选中项继续保存在本机浏览器。
+
+本轮交互优化参考了 Bonjourr 的快捷链接分组、nightTab 的本地/网页搜索边界和 Tabliss 的可操作待办；[参考记录](docs/product-reference-audit.md#开源同类项目从参考到设计2026-11-20)列出检查过的源码、固定提交及取舍。没有引入第三方代码、依赖或后台请求。
 
 ## 本地开发
 
@@ -49,7 +52,7 @@ npm run verify
 npm audit
 ```
 
-首屏 JS gzip 预算为 58.5 KiB，全部 JS gzip 预算为 133.5 KiB。构建会合并静态启动依赖以减少碎片请求；待办、笔记、月历、纪念日、计算器和专注计时组成一个按需下载的本地工具包，减少重复导入和压缩开销。其余工具面板、小组件和备份解析仍按需加载。加载失败时可重试；如果浏览器缓存了失败模块，可主动选择“重新加载页面”恢复。
+首屏 JS gzip 预算为 58.5 KiB，全部 JS gzip 预算为 133.5 KiB，均未因本轮功能上调。构建会合并静态启动依赖以减少碎片请求；待办、笔记、月历、纪念日、计算器和专注计时组成按需下载的本地工具包。本地概览、浏览器概览和浏览器工具分别按组懒加载：打开其中一个视图可能下载同组代码，但不会挂载其他组件、读取数据或申请权限。本地入口查找、其余面板和备份解析仍按需加载。加载失败时可重试；如果浏览器缓存了失败模块，可主动选择“重新加载页面”恢复。
 
 `package.json` 为开发依赖 `js-beautify` 的 `editorconfig`、`glob` 子依赖指定了修复版本，并在锁文件中升级了 `undici`，用于消除已知安全问题。这些依赖不进入网站或扩展的运行时代码；上游依赖升级后应复查并移除不再需要的 overrides。
 
@@ -61,7 +64,7 @@ npm run test:e2e
 npm run test:e2e:stable
 ```
 
-The default end-to-end suite covers shortcut creation and persistence, visible/keyboard launcher search, todo filtering and edit focus, note search and sorting, panel open/close, widget add/reorder/remove and persistence, settings persistence, and narrow-screen overflow. `test:e2e:stable` builds the production site, then runs focused homepage, translation, responsive-layout, and shortcut-persistence checks in installed stable Chrome and Edge channels. GitHub Actions runs these website checks, the production preview, and the packaged-extension suite for pull requests and before publishing to Pages; browser reports and failure traces are retained as workflow artifacts.
+The default end-to-end suite covers shortcut creation and persistence, scoped/ranked local search and cross-workspace opening, light/dark mobile search scrolling, homepage quick tasks and cross-tab synchronization, todo filtering and edit focus, note search and sorting, panel open/close, widget add/reorder/remove and persistence, settings persistence, and narrow-screen overflow. `test:e2e:stable` builds the production site, then runs focused homepage, translation, responsive-layout, and shortcut-persistence checks in installed stable Chrome and Edge channels. GitHub Actions runs these website checks, the production preview, and the packaged-extension suite for pull requests and before publishing to Pages; browser reports and failure traces are retained as workflow artifacts.
 
 To run the same user flows against the production build and its lazy-loaded assets, run:
 
@@ -114,7 +117,7 @@ reference/
 - 快捷入口的添加、编辑、删除、拖动排序和分页；支持右键菜单、触屏长按排序、左右滑动/触控板切页，以及微粒消散、光迹拖尾和平滑滑动三种翻页效果；系统开启减少动态效果时仍播放所选翻页效果，但会缩短时长让动画更轻柔
 - 可创建快捷入口文件夹，将多个已有入口收纳在一起；文件夹与入口共用拖动排序，并包含在 JSON 备份中
 - 主页工作区支持创建、切换、重命名、排序和删除；快捷入口与文件夹按工作区隔离，默认主页固定在首位，切换和排序会保存在本机并写入备份。右下角工作区按钮悬停或聚焦后展开 1/4 圆菜单，工作区以圆形首字标签最多分布在四圈弧线上，外圈容量更大；展开后触发按钮变为新建加号，悬停工作区时变成指向鼠标位置的箭头；右键标签可重命名、排序或删除
-- 按 `/` 或 `Ctrl+K`（macOS 为 `⌘+K`）可快速聚焦网页搜索；按 `Ctrl+F`（macOS 为 `⌘+F`）或右上角放大镜可查找当前工作区的快捷入口，支持按名称、网址和文件夹名称筛选
+- 按 `/` 或 `Ctrl+K`（macOS 为 `⌘+K`）快速聚焦网页搜索；按 `Ctrl+F`（macOS 为 `⌘+F`）或右上角放大镜打开本地入口查找，支持当前/全部工作区、名称相关性排序、位置提示、多词匹配和空状态创建，不发送搜索词
 - 首页显示本地时间和日期，并可在设置中关闭；页面恢复到前台时会重新校准时钟
 - 网站入口优先使用旧镜像保存的站点图标，内置工具使用统一的线性图标；自定义入口支持上传图片并压缩为 Base64 存入本机，离线可用（远程图标网址会在保存时尝试转存，遇到跨域限制时请上传图片）
 - 首页内容会随宽度扩展到 1040px；手机端最多四列、平板窄屏最多五列，并按窗口高度和当前入口数量自适应图标与行距，尽量让完整图标页、页码和底部信息同时可见

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultPreferences, launcherItems } from '../data/defaults'
 import { getPanelContextForPlugin, getPanelListeners, getPanelProps, launcherPanelRoutes, panelPlugins, shortcutPanelRoutes, type PanelContextById, type PanelPluginContext } from './registry'
 import { availableHomeWidgetIds, availablePanelIds, type PanelId } from './ids'
-import { getHomeWidgetContextForPlugin, getHomeWidgetProps, homeWidgetPlugins, type HomeWidgetContext, type HomeWidgetContextById } from './widgetRegistry'
+import { getHomeWidgetListeners, getHomeWidgetContextForPlugin, getHomeWidgetProps, homeWidgetPlugins, type HomeWidgetContext, type HomeWidgetContextById } from './widgetRegistry'
 import { defaultFocusTimerState } from '../data/focusTimer'
 
 afterEach(() => vi.useRealTimers())
@@ -64,6 +64,8 @@ function createPanelContext(): PanelPluginContext {
 const homeWidgetContext: HomeWidgetContext = {
   preferences: defaultPreferences,
   todos: [],
+  addTodo: vi.fn(),
+  toggleTodo: vi.fn(),
   habits: [],
   countdowns: [],
   notes: [],
@@ -118,7 +120,7 @@ const expectedWidgetProps = {
 } satisfies Record<typeof availableHomeWidgetIds[number], string[]>
 
 const expectedWidgetContextKeys = {
-  'todo-summary': ['todos'],
+  'todo-summary': ['todos', 'addTodo', 'toggleTodo'],
   'habits-summary': ['habits'],
   'countdown-summary': ['countdowns'],
   'notes-summary': ['notes', 'activeNoteId'],
@@ -201,7 +203,8 @@ describe('built-in panel plugin registry', () => {
 
   it('uses the selected widget registry for both context and prop adapters', () => {
     const customTodos = [{ id: 'custom', title: 'Injected todo', done: false }]
-    const contextAdapter = vi.fn(() => ({ todos: customTodos }))
+    const customContext = { todos: customTodos, addTodo: vi.fn(), toggleTodo: vi.fn() }
+    const contextAdapter = vi.fn(() => customContext)
     const propsAdapter = vi.fn((context: HomeWidgetContextById['todo-summary']) => ({ items: context.todos }))
     const plugins = {
       ...homeWidgetPlugins,
@@ -214,7 +217,13 @@ describe('built-in panel plugin registry', () => {
 
     expect(getHomeWidgetProps('todo-summary', homeWidgetContext, plugins)).toEqual({ items: customTodos })
     expect(contextAdapter).toHaveBeenCalledWith(homeWidgetContext)
-    expect(propsAdapter).toHaveBeenCalledWith({ todos: customTodos })
+    expect(propsAdapter).toHaveBeenCalledWith(customContext)
+    const listeners = getHomeWidgetListeners('todo-summary', homeWidgetContext, plugins)
+    listeners.add?.('A quick task')
+    listeners.toggle?.('custom')
+    expect(customContext.addTodo).toHaveBeenCalledWith('A quick task')
+    expect(customContext.toggleTodo).toHaveBeenCalledWith('custom')
+    expect(getHomeWidgetListeners('calendar-summary', homeWidgetContext, plugins)).toEqual({})
   })
 
   it('passes shared focus timer state to its panel and homepage widget', () => {

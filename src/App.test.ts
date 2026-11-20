@@ -15,6 +15,10 @@ async function mountApp(): Promise<VueWrapper> {
   return wrapper
 }
 
+async function waitForLauncherSearch() {
+  await vi.waitFor(() => expect(wrapper.find('.launcher-search').exists()).toBe(true))
+}
+
 async function flushLocalStorageWrites() {
   await nextTick()
   window.dispatchEvent(new Event('pagehide'))
@@ -360,6 +364,7 @@ describe('new-tab keyboard search', () => {
     await nextTick()
     const input = wrapper.get('input[type="search"]')
     expect(input.attributes('placeholder')).toBe('搜索快捷入口名称或网址')
+    await waitForLauncherSearch()
     await input.setValue('计算器')
     expect(wrapper.get('.local-search-results').text()).toContain('计算器')
     expect(wrapper.findAll('.local-search-result')).toHaveLength(1)
@@ -377,6 +382,7 @@ describe('new-tab keyboard search', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', metaKey: true, bubbles: true, cancelable: true }))
     await nextTick()
     const input = wrapper.get('input[type="search"]')
+    await waitForLauncherSearch()
     await input.setValue('there-is-no-matching-shortcut')
     expect(wrapper.get('.local-search-empty').text()).toContain('没有匹配')
     await wrapper.get('.search-box').trigger('submit')
@@ -1183,6 +1189,7 @@ describe('homepage quick actions', () => {
     const input = wrapper.get<HTMLInputElement>('[aria-label="搜索快捷入口名称或网址"]')
     expect(document.activeElement).toBe(input.element)
     expect(toggle.attributes('aria-pressed')).toBe('true')
+    await waitForLauncherSearch()
     await input.setValue('计算器')
     await wrapper.get('[aria-label="退出快捷入口搜索"]').trigger('click')
     await nextTick()
@@ -1199,6 +1206,7 @@ describe('homepage quick actions', () => {
     const toggle = wrapper.get('[aria-label="查找快捷入口"]')
     await toggle.trigger('click')
     const input = wrapper.get('[aria-label="搜索快捷入口名称或网址"]')
+    await waitForLauncherSearch()
     await input.setValue('计算器')
     await input.trigger('keydown', { key: 'ArrowDown' })
     const result = wrapper.get('.local-search-result')
@@ -1229,5 +1237,98 @@ describe('homepage quick actions', () => {
     await nextTick()
     expect(wrapper.find('[aria-label="退出快捷入口搜索"]').exists()).toBe(false)
     expect(document.activeElement).toBe(wrapper.get('[aria-label="输入并搜索"]').element)
+  })
+})
+
+
+describe('cross-workspace launcher discovery', () => {
+  it('opens the first visible result on form submission through the lazy search boundary', async () => {
+    await mountApp()
+    await wrapper.get('[aria-label="查找快捷入口"]').trigger('click')
+    await waitForLauncherSearch()
+    await wrapper.get('[aria-label="搜索快捷入口名称或网址"]').setValue('计算器')
+    await wrapper.get('.search-box').trigger('submit')
+    await flushPromises()
+    expect(wrapper.get('.side-panel[role="dialog"]').text()).toContain('计算器')
+  })
+
+  it.each(['shortcut', 'folder'])('selects the owning workspace only when a foreign %s result opens', async (kind) => {
+    const link = { id: 'remote-link', title: 'Remote target', url: 'https://remote.example/', color: '#467d68', mark: 'R' }
+    const folder = { id: 'remote-folder', title: 'Team links', shortcutIds: [link.id], color: '#467d68', mark: 'T' }
+    localStorage.setItem('inftab.shortcuts.v1', JSON.stringify([link]))
+    localStorage.setItem('inftab.folders.v1', JSON.stringify([folder]))
+    localStorage.setItem('inftab.home-workspaces.v1', JSON.stringify([
+      { id: 'default', name: '主页', itemIds: [] },
+      { id: 'work', name: '工作', itemIds: [link.id, folder.id] },
+    ]))
+    localStorage.setItem('inftab.active-home-workspace.v1', JSON.stringify('default'))
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    await mountApp()
+    await wrapper.get('[aria-label="查找快捷入口"]').trigger('click')
+    await waitForLauncherSearch()
+    await wrapper.get('[aria-label="搜索快捷入口名称或网址"]').setValue(kind === 'shortcut' ? 'Remote target' : 'Team links')
+    expect(wrapper.findAll('.local-search-result')).toHaveLength(0)
+    await wrapper.get('.launcher-search-scopes button:nth-child(2)').trigger('click')
+    await flushLocalStorageWrites()
+    expect(JSON.parse(localStorage.getItem('inftab.active-home-workspace.v1')!)).toBe('default')
+    const result = kind === 'shortcut' ? wrapper.get('[role="option"][aria-label="工作 · Team links · Remote target"]') : wrapper.get('[role="option"][aria-label="工作 · Team links"]')
+    await result.trigger('click')
+    await flushPromises()
+    await flushLocalStorageWrites()
+    expect(JSON.parse(localStorage.getItem('inftab.active-home-workspace.v1')!)).toBe('work')
+    expect(wrapper.find('.launcher-search').exists()).toBe(false)
+    if (kind === 'shortcut') expect(open).toHaveBeenCalledWith(link.url, '_blank', 'noopener,noreferrer')
+    else {
+      await vi.waitFor(() => expect(wrapper.find('.folder-dialog').exists()).toBe(true))
+      expect(wrapper.get('.folder-dialog').text()).toContain('Remote target')
+      expect(open).not.toHaveBeenCalled()
+    }
+  })
+
+  it.each([false, true])('creates from an empty search and returns focus to a durable toolbar button: folder %s', async (folder) => {
+    await mountApp()
+    await wrapper.get('[aria-label="查找快捷入口"]').trigger('click')
+    await waitForLauncherSearch()
+    await wrapper.findAll('.launcher-search-actions button')[folder ? 1 : 0]!.trigger('click')
+    await flushPromises()
+    const dialog = folder ? '.folder-dialog' : '.shortcut-dialog'
+    await vi.waitFor(() => expect(wrapper.find(dialog).exists()).toBe(true))
+    expect(wrapper.find('.launcher-search').exists()).toBe(false)
+    await wrapper.get(`${dialog} [aria-label="${folder ? '关闭文件夹' : '关闭'}"]`).trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(wrapper.get('[aria-label="查找快捷入口"]').element)
+  })
+
+  it('lets a search-results wheel scroll without navigating the homepage behind it', async () => {
+    await mountApp()
+    await wrapper.get('[aria-label="查找快捷入口"]').trigger('click')
+    await waitForLauncherSearch()
+    await wrapper.get('.launcher-search').trigger('wheel', { deltaY: 100 })
+    expect(wrapper.get('.page-dot[aria-current="page"]').attributes('aria-label')).toBe('第1页')
+  })
+})
+
+describe('actionable homepage tasks', () => {
+  it('shares quick additions, completion and undo with the existing panel and persistent data', async () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, homeWidgetIds: ['todo-summary'] }))
+    localStorage.setItem('inftab.todos.v1', JSON.stringify([{ id: 'task', title: 'Read spec', done: false }]))
+    await mountApp()
+    await vi.waitFor(() => expect(wrapper.find('.widget-todo').exists()).toBe(true))
+    await wrapper.get<HTMLInputElement>('.widget-todo [data-todo-id="task"]').setValue(true)
+    await flushPromises()
+    expect(wrapper.get('.widget-todo .home-widget-metric').text()).toBe('今天的待办都完成了')
+    await wrapper.get('.widget-todo-undo button').trigger('click')
+    await wrapper.get('.widget-todo-add input').setValue('Plan tomorrow')
+    await wrapper.get('.widget-todo-add').trigger('submit')
+    await flushLocalStorageWrites()
+    expect(JSON.parse(localStorage.getItem('inftab.todos.v1')!)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'task', done: false }), expect.objectContaining({ title: 'Plan tomorrow', done: false }),
+    ]))
+    await openLauncher('todos')
+    expect(wrapper.get('.todo-list').text()).toContain('Plan tomorrow')
+    await wrapper.get('.todo-list .todo-check').trigger('click')
+    await wrapper.get('.panel-close').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.widget-todo .home-widget-metric').text()).toBe('还有 1 项待完成')
   })
 })

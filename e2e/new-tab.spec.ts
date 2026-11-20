@@ -1235,11 +1235,11 @@ test('home widgets open their panel, reorder, and can be removed', async ({ page
   await expect(widgetTitles).toHaveText(['待办概览', '倒计时'])
   await page.getByRole('button', { name: '将待办概览下移' }).click()
   await expect(widgetTitles).toHaveText(['倒计时', '待办概览'])
-  await expect(page.locator('.home-widget-shelf .visually-hidden[role="status"]')).toHaveText('待办概览已移到第2个位置。')
+  await expect(page.locator('.home-widget-shelf > .visually-hidden[role="status"]')).toHaveText('待办概览已移到第2个位置。')
   await page.locator('[data-widget-id="todo-summary"] .home-widget-grip')
     .dragTo(page.locator('[data-widget-id="countdown-summary"]'))
   await expect(widgetTitles).toHaveText(['待办概览', '倒计时'])
-  await expect(page.locator('.home-widget-shelf .visually-hidden[role="status"]')).toHaveText('待办概览已移到第1个位置。')
+  await expect(page.locator('.home-widget-shelf > .visually-hidden[role="status"]')).toHaveText('待办概览已移到第1个位置。')
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').homeWidgetIds))
     .toEqual(['todo-summary', 'countdown-summary'])
 
@@ -1293,6 +1293,10 @@ test('touch scrolling over shortcuts scrolls a short homepage without starting a
     const shortcut = touchPage.locator('.shortcut-open').first()
     await expect(home).toBeVisible()
     await expect.poll(() => home.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
+    // The lazy widget can change the grid's position after the grid itself loads.
+    await expect(touchPage.getByRole('textbox', { name: '快速添加待办', exact: true })).toBeVisible()
+    await shortcut.scrollIntoViewIfNeeded()
+    const scrollBeforeGesture = await home.evaluate((element) => element.scrollTop)
 
     const bounds = await shortcut.boundingBox()
     if (!bounds) throw new Error('The first shortcut is not visible for the touch scroll check.')
@@ -1304,12 +1308,12 @@ test('touch scrolling over shortcuts scrolls a short homepage without starting a
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 80, id: 1 }] })
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
 
-    await expect.poll(() => home.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+    await expect.poll(() => home.evaluate((element) => element.scrollTop)).toBeGreaterThan(scrollBeforeGesture)
     await expect(home.locator('.shortcut-cell.dragging')).toHaveCount(0)
 
     const source = touchPage.locator('.shortcut-cell[data-item-id="weather"] .shortcut-open')
     const target = touchPage.locator('.shortcut-cell[data-item-id="calendar"] .shortcut-open')
-    await source.scrollIntoViewIfNeeded()
+    await source.evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }))
     const sourceBounds = await source.boundingBox()
     const targetBounds = await target.boundingBox()
     if (!sourceBounds || !targetBounds) throw new Error('The touch sorting targets are not visible.')
@@ -1502,6 +1506,8 @@ test('weather widget keeps its source and the homepage usable while offline, the
 })
 
 test('focus timer widget stays in sync with the panel and survives a reload', async ({ page }) => {
+  const startedAt = new Date('2026-11-20T12:00:00Z')
+  await page.clock.setFixedTime(startedAt)
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const settingsPanel = page.getByRole('dialog', { name: '设置' })
   await settingsPanel.getByLabel('显示专注计时小组件').check()
@@ -1518,12 +1524,15 @@ test('focus timer widget stays in sync with the panel and survives a reload', as
   await panel.getByRole('button', { name: '关闭' }).click()
   await expect(widget.locator('[role="timer"]')).toHaveText('50:00')
 
+  // Real elapsed time makes this race slow CI machines. Keep timers running,
+  // advance only Date, and verify the persisted deadline after a reload.
+  await page.clock.setFixedTime(startedAt.getTime() + 1500)
   await page.reload()
   const restoredWidget = page.locator('[data-widget-id="focus-timer-summary"]')
-  await expect(restoredWidget.locator('[role="timer"]')).toHaveText(/49:5[0-9]/)
+  await expect(restoredWidget.locator('[role="timer"]')).toHaveText('49:59')
   await restoredWidget.getByRole('button', { name: '打开专注计时' }).click()
   const restoredPanel = page.getByRole('dialog', { name: '专注计时' })
-  await expect(restoredPanel.locator('[role="timer"]')).toHaveText(/49:5[0-9]/)
+  await expect(restoredPanel.locator('[role="timer"]')).toHaveText('49:59')
 })
 
 test('bookmark widget keeps its extension permission boundary on the website', async ({ page }) => {
