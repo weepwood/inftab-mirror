@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { nextTick } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import HomeWorkspaceTabs from './HomeWorkspaceTabs.vue'
 
 let wrapper: VueWrapper | undefined
@@ -9,6 +9,8 @@ let wrapper: VueWrapper | undefined
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined
+  vi.useRealTimers()
+  document.body.innerHTML = ''
 })
 
 const workspaces = [
@@ -101,6 +103,29 @@ describe('HomeWorkspaceTabs', () => {
 
     expect(wrapper.emitted('select')).toEqual([['reading-list']])
     expect(document.activeElement).toBe(next.element)
+  })
+
+  it('keeps a focused rename alive after pointer leave and closes after focus leaves the workspace', async () => {
+    vi.useFakeTimers()
+    wrapper = mount(HomeWorkspaceTabs, { attachTo: document.body, props: { workspaces, activeId: 'notes' } })
+    await wrapper.get('[data-workspace-tab="notes"]').trigger('contextmenu')
+    await wrapper.get('[role="menuitem"]').trigger('click')
+    const input = wrapper.get('input[aria-label="工作区名称"]')
+    expect(document.activeElement).toBe(input.element)
+    await wrapper.trigger('pointerleave', { pointerType: 'mouse' })
+    await vi.advanceTimersByTimeAsync(300)
+    expect(wrapper.find('input[aria-label="工作区名称"]').exists()).toBe(true)
+    expect(document.activeElement).toBe(input.element)
+    await input.setValue('项目')
+    await wrapper.get('form').trigger('submit')
+    expect(wrapper.emitted('rename')).toEqual([['notes', '项目']])
+    expect(document.activeElement).toBe(wrapper.get('[data-workspace-tab="notes"]').element)
+
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    outside.focus()
+    await vi.advanceTimersByTimeAsync(300)
+    expect(wrapper.classes()).not.toContain('is-open')
   })
 
   it('offers rename, move and delete from each chip context menu', async () => {

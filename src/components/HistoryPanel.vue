@@ -11,6 +11,8 @@ import {
   type BrowserHistoryEntry,
 } from '../data/browserHistory'
 
+withDefaults(defineProps<{ openInNewTab?: boolean }>(), { openInNewTab: true })
+
 const supported = canAccessBrowserHistory()
 const permissionGranted = ref(false)
 const loading = ref(false)
@@ -188,7 +190,7 @@ onBeforeUnmount(() => {
     </div>
     <ul v-if="permissionGranted && entries.length" class="browser-history-list" aria-label="浏览历史记录">
       <li v-for="entry in entries" :key="entry.id">
-        <a :href="entry.url" target="_blank" rel="noopener noreferrer">
+        <a :href="entry.url" :target="openInNewTab ? '_blank' : '_self'" rel="noopener noreferrer">
           <span class="history-entry-copy"><strong>{{ entry.title || entry.url }}</strong><small>{{ entry.url }}</small></span>
           <time :datetime="new Date(entry.lastVisitTime).toISOString()">{{ formatVisitTime(entry.lastVisitTime) }}</time>
           <ExternalLink :size="13" />

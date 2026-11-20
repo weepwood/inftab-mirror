@@ -57,8 +57,8 @@ type NoProps = Record<string, never>
 type NoContext = Record<string, never>
 
 export interface PanelContextById {
-  bookmarks: Pick<PanelPluginContext, 'openShortcutFromBookmark' | 'importBookmarks' | 'availableShortcutSlots'>
-  history: NoContext
+  bookmarks: Pick<PanelPluginContext, 'openShortcutFromBookmark' | 'importBookmarks' | 'availableShortcutSlots'> & { openInNewTab: boolean }
+  history: { openInNewTab: boolean }
   calculator: NoContext
   calendar: NoContext
   settings: Pick<PanelPluginContext, 'preferences' | 'backupExportError' | 'customSearchEngines' | 'updatePreferences' | 'resetPreferences' | 'openShortcut' | 'openFolder' | 'exportBackup' | 'importBackup' | 'addCustomSearchEngine' | 'removeCustomSearchEngine'>
@@ -71,8 +71,8 @@ export interface PanelContextById {
 }
 
 export interface PanelPropsById {
-  bookmarks: { availableSlots: number; importBookmarks: (items: BookmarkShortcutCandidate[]) => BookmarkShortcutImportResult }
-  history: NoProps
+  bookmarks: { availableSlots: number; importBookmarks: (items: BookmarkShortcutCandidate[]) => BookmarkShortcutImportResult; openInNewTab: boolean }
+  history: { openInNewTab: boolean }
   calculator: NoProps
   calendar: NoProps
   settings: { preferences: Preferences; exportError: string; customEngines: CustomSearchEngine[] }
@@ -153,19 +153,20 @@ export const panelPlugins = {
       openShortcutFromBookmark: context.openShortcutFromBookmark,
       importBookmarks: context.importBookmarks,
       availableShortcutSlots: context.availableShortcutSlots,
+      openInNewTab: context.preferences.openBookmarksInNewTab,
     }),
     title: '浏览器书签',
     description: '查看当前浏览器中保存的书签',
     component: lazyPanel(() => import('../components/BookmarksPanel.vue')),
-    props: (context) => ({ availableSlots: context.availableShortcutSlots, importBookmarks: context.importBookmarks }),
+    props: (context) => ({ availableSlots: context.availableShortcutSlots, importBookmarks: context.importBookmarks, openInNewTab: context.openInNewTab }),
     listeners: (context) => ({ addShortcut: context.openShortcutFromBookmark }),
   },
   history: {
-    context: () => ({}),
+    context: (context) => ({ openInNewTab: context.preferences.openHistoryInNewTab }),
     title: '浏览历史',
     description: '搜索当前浏览器的访问记录',
     component: lazyPanel(() => import('../components/HistoryPanel.vue')),
-    props: (_context) => ({}),
+    props: (context) => ({ openInNewTab: context.openInNewTab }),
     listeners: (_context) => ({}),
   },
   calculator: {

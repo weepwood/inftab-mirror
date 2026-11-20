@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { Check, Pencil, Plus, Search, Trash2 } from '@lucide/vue'
+import { Check, Pencil, Plus, Search, Sun, Trash2 } from '@lucide/vue'
 import type { TodoItem } from '../types'
 
 const props = defineProps<{ items: TodoItem[] }>()
@@ -101,7 +101,7 @@ function clearSearch(event: KeyboardEvent) {
       </li>
     </ul>
     <div v-else-if="items.length" class="collection-empty"><p>没有符合条件的待办</p><button class="text-button" type="button" @click="query = ''; filter = 'all'">重置筛选</button></div>
-    <div v-else class="empty-state"><span>☀</span><p>还没有待办事项</p><small>把接下来要做的事记在这里</small></div>
+    <div v-else class="empty-state"><Sun :size="30" :stroke-width="1.5" aria-hidden="true" /><p>还没有待办事项</p><small>把接下来要做的事记在这里</small></div>
     <div v-if="items.length" class="todo-footer">
       <p class="panel-footnote">{{ counts.open }} 项待完成<span v-if="query.trim() || filter !== 'all'"> · 显示 {{ filteredItems.length }} 项</span></p>
       <p v-if="items.length >= 500" class="panel-footnote" role="status">已达到 500 项上限</p>

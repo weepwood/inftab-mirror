@@ -23,7 +23,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  open: [item: LauncherItem]
+  open: [item: LauncherItem, event?: MouseEvent]
   edit: [item: LauncherItem]
   remove: [item: LauncherItem]
   toggleDock: [id: string]
@@ -34,6 +34,7 @@ const emit = defineEmits<{
 }>()
 
 const pageSize = computed(() => props.columns * props.rows)
+const reservedRows = computed(() => Math.min(props.rows, Math.max(1, Math.ceil(props.items.length / props.columns))))
 const cycleCount = 5
 const centerCycle = Math.floor(cycleCount / 2)
 const pages = computed(() => {
@@ -638,7 +639,7 @@ function openItem(event: MouseEvent, item: LauncherItem) {
     suppressClickTimer = 0
     return
   }
-  emit('open', item)
+  emit('open', item, event)
 }
 
 function hasUsableIcon(item: LauncherItem) {
@@ -774,6 +775,7 @@ onBeforeUnmount(() => {
           :inert="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderPage.trackIndex !== physicalPage"
           :style="{
             '--grid-columns': columns,
+            '--grid-rows': reservedRows,
             '--shortcut-size': `${iconSize}px`,
             '--shortcut-radius': `${iconRadius}px`,
             '--outgoing-duration': `${outgoingPage?.duration ?? 0}ms`,
@@ -790,7 +792,7 @@ onBeforeUnmount(() => {
             @pointerdown="onPointerDown($event, item)"
             @contextmenu="openContextMenu($event, item)"
           >
-            <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" aria-describedby="launcher-reorder-hint" aria-keyshortcuts="Shift+ArrowLeft Shift+ArrowRight" :aria-haspopup="item.folder ? 'dialog' : item.shortcut ? 'menu' : undefined" @click="openItem($event, item)" @keydown="handleShortcutKeydown($event, item)">
+            <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" aria-describedby="launcher-reorder-hint" aria-keyshortcuts="Shift+ArrowLeft Shift+ArrowRight" :aria-haspopup="item.folder ? 'dialog' : item.shortcut ? 'menu' : undefined" @click="openItem($event, item)" @auxclick.middle.prevent="openItem($event, item)" @keydown="handleShortcutKeydown($event, item)">
               <span class="shortcut-icon" :class="{ builtin: item.action }" :data-action="item.action" :style="{ backgroundColor: item.action ? undefined : item.color }">
                 <component v-if="item.action && launcherIcons[item.action]" :is="launcherIcons[item.action]" :size="35" :stroke-width="1.8" />
                 <img v-else-if="hasUsableIcon(item)" class="shortcut-picture" :src="item.icon" alt="" draggable="false" @error="handleIconError(item)" />

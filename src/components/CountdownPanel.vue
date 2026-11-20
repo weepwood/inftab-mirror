@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SelectField from './SelectField.vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { CalendarDays, Pencil, Plus, Trash2, X } from '@lucide/vue'
 import { daysUntilCountdown, isValidCalendarDate } from '../data/countdown'
@@ -91,10 +92,10 @@ function remove(item: CountdownItem) {
         <input v-model="date" type="date" required :disabled="limitReached" aria-label="纪念日日期" />
       </label>
       <label>重复
-        <select v-model="recurrence" :disabled="limitReached" aria-label="重复频率">
+        <SelectField v-model="recurrence" :disabled="limitReached" aria-label="重复频率">
           <option value="once">仅一次</option>
           <option value="yearly">每年重复</option>
-        </select>
+        </SelectField>
       </label>
       <div class="countdown-form-actions">
         <button v-if="editingId" class="button-secondary" type="button" @click="resetForm"><X :size="15" /> 取消</button>

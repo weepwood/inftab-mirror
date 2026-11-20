@@ -10,6 +10,8 @@ import {
 } from '../data/browserHistory'
 import { useOptionalBrowserResource } from '../composables/useOptionalBrowserResource'
 
+withDefaults(defineProps<{ openInNewTab?: boolean }>(), { openInNewTab: true })
+
 const { supported, permissionGranted, loading, error, data: entries, retry } = useOptionalBrowserResource<BrowserHistoryEntry[]>({
   supported: canAccessBrowserHistory(),
   initial: [],
@@ -42,7 +44,7 @@ function formatVisitTime(timestamp: number) {
     <p v-else-if="error" class="home-widget-empty" role="alert">{{ error }} <button class="history-summary-retry" type="button" @click="retry">重试</button></p>
     <ul v-else-if="entries.length" class="history-summary-list" aria-label="最近访问的网页">
       <li v-for="entry in entries" :key="entry.id">
-        <a :href="entry.url" target="_blank" rel="noopener noreferrer" :title="entry.url">
+        <a :href="entry.url" :target="openInNewTab ? '_blank' : '_self'" rel="noopener noreferrer" :title="entry.url">
           <Clock3 :size="14" aria-hidden="true" />
           <span>{{ entry.title || entry.url }}</span>
           <time :datetime="new Date(entry.lastVisitTime).toISOString()">{{ formatVisitTime(entry.lastVisitTime) }}</time>

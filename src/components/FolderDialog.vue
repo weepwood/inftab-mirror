@@ -10,7 +10,7 @@ const emit = defineEmits<{
   close: []
   save: [folder: ShortcutFolder]
   remove: [id: string]
-  openShortcut: [shortcut: Shortcut]
+  openShortcut: [shortcut: Shortcut, event?: MouseEvent]
   openAllShortcuts: [shortcuts: Shortcut[]]
 }>()
 
@@ -156,8 +156,8 @@ function save() {
           <button class="button-secondary" type="button" @click="emit('openAllShortcuts', folderShortcutItems)">打开全部</button>
         </div>
         <div class="folder-launcher-grid">
-          <button v-for="shortcut in folderShortcutItems" :key="shortcut.id" type="button" class="folder-launcher" @click="emit('openShortcut', shortcut)">
-            <span class="folder-launcher-icon" :style="{ backgroundColor: shortcut.color }">
+          <button v-for="shortcut in folderShortcutItems" :key="shortcut.id" type="button" class="folder-launcher" @click="emit('openShortcut', shortcut, $event)" @auxclick.middle.prevent="emit('openShortcut', shortcut, $event)">
+            <span class="folder-launcher-icon" :style="{ backgroundColor: shortcut.color }" aria-hidden="true">
               <img v-if="shortcutIconSource(shortcut)" :src="shortcutIconSource(shortcut)" alt="" />
               <span v-else>{{ shortcut.mark }}</span>
             </span>

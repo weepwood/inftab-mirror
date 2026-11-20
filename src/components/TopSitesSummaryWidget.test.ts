@@ -63,6 +63,10 @@ describe('top-sites homepage widget', () => {
     expect(wrapper.get('.top-sites-summary-list').text()).toContain('Frequently visited docs')
     expect(wrapper.get('.top-sites-summary-list').text()).toContain('fallback.example')
     expect(wrapper.html()).not.toContain('javascript:')
+    expect(wrapper.findAll('.top-sites-summary-list a').every((link) => link.attributes('target') === '_blank')).toBe(true)
+    await wrapper.setProps({ openInNewTab: false })
+    expect(wrapper.findAll('.top-sites-summary-list a').every((link) => link.attributes('target') === '_self')).toBe(true)
+    expect(wrapper.findAll('.top-sites-summary-list a').every((link) => link.attributes('rel') === 'noopener noreferrer')).toBe(true)
   })
 
   it('clears displayed sites when the optional permission is revoked', async () => {

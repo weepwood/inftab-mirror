@@ -11,7 +11,6 @@ import { launcherItems } from './data/defaults'
 import { maxImageUploadBytes } from './data/imageLimits'
 import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
-import { toLocalDateKey } from './data/calendar'
 import { createLocalId } from './data/createId'
 import { normalizeWebUrl } from './data/urls'
 import { truncateCodePoints } from './data/text'
@@ -50,6 +49,11 @@ const ConfirmDialog = lazyPluginComponent(
   () => import('./components/ConfirmDialog.vue'),
   '正在加载确认对话框…',
   '确认对话框暂时无法加载，请重试。',
+)
+const SelectField = lazyPluginComponent(
+  () => import('./components/SelectField.vue'),
+  '正在加载选项…',
+  '选项暂时无法加载，请重试。',
 )
 const BrowserTabImport = lazyPluginComponent(
   () => import('./components/BrowserTabImport.vue'),
@@ -309,7 +313,7 @@ const activePanelProps = computed<Record<string, unknown>>(() => activePanel.val
 const activePanelListeners = computed<Record<string, (...args: never[]) => void>>(() => activePanel.value && panelRegistry.value
   ? panelRegistry.value.getPanelListeners(activePanel.value, panelContext.value)
   : {})
-const homeWidgetContext = computed(() => ({ todos: todos.value, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
+const homeWidgetContext = computed(() => ({ preferences: preferences.value, todos: todos.value, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
 const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0)
 const shortHomeScrollEnabled = computed(() => !minimalMode.value && (showHomeWidgets.value || homeDockItems.value.length > 0) && viewport.value.height <= 560)
 const homeWidgetRows = computed(() => {
@@ -436,6 +440,12 @@ function handlePanelKeydown(event: KeyboardEvent) {
   }
 }
 
+function openWebUrl(url: string, newTab: boolean, event?: MouseEvent) {
+  if (newTab || event?.ctrlKey || event?.metaKey || event?.shiftKey || event?.button === 1) {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  } else window.location.assign(url)
+}
+
 function submitSearch() {
   if (localSearchMode.value) {
     const [firstMatch] = localSearchMatches.value
@@ -443,7 +453,7 @@ function submitSearch() {
     return
   }
   const destination = buildSearchUrl(preferences.value.engine, preferences.value.mode, query.value, customSearchEngines.value)
-  if (destination) window.location.assign(destination)
+  if (destination) openWebUrl(destination, preferences.value.openSearchInNewTab)
 }
 
 async function submitTranslation() {
@@ -467,11 +477,11 @@ function setLocalSearch(enabled: boolean) {
   })
 }
 
-function openLocalSearchResult(item: LauncherItem) {
+function openLocalSearchResult(item: LauncherItem, event?: MouseEvent) {
   localSearchMode.value = false
   query.value = ''
   document.querySelector<HTMLButtonElement>('.home-search-toggle')?.focus()
-  openItem(item)
+  openItem(item, event)
 }
 
 function handleLocalSearchResultKeydown(event: KeyboardEvent) {
@@ -506,13 +516,13 @@ function openPanel(id: PanelId) {
   loadPanelRegistry()
 }
 
-function openItem(item: LauncherItem) {
+function openItem(item: LauncherItem, event?: MouseEvent) {
   if (item.folder) openFolder(item.folder)
   else if (item.action) openPanel(launcherPanelRoutes[item.action])
   else if (item.shortcut) {
     const panel = shortcutPanelRoutes[item.shortcut.id]
     if (panel) openPanel(panel)
-    else window.open(item.shortcut.url, '_blank', 'noopener,noreferrer')
+    else openWebUrl(item.shortcut.url, preferences.value.openShortcutsInNewTab, event)
   }
 }
 
@@ -632,8 +642,8 @@ function dockLauncherItem(id: string, targetId?: string) {
   }
 }
 
-function openFolderShortcut(shortcut: Shortcut) {
-  window.open(shortcut.url, '_blank', 'noopener,noreferrer')
+function openFolderShortcut(shortcut: Shortcut, event?: MouseEvent) {
+  openWebUrl(shortcut.url, preferences.value.openShortcutsInNewTab, event)
 }
 
 function openFolderShortcuts(items: Shortcut[]) {
@@ -858,18 +868,10 @@ function reorderHomeWidgets(from: number, to: number) {
   updatePreferences({ homeWidgetIds: next })
 }
 
-function downloadBackup() {
+async function downloadBackup() {
   try {
-    const contents = JSON.stringify(createBackup(), null, 2)
-    const url = URL.createObjectURL(new Blob([contents], { type: 'application/json' }))
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `inftab-backup-${toLocalDateKey(new Date())}.json`
-    anchor.style.display = 'none'
-    document.body.appendChild(anchor)
-    anchor.click()
-    anchor.remove()
-    window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    const { downloadWorkspaceBackup } = await retryAsyncLoad(() => import('./data/downloadBackup'))
+    downloadWorkspaceBackup(createBackup())
     backupExportError.value = ''
     storageError.value = ''
   } catch (error) {
@@ -1087,7 +1089,8 @@ onBeforeUnmount(() => {
               type="button"
               role="option"
               class="local-search-result"
-              @click="openLocalSearchResult(match.item)"
+              @click="openLocalSearchResult(match.item, $event)"
+              @auxclick.middle.prevent="openLocalSearchResult(match.item, $event)"
               @keydown="handleLocalSearchResultKeydown"
             >
               <span class="local-search-result-title">{{ match.folderTitle ? `${match.folderTitle} · ${match.item.title}` : match.item.title }}</span>
@@ -1119,13 +1122,11 @@ onBeforeUnmount(() => {
         @move-by-keyboard="moveLauncherItemByKeyboard"
         @swipe="movePage"
       />
-      <nav v-if="pageCount > 1 && !minimalMode" class="page-dots" aria-label="快捷入口页码">
-        <button type="button" aria-label="上一页" class="page-arrow" @click="movePage(-1)"><ArrowLeft :size="15" /></button>
+      <nav v-if="pageCount > 1 && !minimalMode" class="page-dots" aria-label="快捷入口页码" title="点击圆点或使用左右方向键、滑动切换">
         <template v-for="item in pageNavigation" :key="item.kind === 'page' ? `page-${item.page}` : item.id">
           <button v-if="item.kind === 'page'" type="button" :aria-label="`第${item.page + 1}页`" :aria-current="item.page === currentPage ? 'page' : undefined" class="page-dot" :class="{ active: item.page === currentPage }" @click="goToPage(item.page)"></button>
           <span v-else class="page-ellipsis" aria-hidden="true">…</span>
         </template>
-        <button type="button" aria-label="下一页" class="page-arrow next" @click="movePage(1)"><ArrowLeft :size="15" /></button>
       </nav>
     </section>
 
@@ -1172,7 +1173,7 @@ onBeforeUnmount(() => {
       <form ref="shortcutDialogElement" class="shortcut-dialog" role="dialog" aria-modal="true" aria-labelledby="shortcut-dialog-title" @keydown="handleShortcutDialogKeydown" @submit.prevent="saveShortcut">
         <header><div><h2 id="shortcut-dialog-title">{{ editingId ? '编辑快捷入口' : '添加快捷入口' }}</h2><p>名称和网址可以随时修改</p></div><button type="button" aria-label="关闭" @click="shortcutDialog = false"><X :size="19" /></button></header>
         <label>名称<input ref="shortcutTitleInput" v-model="shortcutTitle" required maxlength="80" placeholder="例如：GitHub" :disabled="savingShortcut" /></label>
-        <label>所属工作区<select v-model="shortcutWorkspaceId" :disabled="savingShortcut"><option v-for="workspace in homeWorkspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></select></label>
+        <label>所属工作区<SelectField v-model="shortcutWorkspaceId" aria-label="所属工作区" :disabled="savingShortcut"><option v-for="workspace in homeWorkspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></SelectField></label>
         <p v-if="shortcutLimitReached" class="backup-error" role="status">最多只能保存 500 个快捷入口。</p>
         <BrowserTabImport v-if="canImportBrowserTabs && !savingShortcut" @select="fillShortcutFromBrowserTab" />
         <label>网址<input v-model="shortcutUrl" required maxlength="2048" placeholder="https://example.com" @input="shortcutUrlError = ''" :disabled="savingShortcut" /></label>

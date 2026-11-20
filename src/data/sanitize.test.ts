@@ -17,6 +17,15 @@ import { sanitizeHabits } from './habits'
 afterEach(() => vi.restoreAllMocks())
 
 describe('local state sanitization', () => {
+  it.each(['openShortcutsInNewTab', 'openSearchInNewTab', 'openBookmarksInNewTab', 'openHistoryInNewTab'] as const)('preserves and strictly validates %s without changing legacy defaults', (key) => {
+    expect(sanitizePreferences({})[key]).toBe(defaultPreferences[key])
+    expect(sanitizePreferences({ [key]: true })[key]).toBe(true)
+    expect(sanitizePreferences({ [key]: false })[key]).toBe(false)
+    for (const invalid of ['false', 'true', 0, 1, null]) {
+      expect(sanitizePreferences({ [key]: invalid })[key]).toBe(defaultPreferences[key])
+    }
+  })
+
   it('clamps numeric preferences and restores unknown choices to defaults', () => {
     const result = sanitizePreferences({
       engine: 'javascript',

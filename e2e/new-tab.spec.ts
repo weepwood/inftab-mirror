@@ -145,11 +145,11 @@ test('creates a shortcut and keeps it after reloading the new tab', async ({ pag
   await expect(dialog).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => localStorage.getItem('inftab.shortcuts.v1'))).toContain('E2E Example')
   await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
-  await page.getByRole('button', { name: '下一页' }).click()
+  await page.getByRole('button', { name: '第2页', exact: true }).click()
   await expect(page.getByRole('button', { name: '打开E2E Example' })).toBeVisible()
 
   await page.reload()
-  await page.getByRole('button', { name: '下一页' }).click()
+  await page.getByRole('button', { name: '第2页', exact: true }).click()
   await expect(page.getByRole('button', { name: '打开E2E Example' })).toBeVisible()
 })
 
@@ -286,7 +286,7 @@ test('workspace tabs isolate shortcuts and persist the active workspace', async 
   await dialog.getByRole('button', { name: '保存' }).click()
   await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
   const shortcut = page.locator('.shortcut-cell').filter({ has: page.getByRole('button', { name: '打开Workspace only' }) })
-  if (!(await shortcut.isVisible())) await page.getByRole('button', { name: '下一页' }).click()
+  if (!(await shortcut.isVisible())) await page.getByRole('button', { name: '第2页', exact: true }).click()
   await shortcut.click({ button: 'right' })
   await page.getByRole('menuitem', { name: '固定到 Dock' }).click()
   const dock = page.getByRole('navigation', { name: '常驻 Dock' })
@@ -627,7 +627,7 @@ test('shortcut deletion can be cancelled and requires confirmation', async ({ pa
   await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
 
   const cell = page.locator('.shortcut-cell').filter({ has: page.getByRole('button', { name: '打开Keep Until Confirmed' }) })
-  if (!(await cell.isVisible())) await page.getByRole('button', { name: '下一页' }).click()
+  if (!(await cell.isVisible())) await page.getByRole('button', { name: '第2页', exact: true }).click()
   await cell.click({ button: 'right' })
   await page.getByRole('menuitem', { name: '删除快捷入口' }).click()
   const confirmation = page.getByRole('alertdialog')
@@ -714,7 +714,7 @@ test('every built-in panel route loads and closes without a runtime error', asyn
     await expect(trigger).toBeFocused()
   }
 
-  await page.getByRole('button', { name: '下一页' }).click()
+  await page.getByRole('button', { name: '第2页', exact: true }).click()
   await page.locator('[data-item-id="wallpapers"] .shortcut-open').click()
   const wallpaperSettings = page.getByRole('dialog', { name: '设置' })
   await expect(wallpaperSettings).toBeVisible()
@@ -881,7 +881,7 @@ test('reduced-motion preference keeps page effects but caps their duration', asy
 
   const track = page.locator('.shortcut-pages')
   await expect(track).toHaveClass(/particles-mode/)
-  await page.getByRole('button', { name: '下一页' }).click()
+  await page.getByRole('button', { name: '第2页', exact: true }).click()
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
   // The effect is an explicit choice in settings, so it still plays under reduced motion.
   await expect(page.locator('#shortcut-particle-canvas')).toHaveCount(1)
@@ -1688,7 +1688,7 @@ test('lazy folder editor creates and opens a folder with selected shortcuts', as
   await editor.getByRole('button', { name: '保存文件夹' }).click()
   await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
 
-  await page.getByRole('button', { name: '下一页' }).click()
+  await page.getByRole('button', { name: '第2页', exact: true }).click()
   await page.getByRole('button', { name: '打开工作' }).click()
   const folder = page.getByRole('dialog', { name: '工作' })
   await expect(folder).toContainText('京东商城')
@@ -1707,7 +1707,7 @@ test('opening every shortcut in a folder creates a new browser tab for each site
   await editor.getByRole('checkbox', { name: /天猫精选/ }).check()
   await editor.getByRole('button', { name: '保存文件夹' }).click()
   await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
-  await page.getByRole('button', { name: '下一页' }).click()
+  await page.getByRole('button', { name: '第2页', exact: true }).click()
   await page.getByRole('button', { name: '打开批量打开' }).click()
   const folder = page.getByRole('dialog', { name: '批量打开' })
   const openedPages: Page[] = []
@@ -1735,7 +1735,7 @@ test('keyboard launcher search finds and opens a shortcut stored inside a folder
     Object.defineProperty(window, 'open', {
       configurable: true,
       value: (url: string) => {
-        (window as Window & { __openedShortcutUrls: string[] }).__openedShortcutUrls.push(url)
+        (window as unknown as Window & { __openedShortcutUrls: string[] }).__openedShortcutUrls.push(url)
         return null
       },
     })
@@ -1747,7 +1747,7 @@ test('keyboard launcher search finds and opens a shortcut stored inside a folder
   await expect(result).toBeVisible()
   await result.click()
 
-  await expect.poll(() => page.evaluate(() => (window as Window & { __openedShortcutUrls: string[] }).__openedShortcutUrls))
+  await expect.poll(() => page.evaluate(() => (window as unknown as Window & { __openedShortcutUrls: string[] }).__openedShortcutUrls))
     .toEqual(['https://www.jd.com/'])
 })
 
@@ -1763,13 +1763,13 @@ test('pinned dock launchers stay available across pages and reloads', async ({ p
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').dockItemIds))
     .toEqual(['weather', 'todos'])
 
-  await page.getByRole('button', { name: '下一页' }).click()
+  await page.getByRole('button', { name: '第2页', exact: true }).click()
   await dock.getByRole('button', { name: '打开待办事项' }).click()
   await expect(page.getByRole('dialog', { name: '待办事项' })).toBeVisible()
   await page.getByRole('dialog', { name: '待办事项' }).getByRole('button', { name: '关闭' }).click()
 
   await page.reload()
-  await page.getByRole('button', { name: '下一页' }).click()
+  await page.getByRole('button', { name: '第2页', exact: true }).click()
   const restoredDock = page.getByRole('navigation', { name: '常驻 Dock' })
   await expect(restoredDock.getByRole('button', { name: '打开待办事项' })).toBeVisible()
   await page.setViewportSize({ width: 390, height: 480 })
@@ -1789,7 +1789,7 @@ test('pins a custom shortcut from its context menu and restores it after reload'
   await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
 
   const shortcut = page.locator('.shortcut-cell').filter({ has: page.getByRole('button', { name: '打开Dock Example' }) })
-  if (!(await shortcut.isVisible())) await page.getByRole('button', { name: '下一页' }).click()
+  if (!(await shortcut.isVisible())) await page.getByRole('button', { name: '第2页', exact: true }).click()
   await shortcut.click({ button: 'right' })
   await page.getByRole('menuitem', { name: '固定到 Dock' }).click()
 
@@ -1838,7 +1838,7 @@ test('drags a launcher into the dock and places it before the drop target', asyn
 test('dock icons omit labels and use a context menu for removal', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   const shortcut = page.locator('.shortcut-cell[data-item-id="jd"]')
-  if (!(await shortcut.isVisible())) await page.getByRole('button', { name: '下一页' }).click()
+  if (!(await shortcut.isVisible())) await page.getByRole('button', { name: '第2页', exact: true }).click()
   await shortcut.click({ button: 'right' })
   await page.getByRole('menuitem', { name: '固定到 Dock' }).click()
 

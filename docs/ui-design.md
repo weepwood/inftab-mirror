@@ -21,6 +21,22 @@
 | `--ui-text` | `#2c3d34` | `#e0e9e2` | 主要文字 |
 | `--ui-muted` | `#637368` | `#a0afa5` | 次要文字 |
 
+设置分区、搜索操作、选中标记和菜单动作复用现有 `@lucide/vue` 图标库，使用一致的线条与对齐；网站品牌图片和用户上传图标不作替换。
+
+### 下拉框与操作菜单
+
+- 表单和设置中的选择框统一使用 `SelectField`，共用高度、边框、圆角、主题色和 Lucide 下拉指示；无障碍名称、数值选项、禁用状态及键盘交互仍由原生 `select` 承载。
+- 支持 `appearance: base-select` 的浏览器将选项展示在顶层，避免被滚动容器截断，并按视口限制宽高；选中项有强调背景与勾选。浅/深色主题共用语义 token。
+- 不支持增强样式时保留原生选择菜单；强制高对比度模式退回系统外观。展开时按 Escape 只收起选择菜单，不连带关闭设置或表单。
+- 搜索引擎仍使用已有的可访问列表框，不重写其搜索/键盘行为；快捷入口、Dock、工作区操作菜单统一间距、焦点和危险操作色，支持上下循环、Home/End 与禁用项跳过，Escape 恢复触发点焦点。
+- 工作区重命名时，鼠标移出不会收起仍有焦点的输入框；提交后聚焦原标签，键盘焦点离开工作区后再收起菜单。
+
+### 分页与布局稳定性
+
+- 仅保留分页圆点，当前页为短胶囊，不显示左右箭头。仍可点击圆点、使用左右方向键、滑动和触控板切换。
+- 快捷入口网格按当前工作区最满一页计算预留行数，同一布局中所有页面使用相同行高；只有一项的末页也不会将页码向上推。单页内容较少时不会无谓预留整页空白。
+- 预留行数随列数、窗口和工作区变化重新计算；微粒消散、光迹拖尾、平滑滑动沿用既有过渡与循环机制。
+
 内置工具的 SVG 图标映射集中在 `src/components/launcherIcons.ts`，供快捷入口与 Dock 共用；颜色按工具 ID 绑定，拖动排序不会改变图标颜色。
 
 ## 响应式与兼容
@@ -38,12 +54,18 @@
 
 - [桌面首页](screenshots/home-desktop.webp)
 - [手机首页](screenshots/home-mobile.webp)
+- [入口不足的末页](screenshots/home-last-page.webp)
 - [浅色设置](screenshots/settings-desktop.webp)
 - [深色设置](screenshots/settings-dark.webp)
+- [浅色下拉菜单](screenshots/settings-dropdown.webp)
+- [深色下拉菜单](screenshots/settings-dropdown-dark.webp)
+- [独立打开方式](screenshots/settings-opening.webp)
 
 ## 回归检查
 
-`e2e/appearance.spec.ts` 使用布局尺寸和语义断言，而非依赖机器字体的像素快照，覆盖五种视口、列数切换和偏好保留、设置导航、键盘开关及深色的 Teleport 菜单。
+`e2e/ui-refinements.spec.ts` 验证三种效果 × 桌面/手机/短屏的满页与单项末页几何一致性、无箭头分页、浅深色下拉框不溢出、分层 Escape、原生键盘与强制高对比度回退、菜单焦点，以及打开方式的保存/备份与导航。
+
+`e2e/appearance.spec.ts` 使用布局尺寸和语义断言，而非依赖机器字体的像素快照，覆盖六种视口、列数切换和偏好保留、设置导航、键盘开关及深色的 Teleport 菜单。
 
 ```sh
 npm run verify

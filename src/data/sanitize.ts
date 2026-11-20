@@ -85,6 +85,10 @@ export function sanitizePreferences(value: unknown): Preferences {
     themeMode: merged.themeMode === 'light' || merged.themeMode === 'dark' || merged.themeMode === 'system'
       ? merged.themeMode
       : defaultPreferences.themeMode,
+    openShortcutsInNewTab: typeof raw.openShortcutsInNewTab === 'boolean' ? raw.openShortcutsInNewTab : defaultPreferences.openShortcutsInNewTab,
+    openSearchInNewTab: typeof raw.openSearchInNewTab === 'boolean' ? raw.openSearchInNewTab : defaultPreferences.openSearchInNewTab,
+    openBookmarksInNewTab: typeof raw.openBookmarksInNewTab === 'boolean' ? raw.openBookmarksInNewTab : defaultPreferences.openBookmarksInNewTab,
+    openHistoryInNewTab: typeof raw.openHistoryInNewTab === 'boolean' ? raw.openHistoryInNewTab : defaultPreferences.openHistoryInNewTab,
     hiddenLauncherIds,
     dockItemIds,
     dockMagnification: typeof merged.dockMagnification === 'boolean' ? merged.dockMagnification : defaultPreferences.dockMagnification,

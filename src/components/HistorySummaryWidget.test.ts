@@ -74,6 +74,10 @@ describe('HistorySummaryWidget', () => {
     expect(wrapper.findAll('a').map((link) => link.text())).toHaveLength(1)
     expect(wrapper.text()).toContain('Example')
     expect(wrapper.html()).not.toContain('javascript:')
+    expect(wrapper.findAll('a').every((link) => link.attributes('target') === '_blank')).toBe(true)
+    await wrapper.setProps({ openInNewTab: false })
+    expect(wrapper.findAll('a').every((link) => link.attributes('target') === '_self')).toBe(true)
+    expect(wrapper.findAll('a').every((link) => link.attributes('rel') === 'noopener noreferrer')).toBe(true)
     expect(search).toHaveBeenCalledWith({ text: '', startTime: 0, maxResults: 5 })
 
     vi.useFakeTimers()

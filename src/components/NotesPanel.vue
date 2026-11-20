@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import SelectField from './SelectField.vue'
 import { computed, nextTick, ref } from 'vue'
-import { Plus, Search, Trash2 } from '@lucide/vue'
+import { NotebookPen, Plus, Search, Trash2 } from '@lucide/vue'
 import { truncateCodePoints } from '../data/text'
 import type { Note } from '../types'
 
@@ -49,7 +50,7 @@ function clearSearch(event: KeyboardEvent) {
       <div class="notes-tools">
         <button class="note-add" type="button" :disabled="notes.length >= 500" @click="createNote"><Plus :size="16" /> 新建笔记</button>
         <label class="collection-search"><Search :size="14" aria-hidden="true" /><input v-model="query" type="search" maxlength="500" placeholder="搜索标题或正文…" aria-label="查找笔记" @keydown.esc="clearSearch" /></label>
-        <select v-model="sort" class="notes-sort" aria-label="笔记排序"><option value="original">默认顺序</option><option value="updated">最近编辑</option><option value="title">按标题排序</option></select>
+        <SelectField v-model="sort" class="notes-sort" aria-label="笔记排序"><option value="original">默认顺序</option><option value="updated">最近编辑</option><option value="title">按标题排序</option></SelectField>
         <p v-if="query.trim()" class="notes-result-count" role="status">找到 {{ visibleNotes.length }} / {{ notes.length }} 条笔记</p>
       </div>
       <button
@@ -73,6 +74,6 @@ function clearSearch(event: KeyboardEvent) {
       <textarea :value="activeNote.body" aria-label="笔记内容" maxlength="500000" placeholder="从这里开始记录……" @input="emit('update', activeNote.id, 'body', ($event.target as HTMLTextAreaElement).value)"></textarea>
       <footer class="note-editor-footer"><span class="note-meta">{{ characterCount }} 字符 · 本机自动保存</span><button class="note-delete" type="button" aria-label="删除笔记" @click="emit('remove', activeNote.id)"><Trash2 :size="15" /> 删除</button></footer>
     </section>
-    <section v-else class="note-blank"><span>▮</span><p>选择或新建一条笔记</p></section>
+    <section v-else class="note-blank"><NotebookPen :size="32" :stroke-width="1.5" aria-hidden="true" /><p>选择或新建一条笔记</p></section>
   </div>
 </template>

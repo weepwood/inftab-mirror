@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { X } from '@lucide/vue'
 import { launcherIcons } from './launcherIcons'
+import { closeMenuOnFocusout, navigateMenu } from './menuNavigation'
 import type { LauncherItem } from '../types'
 
 const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean }>(), {
@@ -10,11 +11,12 @@ const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEna
   iconGap: 2,
   darkTheme: false,
 })
-const emit = defineEmits<{ open: [item: LauncherItem]; remove: [id: string] }>()
+const emit = defineEmits<{ open: [item: LauncherItem, event?: MouseEvent]; remove: [id: string] }>()
 const dock = ref<HTMLElement>()
 const contextMenu = ref<HTMLElement>()
 const contextItem = ref<LauncherItem>()
 const contextPosition = ref({ left: 0, top: 0 })
+let contextTrigger: HTMLElement | undefined
 
 interface DockTouchGesture {
   pointerId: number
@@ -150,12 +152,18 @@ function clearDockMagnification() {
   })
 }
 
-function closeContextMenu() {
+function closeContextMenu(restoreFocus = false) {
+  const trigger = contextTrigger
+  contextTrigger = undefined
   contextItem.value = undefined
+  if (restoreFocus && trigger?.isConnected) void nextTick(() => trigger.focus())
 }
+
+function closeOnOutsideClick() { closeContextMenu() }
 
 function showContextMenu(event: Event, item: LauncherItem, x: number, y: number) {
   event.preventDefault()
+  contextTrigger = event.currentTarget as HTMLElement
   const width = 176
   const height = 52
   contextPosition.value = {
@@ -180,12 +188,12 @@ function removeContextItem() {
 
 onMounted(() => {
   window.addEventListener('pointerdown', clearSuppressedClickOnPointerDown, true)
-  window.addEventListener('click', closeContextMenu)
+  window.addEventListener('click', closeOnOutsideClick)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', clearSuppressedClickOnPointerDown, true)
-  window.removeEventListener('click', closeContextMenu)
+  window.removeEventListener('click', closeOnOutsideClick)
   cleanGestureListeners()
   clearSuppressedClick()
   clearDockMagnification()
@@ -202,7 +210,8 @@ onBeforeUnmount(() => {
           :data-dock-item-id="item.id"
           :aria-label="`打开${item.title}`"
           :title="item.title"
-          @click="emit('open', item)"
+          @click="emit('open', item, $event)"
+          @auxclick.middle.prevent="emit('open', item, $event)"
           @contextmenu="showContextMenu($event, item, $event.clientX, $event.clientY)"
           @keydown="handleItemKeydown($event, item)"
         >
@@ -224,7 +233,9 @@ onBeforeUnmount(() => {
         :aria-label="`${contextItem.title} 的 Dock 操作`"
         :style="{ left: `${contextPosition.left}px`, top: `${contextPosition.top}px` }"
         @click.stop
-        @keydown.esc.stop.prevent="closeContextMenu"
+        @keydown="navigateMenu"
+        @focusout="closeMenuOnFocusout($event, closeContextMenu)"
+        @keydown.esc.stop.prevent="closeContextMenu(true)"
       >
         <button type="button" role="menuitem" class="danger" :aria-label="`从 Dock 移除${contextItem.title}`" @click="removeContextItem"><X :size="14" /> 从 Dock 移除</button>
       </div>

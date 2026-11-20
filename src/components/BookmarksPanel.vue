@@ -14,9 +14,11 @@ import type { BookmarkShortcutCandidate, BookmarkShortcutImportResult, BrowserBo
 
 const props = withDefaults(defineProps<{
   availableSlots: number
+  openInNewTab?: boolean
   importBookmarks: (items: BookmarkShortcutCandidate[]) => BookmarkShortcutImportResult
 }>(), {
   availableSlots: 500,
+  openInNewTab: true,
   importBookmarks: () => ({ added: 0, error: '批量导入暂不可用。' }),
 })
 
@@ -365,7 +367,7 @@ onBeforeUnmount(() => {
             :disabled="!selectedIds.has(row.id) && selectedIds.size >= availableSlots"
             @change="toggleBookmark(row.id, ($event.target as HTMLInputElement).checked)"
           />
-          <a class="browser-bookmark-link" :href="row.url" target="_blank" rel="noopener noreferrer">
+          <a class="browser-bookmark-link" :href="row.url" :target="openInNewTab ? '_blank' : '_self'" rel="noopener noreferrer">
             <Bookmark :size="15" />
             <span>{{ row.title }}</span>
             <ExternalLink :size="13" />

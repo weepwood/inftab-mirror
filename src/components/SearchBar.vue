@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ArrowLeft, ChevronDown, Search } from '@lucide/vue'
+import { ArrowLeft, Check, ChevronDown, Languages, Search } from '@lucide/vue'
 import { engines, searchModes } from '../data/defaults'
 import type { CustomSearchEngine, SearchEngineSelection, SearchMode } from '../types'
 
@@ -243,7 +243,7 @@ defineExpose({ focusSearch, showTranslationError })
       >
         <img v-if="'logo' in selectedEngine" class="engine-logo" :src="`${baseUrl}search-engines/${selectedEngine.logo}`" :alt="selectedEngine.label" />
         <span v-else class="engine-initial" aria-hidden="true">{{ selectedEngine.mark }}</span>
-        <ChevronDown :size="14" />
+        <ChevronDown :size="14" aria-hidden="true" />
       </button>
       <input
         ref="searchInput"
@@ -258,7 +258,7 @@ defineExpose({ focusSearch, showTranslationError })
         @keydown="handleLocalSearchKeydown"
       />
       <kbd v-if="!modelValue && !localSearch" class="search-key-hint" aria-hidden="true">/</kbd>
-      <button v-if="!localSearch" class="quick-translate" type="button" :disabled="!modelValue.trim()" aria-label="翻译成简体中文" title="翻译成简体中文" @click="requestTranslation">译</button>
+      <button v-if="!localSearch" class="quick-translate" type="button" :disabled="!modelValue.trim()" aria-label="翻译成简体中文" title="翻译成简体中文" @click="requestTranslation"><Languages :size="17" aria-hidden="true" /></button>
       <button class="submit-search" type="submit" :aria-label="localSearch ? '打开第一个匹配的快捷入口' : '搜索'"><Search :size="18" /></button>
     </form>
     <p v-if="translationError" class="search-action-error" role="status" aria-live="polite">翻译工具暂时无法加载，请重试。<button class="text-button" type="button" @click="reloadPage">重新加载页面</button></p>
@@ -278,7 +278,7 @@ defineExpose({ focusSearch, showTranslationError })
             <img v-if="'logo' in item" class="engine-logo" :src="`${baseUrl}search-engines/${item.logo}`" alt="" />
             <span v-else class="engine-initial" aria-hidden="true">{{ item.mark }}</span>
             {{ item.label }}
-            <span v-if="engine === item.id" class="engine-check">✓</span>
+            <Check v-if="engine === item.id" class="engine-check" :size="16" aria-hidden="true" />
           </button>
         </div>
       </Transition>
