@@ -65,12 +65,14 @@ function updateEngineMenuPosition() {
   const belowTop = Math.min(viewportHeight - 8, bounds.bottom + 8)
   const belowSpace = Math.max(0, viewportHeight - belowTop - 8)
   const aboveSpace = Math.max(0, bounds.top - 16)
-  const menuHeight = engineMenu.value?.scrollHeight || availableEngines.value.length * 42 + 2
+  const menuHeight = engineMenu.value?.scrollHeight ? engineMenu.value.scrollHeight + 2 : availableEngines.value.length * 42 + 14
   const openAbove = menuHeight > belowSpace && aboveSpace > belowSpace
   const availableSpace = openAbove ? aboveSpace : belowSpace
   const maxHeight = Math.min(menuHeight, availableSpace)
   const top = openAbove ? Math.max(8, bounds.top - 8 - maxHeight) : belowTop
-  const maxLeft = Math.max(8, viewportWidth - 198)
+  // offsetWidth excludes the entry animation's scale and follows future CSS changes.
+  const menuWidth = engineMenu.value?.offsetWidth || Math.min(204, viewportWidth - 16)
+  const maxLeft = Math.max(8, viewportWidth - menuWidth - 8)
   const left = Math.min(Math.max(8, bounds.left + 8), maxLeft)
   engineMenuPosition.value = { top, left, maxHeight }
 }
@@ -253,6 +255,7 @@ defineExpose({ focusSearch, showTranslationError })
         @compositionend="isComposingSearchQuery = false"
         @keydown="handleLocalSearchKeydown"
       />
+      <kbd v-if="!modelValue && !localSearch" class="search-key-hint" aria-hidden="true">/</kbd>
       <button v-if="!localSearch" class="quick-translate" type="button" :disabled="!modelValue.trim()" aria-label="翻译成简体中文" title="翻译成简体中文" @click="requestTranslation">译</button>
       <button class="submit-search" type="submit" :aria-label="localSearch ? '打开第一个匹配的快捷入口' : '搜索'"><Search :size="18" /></button>
     </form>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { X } from '@lucide/vue'
+import { launcherIcons } from './launcherIcons'
 import type { LauncherItem } from '../types'
 
 const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean }>(), {
@@ -205,8 +206,9 @@ onBeforeUnmount(() => {
           @contextmenu="showContextMenu($event, item, $event.clientX, $event.clientY)"
           @keydown="handleItemKeydown($event, item)"
         >
-          <span class="home-dock-icon" :style="{ backgroundColor: item.color, '--dock-glow-color': item.color }">
-            <img v-if="item.icon" :src="item.icon" alt="" />
+          <span class="home-dock-icon" :class="{ builtin: item.action }" :data-action="item.action" :style="{ backgroundColor: item.action ? undefined : item.color, '--dock-glow-color': item.color }">
+            <component v-if="item.action && launcherIcons[item.action]" :is="launcherIcons[item.action]" :size="24" :stroke-width="1.8" />
+            <img v-else-if="item.icon" :src="item.icon" alt="" />
             <span v-else>{{ item.mark }}</span>
           </span>
         </button>

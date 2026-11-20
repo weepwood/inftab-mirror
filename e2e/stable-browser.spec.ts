@@ -116,7 +116,7 @@ test('stable browsers show focus and readable colors on native settings selects'
   await expect(theme).toBeFocused()
   await expect.poll(() => theme.evaluate((element) => getComputedStyle(element).outlineWidth)).toBe('2px')
   await theme.selectOption('dark')
-  await expect.poll(() => theme.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(37, 42, 52)')
+  await expect.poll(() => theme.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(38, 50, 42)')
   await expect.poll(() => theme.evaluate((element) => getComputedStyle(element).color)).toBe('rgb(226, 230, 237)')
 })
 

@@ -95,6 +95,19 @@ describe('SettingsPanel home dock', () => {
   })
 })
 
+describe('SettingsPanel wallpaper selection', () => {
+  it('announces the selected built-in wallpaper only when no custom wallpaper is active', async () => {
+    wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+    const forest = wrapper.get('button[aria-label="雾林"]')
+    expect(forest.attributes('aria-pressed')).toBe('true')
+    expect(forest.classes()).toContain('selected')
+
+    await wrapper.setProps({ preferences: { ...defaultPreferences, customWallpaper: 'https://example.com/forest.jpg' } })
+    expect(forest.attributes('aria-pressed')).toBe('false')
+    expect(forest.classes()).not.toContain('selected')
+  })
+})
+
 describe('SettingsPanel local wallpaper upload', () => {
   it('compresses a selected image and emits it as an offline wallpaper', async () => {
     const bitmap = { width: 4000, height: 2000, close: vi.fn() }

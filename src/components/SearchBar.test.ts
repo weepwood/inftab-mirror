@@ -186,9 +186,14 @@ describe('SearchBar keyboard navigation', () => {
 
       const menu = document.querySelector<HTMLElement>('.engine-menu')!
       expect(menu.style.top).toBe('8px')
-      expect(menu.style.left).toBe('602px')
+      expect(menu.style.left).toBe('588px')
       expect(menu.style.maxHeight).toBe('554px')
       expect(menu.querySelectorAll('[role="option"]')).toHaveLength(27)
+
+      Object.defineProperty(menu, 'offsetWidth', { configurable: true, value: 240 })
+      window.dispatchEvent(new Event('resize'))
+      await wrapper.vm.$nextTick()
+      expect(menu.style.left).toBe('552px')
     } finally {
       if (heightDescriptor) Object.defineProperty(window, 'innerHeight', heightDescriptor)
       else Reflect.deleteProperty(window, 'innerHeight')
