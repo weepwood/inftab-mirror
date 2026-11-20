@@ -1,7 +1,4 @@
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
+import { isRecord } from '../data/validation'
 export function valuesEqual(left: unknown, right: unknown) {
   return Object.is(left, right) || JSON.stringify(left) === JSON.stringify(right)
 }

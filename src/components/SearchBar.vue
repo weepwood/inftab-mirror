@@ -53,6 +53,10 @@ function showTranslationError() {
   translationError.value = true
 }
 
+function reloadPage() {
+  window.location.reload()
+}
+
 function updateEngineMenuPosition() {
   const bounds = searchBox.value?.getBoundingClientRect()
   if (!bounds) return
@@ -252,7 +256,7 @@ defineExpose({ focusSearch, showTranslationError })
       <button v-if="!localSearch" class="quick-translate" type="button" :disabled="!modelValue.trim()" aria-label="翻译成简体中文" title="翻译成简体中文" @click="requestTranslation">译</button>
       <button class="submit-search" type="submit" :aria-label="localSearch ? '打开第一个匹配的快捷入口' : '搜索'"><Search :size="18" /></button>
     </form>
-    <p v-if="translationError" class="search-action-error" role="status" aria-live="polite">翻译工具暂时无法加载，请重试。</p>
+    <p v-if="translationError" class="search-action-error" role="status" aria-live="polite">翻译工具暂时无法加载，请重试。<button class="text-button" type="button" @click="reloadPage">重新加载页面</button></p>
     <slot v-if="localSearch" name="local-results" />
     <Teleport to="body">
       <Transition name="engine-menu">

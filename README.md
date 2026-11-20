@@ -4,10 +4,10 @@ Infinity New Tab 的可维护前端重建。页面使用 Vue 3、TypeScript 和 
 
 ## 本地开发
 
-需要 Node.js 20.19+、22.12+ 或 24+。
+需要 Node.js 22.22.2+（22.x）、24.15.0+（24.x）或 26+，推荐使用 Node.js 24 LTS。仓库提供 `.nvmrc`，可先运行 `nvm install` / `nvm use` 切换到推荐版本。版本要求覆盖开发、构建和 jsdom 测试环境。
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
@@ -18,11 +18,22 @@ npm run build
 npm run preview
 ```
 
-Run the automated regression suite with:
+运行单元和组件回归测试：
 
 ```sh
 npm test
 ```
+
+提交前可用一条命令完成类型与插件契约检查、回归测试、生产构建、体积预算及扩展包校验：
+
+```sh
+npm run verify
+npm audit
+```
+
+首屏 JS gzip 预算为 58.5 KiB，全部 JS gzip 预算为 133.5 KiB。构建会合并静态启动依赖以减少碎片请求；工具面板、小组件和备份解析仍按需加载。加载失败时可重试；如果浏览器缓存了失败模块，可主动选择“重新加载页面”恢复。
+
+`package.json` 为开发依赖 `js-beautify` 的 `editorconfig`、`glob` 子依赖指定了修复版本，并在锁文件中升级了 `undici`，用于消除已知安全问题。这些依赖不进入网站或扩展的运行时代码；上游依赖升级后应复查并移除不再需要的 overrides。
 
 Run the browser-level user-flow checks with:
 

@@ -55,6 +55,12 @@ export function lazyPluginComponent(loader: AsyncComponentLoader, loadingMessage
             'aria-label': '重试加载',
             onClick: retryManually,
           }, '重试加载'),
+          h('button', {
+            class: 'text-button plugin-page-reload',
+            type: 'button',
+            title: '浏览器可能缓存了加载失败的模块；重新加载页面后再试。',
+            onClick: () => window.location.reload(),
+          }, '重新加载页面'),
         ])
       }
 

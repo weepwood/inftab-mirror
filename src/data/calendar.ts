@@ -1,3 +1,7 @@
+import { toLocalDateKey } from './localDate'
+
+export { toLocalDateKey } from './localDate'
+
 export interface CalendarDay {
   date: Date
   dateKey: string
@@ -10,13 +14,6 @@ function localDate(year: number, month: number, day: number) {
   date.setFullYear(year, month, day)
   date.setHours(0, 0, 0, 0)
   return date
-}
-
-export function toLocalDateKey(date: Date) {
-  const year = String(date.getFullYear()).padStart(4, '0')
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
 }
 
 export function getCalendarDays(year: number, month: number): CalendarDay[] {

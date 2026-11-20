@@ -1,3 +1,4 @@
+import { isRecord } from './validation'
 export interface WeatherLocation {
   name: string
   admin1?: string
@@ -17,10 +18,6 @@ const validWeatherCodes = new Set([0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 6
 
 export function isValidWeatherCode(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && validWeatherCodes.has(value)
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function isLocation(value: unknown): value is WeatherLocation {

@@ -85,6 +85,8 @@ describe('lazy plugin component loading', () => {
     expect(loader).toHaveBeenCalledTimes(3)
     expect(wrapper.get('[role="alert"]').text()).toContain('Plugin failed to load.')
     expect(wrapper.get('[aria-label="重试加载"]')).toBeTruthy()
+    expect(wrapper.get('.plugin-page-reload').text()).toBe('重新加载页面')
+    expect(wrapper.get('.plugin-page-reload').attributes('title')).toContain('缓存')
 
     await wrapper.get('[aria-label="重试加载"]').trigger('click')
     await flushPromises()

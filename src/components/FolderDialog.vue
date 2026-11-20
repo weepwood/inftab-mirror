@@ -38,7 +38,8 @@ watch(() => props.folder, (folder) => {
 
 function focusInitialElement() {
   if (editing.value) titleInput.value?.focus()
-  else dialog.value?.querySelector<HTMLElement>('.folder-link, header button')?.focus()
+  else (dialog.value?.querySelector<HTMLElement>('.folder-launcher')
+    ?? dialog.value?.querySelector<HTMLElement>('header button'))?.focus()
 }
 
 watch(editing, async () => {

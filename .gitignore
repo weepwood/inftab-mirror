@@ -16,6 +16,7 @@ capture_report.json
 live_check.js
 node_modules/
 dist/
+.cache/
 .vite/
 playwright-report/
 test-results/
