@@ -483,11 +483,8 @@ function openFolderEditor(folder?: ShortcutFolder) {
   folderDialogOpen.value = true
 }
 
-function addHomeWorkspace() {
-  const names = new Set(homeWorkspaces.value.map((workspace) => workspace.name.toLocaleLowerCase()))
-  let index = 1
-  while (names.has(`工作区 ${index}`.toLocaleLowerCase())) index += 1
-  createHomeWorkspace(`工作区 ${index}`)
+function addHomeWorkspace(name: string): boolean {
+  return Boolean(createHomeWorkspace(name))
 }
 
 function requestHomeWorkspaceRemoval(id: string) {
@@ -495,7 +492,7 @@ function requestHomeWorkspaceRemoval(id: string) {
   if (!workspace) return
   requestDestructiveAction(
     '删除工作区？',
-    `“${workspace.name}”中的快捷入口和文件夹会移回“主页”，不会被删除。`,
+    `“${workspace.name}”中的快捷入口和文件夹会移回“${homeWorkspaces.value.find((item) => item.id === 'default')?.name ?? '主页'}”，不会被删除。`,
     () => removeHomeWorkspace(id),
   )
 }
@@ -902,8 +899,8 @@ onBeforeUnmount(() => {
         :workspaces="homeWorkspaces"
         :active-id="activeHomeWorkspaceId"
         @select="activeHomeWorkspaceId = $event"
-        @create="addHomeWorkspace"
-        @rename="renameHomeWorkspace"
+        :create-workspace="addHomeWorkspace"
+        :rename-workspace="renameHomeWorkspace"
         @move="moveHomeWorkspace"
         @remove="requestHomeWorkspaceRemoval"
       />

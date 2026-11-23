@@ -5,173 +5,105 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import HomeWorkspaceTabs from './HomeWorkspaceTabs.vue'
 
 let wrapper: VueWrapper | undefined
-
-afterEach(() => {
-  wrapper?.unmount()
-  wrapper = undefined
-  vi.useRealTimers()
-  document.body.innerHTML = ''
-})
-
 const workspaces = [
   { id: 'default', name: '主页', itemIds: [] },
-  { id: 'reading-list', name: '阅读', itemIds: [] },
-  { id: 'notes', name: '笔记', itemIds: [] },
+  { id: 'work', name: '工作', itemIds: [] },
+  { id: 'tools', name: '工具', itemIds: [] },
 ]
+const createWorkspace = vi.fn(() => true)
+const renameWorkspace = vi.fn(() => true)
+function setup(items = workspaces) {
+  wrapper = mount(HomeWorkspaceTabs, { attachTo: document.body, props: { workspaces: items, activeId: 'work', createWorkspace, renameWorkspace } })
+  return wrapper
+}
+afterEach(() => { wrapper?.unmount(); wrapper = undefined; vi.clearAllMocks(); document.body.innerHTML = '' })
 
 describe('HomeWorkspaceTabs', () => {
-  it('exposes the active workspace as a pressed button in a labeled group', () => {
-    wrapper = mount(HomeWorkspaceTabs, { props: { workspaces, activeId: 'default' } })
-
-    expect(wrapper.get('[role="group"]').attributes('aria-label')).toBe('切换工作区')
-    expect(wrapper.get('[data-workspace-tab="default"]').attributes('aria-pressed')).toBe('true')
-    expect(wrapper.get('[data-workspace-tab="reading-list"]').attributes('aria-pressed')).toBe('false')
-    expect(wrapper.find('[role="tablist"], [role="tab"]').exists()).toBe(false)
-    expect(wrapper.get('.home-workspace-bar').classes()).not.toContain('is-open')
-    expect(wrapper.get('.home-workspace-trigger').attributes('aria-expanded')).toBe('false')
-  })
-
-  it('opens the quarter-circle menu from the corner trigger', async () => {
-    wrapper = mount(HomeWorkspaceTabs, { props: { workspaces, activeId: 'default' } })
-
-    await wrapper.get('.home-workspace-trigger').trigger('click')
-
-    expect(wrapper.get('.home-workspace-bar').classes()).toContain('is-open')
-    expect(wrapper.get('.home-workspace-trigger').attributes('aria-expanded')).toBe('true')
-    // Each workspace has one slot; the trigger itself becomes the create button.
-    const slots = wrapper.findAll('.home-workspace-slot')
-    expect(slots).toHaveLength(workspaces.length)
-    for (const slot of slots) {
-      expect(slot.attributes('style')).toContain('--a:')
-      expect(slot.attributes('style')).toContain('--r-open:')
-    }
-  })
-
-  it('turns the open trigger into a create action and points it toward hovered workspaces', async () => {
-    wrapper = mount(HomeWorkspaceTabs, { props: { workspaces, activeId: 'default' } })
-    const trigger = wrapper.get('.home-workspace-trigger')
-
+  it('shows the current name and opens only on click; selecting closes and restores focus', async () => {
+    const w = setup()
+    const trigger = w.get('.home-workspace-trigger')
+    expect(trigger.text()).toContain('工作')
+    await trigger.trigger('focus')
+    expect(w.find('.workspace-panel').exists()).toBe(false)
     await trigger.trigger('click')
-    expect(trigger.attributes('aria-label')).toBe('新建工作区')
-    await trigger.trigger('click')
-    expect(wrapper.emitted('create')).toHaveLength(1)
-
-    await wrapper.get('[data-workspace-tab="reading-list"]').trigger('pointerenter')
-    expect(wrapper.get('.home-workspace-bar').classes()).toContain('is-pointing')
-    expect(trigger.attributes('aria-label')).toBe('指向工作区')
+    expect(trigger.attributes('aria-expanded')).toBe('true')
+    expect(w.get('[data-workspace-tab="work"]').attributes('aria-pressed')).toBe('true')
+    expect(w.get('[data-workspace-tab="tools"]').text()).toContain('工具')
+    await w.get('[data-workspace-tab="tools"]').trigger('click')
+    expect(w.emitted('select')).toEqual([['tools']])
+    expect(w.find('.workspace-panel').exists()).toBe(false)
+    expect(document.activeElement).toBe(trigger.element)
   })
-
-  it('does not collapse under a stationary mouse when closing a menu schedules focusout', async () => {
-    vi.useFakeTimers()
-    wrapper = mount(HomeWorkspaceTabs, { attachTo: document.body, props: { workspaces, activeId: 'default' } })
-    const root = wrapper.get('.home-workspace-bar')
-    const outside = document.createElement('button')
-    document.body.append(outside)
-    let hovered = true
-    const matches = vi.spyOn(root.element, 'matches').mockImplementation((selector) => selector === ':hover' && hovered)
-    await root.trigger('pointerenter', { pointerType: 'mouse' })
-    await root.trigger('focusout', { relatedTarget: outside })
-    await vi.advanceTimersByTimeAsync(300)
-    expect(root.classes()).toContain('is-open')
-    hovered = false
-    await root.trigger('pointerleave', { pointerType: 'mouse' })
-    await vi.advanceTimersByTimeAsync(300)
-    expect(root.classes()).not.toContain('is-open')
-    matches.mockRestore()
+  it('supports keyboard focus movement without switching and layered Escape', async () => {
+    const w = setup()
+    await w.get('.home-workspace-trigger').trigger('click')
+    const work = w.get('[data-workspace-tab="work"]')
+    expect(document.activeElement).toBe(work.element)
+    await work.trigger('keydown', { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(w.get('[data-workspace-tab="tools"]').element)
+    expect(w.emitted('select')).toBeUndefined()
+    await w.get('[data-workspace-action="default"]').trigger('click')
+    expect(document.activeElement?.textContent).toContain('重命名')
+    const buttons = w.findAll('[role="menuitem"]')
+    expect(buttons.slice(1).every((button) => button.attributes('disabled') !== undefined)).toBe(true)
+    await buttons[0]!.trigger('keydown', { key: 'Escape' })
+    expect(document.activeElement).toBe(w.get('[data-workspace-action="default"]').element)
+    await w.get('[data-workspace-action="default"]').trigger('keydown', { key: 'Escape' })
+    expect(document.activeElement).toBe(w.get('.home-workspace-trigger').element)
   })
-
-  it('fills each ring before expanding outward, up to four rings', async () => {
-    const manyWorkspaces = Array.from({ length: 20 }, (_, index) => ({
-      id: index === 0 ? 'default' : `workspace-${index}`,
-      name: `工作区 ${index}`,
-      itemIds: [],
-    }))
-    wrapper = mount(HomeWorkspaceTabs, { props: { workspaces: manyWorkspaces.slice(0, 2), activeId: 'default' } })
-
-    const countsFor = () => {
-      const counts = new Map<number, number>()
-      for (const slot of wrapper!.findAll('.home-workspace-slot')) {
-        const ring = Number(slot.attributes('style')?.match(/--ring:\s*(\d+)/)?.[1])
-        counts.set(ring, (counts.get(ring) ?? 0) + 1)
-      }
-      return [...counts.values()]
-    }
-
-    expect(countsFor()).toEqual([2])
-    for (const [workspaceCount, expected] of [
-      [3, [3]],
-      [4, [3, 1]],
-      [7, [3, 4]],
-      [8, [3, 4, 1]],
-      [13, [3, 4, 6]],
-      [14, [3, 4, 6, 1]],
-      [20, [3, 4, 6, 7]],
-    ] as const) {
-      await wrapper.setProps({ workspaces: manyWorkspaces.slice(0, workspaceCount), activeId: 'default' })
-      expect(countsFor()).toEqual(expected)
-    }
+  it('validates creation and reports failed saves without losing the draft', async () => {
+    const w = setup()
+    await w.get('.home-workspace-trigger').trigger('click')
+    await w.get('.workspace-create').trigger('click')
+    await w.get('form').trigger('submit')
+    expect(w.get('[role="alert"]').text()).toContain('请输入')
+    await w.get('input').setValue('工作')
+    await w.get('form').trigger('submit')
+    expect(w.get('[role="alert"]').text()).toContain('已被使用')
+    await w.get('input').setValue('😀'.repeat(41))
+    await w.get('form').trigger('submit')
+    expect(w.get('[role="alert"]').text()).toContain('40')
+    createWorkspace.mockReturnValueOnce(false)
+    await w.get('input').setValue('设计')
+    await w.get('form').trigger('submit')
+    expect(w.get('[role="alert"]').text()).toContain('创建失败')
+    await w.get('form').trigger('submit')
+    expect(createWorkspace).toHaveBeenLastCalledWith('设计')
+    expect(w.find('.workspace-panel').exists()).toBe(false)
   })
-
-  it('moves selection and keyboard focus with horizontal arrow keys', async () => {
-    wrapper = mount(HomeWorkspaceTabs, { attachTo: document.body, props: { workspaces, activeId: 'default' } })
-    const current = wrapper.get('[data-workspace-tab="default"]')
-    const next = wrapper.get('[data-workspace-tab="reading-list"]')
-
-    await current.trigger('keydown', { key: 'ArrowRight' })
+  it('renames, moves and removes through visible actions', async () => {
+    const w = setup()
+    await w.get('.home-workspace-trigger').trigger('click')
+    await w.get('[data-workspace-action="tools"]').trigger('click')
+    await w.findAll('[role="menuitem"]')[0]!.trigger('click')
+    await w.get('input').setValue('项目')
+    await w.get('form').trigger('submit')
+    expect(renameWorkspace).toHaveBeenCalledWith('tools', '项目')
+    await w.get('[data-workspace-action="tools"]').trigger('click')
+    await w.findAll('[role="menuitem"]')[1]!.trigger('click')
+    expect(w.emitted('move')).toEqual([['tools', -1]])
+    await w.get('[data-workspace-action="tools"]').trigger('click')
+    await w.findAll('[role="menuitem"]')[3]!.trigger('click')
+    expect(w.emitted('remove')).toEqual([['tools']])
+    expect(document.activeElement).toBe(w.get('.home-workspace-trigger').element)
+  })
+  it('filters many workspaces and explains the limit', async () => {
+    const many = Array.from({ length: 20 }, (_, i) => ({ id: `${i}`, name: `工作区 ${i}`, itemIds: [] }))
+    const w = setup(many)
+    await w.get('.home-workspace-trigger').trigger('click')
+    await w.get('[aria-label="查找工作区"]').setValue('19')
+    expect(w.findAll('[data-workspace-tab]')).toHaveLength(1)
+    expect(w.get('[data-workspace-tab]').text()).toContain('19')
+    expect(w.get('.workspace-create').attributes('disabled')).toBeDefined()
+    expect(w.get('.workspace-create').text()).toContain('上限')
+    await w.get('[aria-label="查找工作区"]').setValue('不存在')
+    expect(w.get('.workspace-no-results').text()).toContain('没有找到')
+  })
+  it('closes when a pointer is pressed outside', async () => {
+    const w = setup()
+    await w.get('.home-workspace-trigger').trigger('click')
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
     await nextTick()
-
-    expect(wrapper.emitted('select')).toEqual([['reading-list']])
-    expect(document.activeElement).toBe(next.element)
-  })
-
-  it('keeps a focused rename alive after pointer leave and closes after focus leaves the workspace', async () => {
-    vi.useFakeTimers()
-    wrapper = mount(HomeWorkspaceTabs, { attachTo: document.body, props: { workspaces, activeId: 'notes' } })
-    await wrapper.get('[data-workspace-tab="notes"]').trigger('contextmenu')
-    await wrapper.get('[role="menuitem"]').trigger('click')
-    const input = wrapper.get('input[aria-label="工作区名称"]')
-    expect(document.activeElement).toBe(input.element)
-    await wrapper.trigger('pointerleave', { pointerType: 'mouse' })
-    await vi.advanceTimersByTimeAsync(300)
-    expect(wrapper.find('input[aria-label="工作区名称"]').exists()).toBe(true)
-    expect(document.activeElement).toBe(input.element)
-    await input.setValue('项目')
-    await wrapper.get('form').trigger('submit')
-    expect(wrapper.emitted('rename')).toEqual([['notes', '项目']])
-    expect(document.activeElement).toBe(wrapper.get('[data-workspace-tab="notes"]').element)
-
-    const outside = document.createElement('button')
-    document.body.append(outside)
-    outside.focus()
-    await vi.advanceTimersByTimeAsync(300)
-    expect(wrapper.classes()).not.toContain('is-open')
-  })
-
-  it('offers rename, move and delete from each chip context menu', async () => {
-    wrapper = mount(HomeWorkspaceTabs, { props: { workspaces, activeId: 'notes' } })
-
-    // The menu only appears on demand.
-    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
-    await wrapper.get('[data-workspace-tab="notes"]').trigger('contextmenu')
-
-    const menu = wrapper.get('[role="menu"]')
-    expect(menu.attributes('aria-label')).toBe('笔记 的操作')
-    expect(menu.get('.context-menu-title').text()).toBe('笔记')
-    let items = menu.findAll('[role="menuitem"]')
-    expect(items[0].text()).toContain('重命名')
-    // 笔记 is last, so it can move left but not right.
-    expect(items[1].attributes('disabled')).toBeUndefined()
-    expect(items[2].attributes('disabled')).toBeDefined()
-
-    await items[1].trigger('click')
-    expect(wrapper.emitted('move')).toEqual([['notes', -1]])
-    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
-
-    // 主页 is pinned first, so it can neither move nor be deleted.
-    await wrapper.get('[data-workspace-tab="default"]').trigger('contextmenu')
-    items = wrapper.findAll('[role="menuitem"]')
-    expect(items[1].attributes('disabled')).toBeDefined()
-    expect(items[2].attributes('disabled')).toBeDefined()
-    expect(items[3].attributes('disabled')).toBeDefined()
+    expect(w.find('.workspace-panel').exists()).toBe(false)
   })
 })

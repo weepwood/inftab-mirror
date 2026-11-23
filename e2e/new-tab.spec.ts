@@ -30,31 +30,28 @@ test.afterEach(async ({ page }) => {
   expect(pageErrorsByPage.get(page) ?? []).toEqual([])
 })
 
-// The workspace switcher is a circular control in the corner that fans open on hover/focus.
+// The switcher opens explicitly and exposes full workspace names.
 async function openWorkspaceMenu(page: Page) {
-  await page.locator('.home-workspace-trigger').hover()
-  const menu = page.locator('.home-workspace-bar')
-  await expect(menu).toHaveClass(/is-open/)
-  // The open class precedes the fan-out transition. Clicking a chip while it
-  // still overlaps the trigger can move the pointer out and start auto-close.
-  await expect.poll(() => menu.evaluate((element) => element.getAnimations({ subtree: true })
-    .every((animation) => animation.playState !== 'running'))).toBe(true)
+  const trigger = page.locator('.home-workspace-trigger')
+  if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click()
+  await expect(page.getByRole('group', { name: '切换工作区' })).toBeVisible()
 }
-
-// Chips are circles showing the first character; the full name stays on aria-label.
 function workspaceChip(page: Page, name: string) {
-  return page.getByRole('button', { name, exact: true })
+  return page.getByRole('group', { name: '切换工作区' }).getByRole('button', { name, exact: true })
 }
-
 function workspaceNames(page: Page) {
   return page.locator('.home-workspace-tab').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')))
 }
-
-// Rename, move and delete live in the per-chip context menu.
+async function createWorkspace(page: Page, name: string) {
+  await openWorkspaceMenu(page)
+  await page.getByRole('button', { name: '新建工作区' }).click()
+  await page.getByRole('textbox', { name: '工作区名称' }).fill(name)
+  await page.getByRole('button', { name: '创建', exact: true }).click()
+}
 async function openWorkspaceActions(page: Page, name: string) {
   await openWorkspaceMenu(page)
-  await workspaceChip(page, name).click({ button: 'right' })
-  await expect(page.getByRole('menu')).toBeVisible()
+  await page.getByRole('button', { name: `${name} 的操作` }).click()
+  await expect(page.getByRole('menu', { name: `${name} 的操作` })).toBeVisible()
 }
 
 test('search engine menu keeps Tab focus in the search controls', async ({ page }) => {
@@ -279,9 +276,8 @@ test('minimal mode keeps search available and restores the homepage with Escape'
 })
 
 test('workspace tabs isolate shortcuts and persist the active workspace', async ({ page }) => {
-  await openWorkspaceMenu(page)
-  await page.getByRole('button', { name: '新建工作区' }).click()
-  await expect(page.getByRole('button', { name: '工作区 1', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await createWorkspace(page, '工作区 1')
+  await expect(page.locator('.home-workspace-trigger')).toContainText('工作区 1')
 
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByRole('button', { name: /添加快捷入口/ }).click()
@@ -312,7 +308,7 @@ test('workspace tabs isolate shortcuts and persist the active workspace', async 
   await page.getByRole('button', { name: '工作区 1', exact: true }).click()
   await expect(dock.getByRole('button', { name: '打开Workspace only' })).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('button', { name: '工作区 1', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.home-workspace-trigger')).toContainText('工作区 1')
   await page.keyboard.press('Control+f')
   await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Workspace only')
   await expect(page.getByRole('option', { name: /Workspace only/ })).toBeVisible()
@@ -325,30 +321,31 @@ test('workspace tabs isolate shortcuts and persist the active workspace', async 
   await workspaceName.press('Enter')
   await expect(workspaceChip(page, '娱乐')).toHaveAttribute('aria-pressed', 'true')
   await openWorkspaceActions(page, '娱乐')
-  await page.getByRole('menuitem', { name: '删除' }).click()
+  await page.getByRole('menuitem', { name: '删除工作区' }).click()
   const confirmation = page.getByRole('alertdialog', { name: '删除工作区？' })
   await expect(confirmation).toContainText('会移回“主页”')
   await confirmation.getByRole('button', { name: '确认删除' }).click()
-  await expect(page.getByRole('button', { name: '主页', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.home-workspace-trigger')).toContainText('主页')
   await expect(page.getByRole('option', { name: /Workspace only/ })).toBeVisible()
   await expect(page.getByRole('navigation', { name: '常驻 Dock' }).getByRole('button', { name: '打开Workspace only' })).toBeVisible()
 })
 
 test('workspace tabs can be reordered without moving the homepage and persist their order', async ({ page }) => {
+  await createWorkspace(page, '工作区 1')
+  await createWorkspace(page, '工作区 2')
   await openWorkspaceMenu(page)
-  await page.getByRole('button', { name: '新建工作区' }).click()
-  await page.getByRole('button', { name: '新建工作区' }).click()
   await expect.poll(() => workspaceNames(page)).toEqual(['主页', '工作区 1', '工作区 2'])
 
   await openWorkspaceActions(page, '工作区 2')
-  await page.getByRole('menuitem', { name: '左移' }).click()
+  await page.getByRole('menuitem', { name: '上移' }).click()
 
   await expect.poll(() => workspaceNames(page)).toEqual(['主页', '工作区 2', '工作区 1'])
   await expect(workspaceChip(page, '工作区 2')).toHaveAttribute('aria-pressed', 'true')
   // 工作区 2 now sits right after the pinned 主页, so it can no longer move left.
   await openWorkspaceActions(page, '工作区 2')
-  await expect(page.getByRole('menuitem', { name: '左移' })).toBeDisabled()
+  await expect(page.getByRole('menuitem', { name: '上移' })).toBeDisabled()
   await page.reload()
+  await openWorkspaceMenu(page)
   await expect.poll(() => workspaceNames(page)).toEqual(['主页', '工作区 2', '工作区 1'])
 })
 
@@ -1167,18 +1164,15 @@ test('simultaneous widget selections in separate tabs are combined', async ({ pa
 test('simultaneous workspace creation in separate tabs preserves both workspaces', async ({ page, context }) => {
   const secondTab = await context.newPage()
   await secondTab.goto('/')
-  await openWorkspaceMenu(page)
-  await openWorkspaceMenu(secondTab)
-  await Promise.all([
-    page.getByRole('button', { name: '新建工作区' }).click(),
-    secondTab.getByRole('button', { name: '新建工作区' }).click(),
-  ])
+  await Promise.all([createWorkspace(page, '工作'), createWorkspace(secondTab, '学习')])
 
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.home-workspaces.v1') ?? '[]')))
     .toHaveLength(3)
   await expect.poll(() => page.evaluate(() => new Set(
     (JSON.parse(localStorage.getItem('inftab.home-workspaces.v1') ?? '[]') as { name: string }[]).map((item) => item.name.toLocaleLowerCase()),
   ).size)).toBe(3)
+  await openWorkspaceMenu(page)
+  await openWorkspaceMenu(secondTab)
   await expect(page.locator('.home-workspace-tab')).toHaveCount(3)
   await expect(secondTab.locator('.home-workspace-tab')).toHaveCount(3)
   await secondTab.close()
@@ -1187,9 +1181,8 @@ test('simultaneous workspace creation in separate tabs preserves both workspaces
 test('a concurrent shortcut stays visible when another tab deletes its workspace', async ({ page, context }) => {
   const secondTab = await context.newPage()
   await secondTab.goto('/')
-  await openWorkspaceMenu(page)
-  await page.getByRole('button', { name: '新建工作区' }).click()
-  await expect(page.getByRole('button', { name: '工作区 1', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await createWorkspace(page, '工作区 1')
+  await expect(page.locator('.home-workspace-trigger')).toContainText('工作区 1')
   const storageKey = 'inftab.home-workspaces.v1'
   await expect.poll(() => page.evaluate((key) =>
     (JSON.parse(localStorage.getItem(key) ?? '[]') as { name: string }[]).some((item) => item.name === '工作区 1'), storageKey,
@@ -1213,11 +1206,11 @@ test('a concurrent shortcut stays visible when another tab deletes its workspace
   await page.evaluate(({ key, value }) => localStorage.setItem(key, value!), { key: storageKey, value: previous })
   await secondTab.reload()
   await openWorkspaceActions(secondTab, '工作区 1')
-  await secondTab.getByRole('menuitem', { name: '删除' }).click()
+  await secondTab.getByRole('menuitem', { name: '删除工作区' }).click()
   const confirmation = secondTab.getByRole('alertdialog', { name: '删除工作区？' })
   await confirmation.getByRole('button', { name: '确认删除' }).click()
 
-  await expect(page.getByRole('button', { name: '主页', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.home-workspace-trigger')).toContainText('主页')
   await page.keyboard.press('Control+f')
   await page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' }).fill('Concurrent link')
   await expect(page.getByRole('option', { name: /Concurrent link/ })).toBeVisible()
