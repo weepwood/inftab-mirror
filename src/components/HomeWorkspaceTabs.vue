@@ -1,341 +1,201 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { closeMenuOnFocusout, navigateMenu } from './menuNavigation'
-import { ArrowLeft, ArrowRight, Check, LayoutGrid, Pencil, Plus, Trash2, X } from '@lucide/vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Check, ChevronDown, LayoutGrid, MoreHorizontal, Plus, Search } from '@lucide/vue'
 import { defaultHomeWorkspaceId, maxHomeWorkspaces, maxHomeWorkspaceNameLength, type HomeWorkspace } from '../data/homeWorkspaces'
-import { truncateCodePoints } from '../data/text'
+import { navigateMenu } from './menuNavigation'
 
 const props = defineProps<{
   workspaces: HomeWorkspace[]
   activeId: string
+  createWorkspace: (name: string) => boolean
+  renameWorkspace: (id: string, name: string) => boolean
 }>()
 const emit = defineEmits<{
   select: [id: string]
-  create: []
-  rename: [id: string, name: string]
   move: [id: string, direction: -1 | 1]
   remove: [id: string]
 }>()
 
-const root = ref<HTMLDivElement>()
-const chipList = ref<HTMLDivElement>()
-const menu = ref<HTMLDivElement>()
-const nameInput = ref<HTMLInputElement>()
-const triggerButton = ref<HTMLButtonElement>()
-
-const editing = ref(false)
-const renamingId = ref('')
-const menuOpen = ref(false)
+const root = ref<HTMLElement>()
+const trigger = ref<HTMLButtonElement>()
+const list = ref<HTMLElement>()
+const input = ref<HTMLInputElement>()
+const open = ref(false)
+const query = ref('')
+const actionId = ref('')
+const editingId = ref<string | null>(null) // empty string means create
 const draft = ref('')
-const nameError = ref('')
-const contextWorkspace = ref<HomeWorkspace>()
-const contextPosition = ref({ left: 0, top: 0 })
-const hoveredWorkspaceId = ref('')
-const arrowAngle = ref(0)
-let closeTimer = 0
-let touchInteraction = false
+const error = ref('')
+const activeWorkspace = computed(() => props.workspaces.find((item) => item.id === props.activeId) ?? props.workspaces[0])
+const filtered = computed(() => {
+  const term = query.value.trim().toLocaleLowerCase()
+  return props.workspaces.filter((item) => item.name.toLocaleLowerCase().includes(term))
+})
+const editingWorkspace = computed(() => props.workspaces.find((item) => item.id === editingId.value))
 
-// Workspace chips fan out along a quarter circle anchored at the bottom-right corner.
-const ARC_START = 8
-const ARC_END = 90
-
-function ringCounts(total: number) {
-  if (total <= 3) return [total]
-  if (total <= 7) return [3, total - 3]
-  if (total <= 13) return [3, 4, total - 7]
-  return [3, 4, 6, total - 13]
+function focusTab(id: string) {
+  void nextTick(() => [...(list.value?.querySelectorAll<HTMLButtonElement>('[data-workspace-tab]') ?? [])]
+    .find((button) => button.dataset.workspaceTab === id)?.focus())
 }
-
-function slotStyle(index: number, total: number) {
-  const counts = ringCounts(total)
-  let ring = 0
-  let ringIndex = index
-  while (ringIndex >= counts[ring]!) {
-    ringIndex -= counts[ring]!
-    ring += 1
-  }
-  const count = counts[ring]!
-  const step = count > 1 ? (ARC_END - ARC_START) / (count - 1) : 0
-  const angle = count > 1 ? ARC_END - ringIndex * step : (ARC_START + ARC_END) / 2
-  const radius = Math.max(88 + ring * 60, count > 1 ? 56 / (step * Math.PI / 180) : 88)
-  const mobileRadius = counts.length === 1 ? 96 : 48 + ring * 36
-  return {
-    '--a': `${angle.toFixed(2)}deg`,
-    '--r-open': `min(${Math.round(radius)}px, 40vmin)`,
-    '--r-mobile': `${mobileRadius}px`,
-    '--i': `${index}`,
-    '--ring-i': `${ringIndex}`,
-    '--n': `${total}`,
-    '--ring': `${ring}`,
-  }
+function focusAction(id: string) {
+  void nextTick(() => [...(list.value?.querySelectorAll<HTMLButtonElement>('[data-workspace-action]') ?? [])]
+    .find((button) => button.dataset.workspaceAction === id)?.focus())
 }
-
-// Chips show the first character; the full name stays on aria-label, title and the context menu.
-function initial(name: string) {
-  return truncateCodePoints(name.trim(), 1) || '·'
+function close(restoreFocus = false) {
+  open.value = false
+  actionId.value = ''
+  editingId.value = null
+  query.value = ''
+  error.value = ''
+  if (restoreFocus) void nextTick(() => trigger.value?.focus())
 }
-
-function indexOf(id: string) {
-  return props.workspaces.findIndex((workspace) => workspace.id === id)
+function toggle() {
+  if (open.value) return close()
+  open.value = true
+  focusTab(props.activeId)
 }
-
-function openMenu() {
-  if (closeTimer) {
-    window.clearTimeout(closeTimer)
-    closeTimer = 0
-  }
-  menuOpen.value = true
+function select(id: string) {
+  emit('select', id)
+  close(true)
 }
-
-function handlePointerEnter(event: PointerEvent) {
-  if (event.pointerType === 'touch') {
-    touchInteraction = true
+function openActions(id: string) {
+  if (actionId.value === id) { actionId.value = ''; return }
+  actionId.value = id
+  void nextTick(() => root.value?.querySelector<HTMLButtonElement>('.workspace-actions [role="menuitem"]:not(:disabled)')?.focus())
+}
+function closeActions(restoreFocus = false) {
+  const id = actionId.value
+  actionId.value = ''
+  if (restoreFocus && id) focusAction(id)
+}
+function beginEdit(id: string) {
+  editingId.value = id
+  draft.value = id ? props.workspaces.find((item) => item.id === id)?.name ?? '' : ''
+  error.value = ''
+  actionId.value = ''
+  void nextTick(() => { input.value?.focus(); if (id) input.value?.select() })
+}
+function cancelEdit() {
+  const id = editingId.value
+  editingId.value = null
+  error.value = ''
+  if (id) focusAction(id)
+  else void nextTick(() => root.value?.querySelector<HTMLButtonElement>('.workspace-create')?.focus())
+}
+function saveEdit() {
+  const name = draft.value.trim()
+  if (!name) { error.value = '请输入工作区名称。'; return }
+  if (Array.from(name).length > maxHomeWorkspaceNameLength) { error.value = `名称最多 ${maxHomeWorkspaceNameLength} 个字符。`; return }
+  if (props.workspaces.some((item) => item.id !== editingId.value && item.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+    error.value = '这个名称已被使用。'
     return
   }
-  touchInteraction = false
-  openMenu()
+  const id = editingId.value
+  if (id === null) return
+  const success = id ? props.renameWorkspace(id, name) : props.createWorkspace(name)
+  if (!success) { error.value = id ? '保存失败，工作区可能已被删除。' : '创建失败，请检查名称和工作区数量。'; return }
+  if (!id) { close(true); return }
+  editingId.value = null
+  query.value = ''
+  focusAction(id)
 }
-
-function handleFocusIn() {
-  if (touchInteraction) return
-  openMenu()
-}
-
-function handlePointerLeave(event: PointerEvent) {
-  if (event.pointerType === 'touch') return
-  hoveredWorkspaceId.value = ''
-  scheduleClose()
-}
-
-function activateTrigger() {
-  if (!menuOpen.value) {
-    touchInteraction = false
-    openMenu()
-    return
-  }
-  if (props.workspaces.length < maxHomeWorkspaces) emit('create')
-}
-
-function pointToWorkspaceAt(workspace: HomeWorkspace, x: number, y: number) {
-  hoveredWorkspaceId.value = workspace.id
-  const origin = triggerButton.value?.getBoundingClientRect()
-  if (!origin) return
-  const dx = x - (origin.left + origin.width / 2)
-  const dy = y - (origin.top + origin.height / 2)
-  arrowAngle.value = Math.atan2(dy, dx) * 180 / Math.PI
-}
-
-function pointToWorkspace(event: PointerEvent, workspace: HomeWorkspace) {
-  pointToWorkspaceAt(workspace, event.clientX, event.clientY)
-}
-
-function closeMenu() {
-  if (closeTimer) {
-    window.clearTimeout(closeTimer)
-    closeTimer = 0
-  }
-  menuOpen.value = false
-  hoveredWorkspaceId.value = ''
-  cancelRename()
-}
-
-function scheduleClose() {
-  if (contextWorkspace.value) return
-  if (closeTimer) window.clearTimeout(closeTimer)
-  closeTimer = window.setTimeout(() => {
-    closeTimer = 0
-    // Closing a context menu can emit focusout while the pointer is still
-    // inside this control. Do not let that stale timer collapse a hovered menu.
-    if (root.value?.contains(document.activeElement) || (!touchInteraction && root.value?.matches(':hover'))) return
-    menuOpen.value = false
-    cancelRename()
-  }, 260)
-}
-
-function focusWorkspace(id: string) {
-  void nextTick(() => [...(chipList.value?.querySelectorAll<HTMLButtonElement>('[data-workspace-tab]') ?? [])].find((item) => item.dataset.workspaceTab === id)?.focus())
-}
-
-function closeContextMenu(restoreFocus = false) {
-  if (!contextWorkspace.value) return
-  const id = contextWorkspace.value.id
-  if (restoreFocus) focusWorkspace(id)
-  contextWorkspace.value = undefined
-  if (!root.value?.matches(':hover')) scheduleClose()
-}
-
-function focusFirstMenuItem() {
-  void nextTick(() => menu.value?.querySelectorAll<HTMLElement>('[role="menuitem"]')[0]?.focus())
-}
-
-function showContextMenu(workspace: HomeWorkspace, x: number, y: number) {
-  const width = 172
-  const height = 192
-  contextPosition.value = {
-    left: Math.max(8, Math.min(x, window.innerWidth - width - 8)),
-    top: Math.max(8, Math.min(y, window.innerHeight - height - 8)),
-  }
-  contextWorkspace.value = workspace
-  openMenu()
-  focusFirstMenuItem()
-}
-
-function openContextMenu(event: MouseEvent, workspace: HomeWorkspace) {
-  event.preventDefault()
-  showContextMenu(workspace, event.clientX, event.clientY)
-}
-
-function handleWindowClick(event: MouseEvent) {
-  closeContextMenu()
-  if (editing.value && !root.value?.contains(event.target as Node)) cancelRename()
-}
-
-function beginRename(workspace?: HomeWorkspace) {
-  const target = workspace ?? props.workspaces.find((item) => item.id === renamingId.value)
-  if (!target) return
-  renamingId.value = target.id
-  draft.value = target.name
-  nameError.value = ''
-  closeContextMenu()
-  editing.value = true
-  openMenu()
-  void nextTick(() => nameInput.value?.focus())
-}
-
-function cancelRename() {
-  editing.value = false
-  nameError.value = ''
-}
-
-function commitRename() {
-  const workspace = props.workspaces.find((item) => item.id === renamingId.value)
-  const name = truncateCodePoints(draft.value.trim(), maxHomeWorkspaceNameLength)
-  if (!workspace || !name) {
-    nameError.value = '请输入工作区名称。'
-    return
-  }
-  if (props.workspaces.some((item) => item.id !== workspace.id && item.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
-    nameError.value = '这个名称已被使用。'
-    return
-  }
-  emit('rename', workspace.id, name)
-  cancelRename()
-  focusWorkspace(workspace.id)
-}
-
-function requestMove(id: string, direction: -1 | 1) {
-  closeContextMenu()
+function move(id: string, direction: -1 | 1) {
+  closeActions()
   emit('move', id, direction)
+  focusAction(id)
 }
-
-function requestRemove(id: string) {
-  closeContextMenu()
+function remove(id: string) {
+  close()
+  trigger.value?.focus()
   emit('remove', id)
 }
-
-function handleChipKeydown(event: KeyboardEvent, index: number) {
-  if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
-    const workspace = props.workspaces[index]
-    if (!workspace) return
-    event.preventDefault()
-    const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
-    showContextMenu(workspace, bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
-    return
-  }
-  const direction = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
-  if (!direction) return
+function onListKeydown(event: KeyboardEvent) {
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+  const target = event.target as HTMLElement
+  if (!target.matches('[data-workspace-tab]')) return
+  const buttons = [...(list.value?.querySelectorAll<HTMLButtonElement>('[data-workspace-tab]') ?? [])]
+  const index = buttons.indexOf(target as HTMLButtonElement)
+  if (index < 0 || !buttons.length) return
   event.preventDefault()
-  const nextIndex = (index + direction + props.workspaces.length) % props.workspaces.length
-  const next = props.workspaces[nextIndex]
-  if (!next) return
-  emit('select', next.id)
-  void nextTick(() => chipList.value?.querySelectorAll<HTMLButtonElement>('[data-workspace-tab]')[nextIndex]?.focus())
+  event.stopPropagation()
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+    : (index + (event.key === 'ArrowUp' ? -1 : 1) + buttons.length) % buttons.length
+  buttons[next]?.focus()
 }
-
-onMounted(() => window.addEventListener('click', handleWindowClick))
-onBeforeUnmount(() => {
-  if (closeTimer) window.clearTimeout(closeTimer)
-  window.removeEventListener('click', handleWindowClick)
+function onEscape(event: KeyboardEvent) {
+  if (!open.value) return
+  if (event.isComposing) { event.stopPropagation(); return }
+  event.preventDefault()
+  event.stopPropagation()
+  if (editingId.value !== null) cancelEdit()
+  else if (actionId.value) closeActions(true)
+  else close(true)
+}
+function onFocusOut(event: FocusEvent) {
+  if (open.value && event.relatedTarget instanceof Node && !root.value?.contains(event.relatedTarget)) close()
+}
+function preventCompositionSubmit(event: KeyboardEvent) {
+  if (event.isComposing) event.preventDefault()
+}
+function onOutsidePointer(event: PointerEvent) {
+  if (open.value && !root.value?.contains(event.target as Node)) close()
+}
+watch(() => props.workspaces, (items) => {
+  if (actionId.value && !items.some((item) => item.id === actionId.value)) actionId.value = ''
+  if (editingId.value && !items.some((item) => item.id === editingId.value)) {
+    editingId.value = null
+    error.value = ''
+    void nextTick(() => trigger.value?.focus())
+  }
 })
+onMounted(() => document.addEventListener('pointerdown', onOutsidePointer))
+onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutsidePointer))
 </script>
 
 <template>
-  <div
-    ref="root"
-    class="home-workspace-bar"
-    :class="{ 'is-open': menuOpen, 'is-pointing': hoveredWorkspaceId, 'is-editing': editing }"
-    :style="{ '--arrow-angle': `${arrowAngle}deg` }"
-    role="region"
-    aria-label="主页工作区"
-    @pointerenter="handlePointerEnter"
-    @pointerleave="handlePointerLeave"
-    @focusin="handleFocusIn"
-    @focusout="closeMenuOnFocusout($event, scheduleClose)"
-    @keydown.esc="closeMenu"
-  >
-    <button
-      ref="triggerButton"
-      type="button"
-      class="home-workspace-trigger"
-      :aria-label="hoveredWorkspaceId ? '指向工作区' : menuOpen ? '新建工作区' : '展开工作区菜单'"
-      aria-haspopup="true"
-      :aria-expanded="menuOpen"
-      @click="activateTrigger"
-    >
-      <LayoutGrid v-if="!menuOpen" :size="22" />
-      <ArrowRight v-else-if="hoveredWorkspaceId" :size="22" />
-      <Plus v-else :size="22" />
+  <div ref="root" class="home-workspace-bar" role="region" aria-label="主页工作区" @keydown.esc="onEscape" @focusout="onFocusOut" @pointerdown.stop @pointerup.stop @wheel.stop>
+    <button ref="trigger" type="button" class="home-workspace-trigger" :aria-label="`切换工作区，当前：${activeWorkspace?.name ?? '主页'}`" :title="`当前工作区：${activeWorkspace?.name ?? '主页'}`" :aria-expanded="open" aria-controls="home-workspace-panel" @click="toggle">
+      <LayoutGrid :size="18" aria-hidden="true" />
+      <span>{{ activeWorkspace?.name ?? '主页' }}</span>
+      <ChevronDown :size="16" :class="{ 'workspace-chevron-open': open }" aria-hidden="true" />
     </button>
 
-    <div ref="chipList" class="home-workspace-radial" role="group" aria-label="切换工作区">
-      <div
-        v-for="(workspace, index) in workspaces"
-        :key="workspace.id"
-        class="home-workspace-slot"
-        :style="slotStyle(index, workspaces.length)"
-      >
-        <button
-          :data-workspace-tab="workspace.id"
-          class="home-workspace-tab"
-          :class="{ active: workspace.id === activeId }"
-          type="button"
-          :aria-pressed="workspace.id === activeId"
-          :aria-label="workspace.name"
-          :title="workspace.name"
-          @click="emit('select', workspace.id)"
-          @keydown="handleChipKeydown($event, index)"
-          @contextmenu="openContextMenu($event, workspace)"
-          @pointerenter="pointToWorkspace($event, workspace)"
-          @pointermove="pointToWorkspace($event, workspace)"
-          @pointerleave="hoveredWorkspaceId = ''"
-        >{{ initial(workspace.name) }}</button>
-      </div>
-    </div>
-
-    <form v-if="editing" class="home-workspace-rename" @submit.prevent="commitRename" @keydown.esc.stop.prevent="cancelRename">
-      <input ref="nameInput" v-model="draft" maxlength="40" aria-label="工作区名称" />
-      <button type="submit" class="home-workspace-form-button" aria-label="保存工作区名称"><Check :size="15" /></button>
-      <button type="button" class="home-workspace-form-button" aria-label="取消重命名" @click="cancelRename"><X :size="15" /></button>
-      <span v-if="nameError" class="home-workspace-error" role="alert">{{ nameError }}</span>
-    </form>
-
-    <div
-      v-if="contextWorkspace"
-      ref="menu"
-      class="shortcut-context-menu workspace-context-menu"
-      role="menu"
-      :aria-label="`${contextWorkspace.name} 的操作`"
-      :style="{ left: `${contextPosition.left}px`, top: `${contextPosition.top}px` }"
-      @click.stop
-      @keydown="navigateMenu"
-      @focusout="closeMenuOnFocusout($event, closeContextMenu)"
-      @keydown.esc.stop.prevent="closeContextMenu(true)"
-    >
-      <p class="context-menu-title" role="presentation">{{ contextWorkspace.name }}</p>
-      <button type="button" role="menuitem" @click="beginRename(contextWorkspace)"><Pencil :size="14" /> 重命名</button>
-      <button type="button" role="menuitem" :disabled="indexOf(contextWorkspace.id) <= 1" @click="requestMove(contextWorkspace.id, -1)"><ArrowLeft :size="14" /> 左移</button>
-      <button type="button" role="menuitem" :disabled="indexOf(contextWorkspace.id) <= 0 || indexOf(contextWorkspace.id) >= workspaces.length - 1" @click="requestMove(contextWorkspace.id, 1)"><ArrowRight :size="14" /> 右移</button>
-      <button type="button" role="menuitem" class="danger" :disabled="contextWorkspace.id === defaultHomeWorkspaceId" @click="requestRemove(contextWorkspace.id)"><Trash2 :size="14" /> 删除</button>
+    <div v-if="open" id="home-workspace-panel" class="workspace-panel">
+      <div class="workspace-panel-heading"><strong>工作区</strong><span>{{ workspaces.length }} / {{ maxHomeWorkspaces }}</span></div>
+      <template v-if="editingId === null">
+        <label v-if="workspaces.length > 8" class="workspace-filter">
+          <Search :size="16" aria-hidden="true" />
+          <input v-model="query" type="search" placeholder="查找工作区" aria-label="查找工作区" />
+        </label>
+        <div ref="list" class="workspace-list" role="group" aria-label="切换工作区" @keydown="onListKeydown">
+          <div v-for="workspace in filtered" :key="workspace.id" class="workspace-row-wrap">
+            <div class="workspace-row" :class="{ 'is-active': workspace.id === activeId }">
+              <button type="button" class="home-workspace-tab" :data-workspace-tab="workspace.id" :aria-label="workspace.name" :aria-pressed="workspace.id === activeId" :title="workspace.name" @click="select(workspace.id)">
+                <span class="workspace-icon"><LayoutGrid :size="16" aria-hidden="true" /></span>
+                <span class="workspace-name">{{ workspace.name }}</span>
+                <Check v-if="workspace.id === activeId" :size="17" aria-hidden="true" />
+              </button>
+              <button type="button" class="workspace-action" :data-workspace-action="workspace.id" :aria-label="`${workspace.name} 的操作`" aria-haspopup="menu" :aria-expanded="actionId === workspace.id" @click="openActions(workspace.id)"><MoreHorizontal :size="19" aria-hidden="true" /></button>
+            </div>
+            <div v-if="actionId === workspace.id" class="workspace-actions" role="menu" :aria-label="`${workspace.name} 的操作`" @keydown="navigateMenu">
+              <button type="button" role="menuitem" @click="beginEdit(workspace.id)">重命名</button>
+              <button type="button" role="menuitem" :disabled="workspaces.findIndex(item => item.id === workspace.id) <= 1" @click="move(workspace.id, -1)">上移</button>
+              <button type="button" role="menuitem" :disabled="workspace.id === defaultHomeWorkspaceId || workspaces.findIndex(item => item.id === workspace.id) === workspaces.length - 1" @click="move(workspace.id, 1)">下移</button>
+              <button type="button" role="menuitem" class="danger" :disabled="workspace.id === defaultHomeWorkspaceId" @click="remove(workspace.id)">删除工作区</button>
+              <p v-if="workspace.id === defaultHomeWorkspaceId" class="workspace-pinned-hint">默认工作区固定在首位</p>
+            </div>
+          </div>
+          <p v-if="!filtered.length" class="workspace-no-results">没有找到匹配的工作区</p>
+        </div>
+        <button type="button" class="workspace-create" :disabled="workspaces.length >= maxHomeWorkspaces" @click="beginEdit('')"><Plus :size="17" aria-hidden="true" /> {{ workspaces.length >= maxHomeWorkspaces ? '已达到 20 个工作区上限' : '新建工作区' }}</button>
+      </template>
+      <form v-else class="workspace-form" @submit.prevent="saveEdit" @keydown.enter="preventCompositionSubmit">
+        <label for="workspace-name">{{ editingId ? '重命名工作区' : '新建工作区' }}</label>
+        <input id="workspace-name" ref="input" v-model="draft" aria-label="工作区名称" :aria-invalid="!!error" :aria-describedby="error ? 'workspace-name-error' : undefined" placeholder="例如：工作" />
+        <p v-if="error" id="workspace-name-error" class="workspace-form-error" role="alert">{{ error }}</p>
+        <p v-else class="workspace-form-hint">名称最多 {{ maxHomeWorkspaceNameLength }} 个字符<span v-if="editingWorkspace"> · {{ editingWorkspace.name }}</span></p>
+        <div class="workspace-form-actions"><button type="button" @click="cancelEdit">取消</button><button type="submit" class="workspace-submit">{{ editingId ? '保存' : '创建' }}</button></div>
+      </form>
     </div>
   </div>
 </template>
