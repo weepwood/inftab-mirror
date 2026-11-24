@@ -50,3 +50,16 @@ it('preserves fine-grained wheel remainder and allows reversal before settling',
     expect(currentPage.value).toBe(0)
   } finally { scope.stop(); vi.useRealTimers() }
 })
+
+it('uses the shortest cyclic path for explicit page selections', () => {
+  const scope = effectScope()
+  const currentPage = ref(0)
+  const pageDirection = ref(1)
+  const nav = scope.run(() => useHomeNavigation({ currentPage, pageDirection, overlayOpen: ref(false), pageCount: ref(5), minimalMode: ref(false), shortHomeScrollEnabled: ref(false) }))!
+  try {
+    nav.goToPage(4)
+    expect([currentPage.value, pageDirection.value]).toEqual([4, -1])
+    nav.goToPage(1)
+    expect([currentPage.value, pageDirection.value]).toEqual([1, 1])
+  } finally { scope.stop() }
+})

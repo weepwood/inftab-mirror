@@ -16,11 +16,9 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   let frame = 0
   const threshold = 100
   function resetWheel() {
-    if (wheelTimer !== undefined) clearTimeout(wheelTimer)
-    if (frame) cancelAnimationFrame(frame)
-    frame = 0
-    wheelTimer = undefined
-    accumulated = speed = lastWheelTime = 0
+    clearTimeout(wheelTimer)
+    cancelAnimationFrame(frame)
+    frame = accumulated = speed = lastWheelTime = 0
     wheelOffset.value = 0
   }
   let wheelTimer: ReturnType<typeof setTimeout> | undefined
@@ -33,10 +31,9 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   
   function goToPage(page: number) {
     if (page === currentPage.value) return
-    resetWheel()
-    const forward = (page - currentPage.value + pageCount.value) % pageCount.value
-    pageDirection.value = forward <= pageCount.value / 2 ? 1 : -1
-    currentPage.value = page
+    const count = pageCount.value
+    const forward = (page - currentPage.value + count) % count
+    movePage(forward <= count / 2 ? forward : forward - count)
   }
   
   function startHomeSwipe(event: PointerEvent) {
@@ -68,8 +65,7 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
       return
     }
     const now = performance.now()
-    const dt = Math.max(8, now - lastWheelTime)
-    speed = delta / dt
+    speed = delta / Math.max(16, now - lastWheelTime)
     lastWheelTime = now
     accumulated += delta
     if (Math.abs(accumulated) >= threshold) {
@@ -82,10 +78,10 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
       frame = 0
       wheelOffset.value = -accumulated / threshold * 0.8
     })
-    if (wheelTimer !== undefined) clearTimeout(wheelTimer)
+    clearTimeout(wheelTimer)
     wheelTimer = setTimeout(() => {
-      const projected = accumulated + Math.max(-20, Math.min(20, speed * 24))
-      if (Math.abs(projected) >= 40 && Math.sign(projected) === Math.sign(accumulated)) movePage(Math.sign(accumulated))
+      const direction = Math.sign(accumulated)
+      if (Math.abs(accumulated) + Math.max(-20, Math.min(20, direction * speed * 24)) >= 40) movePage(direction)
       else resetWheel()
     }, 100)
   }

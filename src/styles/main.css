@@ -175,7 +175,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .home-dock-item { width: var(--dock-item-size, 48px); height: var(--dock-item-size, 48px); display: grid; place-items: center; border: 0; border-radius: 10px; padding: 0; background: transparent; color: #fff; cursor: pointer; }
 .home-dock-item:focus-visible { outline-offset: 3px; }
 .home-dock-icon { width: var(--dock-icon-size, 44px); height: var(--dock-icon-size, 44px); display: grid; place-items: center; overflow: hidden; border-radius: 12px; corner-shape: squircle; color: #303640; font-size: 19px; box-shadow: 0 3px 9px rgba(8, 12, 17, .24); transform: translateX(var(--dock-shift-x, 0px)) scale(var(--dock-scale, 1)); transform-origin: center bottom; transition: transform .16s cubic-bezier(.2, .8, .2, 1); }
-.home-dock.is-magnifying .home-dock-icon { transition: none; }
+.home-dock.is-magnifying .home-dock-icon { transition: transform 85ms cubic-bezier(.2,.85,.3,1); }
 .home-dock-entry:hover .home-dock-icon, .home-dock-item:focus-visible .home-dock-icon { outline: 2px solid var(--dock-glow-color, rgba(255, 255, 255, .8)); outline-offset: 1px; }
 .home-dock-icon img { width: 100%; height: 100%; object-fit: contain; }
 .dock-context-menu { width: 176px; }
@@ -1229,3 +1229,20 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
   .home-dock:not(.magnification-off) .home-dock-track { padding-top: calc(var(--dock-item-size) * .7 + 34px); }
 }
 @media (prefers-reduced-motion: reduce) { .home-dock-entry::before { transition: none; } }
+
+/* Clean launcher: center the visual mass without changing stored grid settings. */
+@media (min-width: 781px) and (min-height: 680px) {
+  .home:not(.home-scrollable) .home-content:not(.home-content-minimal):not(:has(.home-clock,.search-area,.home-widget-shelf,.panel-loading)) {
+    display: flex; flex-direction: column; justify-content: center;
+    min-height: calc(100vh - 100px); padding-bottom: 60px;
+  }
+}
+.shortcut-icon { box-shadow: 0 3px 8px #08181012, 0 8px 22px #08181026, inset 0 1px 0 #ffffff40; }
+.shortcut-name { letter-spacing: .01em; text-shadow: 0 1px 3px #0009, 0 0 9px #0004; }
+.home-dock-icon { transition-timing-function: cubic-bezier(.2,1.12,.36,1); }
+.home-dock-entry { transition: transform 150ms cubic-bezier(.2,.8,.2,1); }
+.home-dock.dock-dragging .dock-drop-before { transform: translateX(5px); }
+.home-dock.dock-dragging .dock-drop-after { transform: translateX(-5px); }
+@media (prefers-reduced-motion: reduce) {
+  .home-dock.is-magnifying .home-dock-icon, .home-dock-entry { transition: none; }
+}

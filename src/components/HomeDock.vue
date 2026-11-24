@@ -43,7 +43,7 @@ function startDrag(event: DragEvent, id: string) {
   if (event.dataTransfer) { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', id) }
 }
 function previewDrop(event: DragEvent, id: string) {
-  if (!dragId.value || dragId.value === id) return
+  if (!dragId.value || dragId.value === id) { dropTarget.value = undefined; return }
   event.preventDefault()
   const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
   dropTarget.value = { id, after: event.clientX > bounds.left + bounds.width / 2 }
@@ -163,12 +163,10 @@ function updateDockMagnification(event: PointerEvent) {
     const expansion = scales.map(scale => (scale - 1) * Math.max(0, itemSize - 4))
     const total = expansion.reduce((sum, value) => sum + value, 0)
     const bounds = dock.value?.getBoundingClientRect()
-    const left = first.left
-    const right = last.right
-    const room = bounds?.width ? Math.max(0, bounds.right - right) + Math.max(0, left - bounds.left) : total
-    const factor = total > 0 ? Math.min(1, room / total) : 1
-    let offset = bounds?.width ? -Math.min(total * factor / 2, Math.max(0, left - bounds.left)) : -total / 2
-    if (bounds?.width) offset = Math.min(offset, Math.max(0, bounds.right - right) - total * factor)
+    const left = bounds?.width ? Math.max(0, first.left - bounds.left) : total
+    const right = bounds?.width ? Math.max(0, bounds.right - last.right) : total
+    const factor = Math.min(1, (left + right) / (total || 1))
+    let offset = Math.max(-left, Math.min(-total * factor / 2, right - total * factor))
     entries.forEach((entry, index) => {
       const extra = expansion[index]! * factor
       entry.style.setProperty('--dock-scale', (1 + (scales[index]! - 1) * factor).toFixed(3))
