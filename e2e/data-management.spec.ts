@@ -33,3 +33,29 @@ test('HTML preview, tags, batch deletion and IndexedDB recovery preserve data', 
   await manager.getByRole('button', { name: '导出 HTML 书签' }).click()
   expect((await download).suggestedFilename()).toBe('inftab-bookmarks.html')
 })
+
+
+test('daily recovery points stay unique across simultaneous tabs and reloads', async ({ page, context }) => {
+  const other = await context.newPage()
+  const readEntries = () => page.evaluate(() => new Promise<number>((resolve, reject) => {
+    const request = indexedDB.open('inftab-backup-history')
+    request.onupgradeneeded = () => { request.transaction?.abort(); resolve(0) }
+    request.onsuccess = () => {
+      const db = request.result
+      if (!db.objectStoreNames.contains('snapshots')) { db.close(); resolve(0); return }
+      const all = db.transaction('snapshots').objectStore('snapshots').getAll()
+      all.onsuccess = () => { resolve(all.result.filter(item => item.reason === 'daily').length); db.close() }
+      all.onerror = () => { db.close(); reject(all.error) }
+    }
+    request.onerror = () => reject(request.error)
+  }))
+  try {
+    await Promise.all([page.goto('/'), other.goto('/')])
+    // Wait until at least one automatic save has initialized the database before inspecting it.
+    await page.waitForTimeout(2400)
+    await expect.poll(readEntries).toBe(1)
+    await Promise.all([page.reload(), other.reload()])
+    await page.waitForTimeout(2400)
+    await expect.poll(readEntries).toBe(1)
+  } finally { await other.close() }
+})

@@ -146,7 +146,7 @@ function save() {
         <div class="folder-launcher-grid">
           <button v-for="shortcut in folderShortcutItems" :key="shortcut.id" type="button" class="folder-launcher" @click="emit('openShortcut', shortcut, $event)" @auxclick.middle.prevent="emit('openShortcut', shortcut, $event)">
             <span class="folder-launcher-icon" :style="{ backgroundColor: shortcut.color }" aria-hidden="true">
-              <img v-if="shortcutIconSource(shortcut)" :src="shortcutIconSource(shortcut)" alt="" />
+              <img v-if="shortcutIconSource(shortcut)" :src="shortcutIconSource(shortcut)" decoding="async" alt="" />
               <span v-else>{{ shortcut.mark }}</span>
             </span>
             <span class="folder-launcher-title">{{ shortcut.title }}</span>

@@ -173,40 +173,33 @@ const folderLimitReached = computed(() => !activeFolder.value && folders.value.l
 let wallpaperRotationTimer: number | undefined
 let wallpaperRotationRequest = 0
 let focusTimerInterval: number | undefined
-const availableLauncherItems = computed<LauncherItem[]>(() => {
-  const items = [
-    ...launcherItems.map((item) => item.id === 'todos'
-      ? { ...item, icon: item.icon ? `${baseUrl}inftab-icons/${item.icon}` : undefined, badge: todos.value.filter((todo) => !todo.done).length || undefined }
-      : { ...item, icon: item.icon ? `${baseUrl}inftab-icons/${item.icon}` : undefined }),
-    ...shortcuts.value.map((shortcut) => ({
-      id: shortcut.id,
-      title: shortcut.title,
-      color: shortcut.color,
-      mark: shortcut.mark,
-      icon: shortcut.icon
-        ? (/^(https?:|data:|\/)/i.test(shortcut.icon) ? shortcut.icon : `${baseUrl}inftab-icons/${shortcut.icon}`)
-        : undefined,
-      shortcut,
-    })),
-    ...folders.value.map((folder) => ({
-      id: folder.id,
-      title: folder.title,
-      color: folder.color,
-      mark: folder.mark,
-      folder,
-    })),
-  ]
+const pendingTodoCount = computed(() => todos.value.filter(todo => !todo.done).length)
+const builtinLauncherItems = launcherItems.map(item => ({ ...item, icon: item.icon ? `${baseUrl}inftab-icons/${item.icon}` : undefined }))
+const shortcutLauncherItems = computed<LauncherItem[]>(() => shortcuts.value.map(shortcut => ({
+  id: shortcut.id, title: shortcut.title, color: shortcut.color, mark: shortcut.mark,
+  icon: shortcut.icon ? (/^(https?:|data:|\/)/i.test(shortcut.icon) ? shortcut.icon : `${baseUrl}inftab-icons/${shortcut.icon}`) : undefined,
+  shortcut,
+})))
+const folderLauncherItems = computed<LauncherItem[]>(() => folders.value.map(folder => ({
+  id: folder.id, title: folder.title, color: folder.color, mark: folder.mark, folder,
+})))
+const orderedLauncherItems = computed<LauncherItem[]>(() => {
   const order = new Map(launcherOrder.value.map((id, index) => [id, index]))
-  return items.sort((left, right) => (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER))
+  return [...builtinLauncherItems, ...shortcutLauncherItems.value, ...folderLauncherItems.value]
+    .sort((left, right) => (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER))
 })
+const availableLauncherItems = computed(() => orderedLauncherItems.value.map(item => item.id === 'todos'
+  ? { ...item, badge: pendingTodoCount.value || undefined } : item))
+const launcherById = computed(() => new Map(availableLauncherItems.value.map(item => [item.id, item])))
+const hiddenLauncherIds = computed(() => new Set(preferences.value.hiddenLauncherIds))
 const folderedShortcutIds = computed(() => new Set(folders.value.flatMap((folder) => folder.shortcutIds)))
 const allLauncherItems = computed(() => availableLauncherItems.value.filter((item) => activeHomeWorkspaceItemIds.value.has(item.id)
-  && !preferences.value.hiddenLauncherIds.includes(item.id)
+  && !hiddenLauncherIds.value.has(item.id)
   && (!item.shortcut || !folderedShortcutIds.value.has(item.id))))
 const folderPreviewItems = computed(() => availableLauncherItems.value.filter((item) => item.shortcut))
 const homeDockItems = computed(() => preferences.value.dockItemIds.flatMap((id) => {
   if (!activeHomeWorkspaceItemIds.value.has(id)) return []
-  const item = availableLauncherItems.value.find((candidate) => candidate.id === id)
+  const item = launcherById.value.get(id)
   return item ? [item] : []
 }))
 const unavailableFolderShortcutIds = computed(() => folders.value
@@ -762,8 +755,11 @@ function handleStorageWriteSuccess(event: Event) {
 }
 
 let historyTimer: ReturnType<typeof setTimeout> | undefined
+let historyDisposed = false
 onMounted(() => {
-  if (window.indexedDB) historyTimer = setTimeout(() => { void import('./data/backupHistory').then(module => module.captureHistory(createBackup(), 'daily')).catch(() => undefined) }, 2000)
+  if (window.indexedDB) historyTimer = setTimeout(() => { void import('./data/backupHistory').then(module => {
+    if (!historyDisposed) return module.captureDailyHistory(() => historyDisposed ? undefined : createBackup())
+  }).catch(() => undefined) }, 2000)
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('resize', updateViewport)
   window.addEventListener(storageWriteErrorEvent, handleStorageWriteError)
@@ -780,6 +776,7 @@ onMounted(() => {
   }
 })
 onBeforeUnmount(() => {
+  historyDisposed = true
   if (historyTimer !== undefined) clearTimeout(historyTimer)
   delete document.documentElement.dataset.themePalette
   window.removeEventListener('keydown', handleKeydown)
