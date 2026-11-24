@@ -3,8 +3,9 @@ import { isRecord } from './validation'
 
 const color = (value: unknown): string | undefined => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : undefined
 function luminance(value: string) {
+  const rgb = Number.parseInt(value.slice(1), 16)
   const channel = (shift: number) => {
-    const v = ((Number.parseInt(value.slice(1), 16) >> shift) & 255) / 255
+    const v = ((rgb >> shift) & 255) / 255
     return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4
   }
   return channel(16) * .2126 + channel(8) * .7152 + channel(0) * .0722
