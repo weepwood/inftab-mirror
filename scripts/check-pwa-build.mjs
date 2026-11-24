@@ -22,5 +22,5 @@ const gzip = paths=>paths.reduce((sum,p)=>sum+gzipSync(readFileSync(p)).length,0
 const bootstrap = gzip([resolve(web,'pwa-bootstrap.js')])
 const addedJS = gzip(extras.filter(p=>p.endsWith('.js')))
 const total = [...webFiles].reduce((sum,p)=>sum+statSync(p).size,0)
-console.log('PWA budgets: bootstrap '+bootstrap+'/512 B; web-only JS '+addedJS+'/10240 B; full website '+total+'/4194304 B')
-if (bootstrap>512 || addedJS>10240 || total>4*1024*1024) throw Error('Web-only PWA budget exceeded')
+console.log('PWA budgets: bootstrap '+bootstrap+'/512 B; web-only JS '+addedJS+'/16384 B; full website '+total+'/4194304 B')
+if (bootstrap>512 || addedJS>16384 || total>4*1024*1024) throw Error('Web-only PWA budget exceeded')

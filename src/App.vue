@@ -31,6 +31,9 @@ const SearchBar = defineAsyncComponent({
 })
 const ClockWidget = lazyHome(() => import('./components/ClockWidget.vue'), '时钟')
 const LauncherSearchResults = lazyHome(() => import('./components/LauncherSearchResults.vue'), '入口查找', true)
+const FinderWindow = lazyHome(() => import('./desktop/FinderWindow.vue'), 'Finder', true)
+const finderOpen = ref(false)
+const finderFolderId = ref<string>()
 const DesktopShell = lazyHome(() => import('./desktop/DesktopShell.vue'), '自由桌面', true)
 const desktopMode = useStoredState('inftab.desktop-mode.v1', false, value => value === true)
 const ShortcutGrid = lazyHome(() => import('./components/ShortcutGrid.vue'), '快捷入口', true)
@@ -371,6 +374,32 @@ function openPanel(id: PanelId) {
   loadPanelRegistry()
 }
 
+watch(desktopMode, value => { if(!value) finderOpen.value=false })
+function openFinder(folderId?: string) {
+  finderFolderId.value = folderId
+  finderOpen.value = true
+}
+function desktopOpen(item: LauncherItem, event?: MouseEvent) {
+  if (item.folder) openFinder(item.id)
+  else openItem(item,event)
+}
+function finderMove(item: LauncherItem, workspaceId: string) {
+  if (!homeWorkspaces.value.some(w=>w.id===workspaceId)) return
+  if (item.shortcut) saveShortcutData(item.shortcut,workspaceId)
+  else if(item.folder && homeWorkspaces.value.some(w=>w.id===workspaceId)) {
+    const current=folders.value.find(f=>f.id===item.id)
+    if(!current)return
+    const ids=new Set([current.id,...current.shortcutIds])
+    homeWorkspaces.value=homeWorkspaces.value.map(w=>({...w,itemIds:w.id===workspaceId?[...new Set([...w.itemIds,...ids])]:w.itemIds.filter(id=>!ids.has(id))}))
+  }
+}
+function finderMembership(item: LauncherItem, folderId: string | null) {
+  if (!shortcuts.value.some(s=>s.id===item.id) || (folderId && !folders.value.some(f=>f.id===folderId))) return
+  if (!item.shortcut) return
+  const owner=homeWorkspaces.value.find(w=>w.itemIds.includes(item.id))
+  if (!owner || (folderId && !owner.itemIds.includes(folderId))) return
+  folders.value=folders.value.map(f=>({...f,shortcutIds:f.id===folderId?[...new Set([...f.shortcutIds,item.id])]:f.shortcutIds.filter(id=>id!==item.id)}))
+}
 function openItem(item: LauncherItem, event?: MouseEvent) {
   if (item.folder) openFolder(item.folder)
   else if (item.action) openPanel(launcherPanelRoutes[item.action])
@@ -850,7 +879,7 @@ onBeforeUnmount(() => {
           />
         </template>
       </SearchBar>
-      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" @layout="saveDesktopLayout" @open="openItem" @edit="editLauncherItem" />
+      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" :folder-shortcuts="folderPreviewItems" :dark="effectiveTheme==='dark'" @layout="saveDesktopLayout" @open="desktopOpen" @edit="editLauncherItem" @finder="openFinder()" @create="openFolderEditor()" @remove="removeLauncherItem" @membership="finderMembership" />
       <ShortcutGrid
         v-if="!minimalMode && !desktopMode"
         :items="allLauncherItems"
@@ -884,6 +913,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
+    <FinderWindow v-if="finderOpen && desktopMode && !minimalMode" :key="finderFolderId ?? 'root'" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :folder-id="finderFolderId" :dark="effectiveTheme==='dark'" @close="finderOpen=false" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembership" @create="openFolderEditor()" />
     <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
