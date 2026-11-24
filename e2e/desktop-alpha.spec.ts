@@ -1,0 +1,31 @@
+import { test, expect } from '@playwright/test'
+test('desktop drag persists, viewport shrink preserves saved coordinates, classic mode survives', async ({page}) => {
+  await page.goto('/')
+  await page.getByRole('button',{name:'桌面模式',exact:true}).click()
+  const surface=page.locator('.desktop-surface')
+  await expect(surface).toBeVisible()
+  const icon=surface.locator('.desktop-icon').first()
+  await expect(icon).toBeVisible()
+  const id=await icon.getAttribute('data-item-id')
+  const start=(await icon.boundingBox())!
+  await page.mouse.move(start.x+40,start.y+40)
+  await page.mouse.down()
+  await page.mouse.move(start.x+240,start.y+140,{steps:12})
+  await page.mouse.up()
+  const read=()=>page.evaluate(id=> {
+    const key=Object.keys(localStorage).find(k=>k.startsWith('inftab.desktop.v1.'))
+    return key ? JSON.parse(localStorage.getItem(key)!).positions[id!] : null
+  },id)
+  await expect.poll(read).toEqual({x:192,y:96})
+  const saved=await read()
+  await page.reload()
+  await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 192, 96)')
+  await page.setViewportSize({width:280,height:700})
+  await expect.poll(read).toEqual(saved)
+  await page.setViewportSize({width:1280,height:720})
+  await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 192, 96)')
+  await page.getByRole('button',{name:'经典模式',exact:true}).click()
+  await expect(page.locator('.shortcut-grid-wrap')).toBeVisible()
+  await page.getByRole('button',{name:'桌面模式',exact:true}).click()
+  await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 192, 96)')
+})
