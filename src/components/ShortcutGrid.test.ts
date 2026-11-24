@@ -235,7 +235,7 @@ describe('ShortcutGrid page cycling', () => {
       },
     })
 
-    expect(wrapper.findAll('.shortcut-page').length).toBeGreaterThan(100)
+    expect(wrapper.findAll('.shortcut-page')).toHaveLength(3)
     expect(wrapper.findAll('.shortcut-cell')).toHaveLength(6)
     wrapper.unmount()
   })
@@ -262,7 +262,7 @@ describe('ShortcutGrid page cycling', () => {
     wrapper.unmount()
   })
 
-  it('cancels pending page reset frames when the grid unmounts', async () => {
+  it('cancels pending slide frames when the grid unmounts', async () => {
     vi.useFakeTimers()
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()), 16))
     vi.stubGlobal('cancelAnimationFrame', (handle: number) => window.clearTimeout(handle))
@@ -282,8 +282,8 @@ describe('ShortcutGrid page cycling', () => {
       },
     })
 
-    await wrapper.setProps({ items: items.slice(0, 2) })
-    expect(vi.getTimerCount()).toBe(1)
+    await wrapper.setProps({ transitionDuration: 300, currentPage: 1 })
+    expect(vi.getTimerCount()).toBeGreaterThan(0)
     wrapper.unmount()
 
     expect(vi.getTimerCount()).toBe(0)
@@ -514,4 +514,18 @@ describe('ShortcutGrid folder previews', () => {
     expect(wrapper.findAll('.folder-preview-tile img')).toHaveLength(4)
     wrapper.unmount()
   })
+})
+
+it('keeps virtual slots bounded and the destination interactive across rapid wrap and reversal', async () => {
+  installAnimationEnvironment()
+  const wrapper = mount(ShortcutGrid, { props: { items, columns: 2, rows: 1, iconSize: 64, iconRadius: 24, showNames: true, currentPage: 0, transitionDirection: 1, transitionEffect: 'slide', transitionDuration: 300 } })
+  for (let i = 1; i <= 12; i++) {
+    await wrapper.setProps({ currentPage: i % 2, transitionDirection: i < 9 ? 1 : -1 })
+    expect(wrapper.get('.shortcut-page[aria-hidden="false"]').attributes('data-page-index')).toBe(String(i % 2))
+    expect(wrapper.findAll('.shortcut-page').length).toBeLessThanOrEqual(4)
+  }
+  await wrapper.setProps({ wheelOffset: .25 })
+  expect(wrapper.get('.shortcut-pages').classes()).toContain('continuous-slide')
+  await wrapper.setProps({ wheelOffset: 0 })
+  wrapper.unmount()
 })

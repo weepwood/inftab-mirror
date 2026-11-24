@@ -471,13 +471,13 @@ function toggleDockItem(id: string) {
   }
 }
 
-function dockLauncherItem(id: string, targetId?: string) {
+function dockLauncherItem(id: string, targetId?: string, after = false) {
   const dockItemIds = preferences.value.dockItemIds
   const alreadyDocked = dockItemIds.includes(id)
   if (id === targetId || (!alreadyDocked && dockItemIds.length >= maxDockItems)) return
   const next = dockItemIds.filter((itemId) => itemId !== id)
   const targetIndex = targetId ? next.indexOf(targetId) : -1
-  if (targetIndex >= 0) next.splice(targetIndex, 0, id)
+  if (targetIndex >= 0) next.splice(targetIndex + Number(after), 0, id)
   else if (!alreadyDocked || targetId) next.push(id)
   if (next.length !== dockItemIds.length || next.some((itemId, index) => itemId !== dockItemIds[index])) {
     updatePreferences({ dockItemIds: next })

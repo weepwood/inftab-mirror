@@ -172,3 +172,9 @@ describe('HomeDock magnification', () => {
     expect(wrapper.get('.home-dock').classes()).not.toContain('is-magnifying')
   })
 })
+
+it('offers keyboard reordering without dragging', async () => {
+  wrapper = mount(HomeDock, { props: { items: [item, { ...item, id: 'mail', title: '邮件' }] } })
+  await wrapper.get('[data-dock-item-id="weather"]').trigger('keydown', { key: 'ArrowRight', shiftKey: true })
+  expect(wrapper.emitted('reorder')).toEqual([['weather', 'mail', true]])
+})
