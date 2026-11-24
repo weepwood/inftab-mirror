@@ -1186,3 +1186,25 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 :root[data-custom-theme] .folder-dialog .folder-choice.unavailable small { color: var(--ui-muted); }
 :root[data-custom-theme] .folder-dialog :is(.folder-link:hover,.folder-choice:hover) { background: var(--ui-hover); }
 :root[data-custom-theme] .shortcut-editor { --editor-control-border: var(--ui-border); --editor-focus: var(--ui-accent-text); --editor-action-fill: var(--ui-accent); border-radius: var(--ui-radius-dialog); }
+
+/* Launcher interaction polish: stable hit targets and compositor-only wheel preview. */
+.shortcut-pages.is-wheel-tracking { transition: none !important; }
+.page-dots { border-color: transparent; background: transparent; backdrop-filter: none; gap: 2px; }
+.page-dot, .page-dot.active { width: 24px; transition: none; }
+.page-dot.active::after { width: 12px; }
+.home-dock { bottom: 4px; left: 50%; transform: translateX(-50%); max-width: max(100px, calc(100vw - 380px)); }
+.home-dock::before { inset: auto 2px 3px; height: calc(var(--dock-item-size) + 14px); border-radius: 19px; background: rgba(240,245,255,.3); border: 1px solid rgba(255,255,255,.4); box-shadow: 0 8px 24px #0003, inset 0 1px 0 #ffffff30; }
+.home-dock-track { padding: calc(var(--dock-item-size) * .7 + 10px) 16px 10px; gap: min(var(--dock-gap-setting), 12px); }
+.home-dock-entry:hover .home-dock-icon { outline: none; }
+.home-dock-item:active .home-dock-icon { filter: brightness(.85); }
+.home-dock.dock-auto-hide { transition: transform 180ms ease-out; }
+@media (hover: hover) and (pointer: fine) and (min-width: 781px) {
+  .home-dock.dock-auto-hide:not(:hover):not(:focus-within):not(.dock-menu-open) { transform: translate(-50%, calc(var(--dock-item-size) + 8px)); }
+}
+@media (max-width: 780px) { .home-dock { bottom: 36px; left: 14px; max-width: max(90px, calc(100vw - 202px)); transform: none; } .home-dock.dock-auto-hide:not(:hover):not(:focus-within):not(.dock-menu-open) { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .home-dock.dock-auto-hide, .home-dock-icon { transition: none; } }
+
+@media (hover: hover) and (pointer: fine) and (min-width: 781px) {
+  .home-dock:not(.magnification-off) .home-dock-track { padding-inline: clamp(16px, 4vw, 64px); }
+}
+@media (prefers-reduced-motion: reduce) { .shortcut-pages:not(.motion-opt-in) { transition-duration: 0ms !important; } }

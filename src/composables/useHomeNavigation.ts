@@ -1,4 +1,4 @@
-import { onScopeDispose, type Ref } from 'vue'
+import { onScopeDispose, ref, watch, type Ref } from 'vue'
 
 export function useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen }: {
   currentPage: Ref<number>
@@ -9,17 +9,31 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   overlayOpen: Readonly<Ref<boolean>>
 }) {
   let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
-  let homeWheelLocked = false
+  const wheelOffset = ref(0)
+  let accumulated = 0
+  let frame = 0
+  const threshold = 100
+  function resetWheel() {
+    if (wheelTimer !== undefined) clearTimeout(wheelTimer)
+    if (frame) cancelAnimationFrame(frame)
+    frame = 0
+    wheelTimer = undefined
+    accumulated = 0
+    wheelOffset.value = 0
+  }
   let wheelTimer: ReturnType<typeof setTimeout> | undefined
   function movePage(direction: number) {
     if (pageCount.value < 2) return
+    resetWheel()
     pageDirection.value = direction < 0 ? -1 : 1
     currentPage.value = (currentPage.value + direction + pageCount.value) % pageCount.value
   }
   
   function goToPage(page: number) {
     if (page === currentPage.value) return
-    pageDirection.value = page > currentPage.value ? 1 : -1
+    resetWheel()
+    const forward = (page - currentPage.value + pageCount.value) % pageCount.value
+    pageDirection.value = forward <= pageCount.value / 2 ? 1 : -1
     currentPage.value = page
   }
   
@@ -38,18 +52,30 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   }
   
   function handleHomeWheel(event: WheelEvent) {
-    if (minimalMode.value || shortHomeScrollEnabled.value) return
-    if (overlayOpen.value || homeWheelLocked
+    if (minimalMode.value || overlayOpen.value || pageCount.value < 2 || event.ctrlKey
       || (event.target instanceof Element && event.target.closest('.home-widget-shelf, .home-dock, .search-area'))) return
     const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-    const delta = horizontal ? event.deltaX : event.deltaY
-    if (Math.abs(delta) <= 24) return
+    if (shortHomeScrollEnabled.value && !horizontal) return
+    const delta = (horizontal ? event.deltaX : event.deltaY) * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? threshold : 1)
+    if (!Number.isFinite(delta) || !delta || !event.cancelable) return
     event.preventDefault()
-    movePage(delta > 0 ? 1 : -1)
-    homeWheelLocked = true
-    wheelTimer = setTimeout(() => { homeWheelLocked = false; wheelTimer = undefined }, 450)
+    accumulated += Math.max(-threshold, Math.min(threshold, delta))
+    if (Math.abs(accumulated) >= threshold) {
+      movePage(Math.sign(accumulated))
+      return
+    }
+    if (!frame) frame = requestAnimationFrame(() => {
+      frame = 0
+      wheelOffset.value = -accumulated / threshold * 0.8
+    })
+    if (wheelTimer !== undefined) clearTimeout(wheelTimer)
+    wheelTimer = setTimeout(() => {
+      if (Math.abs(accumulated) >= 40) movePage(Math.sign(accumulated))
+      else resetWheel()
+    }, 100)
   }
   function cancelHomeSwipe() { homeTouchStart = undefined }
-  onScopeDispose(() => { if (wheelTimer !== undefined) clearTimeout(wheelTimer) })
-  return { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe }
+  watch([overlayOpen, minimalMode, pageCount], resetWheel, { flush: 'sync' })
+  onScopeDispose(resetWheel)
+  return { wheelOffset, movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe }
 }

@@ -75,7 +75,7 @@ export function useHomeLayout({ preferences, viewport, layoutColumns, allLaunche
       '--shortcut-radius': `${preferences.value.iconRadius}px`,
       '--search-width': `${preferences.value.searchWidth}px`,
       '--search-height': `${preferences.value.searchHeight}px`,
-      '--grid-top-gap': `${preferences.value.gridTopGap}px`,
+      '--grid-top-gap': `${preferences.value.showSearchBar || localSearchMode.value || minimalMode.value ? preferences.value.gridTopGap : 16}px`,
       '--shortcut-gap-x': `${preferences.value.gridGapX}px`,
       '--shortcut-gap-y': `${fitMetrics.value.fittedGap}px`,
       '--fit-icon-size': `${fitMetrics.value.fittedIcon}px`,

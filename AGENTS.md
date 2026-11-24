@@ -155,3 +155,18 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - [内置插件开发](docs/plugin-development.md)：注册、类型契约、权限、组件与测试。
 - [UI 设计规范](docs/ui-design.md)、[交互细节](docs/ui-skill-refinements.md)、[参考审计](docs/product-reference-audit.md)。
 - [V1.4 发布说明](docs/releases/v1.4.0.md)，后续版本说明位于对应候选分支，合并后可在 main 查询。
+
+
+## 首页交互专项候选（2026-11-24）
+- 默认隐藏时钟与常驻搜索，保留已有用户显式偏好和按需搜索；默认使用滑动效果。
+- 滚轮归一化、累计小增量、取消固定锁，滑动模式提供逐帧预览；保留短屏纵向滚动和浮层保护。
+- Dock 增加自动隐藏偏好、鼠标拖动排序、失败图标回退与玻璃材质调整；触屏不自动隐藏。
+- 风险：默认偏好变化、快速循环翻页与旧粒子动画、拖拽、窄屏及扩展备份兼容；须实际执行 CI 和浏览器专项验证。候选提交不代表验收通过。
+
+- 首轮候选 #20（1c6bfda）常规 CI 发现 16 项失败，包含默认布局变化导致的旧测试前提失效及网格 DOM 预算回归；本次恢复相邻页挂载上限、明确旧偏好测试数据、补充新默认布局测试及自动隐藏备份校验。新提交仍须重新验收。
+
+- 保留工作区切换器与 Dock 的非重叠布局边界（窄屏优先可操作性）；补充默认首页/滚轮环绕/按需搜索的 Chromium 验收，旧搜索与时钟测试显式使用旧偏好。
+
+- #20 head a20a65d：[UI 专项 45394505966](https://github.com/weepwood/inftab-mirror/actions/runs/45394505966) 成功（包含 launcher benchmark）；[CI 45394505892](https://github.com/weepwood/inftab-mirror/actions/runs/45394505892) 83/83 文件、673/673 测试通过，首屏 JS gzip 62145/61952 B 超出 193 B。后续将默认关闭的时钟改为按需加载，保持预算不变，并补充生产 chunk 验证；新 head 需重新执行门禁。
+
+- #20 head c2360b5：[CI 45394911323](https://github.com/weepwood/inftab-mirror/actions/runs/45394911323) 83/83 文件、673/673 测试通过；首屏 JS 60.4/60.5 KiB、全部 JS 155.8/156 KiB、CSS 21.9/64 KiB、产物 1390.8/4096 KiB 均达标；[UI 45394911521](https://github.com/weepwood/inftab-mirror/actions/runs/45394911521) 成功。正式发布的稳定浏览器、MV3、跨标签并发与旧 Dock 交互测试更新显式配置，保留原有行为断言及新增默认布局断言；当前新提交尚未验收，不将前序绿灯冒充新 head 结果。

@@ -22,6 +22,7 @@ const props = defineProps<{
   transitionDirection: number
   transitionEffect: PageTransitionEffect
   transitionDuration: number
+  wheelOffset?: number
 }>()
 
 const emit = defineEmits<{
@@ -247,7 +248,19 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
     }, particleDuration)
     return
   }
-  physicalPage.value += direction
+  const count = pages.value.length
+  const distance = direction > 0 ? (pageIndex - previousPage + count) % count : (previousPage - pageIndex + count) % count
+  if (distance > 1 && props.transitionEffect === 'slide') {
+    resettingTrack.value = true
+    physicalPage.value = centeredPhysicalPage()
+    resetFrame = requestAnimationFrame(() => {
+      resettingTrack.value = false
+      resetFrame = 0
+      completeTrackTransition()
+    })
+    return
+  }
+  physicalPage.value += direction * distance
   rebaseTrackIfNeeded()
   scheduleTrackSettleFallback()
 })
@@ -448,8 +461,9 @@ onBeforeUnmount(() => {
           'motion-opt-in': transitionEffect !== 'slide',
           'particles-mode': transitionEffect === 'particles',
           'is-resetting': resettingTrack,
+          'is-wheel-tracking': Boolean(wheelOffset) && transitionEffect === 'slide',
         }"
-        :style="{ transform: transitionEffect === 'particles' ? 'none' : `translate3d(calc(-${physicalPage * 100}% + ${trackOffsetPx}px), 0, 0)` }"
+        :style="{ transform: transitionEffect === 'particles' ? 'none' : `translate3d(calc(${(-physicalPage + (transitionEffect === 'slide' ? (wheelOffset ?? 0) : 0)) * 100}% + ${trackOffsetPx}px), 0, 0)` }"
         @transitionend="handleTrackTransitionEnd"
       >
           <section
