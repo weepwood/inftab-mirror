@@ -1,10 +1,12 @@
 import { getCurrentScope, onScopeDispose, ref, watch, type Ref } from 'vue'
+import { localStorageAdapter, type StorageAdapter } from '../data/storageAdapter'
 import { sanitizeStoredValue } from '../data/sanitize'
 
 export const storageWriteErrorEvent = 'inftab:storage-write-error'
 export const storageWriteSuccessEvent = 'inftab:storage-write-success'
 
 export interface StoredStateOptions<T = unknown> {
+  storageAdapter?: StorageAdapter
   /** Keep the incoming value intact for state where external changes should always win. */
   mergeConcurrentChanges?: boolean
   /** Resolve domain-specific conflicts after the standard concurrent edit merge. */
@@ -34,9 +36,10 @@ export function useStoredState<T>(
   normalize: (value: unknown) => T = (value) => sanitizeStoredValue(value, fallback),
   options: StoredStateOptions<T> = {},
 ): Ref<T> {
+  const adapter = options.storageAdapter ?? localStorageAdapter
   let initial = structuredClone(fallback)
   try {
-    const saved = localStorage.getItem(key)
+    const saved = adapter.read(key)
     if (saved) {
       initial = normalize(JSON.parse(saved))
     }
@@ -47,12 +50,7 @@ export function useStoredState<T>(
   const value = ref(initial) as Ref<T>
   const targetWindow = typeof window === 'undefined' ? undefined : window
   const targetDocument = targetWindow?.document
-  let targetStorage: Storage | undefined
-  try {
-    targetStorage = localStorage
-  } catch {
-    // Storage can be blocked in restricted browsing contexts.
-  }
+  const targetStorage = adapter.storageArea()
   let persistTimer: ReturnType<typeof setTimeout> | undefined
   let isProcessingStorageEvents = false
   let isDisposed = false
@@ -64,7 +62,7 @@ export function useStoredState<T>(
   let ignoreNextPersistence = false
   function writeValue(next: T) {
     try {
-      localStorage.setItem(key, JSON.stringify(next))
+      adapter.write(key, JSON.stringify(next))
       targetWindow?.dispatchEvent?.(new CustomEvent(storageWriteSuccessEvent, { detail: { key } }))
     } catch {
       targetWindow?.dispatchEvent?.(new CustomEvent(storageWriteErrorEvent, { detail: { key } }))
