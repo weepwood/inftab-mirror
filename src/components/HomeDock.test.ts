@@ -148,9 +148,14 @@ describe('HomeDock magnification', () => {
         height: 48, x: index * 50, y: 0, toJSON: () => ({}),
       } as DOMRect)
     })
-    let runFrame: FrameRequestCallback | undefined
+    const frames: { current?: FrameRequestCallback } = {}
+    function advance(time: number) {
+      const callback = frames.current
+      frames.current = undefined
+      callback?.(time)
+    }
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      runFrame = callback
+      frames.current = callback
       return 1
     })
     vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
@@ -158,7 +163,19 @@ describe('HomeDock magnification', () => {
     wrapper.get('.home-dock').element.dispatchEvent(pointerEvent('pointermove', {
       pointerType: 'mouse', clientX: 24,
     }))
-    runFrame?.(0)
+    advance(16)
+    const scale = () => Number((entries[0]!.element as HTMLElement).style.getPropertyValue('--dock-scale'))
+    expect(scale()).toBeGreaterThan(1)
+    expect(scale()).toBeLessThan(1.65)
+    advance(32)
+    const beforeRetarget = scale()
+    wrapper.get('.home-dock').element.dispatchEvent(pointerEvent('pointermove', { pointerType: 'mouse', clientX: 124 }))
+    // New target is lower, but the inherited positive velocity means the
+    // scale initially continues rising rather than jumping to the new target.
+    advance(48)
+    expect(scale()).toBeGreaterThan(beforeRetarget)
+    wrapper.get('.home-dock').element.dispatchEvent(pointerEvent('pointermove', { pointerType: 'mouse', clientX: 24 }))
+    for (let time = 64; time <= 640; time += 16) advance(time)
 
     expect((entries[0]!.element as HTMLElement).style.getPropertyValue('--dock-scale')).toBe('1.650')
     expect(Number((entries[1]!.element as HTMLElement).style.getPropertyValue('--dock-scale'))).toBeGreaterThan(1)
@@ -167,6 +184,7 @@ describe('HomeDock magnification', () => {
     expect(wrapper.get('.home-dock').classes()).toContain('is-magnifying')
 
     wrapper.get('.home-dock').element.dispatchEvent(pointerEvent('pointerleave', {}))
+    for (let time = 656; time <= 1296; time += 16) advance(time)
 
     expect((entries[0]!.element as HTMLElement).style.getPropertyValue('--dock-scale')).toBe('')
     expect((entries[1]!.element as HTMLElement).style.getPropertyValue('--dock-shift-x')).toBe('')
@@ -193,4 +211,18 @@ it('animates keyed Dock reordering on the wrapper without moving the icon transf
   await wrapper.setProps({ items: [mail, item] })
   await nextTick()
   expect(animate).toHaveBeenCalledTimes(2)
+})
+
+it('uses layout geometry instead of a transformed slot for drag insertion', async () => {
+  wrapper = mount(HomeDock, { props: { items: [item, { ...item, id: 'mail', title: '邮件' }] } })
+  const track = wrapper.get('.home-dock-track').element as HTMLElement
+  const target = wrapper.findAll('.home-dock-entry')[1]!.element as HTMLElement
+  Object.defineProperties(target, { offsetParent: { value: track }, offsetLeft: { value: 50 }, offsetWidth: { value: 48 } })
+  vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ left: 100 } as DOMRect)
+  vi.spyOn(target, 'getBoundingClientRect').mockReturnValue({ left: 200, width: 48 } as DOMRect)
+  await wrapper.get('[data-dock-item-id="weather"]').trigger('dragstart')
+  await wrapper.findAll('.home-dock-entry')[1]!.trigger('dragover', { clientX: 180 })
+  expect(target.classList.contains('dock-drop-after')).toBe(true)
+  await wrapper.findAll('.home-dock-entry')[1]!.trigger('drop', { clientX: 180 })
+  expect(wrapper.emitted('reorder')).toEqual([['weather', 'mail', true]])
 })

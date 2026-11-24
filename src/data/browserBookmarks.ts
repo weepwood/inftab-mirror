@@ -1,9 +1,5 @@
+import { extensionApi, subscribeEvents, subscribePermissionChanges, type ChromeEvent } from './browserApiShared'
 import type { BrowserBookmarkNode } from '../types'
-
-interface ChromeEvent {
-  addListener(listener: (...args: unknown[]) => void): void
-  removeListener(listener: (...args: unknown[]) => void): void
-}
 
 interface ChromeBookmarksApi {
   getTree(): Promise<BrowserBookmarkNode[]>
@@ -26,59 +22,43 @@ interface ChromeExtensionApi {
   }
 }
 
-function extensionApi(): ChromeExtensionApi | undefined {
-  const api = (globalThis as typeof globalThis & { chrome?: ChromeExtensionApi }).chrome
-  return api?.runtime?.id ? api : undefined
-}
-
 export function canAccessBrowserBookmarks(): boolean {
-  const api = extensionApi()
+  const api = extensionApi<ChromeExtensionApi>()
   return Boolean(api?.bookmarks && api.permissions)
 }
 
 export async function hasBrowserBookmarksPermission(): Promise<boolean> {
-  const api = extensionApi()
+  const api = extensionApi<ChromeExtensionApi>()
   if (!api?.bookmarks || !api.permissions) return false
   return api.permissions.contains({ permissions: ['bookmarks'] })
 }
 
 export async function requestBrowserBookmarksPermission(): Promise<boolean> {
-  const api = extensionApi()
+  const api = extensionApi<ChromeExtensionApi>()
   if (!api?.bookmarks || !api.permissions) return false
   return api.permissions.request({ permissions: ['bookmarks'] })
 }
 
 export async function getBrowserBookmarkTree(): Promise<BrowserBookmarkNode[]> {
-  const api = extensionApi()
+  const api = extensionApi<ChromeExtensionApi>()
   if (!api?.bookmarks) throw new Error('浏览器书签功能当前不可用。')
   return api.bookmarks.getTree()
 }
 
 export function subscribeToBrowserBookmarks(listener: () => void): () => void {
-  const bookmarks = extensionApi()?.bookmarks
+  const bookmarks = extensionApi<ChromeExtensionApi>()?.bookmarks
   if (!bookmarks) return () => {}
   const handleChange = () => listener()
-  const events = [
+  return subscribeEvents([
     bookmarks.onCreated,
     bookmarks.onChanged,
     bookmarks.onMoved,
     bookmarks.onRemoved,
     bookmarks.onChildrenReordered,
     bookmarks.onImportEnded,
-  ].filter((event): event is ChromeEvent => Boolean(event))
-  events.forEach((event) => event.addListener(handleChange))
-  return () => events.forEach((event) => event.removeListener(handleChange))
+  ], handleChange)
 }
 
 export function subscribeToBrowserBookmarkPermissionChanges(listener: () => void): () => void {
-  const permissions = extensionApi()?.permissions
-  if (!permissions) return () => {}
-  const handleChange = (details: unknown) => {
-    if (typeof details !== 'object' || details === null || !('permissions' in details)) return
-    const changedPermissions = details.permissions
-    if (Array.isArray(changedPermissions) && changedPermissions.includes('bookmarks')) listener()
-  }
-  const events = [permissions.onAdded, permissions.onRemoved].filter((event): event is ChromeEvent => Boolean(event))
-  events.forEach((event) => event.addListener(handleChange))
-  return () => events.forEach((event) => event.removeListener(handleChange))
+  return subscribePermissionChanges(extensionApi<ChromeExtensionApi>()?.permissions, 'bookmarks', listener)
 }

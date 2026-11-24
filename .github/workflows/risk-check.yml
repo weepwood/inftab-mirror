@@ -8,6 +8,8 @@ on:
       - 'src/components/SearchBar.vue'
       - 'src/components/HomeDock.vue'
       - 'vite.config.ts'
+      - 'src/data/browserApiShared.ts'
+      - 'src/data/browser*.ts'
       - 'src/composables/overlayFocus.ts'
       - 'src/composables/useHomeNavigation.ts'
       - 'src/composables/useShortcutDrag.ts'
@@ -57,15 +59,19 @@ jobs:
       - name: Install only Chromium
         run: npx playwright install --with-deps chromium
       - name: Verify overlay and visual contracts
-        run: npm run test:e2e -- e2e/visual-system.spec.ts e2e/accessibility.spec.ts e2e/ui-refinements.spec.ts e2e/workspace-switcher.spec.ts e2e/custom-theme.spec.ts
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-ui-report
+        run: npm run test:e2e -- --output=test-results-ui e2e/visual-system.spec.ts e2e/accessibility.spec.ts e2e/ui-refinements.spec.ts e2e/workspace-switcher.spec.ts e2e/custom-theme.spec.ts
       - name: Verify release regression cases
         run: npm run test:e2e -- e2e/appearance.spec.ts e2e/new-tab.spec.ts --grep 'tall calendar presets|every built-in panel route|touch scrolling over shortcuts'
-      - name: Save failure diagnostics
-        if: failure()
+      - name: Save UI report and diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: focused-ui-report
           path: |
+            playwright-ui-report/
+            test-results-ui/
             playwright-report/
             test-results/
           if-no-files-found: ignore
