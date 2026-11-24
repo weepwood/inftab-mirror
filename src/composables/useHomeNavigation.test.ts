@@ -134,3 +134,22 @@ it('keeps sub-threshold wheel motion completely static even after input stops', 
     expect(currentPage.value).toBe(0)
   } finally { scope.stop(); clock.mockRestore(); vi.useRealTimers() }
 })
+
+it('does not let wheel input steal an active touch gesture', () => {
+  const scope = effectScope(), currentPage = ref(0)
+  const nav = scope.run(() => useHomeNavigation({ currentPage, pageDirection: ref(1), pageCount: ref(3), minimalMode: ref(false), shortHomeScrollEnabled: ref(false), overlayOpen: ref(false) }))!
+  const touch = (x: number) => ({ pointerType: 'touch', pointerId: 1, clientX: x, clientY: 0 } as PointerEvent)
+  try {
+    nav.startHomeSwipe(touch(200)); nav.moveHomeSwipe(touch(130))
+    const preview = nav.wheelOffset.value
+    const wheel = new WheelEvent('wheel', { deltaX: 100, cancelable: true })
+    nav.handleHomeWheel(wheel)
+    expect(currentPage.value).toBe(0)
+    expect(nav.wheelOffset.value).toBe(preview)
+    expect(wheel.defaultPrevented).toBe(false)
+    nav.finishHomeSwipe(touch(100))
+    expect(currentPage.value).toBe(1)
+    nav.handleHomeWheel(new WheelEvent('wheel', { deltaX: 100, cancelable: true }))
+    expect(currentPage.value).toBe(2)
+  } finally { scope.stop() }
+})
