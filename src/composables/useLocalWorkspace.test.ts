@@ -968,3 +968,37 @@ describe('shortcut workspace moves and folders', () => {
     expect(workspace.shortcuts.value.find((item) => item.id === shortcut.id)).toEqual(shortcut)
   })
 })
+
+
+describe('workspace domain boundaries', () => {
+  it('treats dropping an item on itself as a no-op', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const before = [...workspace.launcherOrder.value]
+    workspace.reorderLauncherItems(before[0]!, before[0]!, before)
+    expect(workspace.launcherOrder.value).toEqual(before)
+  })
+
+  it('exports a detached snapshot without sharing mutable references', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    workspace.addTodo('Original task')
+    const snapshot = workspace.createBackup()
+    snapshot.todos[0]!.title = 'Edited export'
+    snapshot.preferences.columns = 2
+    snapshot.homeWorkspaces![0]!.itemIds.length = 0
+    expect(workspace.todos.value[0]?.title).toBe('Original task')
+    expect(workspace.homeWorkspaces.value[0]?.itemIds.length).toBeGreaterThan(0)
+    expect(workspace.createBackup().preferences).toEqual(workspace.preferences.value)
+  })
+
+  it('uses the legacy weather city only when the v1 key is absent', () => {
+    localStorage.setItem('inftab.weather-city', '北京')
+    scope = effectScope()
+    expect(scope.run(() => useLocalWorkspace())!.weatherCity.value).toBe('北京')
+    scope.stop()
+    localStorage.setItem('inftab.weather-city.v1', JSON.stringify('广州'))
+    scope = effectScope()
+    expect(scope.run(() => useLocalWorkspace())!.weatherCity.value).toBe('广州')
+  })
+})
