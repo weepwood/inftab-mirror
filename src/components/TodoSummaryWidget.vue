@@ -20,10 +20,17 @@ let ignoreSubmit = false
 let compositionTimer: number | undefined
 
 function guardComposition(event: KeyboardEvent) {
-  if (event.key !== 'Enter' || !(composing.value || event.isComposing || event.keyCode === 229)) return
+  if (event.key !== 'Enter') return
+  // A new non-composing Enter must not inherit a pending IME submit guard.
+  if (!(composing.value || event.isComposing || event.keyCode === 229)) {
+    if (compositionTimer !== undefined) window.clearTimeout(compositionTimer)
+    compositionTimer = undefined
+    ignoreSubmit = false
+    return
+  }
   ignoreSubmit = true
   if (compositionTimer !== undefined) window.clearTimeout(compositionTimer)
-  compositionTimer = window.setTimeout(() => { ignoreSubmit = false }, 0)
+  compositionTimer = window.setTimeout(() => { ignoreSubmit = false; compositionTimer = undefined }, 0)
 }
 
 async function add() {

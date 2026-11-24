@@ -1264,7 +1264,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 /* Compact visual hierarchy: keep controls and icon grid dimensions user-owned. */
 .home-actions { border-color: #ffffff35; background: linear-gradient(180deg,#ffffff20,#ffffff0d); box-shadow: 0 4px 20px #00000012, inset 0 1px 0 #ffffff25; }
 .theme-dark .home-actions { background: linear-gradient(180deg,#22262d99,#171a20aa); border-color: #ffffff20; }
-.home-actions .round-action[aria-pressed="true"] { background: #ffffff2b; }
+.home-actions .round-action[aria-pressed="true"] { background: var(--ui-accent-soft); color: var(--ui-accent-text); }
 .shortcut-open:focus-visible .shortcut-icon { outline: 2px solid #fff; outline-offset: 3px; }
 .shortcut-icon { corner-shape: squircle; }
 @media (min-width: 781px) and (min-height: 680px) {
