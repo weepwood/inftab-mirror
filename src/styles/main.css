@@ -175,7 +175,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .home-dock-item { width: var(--dock-item-size, 48px); height: var(--dock-item-size, 48px); display: grid; place-items: center; border: 0; border-radius: 10px; padding: 0; background: transparent; color: #fff; cursor: pointer; }
 .home-dock-item:focus-visible { outline-offset: 3px; }
 .home-dock-icon { width: var(--dock-icon-size, 44px); height: var(--dock-icon-size, 44px); display: grid; place-items: center; overflow: hidden; border-radius: 12px; corner-shape: squircle; color: #303640; font-size: 19px; box-shadow: 0 3px 9px rgba(8, 12, 17, .24); transform: translateX(var(--dock-shift-x, 0px)) scale(var(--dock-scale, 1)); transform-origin: center bottom; transition: transform .16s cubic-bezier(.2, .8, .2, 1); }
-.home-dock.is-magnifying .home-dock-icon { transition: none; }
+.home-dock.is-magnifying .home-dock-icon { transition: transform 85ms cubic-bezier(.2,.85,.3,1); }
 .home-dock-entry:hover .home-dock-icon, .home-dock-item:focus-visible .home-dock-icon { outline: 2px solid var(--dock-glow-color, rgba(255, 255, 255, .8)); outline-offset: 1px; }
 .home-dock-icon img { width: 100%; height: 100%; object-fit: contain; }
 .dock-context-menu { width: 176px; }
@@ -1188,19 +1188,16 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 :root[data-custom-theme] .shortcut-editor { --editor-control-border: var(--ui-border); --editor-focus: var(--ui-accent-text); --editor-action-fill: var(--ui-accent); border-radius: var(--ui-radius-dialog); }
 
 /* Launcher interaction polish: stable hit targets and compositor-only wheel preview. */
-.shortcut-pages.is-wheel-tracking { transition: none !important; }
 .page-dots { border-color: transparent; background: transparent; backdrop-filter: none; gap: 2px; }
 .page-dot, .page-dot.active { width: 24px; transition: none; }
 .page-dot.active::after { width: 12px; }
 .home-dock { bottom: 4px; left: 50%; transform: translateX(-50%); max-width: max(100px, calc(100vw - 380px)); }
-.home-dock::before { inset: auto 2px 3px; height: calc(var(--dock-item-size) + 14px); border-radius: 19px; background: rgba(240,245,255,.3); border: 1px solid rgba(255,255,255,.4); box-shadow: 0 8px 24px #0003, inset 0 1px 0 #ffffff30; }
+.home-dock::before { inset: auto 2px 3px; height: calc(var(--dock-item-size) + 14px); border-radius: 18px; background: linear-gradient(180deg, #ffffff42, #e1e8f12b); border: 1px solid #ffffff52; box-shadow: 0 8px 28px #0003, inset 0 1px 0 #ffffff4d; backdrop-filter: blur(24px) saturate(160%); }
+.theme-dark .home-dock::before { background: linear-gradient(180deg, #333841a8, #181c24a8); border-color: #ffffff26; }
 .home-dock-track { padding: calc(var(--dock-item-size) * .7 + 10px) 16px 10px; gap: min(var(--dock-gap-setting), 12px); }
 .home-dock-entry:hover .home-dock-icon { outline: none; }
 .home-dock-item:active .home-dock-icon { filter: brightness(.85); }
-.home-dock.dock-auto-hide { transition: transform 180ms ease-out; }
-@media (hover: hover) and (pointer: fine) and (min-width: 781px) {
-  .home-dock.dock-auto-hide:not(:hover):not(:focus-within):not(.dock-menu-open) { transform: translate(-50%, calc(var(--dock-item-size) + 8px)); }
-}
+.home-dock.dock-auto-hide { transition: transform 240ms cubic-bezier(.22,.75,.25,1); }
 @media (max-width: 780px) { .home-dock { bottom: 36px; left: 14px; max-width: max(90px, calc(100vw - 202px)); transform: none; } .home-dock.dock-auto-hide:not(:hover):not(:focus-within):not(.dock-menu-open) { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .home-dock.dock-auto-hide, .home-dock-icon { transition: none; } }
 
@@ -1210,7 +1207,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 @media (prefers-reduced-motion: reduce) { .shortcut-pages:not(.motion-opt-in) { transition-duration: 0ms !important; } }
 
 /* The continuous slide track renders only the currently visible virtual slots. */
-.shortcut-pages.continuous-slide { display: grid; transition: none !important; }
+.shortcut-pages.continuous-slide { display: grid; transform: translate3d(var(--slide-x, 0%), 0, 0); transition: none !important; }
 .continuous-slide .shortcut-page { grid-area: 1 / 1; width: 100%; }
 .home-dock.dock-dragging .home-dock-icon { transition: none; }
 .home-dock-entry.dock-drag-source { opacity: .45; }
@@ -1232,3 +1229,20 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
   .home-dock:not(.magnification-off) .home-dock-track { padding-top: calc(var(--dock-item-size) * .7 + 34px); }
 }
 @media (prefers-reduced-motion: reduce) { .home-dock-entry::before { transition: none; } }
+
+/* Clean launcher: center the visual mass without changing stored grid settings. */
+@media (min-width: 781px) and (min-height: 680px) {
+  .home:not(.home-scrollable) .home-content:not(.home-content-minimal):not(:has(.home-clock,.search-area,.home-widget-shelf,.panel-loading)) {
+    display: flex; flex-direction: column; justify-content: center;
+    min-height: calc(100vh - 100px); padding-bottom: 60px;
+  }
+}
+.shortcut-icon { box-shadow: 0 3px 8px #08181012, 0 8px 22px #08181026, inset 0 1px 0 #ffffff40; }
+.shortcut-name { letter-spacing: .01em; text-shadow: 0 1px 3px #0009, 0 0 9px #0004; }
+.home-dock-icon { transition-timing-function: cubic-bezier(.2,1.12,.36,1); }
+.home-dock-entry { transition: transform 150ms cubic-bezier(.2,.8,.2,1); }
+.home-dock.dock-dragging .dock-drop-before { transform: translateX(5px); }
+.home-dock.dock-dragging .dock-drop-after { transform: translateX(-5px); }
+@media (prefers-reduced-motion: reduce) {
+  .home-dock.is-magnifying .home-dock-icon, .home-dock-entry { transition: none; }
+}

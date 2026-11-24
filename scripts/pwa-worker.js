@@ -6,8 +6,8 @@ let disabling=false
 const ownedCache = key => key.startsWith(prefix) && /^[0-9a-f]{24}$/.test(key.slice(prefix.length))
 const inScope = url => { const target = new URL(url); return target.origin === scope.origin && target.pathname.startsWith(scope.pathname) }
 const shell = new URL('index.html',scope).href
-const urls = new Set(ASSETS.map(asset => new URL(asset.path,scope).href))
-const digest = async bytes => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('')
+const urls = new Set(ASSETS.map(([path]) => new URL(path,scope).href))
+const digest = async bytes => btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))))
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
     const cache = await caches.open(cacheName)
@@ -15,10 +15,10 @@ self.addEventListener('install',event=>{
       // Verify every response before committing it: a missing lazy chunk must
       // not install an incomplete or mixed-version shell.
       for(let i=0;i<ASSETS.length;i+=8) {
-        const results = await Promise.allSettled(ASSETS.slice(i,i+8).map(async asset=>{
-        const url=new URL(asset.path,scope).href
+        const results = await Promise.allSettled(ASSETS.slice(i,i+8).map(async ([path,hash])=>{
+        const url=new URL(path,scope).href
         const response=await fetch(url,{cache:'reload',credentials:'same-origin',redirect:'error'})
-        if(!response.ok || await digest(await response.clone().arrayBuffer())!==asset.hash) throw Error('Precache verification failed')
+        if(!response.ok || await digest(await response.clone().arrayBuffer())!==hash) throw Error('Precache verification failed')
         await cache.put(url,response)
         }))
         if(results.some(result=>result.status==='rejected')) throw Error('Precache verification failed')
@@ -59,7 +59,7 @@ self.addEventListener('message',event=>{
         const keys=await caches.keys()
         const cache=keys.includes(cacheName)?await caches.open(cacheName):null
         const present=new Set(cache?(await cache.keys()).map(request=>request.url):[])
-        port.postMessage({ok:true,revision:REVISION,count:present.size,bytes:ASSETS.filter(asset=>present.has(new URL(asset.path,scope).href)).reduce((sum,asset)=>sum+asset.bytes,0),versions:keys.filter(ownedCache).length})
+        port.postMessage({ok:true,revision:REVISION,count:present.size,bytes:ASSETS.reduce((sum,[path,,bytes])=>sum+(present.has(new URL(path,scope).href)?bytes:0),0),versions:keys.filter(ownedCache).length})
         return
       }
       if(disabling) throw Error('正在清理离线缓存。')

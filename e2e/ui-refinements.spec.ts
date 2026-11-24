@@ -264,3 +264,69 @@ test('continuous slide retains visible slots during fast alternating wheel input
   await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toHaveCount(1)
   await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
 })
+
+test('fine wheel input reverses without an extra page and settles the compositor track', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  await page.locator('.shortcut-grid-viewport').hover()
+  await page.mouse.wheel(0, 70)
+  await page.mouse.wheel(0, 60)
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
+  await page.mouse.wheel(0, -30)
+  await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
+})
+
+test('clean desktop launcher stays centered with the configured grid and bounded slots', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  const viewport = page.locator('.shortcut-grid-viewport')
+  await expect(viewport).toBeVisible()
+  const box = (await viewport.boundingBox())!
+  expect(Math.abs(box.x + box.width / 2 - 720)).toBeLessThan(2)
+  expect(box.y + box.height / 2).toBeGreaterThan(250)
+  expect(box.y + box.height / 2).toBeLessThan(650)
+  await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toHaveCount(1)
+  expect(await page.locator('.shortcut-page').count()).toBeLessThanOrEqual(4)
+})
+
+test('records frame intervals and track coverage during uninterrupted and reversed input', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ columns: 2, rows: 1, pageTransitionEffect: 'slide', pageTransitionMs: 300 })))
+  await page.goto('/')
+  await expect(page.locator('.shortcut-grid-viewport')).toBeVisible()
+  const stats = await page.evaluate(async () => {
+    const grid = document.querySelector<HTMLElement>('.shortcut-grid-viewport')!
+    const intervals: number[] = []
+    let blank = 0
+    let maxSlots = 0
+    let previous = performance.now()
+    const started = previous
+    let sent = 0
+    await new Promise<void>(resolve => {
+      function frame(now: number) {
+        intervals.push(now - previous)
+        previous = now
+        const viewport = grid.getBoundingClientRect()
+        const slots = Array.from(grid.querySelectorAll('.shortcut-page'))
+        maxSlots = Math.max(maxSlots, slots.length)
+        if (!slots.some(slot => {
+          const r = slot.getBoundingClientRect()
+          return r.left < viewport.right && r.right > viewport.left && slot.querySelector('.shortcut-cell')
+        })) blank++
+        if (sent < 8 && now - started >= sent * 35) {
+          grid.dispatchEvent(new WheelEvent('wheel', { deltaX: sent < 4 ? 55 : -55, bubbles: true, cancelable: true }))
+          sent++
+        }
+        if (now - started < 650) requestAnimationFrame(frame)
+        else resolve()
+      }
+      requestAnimationFrame(frame)
+    })
+    return { intervals, blank, maxSlots, sent }
+  })
+  await testInfo.attach('frame-diagnostics', { body: JSON.stringify(stats), contentType: 'application/json' })
+  expect(stats.sent).toBe(8)
+  expect(stats.blank).toBe(0)
+  expect(stats.maxSlots).toBeLessThanOrEqual(4)
+})

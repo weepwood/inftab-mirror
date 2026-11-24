@@ -4,7 +4,7 @@ import { createServer, type Server } from 'node:http'
 import { expect, test } from '@playwright/test'
 
 const workerSource = readFileSync(new URL('../scripts/pwa-worker.js', import.meta.url), 'utf8')
-const sha = (content: string) => createHash('sha256').update(content).digest('hex')
+const sha = (content: string) => createHash('sha256').update(content).digest('base64')
 const revision = (version: number) => version.toString(16).padStart(24, '0')
 const scopePath = '/inftab-mirror/'
 function fixture() {
@@ -21,7 +21,7 @@ function fixture() {
     const data = files()
     if(path === scopePath+'sw.js') {
       res.setHeader('Content-Type','application/javascript')
-      res.end('const REVISION='+JSON.stringify(revision(version))+';const ASSETS='+JSON.stringify(Object.entries(data).map(([path,content])=>({path,hash:sha(content),bytes:Buffer.byteLength(content)})))+';\n'+workerSource)
+      res.end('const REVISION='+JSON.stringify(revision(version))+';const ASSETS='+JSON.stringify(Object.entries(data).map(([path,content])=>[path,sha(content),Buffer.byteLength(content)]))+';\n'+workerSource)
       return
     }
     if(path === scopePath || path === scopePath+'index.html') {

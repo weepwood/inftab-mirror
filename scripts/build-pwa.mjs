@@ -12,7 +12,7 @@ rmSync(resolve(dist, 'manifest.json'), { force: true })
 const here = fileURLToPath(new URL('./', import.meta.url))
 const write = (name, data) => writeFileSync(resolve(dist,name),data)
 const read = name => readFileSync(resolve(dist,name))
-const sha = bytes => createHash('sha256').update(bytes).digest('hex')
+const sha = bytes => createHash('sha256').update(bytes).digest('base64')
 // Generate simple self-contained PNG icons without a runtime dependency.
 function crc32(bytes) {
   let crc = 0xffffffff
@@ -58,10 +58,10 @@ function walk(dir){return readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isD
 const allowed = /^(?:index\.html|app\.webmanifest|pwa-(?:client|bootstrap)\.js|pwa\.css|pwa-(?:192|512)\.png|windmill\.svg|(?:assets|wallpapers|search-engines|inftab-icons)\/[^?#]+)$/
 const files=walk(dist).map(path=>relative(dist,path).split(sep).join('/')).filter(name=>allowed.test(name)).sort()
 if (!files.includes('index.html') || !files.some(name=>name.startsWith('assets/'))) throw Error('PWA: missing app shell')
-const records=files.map(path=>({path,hash:sha(read(path)),bytes:read(path).length}))
-const bytes=records.reduce((sum,asset)=>sum+asset.bytes,0)
+const records=files.map(path=>{const data=read(path);return [path,sha(data),data.length]})
+const bytes=records.reduce((sum,asset)=>sum+asset[2],0)
 if(bytes>4*1024*1024) throw Error('PWA: precache exceeds 4 MiB')
 const worker=readFileSync(resolve(here,'pwa-worker.js'),'utf8')
-const revision=sha(Buffer.from(worker+JSON.stringify(records))).slice(0,24)
+const revision=createHash('sha256').update(worker+JSON.stringify(records)).digest('hex').slice(0,24)
 write('sw.js','const REVISION = '+JSON.stringify(revision)+';\nconst ASSETS = '+JSON.stringify(records)+';\n'+worker)
 console.log('PWA precache: '+records.length+' assets, '+bytes+' bytes, revision '+revision)

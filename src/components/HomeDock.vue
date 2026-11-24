@@ -43,7 +43,7 @@ function startDrag(event: DragEvent, id: string) {
   if (event.dataTransfer) { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', id) }
 }
 function previewDrop(event: DragEvent, id: string) {
-  if (!dragId.value || dragId.value === id) return
+  if (!dragId.value || dragId.value === id) { dropTarget.value = undefined; return }
   event.preventDefault()
   const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
   dropTarget.value = { id, after: event.clientX > bounds.left + bounds.width / 2 }
@@ -66,10 +66,6 @@ function clearSuppressedClick() {
     clearTimeout(suppressClickTimer)
     suppressClickTimer = undefined
   }
-}
-
-function clearSuppressedClickOnPointerDown() {
-  clearSuppressedClick()
 }
 
 function cleanGestureListeners() {
@@ -148,26 +144,24 @@ function updateDockMagnification(event: PointerEvent) {
   magnificationFrame = window.requestAnimationFrame(() => {
     magnificationFrame = 0
     const entries = Array.from(dock.value?.querySelectorAll<HTMLElement>('.home-dock-entry') ?? [])
-    const centers = entries.map((entry) => {
-      const bounds = entry.getBoundingClientRect()
-      return bounds.left + bounds.width / 2
-    })
-    const itemSize = centers.length > 1 ? Math.abs(centers[1]! - centers[0]!) : (entries[0]?.offsetWidth || 48)
-    const influenceRadius = itemSize * 3
+    if (!entries.length) return
+    const first = entries[0]!.getBoundingClientRect()
+    const last = entries.at(-1)!.getBoundingClientRect()
+    const itemSize = first.width || 48
+    const pitch = entries.length > 1 ? (last.left - first.left) / (entries.length - 1) : itemSize
+    const influenceRadius = Math.max(itemSize, pitch) * 2.8
     dock.value?.classList.add('is-magnifying')
-    const scales = centers.map(center => {
-      const proximity = Math.max(0, 1 - Math.abs(pointerX - center) / influenceRadius)
+    const scales = entries.map((_, index) => {
+      const proximity = Math.max(0, 1 - Math.abs(pointerX - first.left - itemSize / 2 - index * pitch) / influenceRadius)
       return 1 + .65 * proximity * proximity * (3 - 2 * proximity)
     })
     const expansion = scales.map(scale => (scale - 1) * Math.max(0, itemSize - 4))
     const total = expansion.reduce((sum, value) => sum + value, 0)
     const bounds = dock.value?.getBoundingClientRect()
-    const left = centers[0]! - itemSize / 2
-    const right = centers.at(-1)! + itemSize / 2
-    const room = bounds?.width ? Math.max(0, bounds.right - right) + Math.max(0, left - bounds.left) : total
-    const factor = total > 0 ? Math.min(1, room / total) : 1
-    let offset = bounds?.width ? -Math.min(total * factor / 2, Math.max(0, left - bounds.left)) : -total / 2
-    if (bounds?.width) offset = Math.min(offset, Math.max(0, bounds.right - right) - total * factor)
+    const left = bounds?.width ? Math.max(0, first.left - bounds.left) : total
+    const right = bounds?.width ? Math.max(0, bounds.right - last.right) : total
+    const factor = Math.min(1, (left + right) / (total || 1))
+    let offset = Math.max(-left, Math.min(-total * factor / 2, right - total * factor))
     entries.forEach((entry, index) => {
       const extra = expansion[index]! * factor
       entry.style.setProperty('--dock-scale', (1 + (scales[index]! - 1) * factor).toFixed(3))
@@ -232,12 +226,12 @@ function removeContextItem() {
 }
 
 onMounted(() => {
-  window.addEventListener('pointerdown', clearSuppressedClickOnPointerDown, true)
+  window.addEventListener('pointerdown', clearSuppressedClick, true)
   window.addEventListener('click', closeOnOutsideClick)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('pointerdown', clearSuppressedClickOnPointerDown, true)
+  window.removeEventListener('pointerdown', clearSuppressedClick, true)
   window.removeEventListener('click', closeOnOutsideClick)
   cleanGestureListeners()
   clearSuppressedClick()
@@ -254,7 +248,6 @@ onBeforeUnmount(() => {
           class="home-dock-item"
           :data-dock-item-id="item.id"
           :aria-label="`打开${item.title}`"
-          :title="item.title"
           draggable="true"
           @dragstart="startDrag($event, item.id)"
           @dragend="endDrag"
