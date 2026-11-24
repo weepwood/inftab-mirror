@@ -68,10 +68,6 @@ function clearSuppressedClick() {
   }
 }
 
-function clearSuppressedClickOnPointerDown() {
-  clearSuppressedClick()
-}
-
 function cleanGestureListeners() {
   window.removeEventListener('pointermove', moveDockGesture)
   window.removeEventListener('pointerup', finishDockGesture)
@@ -153,11 +149,10 @@ function updateDockMagnification(event: PointerEvent) {
     const last = entries.at(-1)!.getBoundingClientRect()
     const itemSize = first.width || 48
     const pitch = entries.length > 1 ? (last.left - first.left) / (entries.length - 1) : itemSize
-    const centers = entries.map((_, index) => first.left + itemSize / 2 + index * pitch)
     const influenceRadius = Math.max(itemSize, pitch) * 2.8
     dock.value?.classList.add('is-magnifying')
-    const scales = centers.map(center => {
-      const proximity = Math.max(0, 1 - Math.abs(pointerX - center) / influenceRadius)
+    const scales = entries.map((_, index) => {
+      const proximity = Math.max(0, 1 - Math.abs(pointerX - first.left - itemSize / 2 - index * pitch) / influenceRadius)
       return 1 + .65 * proximity * proximity * (3 - 2 * proximity)
     })
     const expansion = scales.map(scale => (scale - 1) * Math.max(0, itemSize - 4))
@@ -231,12 +226,12 @@ function removeContextItem() {
 }
 
 onMounted(() => {
-  window.addEventListener('pointerdown', clearSuppressedClickOnPointerDown, true)
+  window.addEventListener('pointerdown', clearSuppressedClick, true)
   window.addEventListener('click', closeOnOutsideClick)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('pointerdown', clearSuppressedClickOnPointerDown, true)
+  window.removeEventListener('pointerdown', clearSuppressedClick, true)
   window.removeEventListener('click', closeOnOutsideClick)
   cleanGestureListeners()
   clearSuppressedClick()
