@@ -785,6 +785,7 @@ onBeforeUnmount(() => {
     <div class="background-shade"></div>
     <div class="home-brand" aria-label="Infinity 新标签页"><span class="brand-mark" aria-hidden="true">∞</span><span class="brand-word">infinity</span><span class="brand-label">新标签页</span></div>
     <header class="home-actions">
+      <button v-if="!minimalMode" type="button" class="round-action desktop-mode-toggle" :aria-label="desktopMode ? '经典模式' : '桌面模式'" :title="desktopMode ? '经典模式' : '桌面模式'" :aria-pressed="desktopMode" @click="desktopMode = !desktopMode"><span aria-hidden="true">▦</span></button>
       <button type="button" class="round-action home-command-toggle" aria-label="打开命令面板" title="命令面板（Ctrl/⌘+Shift+P）" @click="openCommandPalette"><span aria-hidden="true">⌘</span></button>
       <button v-if="!minimalMode" type="button" class="round-action home-create-shortcut" aria-label="新建快捷入口" title="新建快捷入口" @click="openShortcutDialog()"><Plus :size="19" /></button>
       <button type="button" class="round-action home-search-toggle" aria-label="查找快捷入口" title="查找快捷入口（Ctrl/⌘+F）" :aria-pressed="localSearchMode" @click="setLocalSearch(!localSearchMode)"><Search :size="18" /></button>
@@ -793,7 +794,6 @@ onBeforeUnmount(() => {
       <button type="button" class="round-action" aria-label="打开设置" title="打开设置" @click="openPanel('settings')"><Menu :size="21" /></button>
     </header>
 
-    <button type="button" class="desktop-mode-toggle" :aria-pressed="desktopMode" @click="desktopMode = !desktopMode">{{ desktopMode ? '经典模式' : '桌面模式' }}</button>
     <section id="main-content" class="home-content" :class="{ 'home-content-minimal': minimalMode }" tabindex="-1">
       <ClockWidget v-if="preferences.showClock" />
       <HomeWidgetShelf
@@ -945,5 +945,5 @@ onBeforeUnmount(() => {
 <style scoped>
 .desktop-mode .home-content{width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;padding-top:82px;padding-bottom:84px}
 .desktop-mode .desktop-shell{min-height:320px}
-.desktop-mode-toggle{position:fixed;z-index:3;left:24px;bottom:28px;border:1px solid #ffffff50;background:#182820aa;color:white;border-radius:9px;padding:8px 12px;cursor:pointer}
+.desktop-mode-toggle{font-size:22px}
 </style>

@@ -10,6 +10,7 @@ import { cell, resolvePoints, fitPoint, freshLayout, normalizeLayout, type Deskt
 const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout}>()
 const emit = defineEmits<{open: [item: LauncherItem, event?: MouseEvent]; edit: [item: LauncherItem]; layout: [layout: DesktopLayout]}>()
 const surface = ref<HTMLElement>()
+const failedIcons = ref<Record<string,string>>({})
 // Parent keys this component by workspace ID; each space has an independent record.
 const layout = computed(() => props.layout ?? freshLayout())
 function update(next: DesktopLayout) { emit('layout', next) }
@@ -107,10 +108,10 @@ watch(() => props.items.map(i=>i.id), ids => {
     <div ref="surface" class="desktop-surface">
       <div class="desktop-canvas" :style="{height: renderedHeight+'px'}">
         <button v-for="{item,point} in positions" :key="item.id" type="button" class="desktop-icon" :data-item-id="item.id" :style="{transform:'translate('+point.x+'px,'+point.y+'px)'}" :aria-label="item.title" @click="activate(item,$event)" @auxclick.middle.prevent="activate(item,$event)" @contextmenu.prevent="emit('edit',item)" @keydown="keyMove($event,item.id)">
-          <span class="desktop-symbol" :style="{background:item.color}">
+          <span class="desktop-symbol" :class="{builtin:item.action}" :data-action="item.action" :style="{background:item.action ? undefined : item.color}">
             <component :is="Folder" v-if="item.folder" :size="30"/>
-            <img v-else-if="item.icon" :src="item.icon" alt="" draggable="false" @error="($event.target as HTMLImageElement).style.display='none'"/>
-            <component :is="launcherIcons[item.id]" v-else-if="launcherIcons[item.id]" :size="30"/>
+            <component v-else-if="item.action && launcherIcons[item.action]" :is="launcherIcons[item.action]" :size="30" :stroke-width="1.8"/>
+            <img v-else-if="item.icon && failedIcons[item.id]!==item.icon" :src="item.icon" alt="" draggable="false" @error="failedIcons[item.id]=item.icon!"/>
             <span v-else>{{item.mark}}</span>
           </span>
           <span class="desktop-label">{{item.title}}</span>
@@ -131,6 +132,7 @@ watch(() => props.items.map(i=>i.id), ids => {
 .desktop-icon:active{cursor:grabbing}
 .desktop-icon:focus-visible{outline:2px solid white;outline-offset:-3px;border-radius:8px}
 .desktop-symbol{width:56px;height:56px;border-radius:14px;border:1px solid #ffffff48;display:grid;place-items:center;overflow:hidden;color:white;box-shadow:0 4px 14px #0004,inset 0 1px 1px #ffffff50;font-size:24px}
+.desktop-symbol.builtin{color:var(--builtin-ink,#6c8b7b);background:linear-gradient(150deg,#ffffff60,transparent 65%),var(--builtin-paper,#f4f8f3)}
 .desktop-symbol img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .desktop-label{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;text-shadow:0 1px 4px #000,0 1px 8px #000}
 </style>

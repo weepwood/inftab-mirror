@@ -99,3 +99,13 @@ for (const count of [50,200,1000]) {
     await info.attach('desktop-'+count,{body:await page.screenshot(),contentType:'image/png'})
   })
 }
+
+test('desktop built-in icons remain visible', async ({page})=>{
+  await page.goto('/')
+  await page.getByRole('button',{name:'桌面模式',exact:true}).click()
+  const builtin=page.locator('.desktop-symbol.builtin')
+  await expect(builtin.first()).toBeVisible()
+  expect(await builtin.count()).toBeGreaterThan(5)
+  expect(await builtin.locator('svg').count()).toBe(await builtin.count())
+  await page.screenshot({path:'test-results/desktop-alpha-icons.png'})
+})
