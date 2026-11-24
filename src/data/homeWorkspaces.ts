@@ -1,5 +1,6 @@
 import { isRecord, isValidRecordId } from './validation'
 import { truncateCodePoints } from './text'
+import { sanitizeWorkspaceLayout, type WorkspaceLayoutOverrides } from './workspaceLayout'
 
 export const defaultHomeWorkspaceId = 'default'
 export const maxHomeWorkspaces = 20
@@ -9,6 +10,7 @@ export interface HomeWorkspace {
   id: string
   name: string
   itemIds: string[]
+  layout?: WorkspaceLayoutOverrides
 }
 
 function uniqueName(name: string, used: Set<string>, fallback: string): string {
@@ -30,7 +32,9 @@ function uniqueName(name: string, used: Set<string>, fallback: string): string {
 
 function parseWorkspace(value: unknown): HomeWorkspace | undefined {
   if (!isRecord(value) || !isValidRecordId(value.id) || !Array.isArray(value.itemIds)) return undefined
+  const layout = sanitizeWorkspaceLayout(value.layout)
   return {
+    ...(layout ? { layout } : {}),
     id: value.id,
     name: typeof value.name === 'string' ? truncateCodePoints(value.name.trim(), maxHomeWorkspaceNameLength) : '',
     itemIds: [...new Set(value.itemIds.filter(isValidRecordId))],
@@ -70,6 +74,7 @@ export function sanitizeHomeWorkspaces(
       id: workspace.id,
       name: uniqueName(workspace.name, usedNames, index === 0 ? '主页' : `工作区 ${index + 1}`),
       itemIds,
+      ...(workspace.layout ? { layout: workspace.layout } : {}),
     }]
   })
 }

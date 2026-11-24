@@ -107,3 +107,18 @@ describe('HomeWorkspaceTabs', () => {
     expect(w.find('.workspace-panel').exists()).toBe(false)
   })
 })
+
+
+it('saves only the current workspace layout and supports reverting to global', async () => {
+  const saveLayout = vi.fn(() => true)
+  wrapper = mount(HomeWorkspaceTabs, { attachTo: document.body, props: { workspaces, activeId: 'work', createWorkspace, renameWorkspace, globalLayout: { columns: 6, rows: 3, iconSize: 72, iconRadius: 16, showNames: true }, saveLayout } })
+  await wrapper.get('.home-workspace-trigger').trigger('click')
+  await wrapper.get('.workspace-layout-edit').trigger('click')
+  await wrapper.get('input[type=range]').setValue('4')
+  await wrapper.get('.workspace-layout-form').trigger('submit')
+  expect(saveLayout).toHaveBeenCalledWith('work', { columns: 4, rows: 3, iconSize: 72, iconRadius: 16, showNames: true })
+  await wrapper.get('.home-workspace-trigger').trigger('click')
+  await wrapper.get('.workspace-layout-edit').trigger('click')
+  await wrapper.findAll('.workspace-layout-form button')[0]!.trigger('click')
+  expect(saveLayout).toHaveBeenLastCalledWith('work', undefined)
+})

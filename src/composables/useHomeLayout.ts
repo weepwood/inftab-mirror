@@ -2,7 +2,7 @@ import { computed, type Ref } from 'vue'
 import type { LauncherItem, Preferences } from '../types'
 
 export function useHomeLayout({ preferences, viewport, layoutColumns, allLauncherItems, homeDockItems, pageCount, minimalMode, localSearchMode }: {
-  preferences: Ref<Preferences>
+  preferences: Readonly<Ref<Preferences>>
   viewport: Ref<{ width: number; height: number }>
   layoutColumns: Readonly<Ref<number>>
   allLauncherItems: Readonly<Ref<LauncherItem[]>>

@@ -2,6 +2,7 @@ import { useStoredState } from './useStoredState'
 import { computed, watch } from 'vue'
 import { watchDeferredReference } from './watchDeferredReference'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts, launcherItems } from '../data/defaults'
+import { sanitizeWorkspaceLayout, type WorkspaceLayoutOverrides } from '../data/workspaceLayout'
 import { createProductivityActions } from './workspaceProductivity'
 import { createLauncherActions } from './workspaceLauncher'
 import { createBackupActions } from './workspaceBackup'
@@ -160,6 +161,18 @@ export function useLocalWorkspace() {
 
   const { addTodo, toggleTodo, updateTodo, removeTodo, clearCompletedTodos, addHabit, updateHabit, toggleHabitToday, removeHabit, addCountdown, updateCountdown, removeCountdown, addNote, updateNote, removeNote } = createProductivityActions({ todos, habits, countdowns, notes, activeNoteId })
 
+  function saveWorkspaceLayout(id: string, layout?: WorkspaceLayoutOverrides): boolean {
+    if (!homeWorkspaces.value.some(workspace => workspace.id === id)) return false
+    const clean = sanitizeWorkspaceLayout(layout)
+    if (layout !== undefined && !clean) return false
+    homeWorkspaces.value = homeWorkspaces.value.map(workspace => {
+      if (workspace.id !== id) return workspace
+      const { layout: _previous, ...rest } = workspace
+      return clean ? { ...rest, layout: clean } : rest
+    })
+    return true
+  }
+
   function updatePreferences(update: Partial<Preferences>) {
     preferences.value = sanitizePreferences({ ...preferences.value, ...update })
   }
@@ -228,6 +241,7 @@ export function useLocalWorkspace() {
     updateNote,
     removeNote,
     updatePreferences,
+    saveWorkspaceLayout,
     addCustomSearchEngine,
     removeCustomSearchEngine,
     resetPreferences,

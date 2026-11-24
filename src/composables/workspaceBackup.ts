@@ -143,7 +143,7 @@ export function createBackupActions({ preferences, shortcuts, folders, launcherO
     const mergedWorkspaces = homeWorkspaces.value.map((existing) => {
       const incoming = incomingWorkspaceById.get(existing.id)
       return incoming
-        ? { ...incoming, itemIds: [...new Set([...existing.itemIds, ...incoming.itemIds])] }
+        ? { ...incoming, ...(incoming.layout === undefined && existing.layout ? { layout: existing.layout } : {}), itemIds: [...new Set([...existing.itemIds, ...incoming.itemIds])] }
         : existing
     })
     for (const incoming of incomingWorkspaces) {

@@ -34,6 +34,9 @@ export function mergeHomeWorkspaceChanges(
     ownerByItem.set(itemId, externalChanged ? externalOwner : localChanged ? currentOwner : previousOwner)
   }
 
+  const previousById = new Map(previous.map(workspace => [workspace.id, workspace]))
+  const currentById = new Map(current.map(workspace => [workspace.id, workspace]))
+  const externalById = new Map(external.map(workspace => [workspace.id, workspace]))
   const mergedWorkspaceIds = new Set(merged.map((workspace) => workspace.id))
   for (const [itemId, ownerId] of ownerByItem) {
     if (ownerId && !mergedWorkspaceIds.has(ownerId)) ownerByItem.set(itemId, defaultHomeWorkspaceId)
@@ -46,11 +49,21 @@ export function mergeHomeWorkspaceChanges(
     resolvedItemsByWorkspace.set(ownerId, resolvedItems)
   }
 
-  return merged.map((workspace) => ({
-    ...workspace,
+  return merged.map((workspace) => {
+    const before = previousById.get(workspace.id)?.layout
+    const local = currentById.get(workspace.id)?.layout
+    const remote = externalById.get(workspace.id)?.layout
+    const changedRemotely = externalById.has(workspace.id) && JSON.stringify(remote) !== JSON.stringify(before)
+    const changedLocally = currentById.has(workspace.id) && JSON.stringify(local) !== JSON.stringify(before)
+    const layout = changedRemotely ? remote : changedLocally ? local : workspace.layout
+    const { layout: _discarded, ...rest } = workspace
+    return {
+      ...rest,
+      ...(layout ? { layout } : {}),
     itemIds: [
       ...workspace.itemIds.filter((itemId) => !ownerByItem.has(itemId)),
       ...(resolvedItemsByWorkspace.get(workspace.id) ?? []),
     ],
-  }))
+    }
+  })
 }

@@ -76,3 +76,13 @@ describe('homepage workspaces', () => {
     expect(result[1]?.itemIds).toContain('weather')
   })
 })
+
+
+it('normalizes independent layout overrides and preserves absent legacy layouts', () => {
+  const result = sanitizeHomeWorkspaces([
+    { id: 'default', name: '主页', itemIds: [] },
+    { id: 'work', name: '工作', itemIds: [], layout: { columns: 99, rows: 0, iconRadius: -5, showNames: false, iconSize: 'invalid', hiddenLauncherIds: ['settings'] } },
+  ])
+  expect(result[0]?.layout).toBeUndefined()
+  expect(result[1]?.layout).toEqual({ columns: 12, rows: 1, iconRadius: 0, showNames: false })
+})

@@ -1149,3 +1149,10 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 @media (prefers-reduced-motion: reduce) {
   .panel-backdrop, .modal-backdrop, .side-panel, .shortcut-dialog, .command-palette { animation: none; }
 }
+
+.workspace-layout-form { max-height: min(440px, 62dvh); overflow-y: auto; overscroll-behavior: contain; }
+.workspace-layout-form label { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px; color: var(--ui-text); }
+.workspace-layout-form input[type=range] { padding: 0; height: 26px; border: 0; accent-color: var(--ui-accent); background: transparent; }
+.workspace-layout-form input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--ui-accent); }
+.workspace-layout-form .workspace-form-actions { flex-wrap: wrap; }
+.workspace-layout-form .workspace-form-actions button { min-height: 36px; padding: 0 9px; }

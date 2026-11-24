@@ -10,6 +10,7 @@ import { getOverlayFocusable, trapOverlayTab, isComposingKey } from './composabl
 import { useHomeNavigation } from './composables/useHomeNavigation'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent, storageWriteSuccessEvent } from './composables/useStoredState'
+import { resolveWorkspaceLayout } from './data/workspaceLayout'
 import { launcherItems } from './data/defaults'
 import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
@@ -111,6 +112,7 @@ const {
   updateNote,
   removeNote,
   updatePreferences,
+  saveWorkspaceLayout,
   addCustomSearchEngine,
   removeCustomSearchEngine,
   resetPreferences,
@@ -156,9 +158,10 @@ const shortcutWorkspaceId = ref('default')
 const shortcutSaveError = ref('')
 const viewport = ref({ width: window.innerWidth, height: window.innerHeight })
 // Keep the saved desktop grid preference while giving touch targets room on phones.
-const layoutColumns = computed(() => Math.min(preferences.value.columns, viewport.value.width <= 480 ? 4 : viewport.value.width <= 780 ? 5 : 12))
-const pageSize = computed(() => layoutColumns.value * preferences.value.rows)
 const activeHomeWorkspace = computed(() => homeWorkspaces.value.find((workspace) => workspace.id === activeHomeWorkspaceId.value) ?? homeWorkspaces.value[0]!)
+const layoutPreferences = computed(() => ({ ...preferences.value, ...resolveWorkspaceLayout(preferences.value, activeHomeWorkspace.value?.layout) }))
+const layoutColumns = computed(() => Math.min(layoutPreferences.value.columns, viewport.value.width <= 480 ? 4 : viewport.value.width <= 780 ? 5 : 12))
+const pageSize = computed(() => layoutColumns.value * layoutPreferences.value.rows)
 const activeHomeWorkspaceItemIds = computed(() => new Set(activeHomeWorkspace.value?.itemIds ?? []))
 const shortcutLimitReached = computed(() => !shortcutDraft.value?.id && shortcuts.value.length >= 500)
 const folderLimitReached = computed(() => !activeFolder.value && folders.value.length >= 500)
@@ -286,7 +289,7 @@ const activePanelListeners = computed<Record<string, (...args: never[]) => void>
   ? panelRegistry.value.getPanelListeners(activePanel.value, panelContext.value)
   : {})
 const homeWidgetContext = computed(() => ({ preferences: preferences.value, todos: todos.value, addTodo, toggleTodo, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
-const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayout({ preferences, viewport, layoutColumns, allLauncherItems, homeDockItems, pageCount, minimalMode, localSearchMode })
+const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayout({ preferences: layoutPreferences, viewport, layoutColumns, allLauncherItems, homeDockItems, pageCount, minimalMode, localSearchMode })
 const overlayOpen = computed(() => Boolean(activePanel.value || shortcutDialog.value || folderDialogOpen.value || commandPaletteOpen.value || pendingDestructiveAction.value))
 const { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen })
 watch(overlayOpen, (open) => { if (open) cancelHomeSwipe() }, { flush: 'sync' })
@@ -798,6 +801,8 @@ onBeforeUnmount(() => {
         @select="activeHomeWorkspaceId = $event"
         :create-workspace="addHomeWorkspace"
         :rename-workspace="renameHomeWorkspace"
+        :global-layout="preferences"
+        :save-layout="saveWorkspaceLayout"
         @move="moveHomeWorkspace"
         @remove="requestHomeWorkspaceRemoval"
       />
@@ -837,10 +842,10 @@ onBeforeUnmount(() => {
         :folder-shortcuts="folderPreviewItems"
         :dock-item-ids="preferences.dockItemIds"
         :columns="layoutColumns"
-        :rows="preferences.rows"
-        :icon-size="preferences.iconSize"
-        :icon-radius="preferences.iconRadius"
-        :show-names="preferences.showNames"
+        :rows="layoutPreferences.rows"
+        :icon-size="layoutPreferences.iconSize"
+        :icon-radius="layoutPreferences.iconRadius"
+        :show-names="layoutPreferences.showNames"
         :current-page="currentPage"
         :transition-direction="pageDirection"
         :transition-effect="preferences.pageTransitionEffect"
@@ -862,7 +867,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? preferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" @open="openItem" @remove="toggleDockItem" />
+    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
       <span>{{ storageError }}</span>

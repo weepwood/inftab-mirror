@@ -1002,3 +1002,24 @@ describe('workspace domain boundaries', () => {
     expect(scope.run(() => useLocalWorkspace())!.weatherCity.value).toBe('广州')
   })
 })
+
+
+it('persists independent workspace layouts, round-trips backups and resets to global', () => {
+  scope = effectScope()
+  const workspace = scope.run(() => useLocalWorkspace())!
+  const id = workspace.createHomeWorkspace('Independent grid')!
+  const original = workspace.preferences.value.columns
+  expect(workspace.saveWorkspaceLayout(id, { columns: 3, rows: 2, showNames: false })).toBe(true)
+  expect(workspace.preferences.value.columns).toBe(original)
+  expect(workspace.homeWorkspaces.value.find(item => item.id === id)?.layout).toEqual({ columns: 3, rows: 2, showNames: false })
+  const backup = parseWorkspaceBackup(workspace.createBackup())
+  expect(workspace.saveWorkspaceLayout(id)).toBe(true)
+  expect(workspace.homeWorkspaces.value.find(item => item.id === id)?.layout).toBeUndefined()
+  expect(workspace.restoreBackup(backup, 'replace')).toBeUndefined()
+  expect(workspace.homeWorkspaces.value.find(item => item.id === id)?.layout).toEqual({ columns: 3, rows: 2, showNames: false })
+  const legacy = workspace.createBackup()
+  legacy.homeWorkspaces = legacy.homeWorkspaces?.map(({ layout, ...item }) => item)
+  expect(workspace.restoreBackup(legacy, 'merge')).toBeUndefined()
+  expect(workspace.homeWorkspaces.value.find(item => item.id === id)?.layout?.columns).toBe(3)
+  expect(workspace.saveWorkspaceLayout('missing', { columns: 4 })).toBe(false)
+})
