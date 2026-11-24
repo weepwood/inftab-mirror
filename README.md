@@ -85,13 +85,13 @@ npm run test:e2e:extension
 
 - 日常 PR：类型检查、单元/组件回归、一次生产构建、资源及包体积校验；无需下载浏览器。
 - 合并到 main：仅构建与校验产物后自动更新 Pages，属于持续预览，不等同于正式版本验收。
-- 正式里程碑版本（如 v1.1.0、v1.2.0）：合并 `docs/releases/vX.Y.0.md` 正式里程碑说明、推送对应 tag 或手动运行 Release validation，对相同提交运行全部浏览器、生产和扩展测试。正式 Release/扩展发布前必须确认该提交的完整验证通过；此工作流不自动创建公开 Release。
+- 正式里程碑版本（如 v1.1.0、v1.2.0）：合并 `docs/releases/vX.Y.0.md` 正式里程碑说明、推送对应 tag 或手动运行 Release validation，对相同提交运行全部浏览器、生产和扩展测试。正式 Release/扩展发布前必须确认该提交的完整验证通过；V1.7.0 使用专用发布 job：只有 main 上相同提交的完整验证成功后，才将已验证的独立网站及扩展 ZIP 与 SHA256SUMS 发布至 GitHub Release；已有 Release 不覆盖。其他版本仍需明确发布授权。
 - 小修订与补丁 tag 默认不触发全量 E2E；涉及数据迁移、权限、导航等高风险改动时，可手动运行 Release validation 或针对性 E2E。
 - Focused UI validation 仅在浮层焦点、首页导航、命令面板、主题令牌或专项测试文件变化时运行 Chromium 专项验证，也支持手动触发；不作为所有普通 PR 的全量回归门禁。
 
-GitHub Pages 使用 `dist/` 作为发布目录。首次部署前，在仓库 **Settings → Pages → Build and deployment** 中将 Source 设为 **GitHub Actions**。之后推送到 `main` 会自动构建并发布；也可以在 Actions 页面手动运行工作流。`vite.config.ts` 使用相对资源路径，支持部署在仓库子路径下。
+GitHub Pages 使用 `npm run build:web` 生成的 `dist-web/` 作为发布目录；浏览器扩展继续使用 `npm run build` 生成的 `dist/`。首次部署前，在仓库 **Settings → Pages → Build and deployment** 中将 Source 设为 **GitHub Actions**。之后推送到 `main` 会自动构建并发布；也可以在 Actions 页面手动运行工作流。`vite.config.ts` 使用相对资源路径，支持部署在仓库子路径下。
 
-同一个 dist 目录也可作为 Chrome Manifest V3 新标签页扩展加载：运行 npm run build，在 chrome://extensions 开启开发者模式后选择“加载已解压的扩展程序”，并选择 dist/。天气和 Hacker News 资讯所需的主机权限，以及书签、剪贴板写入、浏览历史访问、读取当前窗口标签页和常用网站等浏览器权限，均为可选权限；扩展不会在安装时申请这些权限，只在用户启用对应组件并点击授权，或主动使用相应功能时申请。标签页导入仅列出当前窗口中安全的 HTTP(S) 网页；浏览历史面板只搜索和打开记录，不删除或上传历史。快捷入口图标网址在扩展模式下直接作为图片加载，不申请任意网站访问权限。扩展与普通网站使用各自的浏览器存储空间，可通过 JSON 备份迁移设置。
+核心 dist 目录作为 Chrome Manifest V3 新标签页扩展加载：运行 npm run build，在 chrome://extensions 开启开发者模式后选择“加载已解压的扩展程序”，并选择 dist/。天气和 Hacker News 资讯所需的主机权限，以及书签、剪贴板写入、浏览历史访问、读取当前窗口标签页和常用网站等浏览器权限，均为可选权限；扩展不会在安装时申请这些权限，只在用户启用对应组件并点击授权，或主动使用相应功能时申请。标签页导入仅列出当前窗口中安全的 HTTP(S) 网页；浏览历史面板只搜索和打开记录，不删除或上传历史。快捷入口图标网址在扩展模式下直接作为图片加载，不申请任意网站访问权限。扩展与普通网站使用各自的浏览器存储空间，可通过 JSON 备份迁移设置。
 
 ## 项目结构
 
@@ -160,3 +160,7 @@ reference/
 面板和小组件 ID 集中在 `src/plugins/ids.ts`，注册表通过 TypeScript 校验 ID 清单与实现是否齐全。新增内置面板或首页小组件的步骤、状态和测试要求见 [`docs/plugin-development.md`](docs/plugin-development.md)。
 
 参考产品及可核实功能记录见 [`docs/product-reference-audit.md`](docs/product-reference-audit.md)。
+
+### 网站离线工作台
+
+网站默认仅加载轻量离线入口。启用后预缓存校验过的站内应用资源，支持本地快捷入口、笔记、待办等功能；天气、外部搜索和第三方站点仍需网络。更新验证完成后关闭所有工作台标签页再打开。离线缓存不包含用户数据，停用只清理本项目缓存。浏览器安装方式取决于平台；MV3 扩展没有网站 Service Worker。

@@ -2,6 +2,10 @@ name: Release validation
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/releases/v1.7.0.md'
   push:
     branches: [main]
     paths:
@@ -68,3 +72,45 @@ jobs:
           path: dist-web/
           if-no-files-found: error
           retention-days: 14
+
+  publish-v17:
+    name: Publish validated V1.7.0
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check release identity
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "$version" != '1.7.0' ] || [ ! -f docs/releases/v1.7.0.md ]; then exit 0; fi
+          if gh release view v1.7.0 >/dev/null 2>&1; then echo 'V1.7.0 already exists; no overwrite'; exit 0; fi
+          echo 'publish=true' >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        if: steps.version.outputs.publish == 'true'
+        with:
+          name: verified-dist-${{ github.sha }}
+          path: release-extension
+      - uses: actions/download-artifact@v4
+        if: steps.version.outputs.publish == 'true'
+        with:
+          name: verified-web-${{ github.sha }}
+          path: release-web
+      - name: Package only verified artifacts and publish
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -f release-extension/manifest.json
+          test -f release-web/sw.js
+          test ! -f release-extension/sw.js
+          test ! -f release-web/manifest.json
+          (cd release-extension && zip -qr ../inftab-v1.7.0-extension.zip .)
+          (cd release-web && zip -qr ../inftab-v1.7.0-web.zip .)
+          sha256sum inftab-v1.7.0-*.zip > SHA256SUMS.txt
+          gh release create v1.7.0 --target "$GITHUB_SHA" --title 'Inftab V1.7.0' --notes-file docs/releases/v1.7.0.md inftab-v1.7.0-extension.zip inftab-v1.7.0-web.zip SHA256SUMS.txt
