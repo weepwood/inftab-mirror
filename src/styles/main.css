@@ -1246,3 +1246,12 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 @media (prefers-reduced-motion: reduce) {
   .home-dock.is-magnifying .home-dock-icon, .home-dock-entry { transition: none; }
 }
+
+/* Magnification and reorder own different transform layers. */
+.home-dock::before { transform: scaleY(var(--dock-lift, 1)); transform-origin: center bottom; transition: transform 150ms cubic-bezier(.2,.8,.2,1); }
+@supports (transition-timing-function: linear(0, 1)) {
+  .home-dock:not(.is-magnifying) .home-dock-icon { transition: transform 280ms linear(0,.46,.82,1.04,1.08,1.04,1.01,1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-dock::before, .home-dock:not(.is-magnifying) .home-dock-icon { transition: none; }
+}

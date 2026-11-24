@@ -26,3 +26,6 @@ jobs:
         run: npm ci
       - name: Check types, run regression tests and build once
         run: npm run verify
+
+      - name: Validate web-only offline assets and budgets
+        run: node scripts/build-pwa.mjs && node scripts/check-pwa-build.mjs

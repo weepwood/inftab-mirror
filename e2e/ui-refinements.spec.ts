@@ -330,3 +330,17 @@ test('records frame intervals and track coverage during uninterrupted and revers
   expect(stats.blank).toBe(0)
   expect(stats.maxSlots).toBeLessThanOrEqual(4)
 })
+
+test('Dock keyboard reorder preserves focus and persisted order with bounded magnification', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ dockItemIds: ['weather','notes'], dockMagnification: true })))
+  await page.goto('/')
+  const dock = page.getByRole('navigation', { name: '常驻 Dock' })
+  const first = dock.locator('[data-dock-item-id="weather"]')
+  await first.focus()
+  await first.press('Shift+ArrowRight')
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').dockItemIds)).toEqual(['notes','weather'])
+  await expect(first).toBeFocused()
+  await first.hover()
+  await expect.poll(() => dock.evaluate(el => Number((el as HTMLElement).style.getPropertyValue('--dock-lift')))).toBeGreaterThan(1)
+})
