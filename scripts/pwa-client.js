@@ -2,6 +2,9 @@
   if (!['http:','https:'].includes(location.protocol) || !isSecureContext || !('serviceWorker' in navigator)) return
   const base = new URL('./',document.currentScript.src)
   const key = 'inftab.pwa.enabled.v1'
+  const workerUrl = new URL('sw.js',base).href
+  const controlled = () => navigator.serviceWorker.controller?.scriptURL === workerUrl
+  const owned = candidate => candidate?.scope === base.href && [candidate.active,candidate.waiting,candidate.installing].some(worker=>worker?.scriptURL===workerUrl)
   const manifest = document.createElement('link')
   manifest.rel='manifest'; manifest.href=new URL('app.webmanifest',base).href
   document.head.append(manifest)
@@ -22,37 +25,43 @@
   function remember(value){try{if(value)localStorage.setItem(key,'1');else localStorage.removeItem(key)}catch{}}
   function render(){
     if(busy)return
-    const ready=!!navigator.serviceWorker.controller
+    const ready=controlled()
     button.textContent=ready?'停用离线工作台':'启用离线工作台'
     status.textContent=registration?.waiting?'新版本已缓存，关闭所有工作台标签页后更新。':ready?(navigator.onLine?'离线资源已就绪':'离线模式 · 本地功能可用'):''
+  }
+  function observe(candidate){
+    registration=candidate
+    candidate.addEventListener('updatefound',()=>candidate.installing?.addEventListener('statechange',render))
+    candidate.installing?.addEventListener('statechange',render)
+    candidate.waiting?.addEventListener('statechange',render)
   }
   async function enable(){
     if(busy)return
     busy=true;button.disabled=true;status.textContent='正在准备离线资源…'
     try {
-      registration=await navigator.serviceWorker.register(new URL('sw.js',base),{scope:base.href,updateViaCache:'none'})
+      const existing=await navigator.serviceWorker.getRegistration(base.href)
+      if(existing?.scope===base.href && !owned(existing)) throw Error('当前路径已有其他离线工作线程。')
+      if(owned(existing)&&existing.active){observe(existing);remember(true);busy=false;render();if(navigator.onLine)void existing.update().catch(()=>{});return}
+      registration=await navigator.serviceWorker.register(workerUrl,{scope:base.href,updateViaCache:'none'})
       const worker=registration.installing
       if(worker) await new Promise((resolve,reject)=>{
         const check=()=>{if(worker.state==='installed'||worker.state==='activated')resolve();if(worker.state==='redundant')reject(Error('离线资源校验失败，请重试。'))}
         worker.addEventListener('statechange',check);check()
       })
       remember(true)
-      registration.addEventListener('updatefound',()=>{
-        const next=registration.installing
-        next?.addEventListener('statechange',render)
-      })
-      if(navigator.serviceWorker.controller) void registration.update().catch(()=>{})
+      observe(registration)
+      if(controlled()&&navigator.onLine) void registration.update().catch(()=>{})
       busy=false;render()
-      if(!navigator.serviceWorker.controller) status.textContent='资源已缓存，首次控制页面后即可离线。'
+      if(!controlled()) status.textContent='资源已缓存，首次控制页面后即可离线。'
     }catch(error){busy=false;status.textContent='离线资源准备失败，可重试。';remember(false)}
     finally{button.disabled=false}
   }
   button.addEventListener('click',async()=>{
-    if(navigator.serviceWorker.controller || registration?.active){
+    if(controlled() || owned(registration)&&registration.active){
       if(!navigator.onLine){status.textContent='请联网后停用离线模式。';return}
       if(!confirm('停用离线工作台？建议先关闭其他工作台标签页。不会删除用户数据。'))return
       const current=registration??await navigator.serviceWorker.getRegistration(base.href)
-      if(current)await current.unregister()
+      if(owned(current))await current.unregister()
       remember(false);status.textContent='已停止注册，刷新页面后生效。';button.disabled=true
       return
     }
@@ -69,7 +78,8 @@
   navigator.serviceWorker.addEventListener('controllerchange',render)
   window.addEventListener('online',render);window.addEventListener('offline',render)
   window.addEventListener('appinstalled',()=>{install.hidden=true;void enable()})
-  if(enabled())void enable()
-  else if(navigator.serviceWorker.controller){void navigator.serviceWorker.getRegistration(base.href).then(value=>{registration=value;render()})}
+  if(controlled()){
+    void navigator.serviceWorker.getRegistration(base.href).then(value=>{if(owned(value)){observe(value);if(navigator.onLine)void value.update().catch(()=>{})}render()}).catch(render)
+  }else if(enabled()&&navigator.onLine)void enable()
   else render()
 })()
