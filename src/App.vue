@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { Component } from 'vue'
+import type { DesktopLayout } from './desktop/layout'
 import { ArrowLeft, House, Menu, Plus, Search, X } from '@lucide/vue'
 import { lazyPluginComponent, retryAsyncLoad } from './plugins/asyncComponent'
 import { useHomeLayout } from './composables/useHomeLayout'
 import { getOverlayFocusable, trapOverlayTab, isComposingKey } from './composables/overlayFocus'
 import { useHomeNavigation } from './composables/useHomeNavigation'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
-import { storageWriteErrorEvent, storageWriteSuccessEvent } from './composables/useStoredState'
+import { useStoredState, storageWriteErrorEvent, storageWriteSuccessEvent } from './composables/useStoredState'
 import type { LayoutEditorDraft } from './data/layoutEditor'
 import { applyCustomTheme } from './data/customTheme'
 import { resolveWorkspaceLayout } from './data/workspaceLayout'
@@ -30,6 +31,8 @@ const SearchBar = defineAsyncComponent({
 })
 const ClockWidget = lazyHome(() => import('./components/ClockWidget.vue'), '时钟')
 const LauncherSearchResults = lazyHome(() => import('./components/LauncherSearchResults.vue'), '入口查找', true)
+const DesktopShell = lazyHome(() => import('./desktop/DesktopShell.vue'), '自由桌面', true)
+const desktopMode = useStoredState('inftab.desktop-mode.v1', false, value => value === true)
 const ShortcutGrid = lazyHome(() => import('./components/ShortcutGrid.vue'), '快捷入口', true)
 const HomeWidgetShelf = lazyHome(() => import('./components/HomeWidgetShelf.vue'), '首页组件')
 const HomeDock = lazyHome(() => import('./components/HomeDock.vue'), '常驻 Dock')
@@ -264,7 +267,11 @@ const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayo
 const overlayOpen = computed(() => Boolean(activePanel.value || shortcutDialog.value || folderDialogOpen.value || commandPaletteOpen.value || layoutEditorOpen.value || pendingDestructiveAction.value))
 const launcherAnimating = ref(false)
 const { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen, launcherAnimating })
+function saveDesktopLayout(layout: DesktopLayout) {
+  homeWorkspaces.value = homeWorkspaces.value.map(w => w.id === activeHomeWorkspaceId.value ? {...w,desktop:layout} : w)
+}
 function startLauncherSwipe(event: PointerEvent) {
+  if (desktopMode.value) return
   if (preferences.value.pageTransitionEffect !== 'particles' && event.target instanceof Element && event.target.closest('.launcher-swiper')) return
   startHomeSwipe(event)
 }
@@ -660,8 +667,8 @@ function handleKeydown(event: KeyboardEvent) {
     else setLocalSearch(true)
     return
   }
-  if (event.key === 'ArrowRight' && !editingText && !navigatingComposite && !localSearchMode.value && !minimalMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(1)
-  if (event.key === 'ArrowLeft' && !editingText && !navigatingComposite && !localSearchMode.value && !minimalMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(-1)
+  if (event.key === 'ArrowRight' && !desktopMode.value && !editingText && !navigatingComposite && !localSearchMode.value && !minimalMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(1)
+  if (event.key === 'ArrowLeft' && !desktopMode.value && !editingText && !navigatingComposite && !localSearchMode.value && !minimalMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(-1)
 }
 
 function toggleMinimalMode() {
@@ -772,12 +779,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': !minimalMode && (showHomeWidgets || shortHomeScrollEnabled), 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode }" :style="backgroundStyle" @pointerdown="startLauncherSwipe" @pointerup="finishHomeSwipe" @pointercancel="cancelHomeSwipe()" @wheel="handleHomeWheel">
+  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': !minimalMode && (showHomeWidgets || shortHomeScrollEnabled), 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode, 'desktop-mode': desktopMode && !minimalMode }" :style="backgroundStyle" @pointerdown="startLauncherSwipe" @pointerup="!desktopMode && finishHomeSwipe($event)" @pointercancel="cancelHomeSwipe()" @wheel="!desktopMode && handleHomeWheel($event)">
     <a class="skip-link" href="#main-content">跳到快捷入口</a>
     <h1 class="visually-hidden">Infinity 新标签页</h1>
     <div class="background-shade"></div>
     <div class="home-brand" aria-label="Infinity 新标签页"><span class="brand-mark" aria-hidden="true">∞</span><span class="brand-word">infinity</span><span class="brand-label">新标签页</span></div>
     <header class="home-actions">
+      <button v-if="!minimalMode" type="button" class="round-action desktop-mode-toggle" :aria-label="desktopMode ? '经典模式' : '桌面模式'" :title="desktopMode ? '经典模式' : '桌面模式'" :aria-pressed="desktopMode" @click="desktopMode = !desktopMode"><span aria-hidden="true">▦</span></button>
       <button type="button" class="round-action home-command-toggle" aria-label="打开命令面板" title="命令面板（Ctrl/⌘+Shift+P）" @click="openCommandPalette"><span aria-hidden="true">⌘</span></button>
       <button v-if="!minimalMode" type="button" class="round-action home-create-shortcut" aria-label="新建快捷入口" title="新建快捷入口" @click="openShortcutDialog()"><Plus :size="19" /></button>
       <button type="button" class="round-action home-search-toggle" aria-label="查找快捷入口" title="查找快捷入口（Ctrl/⌘+F）" :aria-pressed="localSearchMode" @click="setLocalSearch(!localSearchMode)"><Search :size="18" /></button>
@@ -842,8 +850,9 @@ onBeforeUnmount(() => {
           />
         </template>
       </SearchBar>
+      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" @layout="saveDesktopLayout" @open="openItem" @edit="editLauncherItem" />
       <ShortcutGrid
-        v-if="!minimalMode"
+        v-if="!minimalMode && !desktopMode"
         :items="allLauncherItems"
         :folder-shortcuts="folderPreviewItems"
         :dock-item-ids="preferences.dockItemIds"
@@ -867,7 +876,7 @@ onBeforeUnmount(() => {
         @page-change="currentPage = $event"
         @animation-state="launcherAnimating = $event"
       />
-      <nav v-if="pageCount > 1 && !minimalMode" class="page-dots" aria-label="快捷入口页码" title="点击圆点或使用左右方向键、滑动切换">
+      <nav v-if="pageCount > 1 && !minimalMode && !desktopMode" class="page-dots" aria-label="快捷入口页码" title="点击圆点或使用左右方向键、滑动切换">
         <template v-for="item in pageNavigation" :key="item.kind === 'page' ? `page-${item.page}` : item.id">
           <button v-if="item.kind === 'page'" type="button" :aria-label="`第${item.page + 1}页`" :aria-current="item.page === currentPage ? 'page' : undefined" class="page-dot" :class="{ active: item.page === currentPage }" @click="goToPage(item.page)"></button>
           <span v-else class="page-ellipsis" aria-hidden="true">…</span>
@@ -932,3 +941,9 @@ onBeforeUnmount(() => {
     />
   </main>
 </template>
+
+<style scoped>
+.desktop-mode .home-content{width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;padding-top:82px;padding-bottom:84px}
+.desktop-mode .desktop-shell{min-height:320px}
+.desktop-mode-toggle{font-size:22px}
+</style>

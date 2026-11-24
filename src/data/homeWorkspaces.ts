@@ -1,3 +1,4 @@
+import { normalizeLayout, type DesktopLayout } from '../desktop/layout'
 import { isRecord, isValidRecordId } from './validation'
 import { truncateCodePoints } from './text'
 import { sanitizeWorkspaceLayout, type WorkspaceLayoutOverrides } from './workspaceLayout'
@@ -10,6 +11,7 @@ export interface HomeWorkspace {
   id: string
   name: string
   itemIds: string[]
+  desktop?: DesktopLayout
   layout?: WorkspaceLayoutOverrides
 }
 
@@ -35,6 +37,7 @@ function parseWorkspace(value: unknown): HomeWorkspace | undefined {
   const layout = sanitizeWorkspaceLayout(value.layout)
   return {
     ...(layout ? { layout } : {}),
+    ...(isRecord(value.desktop) && value.desktop.version === 1 ? { desktop: normalizeLayout(value.desktop) } : {}),
     id: value.id,
     name: typeof value.name === 'string' ? truncateCodePoints(value.name.trim(), maxHomeWorkspaceNameLength) : '',
     itemIds: [...new Set(value.itemIds.filter(isValidRecordId))],
@@ -70,11 +73,13 @@ export function sanitizeHomeWorkspaces(
     const itemIds = [...new Set(rawIds.filter((id) => builtInIds.has(id) || !assignedItemIds.has(id)))]
     itemIds.filter((id) => !builtInIds.has(id)).forEach((id) => assignedItemIds.add(id))
     itemIds.push(...builtInItemIds.filter((id) => isValidRecordId(id) && !itemIds.includes(id)))
+    const allowedDesktopIds = new Set(itemIds)
     return [{
       id: workspace.id,
       name: uniqueName(workspace.name, usedNames, index === 0 ? '主页' : `工作区 ${index + 1}`),
       itemIds,
       ...(workspace.layout ? { layout: workspace.layout } : {}),
+      ...(workspace.desktop ? { desktop: { ...workspace.desktop, positions: Object.fromEntries(Object.entries(workspace.desktop.positions).filter(([id]) => allowedDesktopIds.has(id))) } } : {}),
     }]
   })
 }
