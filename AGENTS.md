@@ -166,3 +166,5 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 首轮候选 #20（1c6bfda）常规 CI 发现 16 项失败，包含默认布局变化导致的旧测试前提失效及网格 DOM 预算回归；本次恢复相邻页挂载上限、明确旧偏好测试数据、补充新默认布局测试及自动隐藏备份校验。新提交仍须重新验收。
 
 - 保留工作区切换器与 Dock 的非重叠布局边界（窄屏优先可操作性）；补充默认首页/滚轮环绕/按需搜索的 Chromium 验收，旧搜索与时钟测试显式使用旧偏好。
+
+- #20 head a20a65d：[UI 专项 45394505966](https://github.com/weepwood/inftab-mirror/actions/runs/45394505966) 成功（包含 launcher benchmark）；[CI 45394505892](https://github.com/weepwood/inftab-mirror/actions/runs/45394505892) 83/83 文件、673/673 测试通过，首屏 JS gzip 62145/61952 B 超出 193 B。后续将默认关闭的时钟改为按需加载，保持预算不变，并补充生产 chunk 验证；新 head 需重新执行门禁。

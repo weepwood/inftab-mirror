@@ -16,6 +16,8 @@ test.afterEach(async ({ page }) => {
 })
 
 test('quick translation recovers a cached production chunk failure and opens the encoded query', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true })))
+  await page.reload()
   let translationChunkAttempts = 0
   let failTranslationChunk = true
   await page.route('**/assets/translation-*.js', async (route) => {
@@ -44,6 +46,8 @@ test('quick translation recovers a cached production chunk failure and opens the
 })
 
 test('quick translation keeps the query that was submitted while its chunk loads', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true })))
+  await page.reload()
   let releaseChunk!: () => void
   let chunkRequested!: () => void
   const chunkRequest = new Promise<void>((resolve) => { chunkRequested = resolve })
@@ -68,6 +72,8 @@ test('quick translation keeps the query that was submitted while its chunk loads
 })
 
 test('quick translation reports an exhausted production chunk without an unhandled page error', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true })))
+  await page.reload()
   await page.route('**/assets/translation-*.js', (route) => route.fulfill({ status: 503, body: 'offline' }))
   await page.getByRole('searchbox', { name: '输入并搜索' }).fill('hello')
   await page.getByRole('button', { name: '翻译成简体中文' }).click()
@@ -267,4 +273,19 @@ test('a failed shortcut editor can be dismissed safely and recovers after an exp
   await dialog.getByRole('button', { name: '重新加载页面', exact: true }).click()
   await trigger.click()
   await expect(dialog.locator('#shortcut-name')).toBeFocused()
+})
+
+test('default homepage does not fetch the optional clock until enabled', async ({ page }) => {
+  const clockRequests: string[] = []
+  page.on('request', (request) => {
+    if (/\/assets\/ClockWidget-[^/]+\.js(?:\?|$)/i.test(request.url())) clockRequests.push(request.url())
+  })
+  await page.reload()
+  await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toBeVisible()
+  await expect(page.locator('.home-clock')).toHaveCount(0)
+  expect(clockRequests).toEqual([])
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
+  await page.getByLabel('显示时间和日期').check()
+  await expect(page.locator('.home-clock')).toBeVisible()
+  expect(clockRequests).toHaveLength(1)
 })

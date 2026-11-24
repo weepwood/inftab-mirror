@@ -901,7 +901,7 @@ describe('new-tab keyboard search', () => {
   it('allows the homepage clock widget to be hidden from settings', async () => {
     localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showClock: true }))
     await mountApp()
-    expect(wrapper.find('.home-clock').exists()).toBe(true)
+    await vi.waitFor(() => expect(wrapper.find('.home-clock').exists()).toBe(true))
     await openLauncher('settings')
     const clockToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().includes('显示时间和日期'))!
     await clockToggle.get('input').setValue(false)

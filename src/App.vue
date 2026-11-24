@@ -3,7 +3,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch 
 import type { Component } from 'vue'
 import { ArrowLeft, House, Menu, Plus, Search, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
-import ClockWidget from './components/ClockWidget.vue'
 import { lazyPluginComponent, retryAsyncLoad } from './plugins/asyncComponent'
 import { useHomeLayout } from './composables/useHomeLayout'
 import { getOverlayFocusable, trapOverlayTab, isComposingKey } from './composables/overlayFocus'
@@ -26,6 +25,7 @@ import { maxDockItems, type HomeWidgetId, type HomeWidgetSize, type LauncherItem
 type Panel = PanelId | null
 const lazyHome = (loader: Parameters<typeof lazyPluginComponent>[0], name: string, retry = false) => lazyPluginComponent(loader, '正在加载' + name + '…', name + (retry ? '暂时无法加载，请重试。' : '暂时无法加载。'))
 
+const ClockWidget = lazyHome(() => import('./components/ClockWidget.vue'), '时钟')
 const LauncherSearchResults = lazyHome(() => import('./components/LauncherSearchResults.vue'), '入口查找', true)
 const ShortcutGrid = lazyHome(() => import('./components/ShortcutGrid.vue'), '快捷入口', true)
 const HomeWidgetShelf = lazyHome(() => import('./components/HomeWidgetShelf.vue'), '首页组件')
