@@ -9,7 +9,7 @@ import { maxHabits } from '../data/habits'
 import { mergeById } from '../data/mergeById'
 
 /** Backup snapshot and validated import orchestration. The public format remains v1. */
-export function createBackupActions({ preferences, shortcuts, folders, launcherOrder, homeWorkspaces, activeHomeWorkspaceId, builtInLauncherIds, todos, habits, countdowns, notes, customSearchEngines, focusTimer, activeNoteId, weatherCity }: {
+export function createBackupActions(state: {
   preferences: Ref<Preferences>
   shortcuts: Ref<Shortcut[]>
   folders: Ref<ShortcutFolder[]>
@@ -25,7 +25,8 @@ export function createBackupActions({ preferences, shortcuts, folders, launcherO
   focusTimer: Ref<FocusTimerState>
   activeNoteId: Ref<string>
   weatherCity: Ref<string>
-}) {
+}, detached = false) {
+  const { preferences, shortcuts, folders, launcherOrder, homeWorkspaces, activeHomeWorkspaceId, todos, habits, countdowns, notes, customSearchEngines, focusTimer, activeNoteId, weatherCity, builtInLauncherIds } = state
   function createBackup(): WorkspaceBackup {
     const snapshot: WorkspaceBackup = {
       format: 'inftab-workspace',
@@ -50,6 +51,23 @@ export function createBackupActions({ preferences, shortcuts, folders, launcherO
   }
 
   function restoreBackup(backup: WorkspaceBackup, mode: 'merge' | 'replace'): string | undefined {
+    if (!detached) {
+      const { builtInLauncherIds, ...live } = state
+      const staged = Object.fromEntries(Object.entries(live).map(([key, cell]) => [key, { value: JSON.parse(JSON.stringify(cell.value)) }])) as typeof live
+      try {
+        const error = createBackupActions({ ...staged, builtInLauncherIds }, true).restoreBackup(backup, mode)
+        if (error) return error
+      } catch {
+        return '导入失败：备份数据无效，未修改当前工作区。'
+      }
+      // Apply the fully computed result only after every section validates.
+      // Order dependent references after their owning collections.
+      for (const key of ['customSearchEngines', 'shortcuts', 'folders', 'launcherOrder', 'homeWorkspaces', 'activeHomeWorkspaceId', 'todos', 'habits', 'countdowns', 'notes', 'activeNoteId', 'weatherCity', 'focusTimer', 'preferences'] as const) {
+        const cell = live[key] as Ref<unknown>
+        if (JSON.stringify(cell.value) !== JSON.stringify(staged[key].value)) cell.value = staged[key].value
+      }
+      return undefined
+    }
     if (backup.homeWorkspaces && backup.homeWorkspaces.length > maxHomeWorkspaces) {
       return `导入失败：主页工作区超过数量上限（最多 ${maxHomeWorkspaces} 组），未导入任何数据。`
     }

@@ -120,7 +120,7 @@ export function useStoredState<T>(
     needsWrite = false
     let nextValue = externalValue
     let persistMergedValue = false
-    if (options.mergeConcurrentChanges !== false && event.key === key
+    if (options.mergeConcurrentChanges !== false && event.key === key && event.newValue !== null
       && (typeof event.oldValue === 'string' || event.oldValue === null)) {
       let previousValue: T
       let hasPreviousValue = false
@@ -148,6 +148,11 @@ export function useStoredState<T>(
         }
       }
     }
+    // Local edits can schedule another write while the merge chunk is loading.
+    // The merged result below is authoritative; never leave that stale timer.
+    clearTimeout(persistTimer)
+    persistTimer = undefined
+    needsWrite = false
     ignoreNextPersistence = true
     try {
       value.value = nextValue

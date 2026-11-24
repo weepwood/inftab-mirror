@@ -1044,3 +1044,17 @@ it('rejects stale layout drafts and does not turn inherited fields into override
   expect(current().layout).toEqual({ columns: 4 })
   expect(workspace.preferences.value.columns).toBe(8)
 })
+
+it('rejects malformed late backup fields without mutating any earlier section', () => {
+  scope = effectScope()
+  const workspace = scope.run(() => useLocalWorkspace())!
+  const before = workspace.createBackup()
+  const incoming = workspace.createBackup()
+  incoming.preferences.showClock = !before.preferences.showClock
+  incoming.shortcuts = []
+  // An untrusted programmatic caller can bypass the file parser. This field is
+  // read late in merge planning, after most sections used to be assigned.
+  incoming.notes = null as unknown as typeof incoming.notes
+  expect(workspace.restoreBackup(incoming, 'merge')).toMatch(/导入失败/)
+  expect({ ...workspace.createBackup(), exportedAt: '' }).toEqual({ ...before, exportedAt: '' })
+})
