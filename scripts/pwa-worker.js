@@ -2,6 +2,7 @@
 const scope = new URL(self.registration.scope)
 const prefix = 'inftab-pwa:' + scope.pathname + ':'
 const cacheName = prefix + REVISION
+let disabling=false
 const ownedCache = key => key.startsWith(prefix) && /^[0-9a-f]{24}$/.test(key.slice(prefix.length))
 const inScope = url => { const target = new URL(url); return target.origin === scope.origin && target.pathname.startsWith(scope.pathname) }
 const shell = new URL('index.html',scope).href
@@ -37,14 +38,14 @@ self.addEventListener('activate',event=>{
 })
 self.addEventListener('fetch',event=>{
   const request=event.request
-  if(request.method!=='GET') return
+  if(disabling||request.method!=='GET') return
   const url=new URL(request.url)
   if(url.origin!==scope.origin) return
   if(request.mode==='navigate' && (url.pathname===scope.pathname || url.pathname===new URL('index.html',scope).pathname)) {
-    event.respondWith(caches.open(cacheName).then(async cache=>(await cache.match(shell))??fetch(request)))
+    event.respondWith(caches.match(shell,{cacheName}).then(response=>response??fetch(request)))
     return
   }
-  if(urls.has(url.href)) event.respondWith(caches.open(cacheName).then(async cache=>(await cache.match(url.href))??fetch(request)))
+  if(urls.has(url.href)) event.respondWith(caches.match(url.href,{cacheName}).then(response=>response??fetch(request)))
   // Never cache arbitrary URLs, user data, network API responses or search results.
 })
 
@@ -61,10 +62,12 @@ self.addEventListener('message',event=>{
         port.postMessage({ok:true,revision:REVISION,count:present.size,bytes:ASSETS.filter(asset=>present.has(new URL(asset.path,scope).href)).reduce((sum,asset)=>sum+asset.bytes,0),versions:keys.filter(ownedCache).length})
         return
       }
+      if(disabling) throw Error('正在清理离线缓存。')
       if(self.registration.waiting||self.registration.installing) throw Error('新版本正在更新，请关闭工作台标签页后重试。')
       const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true})
       if(clients.some(client=>client.id!==source.id&&inScope(client.url))) throw Error('请先关闭其他工作台标签页，再停用并清理。')
-      if(!await self.registration.unregister()) throw Error('注销失败，请重新检查离线状态。')
+      disabling=true
+      if(!await self.registration.unregister()){disabling=false;throw Error('注销失败，请重新检查离线状态。')}
       for(const key of await caches.keys()) if(ownedCache(key)) await caches.delete(key)
       port.postMessage({ok:true})
     }catch(error){port.postMessage({ok:false,message:error.message||'离线缓存操作失败。'})}

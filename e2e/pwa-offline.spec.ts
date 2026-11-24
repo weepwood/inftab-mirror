@@ -68,3 +68,18 @@ test('cache management protects other tabs and leaves unrelated caches and user 
   expect(state.user).toBe('keep')
   expect(state.enabled).toBeNull()
 })
+
+
+test('offline management does not recreate cleared caches after disable',async({page})=>{
+  await page.goto('/')
+  await page.getByRole('button',{name:'启用离线工作台'}).click()
+  await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller),{timeout:30000}).toBe(true)
+  page.once('dialog',dialog=>dialog.accept())
+  await page.getByRole('button',{name:'停用并清理离线缓存'}).click()
+  await expect(page.locator('.pwa-status')).toContainText('已清理离线缓存')
+  await page.evaluate(()=>fetch('./pwa.css').then(response=>response.text()))
+  await expect.poll(()=>page.evaluate(async()=>(await caches.keys()).filter(key=>key.startsWith('inftab-pwa:')).length)).toBe(0)
+  await page.reload()
+  await expect(page.getByRole('button',{name:'启用离线工作台'})).toBeVisible()
+  expect(await page.evaluate(()=>localStorage.getItem('inftab.pwa.enabled.v1'))).toBeNull()
+})

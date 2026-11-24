@@ -10,3 +10,6 @@
 .inftab-pwa-control summary{cursor:pointer;font-weight:600;min-height:24px}
 .inftab-pwa-control .pwa-details p{margin:6px 0;color:#e1ebe5;overflow-wrap:anywhere}
 .inftab-pwa-control .pwa-details button{margin:2px 4px 2px 0}
+
+@media(max-width:480px){.inftab-pwa-control{max-width:calc(100vw - 24px)}.inftab-pwa-control .pwa-details{max-height:45vh;overflow:auto;overscroll-behavior:contain}}
+@media(prefers-reduced-motion:reduce){.inftab-pwa-control *{animation:none;transition:none}}

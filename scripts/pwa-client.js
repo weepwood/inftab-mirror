@@ -23,12 +23,13 @@
   const info=document.createElement('p'); info.className='pwa-info'
   const check=document.createElement('button'); check.type='button';check.textContent='检查更新'
   const inspect=document.createElement('button');inspect.type='button';inspect.textContent='刷新缓存信息'
+  const installHelp=document.createElement('p');installHelp.textContent='未显示安装按钮时，可查看浏览器菜单中的安装应用或添加到主屏幕。'
   const help=document.createElement('p');help.textContent='新版本验证完成后，关闭所有工作台标签页再打开。浏览器支持时可安装应用。'
-  details.append(summary,info,check,inspect,help)
+  details.append(summary,info,check,inspect,help,installHelp)
   const status=document.createElement('span')
   status.setAttribute('role','status'); status.className='pwa-status'
   root.append(button,install,details,status); document.body.append(root)
-  let registration, prompt, busy=false, stopped=false
+  let registration, prompt, busy=false, stopped=false, updateFailed=false
   const requestWorker=type=>new Promise((resolve,reject)=>{
     if(!controlled())return reject(Error('离线工作线程尚未就绪。'))
     const channel=new MessageChannel()
@@ -44,7 +45,7 @@
   check.addEventListener('click',async()=>{
     if(!navigator.onLine){status.textContent='当前离线，联网后再检查。';return}
     if(!owned(registration)){status.textContent='离线工作线程尚未就绪。';return}
-    check.disabled=true
+    check.disabled=true;updateFailed=false
     try{await registration.update();status.textContent=registration.waiting?'新版本已缓存，关闭所有工作台标签页后更新。':registration.installing?'正在下载并验证新版本…':'暂未检测到新版本。'}catch{status.textContent='更新检查失败，当前缓存仍可使用。'}finally{check.disabled=false}
   })
   function enabled(){try{return localStorage.getItem(key)==='1'}catch{return false}}
@@ -56,12 +57,19 @@
     check.disabled=!navigator.onLine
     if(ready&&details.open)void refreshInfo()
     button.textContent=ready?'停用并清理离线缓存':'启用离线工作台'
-    status.textContent=registration?.waiting?'新版本已缓存，关闭所有工作台标签页后更新。':ready?(navigator.onLine?'离线资源已就绪':'离线模式 · 本地功能可用'):''
+    status.textContent=ready&&!navigator.onLine?'离线模式 · 本地功能可用':registration?.waiting?'新版本已缓存，关闭所有工作台标签页后更新。':registration?.installing?'正在下载并验证新版本…':ready?(updateFailed?'更新失败，当前缓存仍可使用。':'离线资源已就绪'):''
   }
   function observe(candidate){
     registration=candidate
-    candidate.addEventListener('updatefound',()=>candidate.installing?.addEventListener('statechange',render))
-    candidate.installing?.addEventListener('statechange',render)
+    const observeWorker=()=>{
+      const worker=candidate.installing
+      if(!worker)return
+      updateFailed=false
+      worker.addEventListener('statechange',()=>{if(worker.state==='redundant'&&controlled())updateFailed=true;render()})
+      render()
+    }
+    candidate.addEventListener('updatefound',observeWorker)
+    observeWorker()
     candidate.waiting?.addEventListener('statechange',render)
   }
   async function enable(){
@@ -105,7 +113,7 @@
   })
   navigator.serviceWorker.addEventListener('controllerchange',render)
   window.addEventListener('online',()=>{render();if(!stopped&&owned(registration))void registration.update().catch(()=>{})});window.addEventListener('offline',render)
-  window.addEventListener('appinstalled',()=>{install.hidden=true;void enable()})
+  window.addEventListener('appinstalled',()=>{prompt=undefined;install.hidden=true;if(!controlled())void enable()})
   if(controlled()){
     void navigator.serviceWorker.getRegistration(base.href).then(value=>{if(owned(value)){observe(value);if(navigator.onLine)void value.update().catch(()=>{})}render()}).catch(render)
   }else if(enabled()&&navigator.onLine)void enable()

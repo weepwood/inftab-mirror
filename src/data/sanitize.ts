@@ -42,6 +42,7 @@ export function isValidLauncherColor(value: unknown): value is string {
 export function sanitizePreferences(value: unknown): Preferences {
   const raw = isRecord(value) ? value : {}
   const merged = { ...defaultPreferences, ...raw }
+  const booleanPreference = (key: 'openShortcutsInNewTab' | 'openSearchInNewTab' | 'openBookmarksInNewTab' | 'openHistoryInNewTab') => typeof raw[key] === 'boolean' ? raw[key] : defaultPreferences[key]
   const manageableLauncherIds = new Set(launcherItems.filter((item) => item.action && item.id !== 'settings').map((item) => item.id))
   const hiddenLauncherIds = Array.isArray(raw.hiddenLauncherIds)
     ? [...new Set(raw.hiddenLauncherIds.filter((item): item is string => typeof item === 'string' && manageableLauncherIds.has(item)))]
@@ -91,10 +92,10 @@ export function sanitizePreferences(value: unknown): Preferences {
       ? merged.themePalette : defaultPreferences.themePalette,
     ...(raw.customTheme === undefined ? {} : { customTheme: sanitizeCustomTheme(raw.customTheme) ?? null }),
     ...(raw.themePresets === undefined ? {} : { themePresets: sanitizeThemePresets(raw.themePresets) }),
-    openShortcutsInNewTab: typeof raw.openShortcutsInNewTab === 'boolean' ? raw.openShortcutsInNewTab : defaultPreferences.openShortcutsInNewTab,
-    openSearchInNewTab: typeof raw.openSearchInNewTab === 'boolean' ? raw.openSearchInNewTab : defaultPreferences.openSearchInNewTab,
-    openBookmarksInNewTab: typeof raw.openBookmarksInNewTab === 'boolean' ? raw.openBookmarksInNewTab : defaultPreferences.openBookmarksInNewTab,
-    openHistoryInNewTab: typeof raw.openHistoryInNewTab === 'boolean' ? raw.openHistoryInNewTab : defaultPreferences.openHistoryInNewTab,
+    openShortcutsInNewTab: booleanPreference('openShortcutsInNewTab'),
+    openSearchInNewTab: booleanPreference('openSearchInNewTab'),
+    openBookmarksInNewTab: booleanPreference('openBookmarksInNewTab'),
+    openHistoryInNewTab: booleanPreference('openHistoryInNewTab'),
     hiddenLauncherIds,
     dockItemIds,
     dockMagnification: typeof merged.dockMagnification === 'boolean' ? merged.dockMagnification : defaultPreferences.dockMagnification,
