@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findLauncherMatches } from './launcherSearch'
+import { createLauncherSearchIndex, findLauncherMatches } from './launcherSearch'
 import type { LauncherItem, ShortcutFolder } from '../types'
 
 function site(id: string, title: string, url = `https://${id}.example/`): LauncherItem {
@@ -69,4 +69,19 @@ describe('local launcher search', () => {
     expect(findLauncherMatches({ ...options, query: 'https://new.example/' })).toEqual([])
     expect(JSON.stringify(options)).toBe(before)
   })
+})
+
+
+it('reuses one index for queries and scope changes at the 500-entry / 20-workspace limit', () => {
+  const items = Array.from({length:500},(_,index)=>site('site-'+index,'Reference '+index))
+  items[499]!.shortcut!.tags = ['前端', 'Vue']
+  const workspaces = Array.from({length:20},(_,index)=>({id:'ws-'+index,name:'Workspace '+index,itemIds:[...items.slice(index*25,index*25+25).map(item=>item.id),'calculator']}))
+  const data = {items:[...items,calculator],folders:[],workspaces,hiddenItemIds:['site-1']}
+  const index = createLauncherSearchIndex(data)
+  expect(index.search('reference','ws-0')).toHaveLength(24)
+  expect(index.search('reference','ws-19',true)).toHaveLength(499)
+  expect(index.search('前端 vue','ws-0',true).map(row=>row.item.id)).toEqual(['site-499'])
+  expect(index.search('计算','ws-19',true)).toMatchObject([{workspaceId:'ws-19',item:{id:'calculator'}}])
+  expect(index.search('reference 499','ws-0')).toEqual([])
+  expect(index.search('reference 499','ws-0',true).map(row=>row.item.id)).toEqual(['site-499'])
 })

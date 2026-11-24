@@ -336,13 +336,19 @@ function hasUsableIcon(item: LauncherItem) {
   return Boolean(item.icon && failedIconUrls.value.get(item.id) !== item.icon)
 }
 
-function folderPreviewItems(item: LauncherItem) {
+const folderShortcutIndex = computed(() => new Map((props.folderShortcuts ?? []).map(item => [item.id, item])))
+const folderPreviews = computed(() => new Map(props.items.flatMap(item => {
   if (!item.folder) return []
-  return item.folder.shortcutIds.flatMap((id) => {
-    const shortcut = props.folderShortcuts?.find((candidate) => candidate.id === id)
-    return shortcut ? [shortcut] : []
-  }).slice(0, 4)
-}
+  const previews: LauncherItem[] = []
+  for (const id of item.folder.shortcutIds) {
+    const shortcut = folderShortcutIndex.value.get(id)
+    if (shortcut) previews.push(shortcut)
+    if (previews.length === 4) break
+  }
+  return [[item.id, previews] as const]
+})))
+const emptyPreview: LauncherItem[] = []
+function folderPreviewItems(item: LauncherItem) { return folderPreviews.value.get(item.id) ?? emptyPreview }
 
 function handleIconError(item: LauncherItem) {
   if (!item.icon) return

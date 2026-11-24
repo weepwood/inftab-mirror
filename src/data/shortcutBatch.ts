@@ -4,7 +4,8 @@ import { sanitizeShortcutTags, maxShortcutTags } from './shortcutTags'
 
 export function planShortcutBatch(snapshot: WorkspaceBackup, action: ShortcutBatch): WorkspaceBackup {
   const ids = new Set(action.ids)
-  if (!ids.size || [...ids].some(id => !snapshot.shortcuts.some(item => item.id === id))) throw new Error('所选入口已变化，请重新选择。')
+  const existingIds = new Set(snapshot.shortcuts.map(item => item.id))
+  if (!ids.size || [...ids].some(id => !existingIds.has(id))) throw new Error('所选入口已变化，请重新选择。')
   const workspaces = snapshot.homeWorkspaces ?? []
   if (action.kind === 'tag' || action.kind === 'untag') {
     const tag = sanitizeShortcutTags([action.tag])[0]
