@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowUpRight, Folder, FolderPlus, Plus, Search } from '@lucide/vue'
-import { findLauncherMatches, type LauncherSearchMatch } from '../data/launcherSearch'
+import { createLauncherSearchIndex, type LauncherSearchMatch } from '../data/launcherSearch'
 import type { HomeWorkspace } from '../data/homeWorkspaces'
 import type { LauncherItem, ShortcutFolder } from '../types'
 import { launcherIcons } from './launcherIcons'
@@ -25,7 +25,8 @@ const limit = ref(12)
 const list = ref<HTMLElement>()
 const popup = ref<HTMLElement>()
 const popupStyle = ref<Record<string, string>>({})
-const matches = computed(() => findLauncherMatches({ ...props, allWorkspaces: allWorkspaces.value }))
+const searchIndex = computed(() => createLauncherSearchIndex({ items: props.items, folders: props.folders, workspaces: props.workspaces, hiddenItemIds: props.hiddenItemIds }))
+const matches = computed(() => props.query.trim() ? searchIndex.value.search(props.query, props.activeWorkspaceId, allWorkspaces.value) : [])
 const visibleMatches = computed(() => matches.value.slice(0, limit.value))
 watch([() => props.query, allWorkspaces], () => { limit.value = 12 })
 
@@ -115,7 +116,7 @@ function handleKeydown(event: KeyboardEvent) {
     <div v-if="!matches.length" class="launcher-search-empty local-search-empty">
       <Search :size="24" :stroke-width="1.5" aria-hidden="true" />
       <p role="status">{{ query.trim() ? '没有匹配的快捷入口' : '想去哪里？从这里找起' }}</p>
-      <span>{{ query.trim() ? '试试名称、网址或文件夹名称，也可以切换查找范围。' : '查找网站、文件夹和内置工具，不必逐页翻找。' }}</span>
+      <span>{{ query.trim() ? '试试名称、网址、标签或文件夹名称，也可以切换查找范围。' : '查找网站、文件夹和内置工具，不必逐页翻找。' }}</span>
       <div class="launcher-search-actions">
         <button type="button" @click="emit('addShortcut')"><Plus :size="14" aria-hidden="true" />添加快捷入口</button>
         <button type="button" @click="emit('addFolder')"><FolderPlus :size="14" aria-hidden="true" />创建文件夹</button>

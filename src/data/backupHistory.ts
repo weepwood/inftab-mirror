@@ -32,9 +32,26 @@ export function trimHistory(entries: HistoryEntry[]) {
 }
 
 export async function captureHistory(snapshot: WorkspaceBackup, reason: HistoryReason): Promise<void> {
+  // Manual snapshots keep their original point-in-time content before opening IndexedDB.
+  const entry = prepareSnapshot(snapshot)
+  return persistHistory(() => entry, reason)
+}
+
+function prepareSnapshot(snapshot: WorkspaceBackup) {
   const content = JSON.stringify(snapshot)
   const bytes = new Blob([content]).size
   if (bytes > maxSnapshotBytes) throw new Error('快照超过 8 MiB，请先导出 JSON 备份。')
+  return { content, bytes, shortcuts: snapshot.shortcuts.length }
+}
+
+export function captureDailyHistory(createSnapshot: () => WorkspaceBackup | undefined): Promise<void> {
+  return persistHistory(() => {
+    const snapshot = createSnapshot()
+    return snapshot ? prepareSnapshot(snapshot) : undefined
+  }, 'daily')
+}
+
+async function persistHistory(prepare: () => ReturnType<typeof prepareSnapshot> | undefined, reason: HistoryReason): Promise<void> {
   const db = await openHistory()
   try {
     await new Promise<void>((resolve, reject) => {
@@ -42,14 +59,18 @@ export async function captureHistory(snapshot: WorkspaceBackup, reason: HistoryR
       const store = tx.objectStore(storeName)
       const meta = tx.objectStore('meta')
       tx.oncomplete = () => resolve()
-      tx.onabort = tx.onerror = () => reject(tx.error ?? new Error('备份历史保存失败。'))
+      let preparationError: unknown
+      tx.onabort = tx.onerror = () => reject(preparationError ?? tx.error ?? new Error('备份历史保存失败。'))
       const persist = () => {
         const all = store.getAll()
         all.onsuccess = () => {
         const entries = all.result as HistoryEntry[]
         const now = Date.now()
         if (reason === 'daily' && entries.some(entry => dayKey(entry.createdAt) === dayKey(now))) { meta.put(dayKey(now), 'lastDaily'); return }
-        const entry: HistoryEntry = { id: createLocalId(), createdAt: now, reason, bytes, shortcuts: snapshot.shortcuts.length, content }
+        let payload: ReturnType<typeof prepareSnapshot> | undefined
+        try { payload = prepare() } catch (error) { preparationError = error; tx.abort(); return }
+        if (!payload) return
+        const entry: HistoryEntry = { id: createLocalId(), createdAt: now, reason, ...payload }
         const keep = new Set(trimHistory([entry, ...entries]).map(item => item.id))
         if (!keep.has(entry.id)) { tx.abort(); return }
         store.put(entry)

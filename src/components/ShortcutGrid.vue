@@ -269,7 +269,8 @@ watch(() => [pages.value.length, props.transitionEffect] as const, () => {
   })
 }, { flush: 'post' })
 
-watch(() => props.items.map((item) => [item.id, item.icon] as const), (icons) => {
+watch(() => [...props.items, ...(props.folderShortcuts ?? [])].map((item) => [item.id, item.icon] as const), (icons) => {
+  if (!failedIconUrls.value.size) return
   const currentIcons = new Map(icons.filter(([, icon]) => icon).map(([id, icon]) => [id, icon!]))
   const failed = new Map([...failedIconUrls.value].filter(([id, url]) => currentIcons.get(id) === url))
   if (failed.size !== failedIconUrls.value.size) failedIconUrls.value = failed
@@ -336,13 +337,19 @@ function hasUsableIcon(item: LauncherItem) {
   return Boolean(item.icon && failedIconUrls.value.get(item.id) !== item.icon)
 }
 
-function folderPreviewItems(item: LauncherItem) {
+const folderShortcutIndex = computed(() => new Map((props.folderShortcuts ?? []).map(item => [item.id, item])))
+const folderPreviews = computed(() => new Map(props.items.flatMap(item => {
   if (!item.folder) return []
-  return item.folder.shortcutIds.flatMap((id) => {
-    const shortcut = props.folderShortcuts?.find((candidate) => candidate.id === id)
-    return shortcut ? [shortcut] : []
-  }).slice(0, 4)
-}
+  const previews: LauncherItem[] = []
+  for (const id of item.folder.shortcutIds) {
+    const shortcut = folderShortcutIndex.value.get(id)
+    if (shortcut) previews.push(shortcut)
+    if (previews.length === 4) break
+  }
+  return [[item.id, previews] as const]
+})))
+const emptyPreview: LauncherItem[] = []
+function folderPreviewItems(item: LauncherItem) { return folderPreviews.value.get(item.id) ?? emptyPreview }
 
 function handleIconError(item: LauncherItem) {
   if (!item.icon) return
@@ -427,7 +434,7 @@ onBeforeUnmount(() => {
     >
       <span class="shortcut-icon" :class="{ builtin: draggedItem.action }" :data-action="draggedItem.action" :style="{ backgroundColor: draggedItem.action ? undefined : draggedItem.color }">
         <component v-if="draggedItem.action && launcherIcons[draggedItem.action]" :is="launcherIcons[draggedItem.action]" :size="35" :stroke-width="1.8" />
-        <img v-else-if="hasUsableIcon(draggedItem)" class="shortcut-picture" :src="draggedItem.icon" alt="" draggable="false" @error="handleIconError(draggedItem)" />
+        <img v-else-if="hasUsableIcon(draggedItem)" class="shortcut-picture" :src="draggedItem.icon" decoding="async" alt="" draggable="false" @error="handleIconError(draggedItem)" />
         <Folder v-else-if="draggedItem.folder" :size="35" :stroke-width="2.2" />
         <span v-else class="shortcut-mark">{{ draggedItem.mark }}</span>
         <span v-if="draggedItem.badge" class="shortcut-badge">{{ draggedItem.badge }}</span>
@@ -446,8 +453,8 @@ onBeforeUnmount(() => {
         @transitionend="handleTrackTransitionEnd"
       >
           <section
-            v-for="(renderPage, renderIndex) in displayPages"
-            :key="renderIndex"
+            v-for="renderPage in displayPages"
+            :key="renderPage.trackIndex"
             class="shortcut-page"
           :class="{
             'particles-out': !renderPage.clone && outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'particles',
@@ -483,10 +490,10 @@ onBeforeUnmount(() => {
             <button class="shortcut-open" type="button" :aria-label="`打开${item.title}`" aria-describedby="launcher-reorder-hint" aria-keyshortcuts="Shift+ArrowLeft Shift+ArrowRight" :aria-haspopup="item.folder ? 'dialog' : item.shortcut ? 'menu' : undefined" @click="openItem($event, item)" @auxclick.middle.prevent="openItem($event, item)" @keydown="handleShortcutKeydown($event, item)">
               <span class="shortcut-icon" :class="{ builtin: item.action }" :data-action="item.action" :style="{ backgroundColor: item.action ? undefined : item.color }">
                 <component v-if="item.action && launcherIcons[item.action]" :is="launcherIcons[item.action]" :size="35" :stroke-width="1.8" />
-                <img v-else-if="hasUsableIcon(item)" class="shortcut-picture" :src="item.icon" alt="" draggable="false" @error="handleIconError(item)" />
+                <img v-else-if="hasUsableIcon(item)" class="shortcut-picture" :src="item.icon" decoding="async" alt="" draggable="false" @error="handleIconError(item)" />
                 <span v-else-if="item.folder" class="folder-preview-grid">
                   <span v-for="shortcut in folderPreviewItems(item)" :key="shortcut.id" class="folder-preview-tile" :style="{ backgroundColor: shortcut.color }">
-                    <img v-if="hasUsableIcon(shortcut)" :src="shortcut.icon" alt="" draggable="false" @error="handleIconError(shortcut)" />
+                    <img v-if="hasUsableIcon(shortcut)" :src="shortcut.icon" decoding="async" alt="" draggable="false" @error="handleIconError(shortcut)" />
                     <span v-else>{{ shortcut.mark }}</span>
                   </span>
                   <Folder v-if="!folderPreviewItems(item).length" :size="35" :stroke-width="2.2" />

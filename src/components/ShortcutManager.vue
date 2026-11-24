@@ -23,11 +23,20 @@ const previewWorkspaceId = ref('')
 watch(selected, () => { confirmDelete.value = false })
 watch(() => props.tools.activeId, () => { preview.value = undefined })
 const tags = computed(() => [...new Set(props.tools.shortcuts.flatMap(item => item.tags ?? []))].sort())
-const filtered = computed(() => props.tools.shortcuts.filter(item => (!tagFilter.value || item.tags?.includes(tagFilter.value))
-  && (item.title + ' ' + item.url + ' ' + (item.tags ?? []).join(' ')).toLowerCase().includes(query.value.trim().toLowerCase())))
-const selectedIds = computed(() => selected.value.filter(id => props.tools.shortcuts.some(item => item.id === id)))
+const searchRows = computed(() => props.tools.shortcuts.map(item => ({ item, text: (item.title + ' ' + item.url + ' ' + (item.tags ?? []).join(' ')).toLowerCase() })))
+const filtered = computed(() => {
+  const term = query.value.trim().toLowerCase()
+  return searchRows.value.filter(row => (!tagFilter.value || row.item.tags?.includes(tagFilter.value)) && row.text.includes(term)).map(row => row.item)
+})
+const shortcutIds = computed(() => new Set(props.tools.shortcuts.map(item => item.id)))
+const selectedIds = computed(() => selected.value.filter(id => shortcutIds.value.has(id)))
+const ownerById = computed(() => {
+  const result = new Map<string,string>()
+  for (const workspace of props.tools.workspaces) for (const id of workspace.itemIds) if (!result.has(id)) result.set(id, workspace.name)
+  return result
+})
 function selectVisible() { selected.value = [...new Set([...selectedIds.value, ...filtered.value.map(item => item.id)])] }
-function owner(id: string) { return props.tools.workspaces.find(workspace => workspace.itemIds.includes(id))?.name ?? '未分配' }
+function owner(id: string) { return ownerById.value.get(id) ?? '未分配' }
 async function execute(fn: () => Promise<void>) {
   if (busy.value) return
   busy.value = true

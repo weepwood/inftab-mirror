@@ -217,7 +217,7 @@ onBeforeUnmount(() => {
         >
           <span class="home-dock-icon" :class="{ builtin: item.action }" :data-action="item.action" :style="{ backgroundColor: item.action ? undefined : item.color, '--dock-glow-color': item.color }">
             <component v-if="item.action && launcherIcons[item.action]" :is="launcherIcons[item.action]" :size="24" :stroke-width="1.8" />
-            <img v-else-if="item.icon" :src="item.icon" alt="" />
+            <img v-else-if="item.icon" :src="item.icon" decoding="async" alt="" />
             <span v-else>{{ item.mark }}</span>
           </span>
         </button>
