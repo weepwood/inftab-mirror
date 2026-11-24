@@ -19,7 +19,7 @@ export default defineConfig({
     { name: 'edge-stable', use: { browserName: 'chromium', channel: 'msedge' } },
   ],
   webServer: {
-    command: 'npm run preview -- --host 127.0.0.1 --port 4175 --strictPort',
+    command: 'npm run preview -- --outDir dist-web --host 127.0.0.1 --port 4175 --strictPort',
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

@@ -28,6 +28,7 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
     await expect(page).toHaveURL(/^chrome-extension:\/\/[a-p]{32}\/index\.html/)
     await expect(page.getByRole('heading', { name: 'Infinity 新标签页' })).toBeVisible()
 
+    await expect(page.locator('.inftab-pwa-control, link[rel=manifest]')).toHaveCount(0)
     await expect(page.locator('.home-clock')).toHaveCount(0)
     await expect(page.locator('.search-area')).toHaveCount(0)
     await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()

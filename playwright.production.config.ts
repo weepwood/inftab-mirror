@@ -8,7 +8,7 @@ export default defineConfig({
   testIgnore: [],
   use: { ...baseConfig.use, baseURL },
   webServer: {
-    command: 'npm run preview -- --host 127.0.0.1 --port 4174 --strictPort',
+    command: 'npm run preview -- --outDir dist-web --host 127.0.0.1 --port 4174 --strictPort',
     url: baseURL,
     reuseExistingServer: false,
     timeout: 60_000,
