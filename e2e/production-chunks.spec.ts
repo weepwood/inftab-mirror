@@ -173,7 +173,9 @@ test('launcher search stays lazy and safely ignores Enter until visible results 
   } finally { release() }
 })
 
-test('launcher search can leave a failed chunk and recover after a document reload', async ({ page }) => {
+for (const showSearchBar of [false, true]) test(`launcher search can leave a failed chunk and recover after a document reload (persistent search: ${showSearchBar})`, async ({ page }) => {
+  await page.evaluate(showSearchBar => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar })), showSearchBar)
+  await page.reload()
   let fail = true
   await page.route('**/assets/LauncherSearchResults-*.js', async (route) => {
     if (fail) await route.fulfill({ status: 503, body: 'offline' })
@@ -185,7 +187,13 @@ test('launcher search can leave a failed chunk and recover after a document relo
   await page.keyboard.press('Enter')
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: '退出快捷入口搜索', exact: true }).click()
-  await expect(page.getByRole('searchbox', { name: '输入并搜索' })).toBeFocused()
+  if (showSearchBar) {
+    await expect(page.getByRole('searchbox', { name: '输入并搜索' })).toBeFocused()
+  } else {
+    await expect(page.locator('.search-area')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '查找快捷入口', exact: true })).toBeFocused()
+  }
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   fail = false
   await page.reload()
   await page.getByRole('button', { name: '查找快捷入口', exact: true }).click()

@@ -23,7 +23,7 @@
   const status=document.createElement('span')
   status.setAttribute('role','status'); status.className='pwa-status'
   root.append(button,install,details,status); document.body.append(root)
-  let registration, prompt=window.__inftabInstallPrompt, busy=false, stopped=false, updateFailed=false
+  let registration, prompt=window.__inftabInstallPrompt, busy=false, stopped=false, updateFailed=false, checking=false
   delete window.__inftabInstallPrompt
   install.hidden=!prompt
   const requestWorker=type=>new Promise((resolve,reject)=>{
@@ -41,8 +41,9 @@
   check.addEventListener('click',async()=>{
     if(!navigator.onLine){status.textContent='当前离线，联网后再检查。';return}
     if(!owned(registration)){status.textContent='离线工作线程尚未就绪。';return}
-    check.disabled=true;updateFailed=false
-    try{await registration.update();status.textContent=registration.waiting?'新版本已缓存，关闭所有工作台标签页后更新。':registration.installing?'正在下载并验证新版本…':'暂未检测到新版本。'}catch{status.textContent='更新检查失败，当前缓存仍可使用。'}finally{check.disabled=false}
+    if(checking)return
+    checking=check.disabled=true;updateFailed=false
+    try{await registration.update();status.textContent=registration.waiting?'新版本已缓存，关闭所有工作台标签页后更新。':registration.installing?'正在下载并验证新版本…':'暂未检测到新版本。'}catch{status.textContent='更新检查失败，当前缓存仍可使用。'}finally{checking=false;check.disabled=!navigator.onLine||!controlled();if(check.disabled)render()}
   })
   function enabled(){try{return localStorage.getItem(key)==='1'}catch{return false}}
   function remember(value){try{if(value)localStorage.setItem(key,'1');else localStorage.removeItem(key)}catch{}}
@@ -50,7 +51,7 @@
     if(busy||stopped)return
     const ready=controlled()
     details.hidden=!ready && !registration
-    check.disabled=!navigator.onLine || !ready
+    check.disabled=checking || !navigator.onLine || !ready
     if(ready&&details.open)void refreshInfo()
     button.textContent=ready?'停用并清理离线缓存':'启用离线工作台'
     status.textContent=ready&&!navigator.onLine?'离线模式 · 本地功能可用':registration?.waiting?'新版本已缓存，关闭所有工作台标签页后更新。':registration?.installing?'正在下载并验证新版本…':ready?(updateFailed?'更新失败，当前缓存仍可使用。':'离线资源已就绪'):''

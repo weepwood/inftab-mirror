@@ -89,7 +89,10 @@ jobs:
         run: |
           version="$(node -p "require('./package.json').version")"
           if [ "$version" != '1.7.0' ] || [ ! -f docs/releases/v1.7.0.md ]; then exit 0; fi
-          if gh release view v1.7.0 >/dev/null 2>&1; then echo 'V1.7.0 already exists; no overwrite'; exit 0; fi
+          if existing="$(gh release view v1.7.0 --json isDraft --jq .isDraft 2>/dev/null)"; then
+            if [ "$existing" = true ]; then echo 'Existing draft requires explicit recovery; refusing overwrite' >&2; exit 1; fi
+            echo 'V1.7.0 already published; no overwrite'; exit 0
+          fi
           echo 'publish=true' >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         if: steps.version.outputs.publish == 'true'
@@ -113,4 +116,12 @@ jobs:
           (cd release-extension && zip -qr ../inftab-v1.7.0-extension.zip .)
           (cd release-web && zip -qr ../inftab-v1.7.0-web.zip .)
           sha256sum inftab-v1.7.0-*.zip > SHA256SUMS.txt
-          gh release create v1.7.0 --target "$GITHUB_SHA" --title 'Inftab V1.7.0' --notes-file docs/releases/v1.7.0.md inftab-v1.7.0-extension.zip inftab-v1.7.0-web.zip SHA256SUMS.txt
+          unzip -tq inftab-v1.7.0-extension.zip
+          unzip -tq inftab-v1.7.0-web.zip
+          test "$(node -p "require('./release-extension/manifest.json').version")" = '1.7.0'
+          gh release create v1.7.0 --draft --target "$GITHUB_SHA" --title 'Inftab V1.7.0' --notes-file docs/releases/v1.7.0.md inftab-v1.7.0-extension.zip inftab-v1.7.0-web.zip SHA256SUMS.txt
+          mkdir downloaded-release
+          gh release download v1.7.0 --dir downloaded-release
+          cmp SHA256SUMS.txt downloaded-release/SHA256SUMS.txt
+          (cd downloaded-release && sha256sum -c SHA256SUMS.txt && unzip -tq inftab-v1.7.0-extension.zip && unzip -tq inftab-v1.7.0-web.zip)
+          gh release edit v1.7.0 --draft=false
