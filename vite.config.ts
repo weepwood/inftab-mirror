@@ -50,7 +50,7 @@ export default defineConfig({
             // overhead without pulling them into the homepage startup graph.
             {
               name: 'settings-tools',
-              test: /\/src\/components\/(?:CustomThemeEditor|ConfigMigration|ShortcutManager)\.vue/,
+              test: /\/src\/components\/(?:CustomThemeEditor|ConfigMigration|ShortcutManager|HomeLayoutEditor)\.vue/,
               includeDependenciesRecursively: false,
             },
             // Small offline tools share Vue/icon imports and repeated form markup.
@@ -59,7 +59,7 @@ export default defineConfig({
               name: 'local-tools',
               // Keep the calculator-only parser here too, avoiding a tiny
               // facade that imports back into the same tools chunk.
-              test: /\/src\/(?:components\/(?:Todo|Notes|Countdown|Calendar|Calculator|FocusTimer)Panel\.vue|data\/calculator\.ts)/,
+              test: /\/src\/(?:components\/(?:Todo|Notes|Countdown|Calendar|Calculator|FocusTimer|Habits)Panel\.vue|data\/calculator\.ts)/,
               // Shared icons are also used by homepage chunks. Capturing them
               // here would indirectly fetch every tool before a panel opens.
               includeDependenciesRecursively: false,

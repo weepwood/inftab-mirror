@@ -4,12 +4,15 @@ import type { WorkspaceBackup } from './backup'
 // Downloads are user-initiated, not part of the new-tab startup graph. Keep the
 // serializer and temporary DOM/Blob work here, alongside the lazy import path.
 export function downloadWorkspaceBackup(backup: WorkspaceBackup) {
-  const contents = JSON.stringify(backup, null, 2)
-  const url = URL.createObjectURL(new Blob([contents], { type: 'application/json' }))
+  downloadText(JSON.stringify(backup, null, 2), 'application/json', `inftab-backup-${toLocalDateKey(new Date())}.json`)
+}
+
+export function downloadText(contents: string, type: string, filename: string) {
+  const url = URL.createObjectURL(new Blob([contents], { type }))
   const anchor = document.createElement('a')
   try {
     anchor.href = url
-    anchor.download = `inftab-backup-${toLocalDateKey(new Date())}.json`
+    anchor.download = filename
     anchor.hidden = true
     document.body.appendChild(anchor)
     anchor.click()

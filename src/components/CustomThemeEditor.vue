@@ -54,6 +54,7 @@ let readId = 0
 const baseline = ref(JSON.stringify(props.theme ?? null))
 const valid = computed(() => sanitizeCustomTheme(draft.value))
 const colors = computed(() => draft.value[mode.value])
+const colorFields = [{ key: 'accent', label: '强调色' }, { key: 'surface', label: '面板背景' }, { key: 'text', label: '正文颜色' }] as const
 const contrast = computed(() => contrastRatio(colors.value.surface, colors.value.text))
 const buttonContrast = computed(() => contrastRatio(colors.value.accent, '#ffffff'))
 const changed = computed(() => JSON.stringify(draft.value) !== JSON.stringify(props.theme ?? defaultCustomTheme))
@@ -117,9 +118,7 @@ onBeforeUnmount(() => { readId++ })
       <div class="theme-preview-card"><strong>工作台预览</strong><span>搜索、快捷入口和小组件</span><div class="theme-preview-field">搜索网站或输入网址</div><span class="theme-preview-button">主要操作</span></div>
     </div>
     <div class="theme-colors">
-      <label><span>强调色 <small>{{ colors.accent }}</small></span><input v-model="colors.accent" type="color" :aria-label="mode === 'light' ? '浅色强调色' : '深色强调色'" /></label>
-      <label><span>面板背景 <small>{{ colors.surface }}</small></span><input v-model="colors.surface" type="color" :aria-label="mode === 'light' ? '浅色面板背景' : '深色面板背景'" /></label>
-      <label><span>正文颜色 <small>{{ colors.text }}</small></span><input v-model="colors.text" type="color" :aria-label="mode === 'light' ? '浅色正文颜色' : '深色正文颜色'" /></label>
+      <label v-for="field in colorFields" :key="field.key"><span>{{ field.label }} <small>{{ colors[field.key] }}</small></span><input v-model="colors[field.key]" type="color" :aria-label="(mode === 'light' ? '浅色' : '深色') + field.label" /></label>
     </div>
     <label class="theme-range">控件圆角 <output>{{ draft.radius }} px</output><input v-model.number="draft.radius" aria-label="控件圆角" type="range" min="0" max="24" /></label>
     <label class="theme-range">玻璃表面不透明度 <output>{{ draft.opacity }}%</output><input v-model.number="draft.opacity" aria-label="玻璃表面不透明度" type="range" min="85" max="100" /></label>

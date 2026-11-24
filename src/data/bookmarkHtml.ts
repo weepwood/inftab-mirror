@@ -1,3 +1,4 @@
+import { downloadText } from './downloadBackup'
 import { normalizeWebUrl } from './urls'
 import { truncateCodePoints } from './text'
 import type { Shortcut, BookmarkShortcutCandidate } from '../types'
@@ -47,10 +48,5 @@ export function exportBookmarkHtml(snapshot: Pick<WorkspaceBackup, 'shortcuts' |
     + group('其他入口', snapshot.shortcuts.map(item => link(item)).join('')) + '</DL><p>\n'
 }
 export function downloadBookmarkHtml(snapshot: WorkspaceBackup) {
-  const url = URL.createObjectURL(new Blob([exportBookmarkHtml(snapshot)], { type: 'text/html;charset=utf-8' }))
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = 'inftab-bookmarks.html'
-  try { document.body.append(anchor); anchor.click() }
-  finally { anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000) }
+  downloadText(exportBookmarkHtml(snapshot), 'text/html;charset=utf-8', 'inftab-bookmarks.html')
 }
