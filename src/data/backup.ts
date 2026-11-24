@@ -1,4 +1,5 @@
-import { sanitizeCustomTheme, validThemePresets } from './customTheme'
+import { sanitizeCustomTheme } from './customTheme'
+import { validThemePresets } from './themeEditorData'
 import { isRecord } from './validation'
 import { availableHomeWidgetIds, maxDockItems, type CountdownItem, type CustomSearchEngine, type Habit, type Note, type Preferences, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
 import { launcherItems } from './defaults'

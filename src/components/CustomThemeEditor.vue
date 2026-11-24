@@ -2,7 +2,8 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import type { CustomTheme, ThemePreset } from '../types'
 import { createLocalId } from '../data/createId'
-import { contrastRatio, defaultCustomTheme, sanitizeCustomTheme, maxThemePresets, validThemePresets } from '../data/customTheme'
+import { contrastRatio, sanitizeCustomTheme, maxThemePresets } from '../data/customTheme'
+import { defaultCustomTheme, validThemePresets } from '../data/themeEditorData'
 import { downloadThemeFile, maxThemeFileBytes, parseThemeFile } from '../data/themeExchange'
 
 const props = defineProps<{ theme?: CustomTheme | null; presets?: ThemePreset[] }>()

@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest'
 import { defaultPreferences } from './defaults'
-import { defaultCustomTheme, sanitizeThemePresets, validThemePresets } from './customTheme'
+import { sanitizeThemePresets } from './customTheme'
+import { defaultCustomTheme, validThemePresets } from './themeEditorData'
 import { parseWorkspaceBackup } from './backup'
 import { planConfigMigration } from './configMigration'
 

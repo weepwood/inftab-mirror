@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest'
-import { defaultCustomTheme, sanitizeCustomTheme, contrastRatio } from './customTheme'
+import { sanitizeCustomTheme, contrastRatio, applyCustomTheme } from './customTheme'
+import { defaultCustomTheme } from './themeEditorData'
 import { parseThemeFile, serializeThemeFile } from './themeExchange'
 import { sanitizePreferences } from './sanitize'
 import { mergeConcurrentEdits } from '../composables/concurrentState'
@@ -27,4 +28,17 @@ it('keeps a full valid theme on concurrent conflict and preserves unrelated edit
   const merged = mergeConcurrentEdits(local,previous,external,sanitizePreferences)
   expect(merged.customTheme).toEqual(external.customTheme)
   expect(merged.columns).toBe(4)
+})
+
+it('writes only known variables from normalized preferences and removes them on reset', () => {
+  const values = new Map<string,string>()
+  const attrs = new Set<string>()
+  const root = {style:{setProperty:(key:string,value:string)=>values.set(key,value),removeProperty:(key:string)=>values.delete(key)},toggleAttribute:(key:string,on:boolean)=>on?attrs.add(key):attrs.delete(key)} as unknown as HTMLElement
+  applyCustomTheme(root,sanitizePreferences({customTheme:defaultCustomTheme}).customTheme)
+  expect(values.get('--custom-light-accent')).toBe(defaultCustomTheme.light.accent)
+  expect(values.size).toBe(8)
+  expect(attrs.has('data-custom-theme')).toBe(true)
+  applyCustomTheme(root,sanitizePreferences({customTheme:{...defaultCustomTheme,opacity:200}}).customTheme)
+  expect(values.size).toBe(0)
+  expect(attrs.has('data-custom-theme')).toBe(false)
 })

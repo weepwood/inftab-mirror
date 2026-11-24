@@ -26,13 +26,9 @@ export function sanitizeCustomTheme(value: unknown): CustomTheme | undefined {
     || typeof value.opacity !== 'number' || !Number.isInteger(value.opacity) || value.opacity < 85 || value.opacity > 100) return undefined
   return { light, dark, radius: value.radius, opacity: value.opacity }
 }
-export const defaultCustomTheme: CustomTheme = {
-  light: { accent: '#365f91', surface: '#ffffff', text: '#242e3d' },
-  dark: { accent: '#435e8a', surface: '#202a39', text: '#edf2fa' },
-  radius: 10, opacity: 96,
-}
+/** Only called with normalized preferences from the workspace store. */
 export function applyCustomTheme(root: HTMLElement, theme?: CustomTheme | null) {
-  const safe = sanitizeCustomTheme(theme)
+  const safe = theme
   const update = (key: string, value?: string) => value === undefined
     ? root.style.removeProperty('--custom-' + key)
     : root.style.setProperty('--custom-' + key, value)
@@ -59,7 +55,4 @@ export function sanitizeThemePresets(value: unknown): ThemePreset[] {
     result.push({ id: entry.id, name, theme })
   }
   return result
-}
-export function validThemePresets(value: unknown): boolean {
-  return Array.isArray(value) && value.length <= maxThemePresets && sanitizeThemePresets(value).length === value.length
 }
