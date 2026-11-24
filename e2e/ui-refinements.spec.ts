@@ -378,9 +378,19 @@ test('Dock spring retargets across icons and settles without leaving enlarged st
   await page.goto('/')
   const dock = page.locator('.home-dock')
   const slots = dock.locator('.home-dock-entry')
-  await slots.first().hover()
+  // Use stable slot centers; an animating icon can move under the mouse while
+  // Playwright waits for actionability. Still verify the actual DOM hit target.
+  async function pointAt(index: number) {
+    const slot = slots.nth(index)
+    await expect(slot).toBeVisible()
+    const bounds = (await slot.boundingBox())!
+    const x = bounds.x + bounds.width / 2, y = bounds.y + bounds.height / 2
+    expect(await dock.evaluate((el, point) => el.contains(document.elementFromPoint(point.x, point.y)), { x, y })).toBe(true)
+    await page.mouse.move(x, y)
+  }
+  await pointAt(0)
   await expect.poll(() => slots.first().evaluate(el => Number((el as HTMLElement).style.getPropertyValue('--dock-scale')))).toBeGreaterThan(1.1)
-  await slots.last().hover()
+  await pointAt(await slots.count() - 1)
   await expect.poll(() => slots.last().evaluate(el => Number((el as HTMLElement).style.getPropertyValue('--dock-scale')))).toBeGreaterThan(1.1)
   await expect.poll(() => dock.evaluate(el => {
     const b = el.getBoundingClientRect()
@@ -410,8 +420,8 @@ test('launcher sustained input retains bounded DOM and reports heap and composit
   try {
     await cdp.send('LayerTree.enable')
     await cdp.send('HeapProfiler.collectGarbage')
-    const before = await cdp.send('Runtime.getHeapUsage')
-    const stats = await grid.evaluate(async el => {
+    async function exercise() {
+      const stats = await grid.evaluate(async el => {
       let maxSlots = 0, blank = 0
       const intervals: number[] = []
       let previous = performance.now()
@@ -429,14 +439,20 @@ test('launcher sustained input retains bounded DOM and reports heap and composit
       const sorted = [...intervals].sort((a,b) => a-b)
       return { frames: intervals.length, p95: sorted[Math.floor((sorted.length-1)*.95)], maxFrame: sorted.at(-1), maxSlots, blank }
     })
-    await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toHaveCount(1)
-    await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
-    await cdp.send('HeapProfiler.collectGarbage')
-    const after = await cdp.send('Runtime.getHeapUsage')
-    const result = { ...stats, maxLayers, layerSamples, heapBefore: before.usedSize, heapAfter: after.usedSize, heapDelta: after.usedSize-before.usedSize }
+      await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toHaveCount(1)
+      await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
+      await cdp.send('HeapProfiler.collectGarbage')
+      return { ...stats, heap: (await cdp.send('Runtime.getHeapUsage')).usedSize }
+    }
+    // First burst warms up the lazy chunks and JIT. Compare subsequent bursts.
+    const warm = await exercise()
+    const rounds = []
+    for (let i = 0; i < 3; i++) rounds.push(await exercise())
+    const stats = { frames: rounds.reduce((sum, r) => sum + r.frames, 0), maxSlots: Math.max(...rounds.map(r => r.maxSlots)), blank: rounds.reduce((sum, r) => sum + r.blank, 0) }
+    const result = { ...stats, maxLayers, layerSamples, warmHeap: warm.heap, rounds, heapDelta: rounds.at(-1)!.heap - warm.heap }
     await testInfo.attach('launcher-stress-diagnostics', { body: JSON.stringify(result), contentType: 'application/json' })
     console.log('Launcher stress diagnostics:', JSON.stringify(result))
-    expect(stats.frames).toBe(80)
+    expect(stats.frames).toBe(240)
     expect(stats.maxSlots).toBeLessThanOrEqual(4)
     expect(stats.blank).toBe(0)
   } finally {

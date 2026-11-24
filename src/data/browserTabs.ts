@@ -1,3 +1,4 @@
+import { extensionApi, isWebUrl } from './browserApiShared'
 import { truncateCodePoints } from './text'
 
 export interface BrowserTabCandidate {
@@ -20,28 +21,10 @@ interface ChromeExtensionApi {
   permissions?: { contains(details: { permissions: string[] }): Promise<boolean> }
 }
 
-function extensionApi(): ChromeExtensionApi | undefined {
-  const api = (globalThis as typeof globalThis & { chrome?: ChromeExtensionApi }).chrome
-  return api?.runtime?.id ? api : undefined
-}
-
 export function canAccessMostVisitedSites(): boolean {
-  const api = extensionApi()
+  const api = extensionApi<ChromeExtensionApi>()
   // Optional API namespaces may be hidden until the user grants the permission.
   return Boolean(api?.permissions)
-}
-
-function isWebUrl(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length > 2048) return false
-  try {
-    const url = new URL(value)
-    return (url.protocol === 'https:' || url.protocol === 'http:')
-      && Boolean(url.hostname)
-      && !url.username
-      && !url.password
-  } catch {
-    return false
-  }
 }
 
 function createCandidate(id: string, title: unknown, value: unknown): BrowserTabCandidate | undefined {
@@ -56,7 +39,7 @@ function createCandidate(id: string, title: unknown, value: unknown): BrowserTab
 }
 
 export async function getCurrentWindowTabCandidates(): Promise<BrowserTabCandidate[]> {
-  const tabs = extensionApi()?.tabs
+  const tabs = extensionApi<ChromeExtensionApi>()?.tabs
   if (!tabs) throw new Error('浏览器标签页功能当前不可用。')
   const result = await tabs.query({ currentWindow: true })
   return result.flatMap((tab) => {
@@ -67,7 +50,7 @@ export async function getCurrentWindowTabCandidates(): Promise<BrowserTabCandida
 }
 
 export async function getMostVisitedSiteCandidates(): Promise<BrowserTabCandidate[]> {
-  const topSites = extensionApi()?.topSites
+  const topSites = extensionApi<ChromeExtensionApi>()?.topSites
   if (!topSites) throw new Error('浏览器常用网站功能当前不可用。')
   const sites = await topSites.get()
   const seenUrls = new Set<string>()

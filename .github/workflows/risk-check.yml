@@ -8,6 +8,8 @@ on:
       - 'src/components/SearchBar.vue'
       - 'src/components/HomeDock.vue'
       - 'vite.config.ts'
+      - 'src/data/browserApiShared.ts'
+      - 'src/data/browser*.ts'
       - 'src/composables/overlayFocus.ts'
       - 'src/composables/useHomeNavigation.ts'
       - 'src/composables/useShortcutDrag.ts'

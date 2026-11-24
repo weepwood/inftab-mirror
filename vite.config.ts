@@ -41,6 +41,8 @@ export default defineConfig({
             },
             // Coalesce the optional launcher menu and Dock; neither is a startup dependency.
             { name: 'home-menus', test: /\/src\/components\/(?:HomeDock|ShortcutContextMenu)\.vue|\/src\/components\/menuNavigation\.ts/, includeDependenciesRecursively: false },
+            // Optional extension adapters share runtime/permission guards without loading panels.
+            { name: 'browser-data', test: /\/src\/data\/(?:browserApiShared|browserBookmarks|browserHistory|browserTabs)\.ts/, includeDependenciesRecursively: false },
             // Related modal editors share validation/focus/form markup. Their
             // native shortcut shell can open before this optional chunk arrives.
             {

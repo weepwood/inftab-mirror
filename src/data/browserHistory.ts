@@ -1,9 +1,5 @@
+import { extensionApi, subscribeEvents, subscribePermissionChanges, type ChromeEvent, isWebUrl } from './browserApiShared'
 import { truncateCodePoints } from './text'
-
-interface ChromeEvent {
-  addListener(listener: (...args: unknown[]) => void): void
-  removeListener(listener: (...args: unknown[]) => void): void
-}
 
 export interface BrowserHistoryEntry {
   id: string
@@ -33,43 +29,25 @@ interface ChromeExtensionApi {
 const historyPermission = 'history'
 const maxHistoryResults = 100
 
-function extensionApi(): ChromeExtensionApi | undefined {
-  const api = (globalThis as typeof globalThis & { chrome?: ChromeExtensionApi }).chrome
-  return api?.runtime?.id ? api : undefined
-}
-
-function isWebUrl(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length > 2048) return false
-  try {
-    const url = new URL(value)
-    return (url.protocol === 'https:' || url.protocol === 'http:')
-      && Boolean(url.hostname)
-      && !url.username
-      && !url.password
-  } catch {
-    return false
-  }
-}
-
 export function canAccessBrowserHistory(): boolean {
-  const api = extensionApi()
+  const api = extensionApi<ChromeExtensionApi>()
   return Boolean(api?.history && api.permissions)
 }
 
 export async function hasBrowserHistoryPermission(): Promise<boolean> {
-  const api = extensionApi()
+  const api = extensionApi<ChromeExtensionApi>()
   if (!api?.history || !api.permissions) return false
   return api.permissions.contains({ permissions: [historyPermission] })
 }
 
 export async function requestBrowserHistoryPermission(): Promise<boolean> {
-  const api = extensionApi()
+  const api = extensionApi<ChromeExtensionApi>()
   if (!api?.history || !api.permissions) return false
   return api.permissions.request({ permissions: [historyPermission] })
 }
 
 export async function searchBrowserHistory(text = '', maxResults = maxHistoryResults): Promise<BrowserHistoryEntry[]> {
-  const history = extensionApi()?.history
+  const history = extensionApi<ChromeExtensionApi>()?.history
   if (!history) throw new Error('浏览历史功能当前不可用。')
   const requestedLimit = Number.isFinite(maxResults) ? Math.floor(maxResults) : maxHistoryResults
   const results = await history.search({
@@ -91,23 +69,12 @@ export async function searchBrowserHistory(text = '', maxResults = maxHistoryRes
 }
 
 export function subscribeToBrowserHistory(listener: () => void): () => void {
-  const history = extensionApi()?.history
+  const history = extensionApi<ChromeExtensionApi>()?.history
   if (!history) return () => {}
   const handleChange = () => listener()
-  const events = [history.onVisited, history.onVisitRemoved].filter((event): event is ChromeEvent => Boolean(event))
-  events.forEach((event) => event.addListener(handleChange))
-  return () => events.forEach((event) => event.removeListener(handleChange))
+  return subscribeEvents([history.onVisited, history.onVisitRemoved], handleChange)
 }
 
 export function subscribeToBrowserHistoryPermissionChanges(listener: () => void): () => void {
-  const permissions = extensionApi()?.permissions
-  if (!permissions) return () => {}
-  const handleChange = (details: unknown) => {
-    if (typeof details !== 'object' || details === null || !('permissions' in details)) return
-    const changedPermissions = details.permissions
-    if (Array.isArray(changedPermissions) && changedPermissions.includes(historyPermission)) listener()
-  }
-  const events = [permissions.onAdded, permissions.onRemoved].filter((event): event is ChromeEvent => Boolean(event))
-  events.forEach((event) => event.addListener(handleChange))
-  return () => events.forEach((event) => event.removeListener(handleChange))
+  return subscribePermissionChanges(extensionApi<ChromeExtensionApi>()?.permissions, historyPermission, listener)
 }

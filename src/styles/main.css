@@ -1280,3 +1280,9 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
   .home-actions { padding: 4px; gap: 3px; border-radius: 16px; }
   .home-actions .round-action { width: 36px; height: 36px; }
 }
+
+/* Keep workspace and toolbar materials in the same visual family, with enough contrast over bright wallpapers. */
+.home-workspace-trigger { background: linear-gradient(180deg,#34433bba,#182820d9); border-color: #ffffff42; box-shadow: 0 5px 18px #0003,inset 0 1px 0 #ffffff20; }
+.home-workspace-trigger:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.shortcut-name { text-shadow: 0 1px 3px #000b,0 0 10px #0008; }
+.shortcut-icon.builtin,.home-dock-icon.builtin { background: linear-gradient(150deg,#ffffff60,transparent 65%),var(--builtin-paper); }
