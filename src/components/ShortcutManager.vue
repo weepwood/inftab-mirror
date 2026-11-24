@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import type { WorkspaceTools, ShortcutBatch } from '../data/workspaceTools'
 import { previewBookmarkHtml, downloadBookmarkHtml, maxBookmarkHtmlBytes } from '../data/bookmarkHtml'
 import { captureHistory, listHistory, readHistory, type HistorySummary } from '../data/backupHistory'
+import { normalizeWebUrl } from '../data/urls'
 import { downloadWorkspaceBackup } from '../data/downloadBackup'
 import type { WorkspaceBackup } from '../data/backup'
 
@@ -18,7 +19,9 @@ const confirmDelete = ref(false)
 const preview = ref<ReturnType<typeof previewBookmarkHtml>>()
 const history = ref<HistorySummary[]>([])
 const restore = ref<WorkspaceBackup>()
-const restoreId = ref('')
+const previewWorkspaceId = ref('')
+watch(selected, () => { confirmDelete.value = false })
+watch(() => props.tools.activeId, () => { preview.value = undefined })
 const tags = computed(() => [...new Set(props.tools.shortcuts.flatMap(item => item.tags ?? []))].sort())
 const filtered = computed(() => props.tools.shortcuts.filter(item => (!tagFilter.value || item.tags?.includes(tagFilter.value))
   && (item.title + ' ' + item.url + ' ' + (item.tags ?? []).join(' ')).toLowerCase().includes(query.value.trim().toLowerCase())))
@@ -38,7 +41,9 @@ const signature = (snapshot: WorkspaceBackup) => JSON.stringify({ ...snapshot, e
 async function safeguard() {
   const before = props.tools.getBackup()
   await captureHistory(before, 'before-change')
-  if (signature(before) !== signature(props.tools.getBackup())) throw new Error('数据在备份期间发生变化，请重新操作。')
+  const expected = signature(before)
+  if (expected !== signature(props.tools.getBackup())) throw new Error('数据在备份期间发生变化，请重新操作。')
+  return expected
 }
 function batch(kind: ShortcutBatch['kind']) {
   if (!selectedIds.value.length) return
@@ -47,13 +52,13 @@ function batch(kind: ShortcutBatch['kind']) {
     const ids = [...selectedIds.value]
     const action: ShortcutBatch = kind === 'move' ? { ids, kind, workspaceId: destination.value }
       : kind === 'delete' ? { ids, kind } : { ids, kind, tag: tag.value }
-    if (kind === 'delete' || kind === 'move') await safeguard()
-    const error = await props.tools.batch(action)
+    const expected = kind === 'delete' || kind === 'move' ? await safeguard() : undefined
+    const error = await props.tools.batch(action, expected)
     if (error) throw new Error(error)
     confirmDelete.value = false
     selected.value = []
-    status.value = `已处理 ${ids.length} 个入口。`
     if (kind === 'delete' || kind === 'move') await refresh()
+    status.value = `已处理 ${ids.length} 个入口。`
   })
 }
 function readHtml(event: Event) {
@@ -64,14 +69,19 @@ function readHtml(event: Event) {
   preview.value = undefined
   void execute(async () => {
     if (file.size > maxBookmarkHtmlBytes) throw new Error('文件超过 5 MiB。')
-    preview.value = previewBookmarkHtml(await file.text(), props.tools.shortcuts, 500 - props.tools.shortcuts.length)
+    const workspaceId = props.tools.activeId
+    const html = await file.text()
+    if (workspaceId !== props.tools.activeId) throw new Error('工作区已切换，请重新选择书签文件。')
+    previewWorkspaceId.value = workspaceId
+    preview.value = previewBookmarkHtml(html, props.tools.shortcuts, 500 - props.tools.shortcuts.length)
   })
 }
 function applyHtml() {
   if (!preview.value) return
   void execute(async () => {
     const entries = preview.value?.items ?? []
-    const existing = new Set(props.tools.shortcuts.map(item => item.url))
+    if (previewWorkspaceId.value !== props.tools.activeId) throw new Error('工作区已切换，请重新预览。')
+    const existing = new Set(props.tools.shortcuts.map(item => normalizeWebUrl(item.url)))
     const fresh = entries.filter(item => !existing.has(item.url))
     if (!fresh.length || props.tools.shortcuts.length + fresh.length > 500) throw new Error('可用空间或入口已变化，请重新预览。')
     const result = props.tools.importBookmarks(fresh)
@@ -81,7 +91,7 @@ function applyHtml() {
   })
 }
 function capture() { void execute(async () => { await captureHistory(props.tools.getBackup(), 'manual'); await refresh(); status.value = '已保存本地恢复点。' }) }
-function loadRestore(id: string) { void execute(async () => { restore.value = await readHistory(id); restoreId.value = id }) }
+function loadRestore(id: string) { void execute(async () => { restore.value = await readHistory(id) }) }
 function applyRestore(mode: 'merge' | 'replace') {
   if (!restore.value) return
   void execute(async () => {
@@ -131,7 +141,7 @@ function exportHistory(id: string) { void execute(async () => { downloadWorkspac
       <p>打开首页后每日最多自动备份一次；保留最近 7 个恢复点，总容量最多 24 MiB。数据只存于此浏览器，清理站点数据可能删除备份。</p>
       <div class="manager-actions"><button type="button" @click="capture">创建恢复点</button><button type="button" @click="execute(refresh)">刷新</button></div>
       <div v-for="entry in history" :key="entry.id" class="manager-history"><span><strong>{{ new Date(entry.createdAt).toLocaleString() }}</strong><small>{{ entry.reason === 'daily' ? '自动' : entry.reason === 'manual' ? '手动' : '变更前' }} · {{ entry.shortcuts }} 个入口</small></span><button type="button" @click="loadRestore(entry.id)">预览</button><button type="button" @click="exportHistory(entry.id)">导出</button></div>
-      <div v-if="restore" class="manager-preview"><p>恢复点：{{ new Date(restore.exportedAt).toLocaleString() }} · {{ restore.shortcuts.length }} 个入口 · {{ restore.notes.length }} 条笔记 · {{ restore.homeWorkspaces?.length ?? 1 }} 个工作区</p><p class="manager-warning">覆盖将替换当前数据，先保存恢复点。合并将按 ID 更新。</p><div class="manager-actions"><button type="button" @click="applyRestore('merge')">合并恢复</button><button type="button" @click="applyRestore('replace')">覆盖恢复</button><button type="button" @click="restore = undefined; restoreId = ''">取消</button></div></div>
+      <div v-if="restore" class="manager-preview"><p>恢复点：{{ new Date(restore.exportedAt).toLocaleString() }} · {{ restore.shortcuts.length }} 个入口 · {{ restore.notes.length }} 条笔记 · {{ restore.homeWorkspaces?.length ?? 1 }} 个工作区</p><p class="manager-warning">覆盖将替换当前数据，先保存恢复点。合并将按 ID 更新。</p><div class="manager-actions"><button type="button" @click="applyRestore('merge')">合并恢复</button><button type="button" @click="applyRestore('replace')">覆盖恢复</button><button type="button" @click="restore = undefined">取消</button></div></div>
       <p v-if="!history.length">暂无恢复点。</p>
     </fieldset>
     <p v-if="status" role="status" class="manager-status">{{ status }}</p>

@@ -200,10 +200,12 @@ export function useLocalWorkspace() {
 
   const { createBackup, restoreBackup } = createBackupActions({ preferences, shortcuts, folders, launcherOrder, homeWorkspaces, activeHomeWorkspaceId, builtInLauncherIds, todos, habits, countdowns, notes, customSearchEngines, focusTimer, activeNoteId, weatherCity })
 
-  async function applyShortcutBatch(action: ShortcutBatch): Promise<string | undefined> {
+  async function applyShortcutBatch(action: ShortcutBatch, expected?: string): Promise<string | undefined> {
     try {
       const { planShortcutBatch } = await import('../data/shortcutBatch')
-      const next = planShortcutBatch(createBackup(), action)
+      const snapshot = createBackup()
+      if (expected !== undefined && JSON.stringify({ ...snapshot, exportedAt: '' }) !== expected) return '备份后数据发生变化，请重新操作。'
+      const next = planShortcutBatch(snapshot, action)
       if (action.kind !== 'move') shortcuts.value = next.shortcuts
       if (action.kind === 'move' || action.kind === 'delete') {
         folders.value = next.folders

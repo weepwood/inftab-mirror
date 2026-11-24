@@ -599,11 +599,14 @@ async function downloadBackup() {
 }
 
 function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode: 'merge' | 'replace') {
-  if (window.indexedDB) {
-    const snapshot = createBackup()
-    void import('./data/backupHistory').then(module => module.captureHistory(snapshot, 'before-change')).catch(() => undefined)
-  }
-  backupExportError.value = restoreBackup(backup, mode) ?? ''
+  if (!window.indexedDB) { backupExportError.value = restoreBackup(backup, mode) ?? ''; return }
+  const snapshot = createBackup()
+  const expected = JSON.stringify({ ...snapshot, exportedAt: '' })
+  void import('./data/backupHistory').then(async module => {
+    await module.captureHistory(snapshot, 'before-change')
+    if (JSON.stringify({ ...createBackup(), exportedAt: '' }) !== expected) throw new Error('备份期间数据已变化，请重新导入。')
+    backupExportError.value = restoreBackup(backup, mode) ?? ''
+  }).catch(error => { backupExportError.value = '导入已停止：' + (error instanceof Error ? error.message : '无法保存恢复点。') })
 }
 
 function openCommandPalette() {

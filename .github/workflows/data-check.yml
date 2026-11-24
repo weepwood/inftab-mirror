@@ -1,0 +1,42 @@
+name: Focused data validation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/data/bookmarkHtml.ts'
+      - 'src/data/backupHistory.ts'
+      - 'src/data/shortcutBatch.ts'
+      - 'src/data/workspaceLayout.ts'
+      - 'src/data/shortcutTags.ts'
+      - 'src/composables/workspaceBackup.ts'
+      - 'src/components/ShortcutManager.vue'
+      - 'e2e/data-management.spec.ts'
+      - '.github/workflows/data-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: focused-data-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  data-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e -- e2e/data-management.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: focused-data-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

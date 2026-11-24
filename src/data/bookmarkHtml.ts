@@ -26,7 +26,7 @@ export function previewBookmarkHtml(html: string, existing: Shortcut[], slots: n
 }
 
 const escape = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!)
-export function exportBookmarkHtml(snapshot: WorkspaceBackup): string {
+export function exportBookmarkHtml(snapshot: Pick<WorkspaceBackup, 'shortcuts' | 'folders' | 'homeWorkspaces'>): string {
   const byId = new Map(snapshot.shortcuts.map(item => [item.id, item]))
   const written = new Set<string>()
   const link = (item?: Shortcut) => {
