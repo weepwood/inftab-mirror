@@ -284,3 +284,9 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - DesktopShell 延迟加载；默认经典模式，独立版本化模式/工作区坐标键，复用现有 useStoredState、入口打开/编辑、文件夹、Dock 与搜索。interactjs@1.10.29 MIT 固定版本及 npm 锁文件；拖动直接更新 transform，结束后保存；Alt+方向键移动、可选吸附、整理。未改原业务数据或 Swiper。
 - 本机类型检查、4项布局单测、Mac Edge 开发环境实际鼠标拖动/刷新/视口缩放/双模式回归通过。默认 Playwright Chromium 本机缺少可执行文件，临时使用 Edge 配置且不提交该配置。尚未完成工作区专项、备份整合、跨浏览器、性能压力测试及完整生产验收。桌面布局目前使用独立 localStorage 记录而非 IndexedDB，不包含在原备份中。
 - 实测 Vite 构建首屏58.2/60.5、非Swiper185.6/156、Swiper26.4/30 KiB，非Swiper超30335 B；保持所有原预算，禁止合并未达标分支。后续先验证 interact.js 精简模块与业务体积优化；不得将未通过的构建称为正式产物。
+
+## V2.0 Alpha 1 布局与预算优化（2026-11-25）
+- PR #34 继续集中开发：官方 interact.js 1.10.29 core/drag/auto-start 按需引入，桌面模块构建 gzip 从31.53降至15.90 kB（Vite输出十进制）；保留经典模式和Swiper。桌面宽度扩展、工具栏材质、冲突检测、可见坐标整理、Escape/失焦/pointercancel/resize取消拖拽。
+- 桌面坐标迁入 HomeWorkspace.desktop，复用现有版本化 localStorage 和备份事务；旧Alpha独立坐标按需迁移。旧备份合并保留坐标，覆盖导入遵循原替换语义。模式开关仍独立存储；不宣称已完成IndexedDB迁移。
+- 本机类型检查、85文件697单测及Mac Edge开发环境5项专项通过。合成50/200/1000入口短时拖拽P95分别16.8/16.7/16.7ms，87/85/89帧，拖拽中0次工作区写入、释放后1次，单次setItem约0.1ms；不是GPU时间或长时验收。截图已生成，待视觉复审。
+- 用户明确授权适当放宽资源超限；本轮将非Swiper JS gzip预算156提升至200KiB，合计230KiB，首屏60.5、Swiper30、CSS64、总输出4MiB及PWA512/10240B均不变，优先懒加载。此条替代历史156KiB预算约束。本机npm run build:web通过：入口58.8、非Swiper171.1、Swiper26.4、CSS25.1、输出1544.9KiB；PWA485/10182B，网站1609340B，MV3静态检查通过。仍须最新CI和生产浏览器验证后才合并。

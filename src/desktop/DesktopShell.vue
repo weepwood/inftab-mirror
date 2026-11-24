@@ -1,26 +1,40 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import interact from 'interactjs'
+import interact from '@interactjs/interact'
+import '@interactjs/actions/drag'
+import '@interactjs/auto-start'
 import type { LauncherItem } from '../types'
 import { launcherIcons } from '../components/launcherIcons'
 import { Folder } from '@lucide/vue'
-import { useStoredState } from '../composables/useStoredState'
-import { cell, defaultPoint, fitPoint, freshLayout, normalizeLayout } from './layout'
-const props = defineProps<{items: LauncherItem[]; workspaceId: string}>()
-const emit = defineEmits<{open: [item: LauncherItem, event?: MouseEvent]; edit: [item: LauncherItem]}>()
+import { cell, resolvePoints, fitPoint, freshLayout, normalizeLayout, type DesktopLayout } from './layout'
+const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout}>()
+const emit = defineEmits<{open: [item: LauncherItem, event?: MouseEvent]; edit: [item: LauncherItem]; layout: [layout: DesktopLayout]}>()
 const surface = ref<HTMLElement>()
 // Parent keys this component by workspace ID; each space has an independent record.
-const layout = useStoredState('inftab.desktop.v1.' + encodeURIComponent(props.workspaceId), freshLayout(), normalizeLayout)
+const layout = computed(() => props.layout ?? freshLayout())
+function update(next: DesktopLayout) { emit('layout', next) }
+function migrate() {
+  if (props.layout) return
+  try {
+    const raw = localStorage.getItem('inftab.desktop.v1.' + encodeURIComponent(props.workspaceId))
+    if (raw) update(normalizeLayout(JSON.parse(raw)))
+  } catch { /* invalid legacy data is ignored */ }
+}
 const width = ref(960)
 const height = ref(480)
 const canvasHeight = computed(() => Math.max(height.value, Math.ceil(props.items.length / Math.max(1, Math.floor(width.value/cell)))*cell, ...props.items.map(item => (layout.value.positions[item.id]?.y ?? 0) + cell)))
-const positions = computed(() => props.items.map((item,i) => ({item, point: fitPoint(layout.value.positions[item.id] ?? defaultPoint(i,Math.min(width.value,960)),width.value,canvasHeight.value)})))
+const resolved = computed(() => resolvePoints(props.items.map(i=>i.id),layout.value.positions,width.value,canvasHeight.value))
+const positions = computed(() => props.items.map(item => ({item,point:resolved.value[item.id]!})))
+const renderedHeight = computed(() => Math.max(canvasHeight.value,...positions.value.map(p=>p.point.y+cell)))
 let observer: ResizeObserver | undefined
 let binding: ReturnType<typeof interact> | undefined
 let dragging: {el: HTMLElement; id: string; x: number; y: number; moved: boolean} | undefined
 let suppressUntil = 0
 function save(id: string, x: number, y: number) {
-  layout.value.positions[id] = fitPoint({x,y},width.value,canvasHeight.value,layout.value.snap)
+  const point = fitPoint({x,y},width.value,renderedHeight.value,layout.value.snap)
+  const occupied = positions.value.some(p => p.item.id !== id && Math.abs(p.point.x-point.x)<cell && Math.abs(p.point.y-point.y)<cell)
+  if (occupied) return
+  update({ ...layout.value, positions: { ...layout.value.positions, [id]: point } })
 }
 function activate(item: LauncherItem, event: MouseEvent) {
   if (performance.now() < suppressUntil && event.detail !== 0) return
@@ -35,13 +49,14 @@ function keyMove(event: KeyboardEvent,id: string) {
   save(id,point.x+(event.key==='ArrowRight'?step:event.key==='ArrowLeft'?-step:0),point.y+(event.key==='ArrowDown'?step:event.key==='ArrowUp'?-step:0))
 }
 onMounted(() => {
+  migrate()
   const root = surface.value
   if (!root) return
-  const measure = () => { width.value = root.clientWidth || 960; height.value = root.clientHeight || 480 }
+  const measure = () => { const w=root.clientWidth || 960, h=root.clientHeight || 480; if(w!==width.value || h!==height.value) cancelDrag(); width.value=w; height.value=h }
   measure()
   if (typeof ResizeObserver !== 'undefined') { observer = new ResizeObserver(measure); observer.observe(root) }
   binding = interact('.desktop-icon', { context: root }).draggable({
-    inertia: false,
+    max: 1,
     listeners: {
       start(event) {
         const el = event.target as HTMLElement
@@ -54,7 +69,7 @@ onMounted(() => {
       move(event) {
         if (!dragging) return
         dragging.x += event.dx; dragging.y += event.dy; dragging.moved=true
-        const p = fitPoint(dragging,width.value,canvasHeight.value)
+        const p = fitPoint(dragging,width.value,renderedHeight.value)
         dragging.el.style.transform = 'translate('+p.x+'px,'+p.y+'px)'
       },
       end() {
@@ -62,26 +77,35 @@ onMounted(() => {
         const d=dragging; dragging=undefined
         d.el.style.zIndex=''
         if (d.moved) { save(d.id,d.x,d.y); suppressUntil=performance.now()+300 }
-        const p=positions.value.find(p=>p.item.id===d.id)?.point
-        if(p) d.el.style.transform='translate('+p.x+'px,'+p.y+'px)'
+        requestAnimationFrame(() => { const p=positions.value.find(p=>p.item.id===d.id)?.point; if(p && d.el.isConnected) d.el.style.transform='translate('+p.x+'px,'+p.y+'px)' })
       },
     },
   })
 })
-onBeforeUnmount(() => { observer?.disconnect(); binding?.unset() })
+function cancelDrag() {
+  if (!dragging) return
+  const d=dragging; dragging=undefined
+  d.el.style.zIndex=''
+  const p=positions.value.find(p=>p.item.id===d.id)?.point
+  if (p) d.el.style.transform='translate('+p.x+'px,'+p.y+'px)'
+  suppressUntil=performance.now()+300
+}
+function cancelKey(event: KeyboardEvent) { if(event.key==='Escape') cancelDrag() }
+onMounted(() => { window.addEventListener('blur',cancelDrag); window.addEventListener('keydown',cancelKey); surface.value?.addEventListener('pointercancel',cancelDrag,true) })
+onBeforeUnmount(() => { cancelDrag(); observer?.disconnect(); binding?.unset(); window.removeEventListener('blur',cancelDrag); window.removeEventListener('keydown',cancelKey); surface.value?.removeEventListener('pointercancel',cancelDrag,true) })
 watch(() => props.items.map(i=>i.id), ids => {
-  if (dragging && !ids.includes(dragging.id)) dragging=undefined
+  if (dragging && !ids.includes(dragging.id)) cancelDrag()
 })
 </script>
 <template>
   <section class="desktop-shell" aria-label="自由桌面">
     <div class="desktop-toolbar">
       <span>桌面</span>
-      <button type="button" :aria-pressed="layout.snap" @click="layout.snap=!layout.snap">网格吸附</button>
-      <button type="button" @click="layout.positions=Object.create(null)">整理图标</button>
+      <button type="button" :aria-pressed="layout.snap" @click="update({...layout,snap:!layout.snap})">网格吸附</button>
+      <button type="button" @click="update({...layout,positions:{}})">整理图标</button>
     </div>
     <div ref="surface" class="desktop-surface">
-      <div class="desktop-canvas" :style="{height: canvasHeight+'px'}">
+      <div class="desktop-canvas" :style="{height: renderedHeight+'px'}">
         <button v-for="{item,point} in positions" :key="item.id" type="button" class="desktop-icon" :data-item-id="item.id" :style="{transform:'translate('+point.x+'px,'+point.y+'px)'}" :aria-label="item.title" @click="activate(item,$event)" @auxclick.middle.prevent="activate(item,$event)" @contextmenu.prevent="emit('edit',item)" @keydown="keyMove($event,item.id)">
           <span class="desktop-symbol" :style="{background:item.color}">
             <component :is="Folder" v-if="item.folder" :size="30"/>
@@ -96,17 +120,17 @@ watch(() => props.items.map(i=>i.id), ids => {
   </section>
 </template>
 <style scoped>
-.desktop-shell{width:100%;min-width:0;color:#fff}
-.desktop-toolbar{display:flex;align-items:center;gap:8px;padding:8px 0}
+.desktop-shell{width:100%;min-width:0;color:#fff;flex:1;display:flex;flex-direction:column;min-height:0}
+.desktop-toolbar{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#20283060;border:1px solid #ffffff26;border-radius:12px;backdrop-filter:blur(20px);margin-bottom:8px}
 .desktop-toolbar span{margin-right:auto;font-size:14px;font-weight:600}
 .desktop-toolbar button{border:1px solid #ffffff50;background:#18282070;color:white;border-radius:7px;padding:6px 10px;cursor:pointer}
 .desktop-toolbar button[aria-pressed=true]{background:var(--ui-accent-soft);color:var(--ui-accent-text)}
-.desktop-surface{position:relative;height:clamp(240px,55vh,720px);overflow:auto}
+.desktop-surface{position:relative;flex:1;min-height:240px;overflow:auto}
 .desktop-canvas{position:relative;min-width:100%}
 .desktop-icon{position:absolute;top:0;left:0;width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;background:none;color:white;touch-action:none;user-select:none;cursor:grab}
 .desktop-icon:active{cursor:grabbing}
 .desktop-icon:focus-visible{outline:2px solid white;outline-offset:-3px;border-radius:8px}
-.desktop-symbol{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;overflow:hidden;color:white;box-shadow:0 3px 12px #0003;font-size:24px}
+.desktop-symbol{width:56px;height:56px;border-radius:14px;border:1px solid #ffffff48;display:grid;place-items:center;overflow:hidden;color:white;box-shadow:0 4px 14px #0004,inset 0 1px 1px #ffffff50;font-size:24px}
 .desktop-symbol img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .desktop-label{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;text-shadow:0 1px 4px #000,0 1px 8px #000}
 </style>

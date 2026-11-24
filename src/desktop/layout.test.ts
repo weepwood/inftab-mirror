@@ -10,3 +10,18 @@ describe('desktop layout', () => {
   it('rejects malformed records',()=>expect(Object.keys(normalizeLayout({version:1,positions:{bad:{x:NaN,y:2},good:{x:2,y:3}}}).positions)).toEqual(['good']))
   it('handles narrow surfaces',()=>expect(defaultPoint(2,50)).toEqual({x:0,y:192}))
 })
+
+import { resolvePoints } from './layout'
+describe('desktop collision resolution', () => {
+  it('resolves duplicate and clamped slots without changing the saved layout', () => {
+    const saved = {a:{x:960,y:0},b:{x:960,y:0}}
+    const points=resolvePoints(['a','b','c'],saved,192,300)
+    expect(new Set(Object.values(points).map(p=>p.x+':'+p.y)).size).toBe(3)
+    expect(saved.a).toEqual({x:960,y:0})
+  })
+  for(const count of [50,200,1000]) it('allocates '+count+' non-overlapping grid slots',()=>{
+    const ids=Array.from({length:count},(_,i)=>'item-'+i)
+    const points=resolvePoints(ids,{},1200,800)
+    expect(new Set(Object.values(points).map(p=>p.x+':'+p.y)).size).toBe(count)
+  })
+})

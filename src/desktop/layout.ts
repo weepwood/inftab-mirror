@@ -15,10 +15,34 @@ export function normalizeLayout(value: unknown): DesktopLayout {
   return result
 }
 export function fitPoint(point: Point, width: number, height: number, snap = false): Point {
-  const fit = (v: number, size: number) => Math.max(0, Math.min(Math.max(0, size-cell), snap ? Math.round(v/cell)*cell : v))
+  const fit = (v: number, size: number) => Math.max(0, Math.min(Math.max(0, size-cell), snap ? Math.min(Math.floor(Math.max(0,size-cell)/cell)*cell, Math.round(v/cell)*cell) : v))
   return { x: fit(point.x,width), y: fit(point.y,height) }
 }
 export function defaultPoint(index: number, width: number): Point {
   const columns = Math.max(1, Math.floor(width/cell))
   return { x: index % columns * cell, y: Math.floor(index/columns)*cell }
+}
+
+// Resolve visible collisions without altering the canonical coordinates.
+export function resolvePoints(ids: string[], saved: Record<string, Point>, width: number, height: number): Record<string, Point> {
+  const result: Record<string, Point> = Object.create(null)
+  const occupied = new Set<string>()
+  const columns = Math.max(1, Math.floor(width / cell))
+  const key = (x: number, y: number) => x + ':' + y
+  function cells(p: Point) {
+    const keys: string[] = []
+    for (let y=Math.floor(p.y/cell); y<=Math.ceil((p.y+cell)/cell)-1; y++)
+      for (let x=Math.floor(p.x/cell); x<=Math.ceil((p.x+cell)/cell)-1; x++) keys.push(key(x,y))
+    return keys
+  }
+  let cursor=0
+  for (const id of [...ids.filter(id=>Object.hasOwn(saved,id)), ...ids.filter(id=>!Object.hasOwn(saved,id))]) {
+    let p = Object.hasOwn(saved,id) ? fitPoint(saved[id]!,width,height) : undefined
+    if (!p || cells(p).some(k=>occupied.has(k))) {
+      do { p = {x:cursor%columns*cell,y:Math.floor(cursor/columns)*cell}; cursor++ } while(cells(p).some(k=>occupied.has(k)))
+    }
+    result[id]=p
+    cells(p).forEach(k=>occupied.add(k))
+  }
+  return result
 }

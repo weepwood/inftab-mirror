@@ -162,7 +162,7 @@ export function createBackupActions(state: {
     const mergedWorkspaces = homeWorkspaces.value.map((existing) => {
       const incoming = incomingWorkspaceById.get(existing.id)
       return incoming
-        ? { ...incoming, ...(incoming.layout === undefined && existing.layout ? { layout: existing.layout } : {}), itemIds: [...new Set([...existing.itemIds, ...incoming.itemIds])] }
+        ? { ...incoming, ...(incoming.layout === undefined && existing.layout ? { layout: existing.layout } : {}), ...(incoming.desktop === undefined && existing.desktop ? { desktop: existing.desktop } : {}), itemIds: [...new Set([...existing.itemIds, ...incoming.itemIds])] }
         : existing
     })
     for (const incoming of incomingWorkspaces) {

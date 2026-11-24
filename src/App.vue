@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { Component } from 'vue'
+import type { DesktopLayout } from './desktop/layout'
 import { ArrowLeft, House, Menu, Plus, Search, X } from '@lucide/vue'
 import { lazyPluginComponent, retryAsyncLoad } from './plugins/asyncComponent'
 import { useHomeLayout } from './composables/useHomeLayout'
@@ -266,6 +267,9 @@ const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayo
 const overlayOpen = computed(() => Boolean(activePanel.value || shortcutDialog.value || folderDialogOpen.value || commandPaletteOpen.value || layoutEditorOpen.value || pendingDestructiveAction.value))
 const launcherAnimating = ref(false)
 const { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen, launcherAnimating })
+function saveDesktopLayout(layout: DesktopLayout) {
+  homeWorkspaces.value = homeWorkspaces.value.map(w => w.id === activeHomeWorkspaceId.value ? {...w,desktop:layout} : w)
+}
 function startLauncherSwipe(event: PointerEvent) {
   if (desktopMode.value) return
   if (preferences.value.pageTransitionEffect !== 'particles' && event.target instanceof Element && event.target.closest('.launcher-swiper')) return
@@ -775,7 +779,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': !minimalMode && (showHomeWidgets || shortHomeScrollEnabled), 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode }" :style="backgroundStyle" @pointerdown="startLauncherSwipe" @pointerup="!desktopMode && finishHomeSwipe($event)" @pointercancel="cancelHomeSwipe()" @wheel="!desktopMode && handleHomeWheel($event)">
+  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': !minimalMode && (showHomeWidgets || shortHomeScrollEnabled), 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode, 'desktop-mode': desktopMode && !minimalMode }" :style="backgroundStyle" @pointerdown="startLauncherSwipe" @pointerup="!desktopMode && finishHomeSwipe($event)" @pointercancel="cancelHomeSwipe()" @wheel="!desktopMode && handleHomeWheel($event)">
     <a class="skip-link" href="#main-content">跳到快捷入口</a>
     <h1 class="visually-hidden">Infinity 新标签页</h1>
     <div class="background-shade"></div>
@@ -846,7 +850,7 @@ onBeforeUnmount(() => {
           />
         </template>
       </SearchBar>
-      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" @open="openItem" @edit="editLauncherItem" />
+      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" @layout="saveDesktopLayout" @open="openItem" @edit="editLauncherItem" />
       <ShortcutGrid
         v-if="!minimalMode && !desktopMode"
         :items="allLauncherItems"
@@ -939,5 +943,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.desktop-mode .home-content{width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;padding-top:82px;padding-bottom:84px}
+.desktop-mode .desktop-shell{min-height:320px}
 .desktop-mode-toggle{position:fixed;z-index:3;left:24px;bottom:28px;border:1px solid #ffffff50;background:#182820aa;color:white;border-radius:9px;padding:8px 12px;cursor:pointer}
 </style>

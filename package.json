@@ -30,8 +30,10 @@
     "test:e2e:extension:built": "playwright test --config playwright.extension.config.ts"
   },
   "dependencies": {
+    "@interactjs/actions": "1.10.29",
+    "@interactjs/auto-start": "1.10.29",
+    "@interactjs/interact": "1.10.29",
     "@lucide/vue": "^1.55.0",
-    "interactjs": "1.10.29",
     "swiper": "14.4.0",
     "vue": "^3.5.43"
   },

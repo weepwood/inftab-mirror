@@ -1058,3 +1058,22 @@ it('rejects malformed late backup fields without mutating any earlier section', 
   expect(workspace.restoreBackup(incoming, 'merge')).toMatch(/导入失败/)
   expect({ ...workspace.createBackup(), exportedAt: '' }).toEqual({ ...before, exportedAt: '' })
 })
+
+describe('desktop backup compatibility', () => {
+  it('round-trips independent workspace coordinates and keeps them on legacy merge', () => {
+    scope = effectScope()
+    const workspace = scope.run(() => useLocalWorkspace())!
+    const id = workspace.homeWorkspaces.value[0]!.itemIds[0]!
+    const desktop = { version: 1 as const, snap: false, positions: { [id]: { x: 192, y: 288 } } }
+    workspace.homeWorkspaces.value = workspace.homeWorkspaces.value.map(w => ({...w,desktop}))
+    const backup = parseWorkspaceBackup(workspace.createBackup())
+    expect(backup.homeWorkspaces?.[0]?.desktop).toEqual(desktop)
+    const legacy = {...backup,homeWorkspaces:backup.homeWorkspaces!.map(({desktop:_,...w})=>w)}
+    expect(workspace.restoreBackup(legacy,'merge')).toBeUndefined()
+    expect(workspace.homeWorkspaces.value[0]?.desktop).toEqual(desktop)
+    expect(workspace.restoreBackup(legacy,'replace')).toBeUndefined()
+    expect(workspace.homeWorkspaces.value[0]?.desktop).toBeUndefined()
+    expect(workspace.restoreBackup(backup,'replace')).toBeUndefined()
+    expect(workspace.homeWorkspaces.value[0]?.desktop).toEqual(desktop)
+  })
+})
