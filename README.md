@@ -65,7 +65,7 @@ npm run test:e2e
 npm run test:e2e:stable
 ```
 
-The default end-to-end suite covers shortcut creation and persistence, scoped/ranked local search and cross-workspace opening, light/dark mobile search scrolling, homepage quick tasks and cross-tab synchronization, todo filtering and edit focus, note search and sorting, panel open/close, widget add/reorder/remove and persistence, settings persistence, and narrow-screen overflow. `test:e2e:stable` builds the production site, then runs focused homepage, translation, responsive-layout, and shortcut-persistence checks in installed stable Chrome and Edge channels. GitHub Actions runs these website checks, the production preview, and the packaged-extension suite for pull requests and before publishing to Pages; browser reports and failure traces are retained as workflow artifacts.
+The default end-to-end suite covers shortcut creation and persistence, scoped/ranked local search and cross-workspace opening, light/dark mobile search scrolling, homepage quick tasks and cross-tab synchronization, todo filtering and edit focus, note search and sorting, panel open/close, widget add/reorder/remove and persistence, settings persistence, and narrow-screen overflow. `test:e2e:stable` builds the production site, then runs focused homepage, translation, responsive-layout, and shortcut-persistence checks in installed stable Chrome and Edge channels. GitHub Actions runs the full browser, production preview, and packaged-extension suite only in **Release validation**, triggered manually or on milestone tags such as `v1.1.0`. Ordinary PRs run `npm run verify` without installing browsers. Main-branch Pages deployments build and validate the production assets without repeating browser or unit suites. Browser reports and the verified release build are retained as workflow artifacts.
 
 To run the same user flows against the production build and its lazy-loaded assets, run:
 
@@ -80,6 +80,13 @@ To load the built package as a real Manifest V3 extension in an isolated Chromiu
 ```sh
 npm run test:e2e:extension
 ```
+
+## CI 与版本发布策略
+
+- 日常 PR：类型检查、单元/组件回归、一次生产构建、资源及包体积校验；无需下载浏览器。
+- 合并到 main：仅构建与校验产物后自动更新 Pages，属于持续预览，不等同于正式版本验收。
+- 正式里程碑版本（如 v1.1.0、v1.2.0）：推送对应 tag 或手动运行 Release validation，对相同提交运行全部浏览器、生产和扩展测试。正式 Release/扩展发布前必须确认该提交的完整验证通过；此工作流不自动创建公开 Release。
+- 小修订与补丁 tag 默认不触发全量 E2E；涉及数据迁移、权限、导航等高风险改动时，可手动运行 Release validation 或针对性 E2E。
 
 GitHub Pages 使用 `dist/` 作为发布目录。首次部署前，在仓库 **Settings → Pages → Build and deployment** 中将 Source 设为 **GitHub Actions**。之后推送到 `main` 会自动构建并发布；也可以在 Actions 页面手动运行工作流。`vite.config.ts` 使用相对资源路径，支持部署在仓库子路径下。
 

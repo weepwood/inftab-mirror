@@ -27,28 +27,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Check types, run regression tests and build once
-        run: npm run verify
-      - name: Install Chromium and stable Chrome and Edge
-        run: npx playwright install --with-deps chromium chrome msedge
-      - name: Run browser end-to-end tests
-        run: npm run test:e2e
-      - name: Verify stable Chrome and Edge websites
-        run: npm run test:e2e:stable:built
-      - name: Build site and test the production preview
-        run: npm run test:e2e:production:built
-      - name: Load and test the packaged browser extension
-        run: npm run test:e2e:extension:built
-      - name: Save browser test report and traces
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-test-report
-          path: |
-            playwright-report/
-            test-results/
-          if-no-files-found: ignore
-          retention-days: 7
+      - name: Build and validate production assets
+        run: npm run build
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:

@@ -49,6 +49,8 @@
 
 ## 质量检查
 
+日常 PR 仅执行 `npm run verify`；main 的 Pages 部署只执行生产构建。下列完整浏览器检查由 Release validation 工作流在里程碑 tag 或手动触发时执行，正式版本发布前需要确认通过。小修订无需重复全量 E2E。
+
 ```sh
 npm test
 npm run check
