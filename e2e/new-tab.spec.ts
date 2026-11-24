@@ -721,7 +721,7 @@ test('every built-in panel route loads and closes without a runtime error', asyn
   ] as const
 
   for (const [launcherId, title] of routes) {
-    const trigger = page.locator(`[data-item-id="${launcherId}"] .shortcut-open`)
+    const trigger = page.locator(`.shortcut-page[aria-hidden="false"] [data-item-id="${launcherId}"] .shortcut-open`)
     await trigger.focus()
     await trigger.click()
     const panel = page.getByRole('dialog', { name: title })
@@ -742,7 +742,9 @@ test('every built-in panel route loads and closes without a runtime error', asyn
   }
 
   await page.getByRole('button', { name: '第2页', exact: true }).click()
-  await page.locator('[data-item-id="wallpapers"] .shortcut-open').click()
+  const wallpaperTrigger = page.locator('.shortcut-page[aria-hidden="false"] [data-item-id="wallpapers"] .shortcut-open')
+  await expect(wallpaperTrigger).toHaveCount(1)
+  await wallpaperTrigger.click()
   const wallpaperSettings = page.getByRole('dialog', { name: '设置' })
   await expect(wallpaperSettings).toBeVisible()
   await expect(wallpaperSettings.locator('.panel-loading')).toHaveCount(0)
@@ -1325,18 +1327,24 @@ test('touch scrolling over shortcuts scrolls a short homepage without starting a
     })
     await touchPage.goto(new URL(page.url()).origin)
     const home = touchPage.locator('.home.home-scrollable')
-    const shortcut = touchPage.locator('.shortcut-open').first()
+    const activeGrid = touchPage.locator('.shortcut-page[aria-hidden="false"]')
+    const shortcut = activeGrid.locator('.shortcut-open').first()
     await expect(home).toBeVisible()
     await expect.poll(() => home.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
     // The lazy widget can change the grid's position after the grid itself loads.
     await expect(touchPage.getByRole('textbox', { name: '快速添加待办', exact: true })).toBeVisible()
-    await shortcut.scrollIntoViewIfNeeded()
+    await shortcut.evaluate(element => element.scrollIntoView({ block: 'center', behavior: 'instant' }))
     const scrollBeforeGesture = await home.evaluate((element) => element.scrollTop)
 
     const bounds = await shortcut.boundingBox()
     if (!bounds) throw new Error('The first shortcut is not visible for the touch scroll check.')
     const x = bounds.x + bounds.width / 2
     const y = bounds.y + bounds.height / 2
+    expect(x).toBeGreaterThan(0)
+    expect(x).toBeLessThan(390)
+    expect(y).toBeGreaterThan(80)
+    expect(y).toBeLessThan(480)
+    expect(await shortcut.evaluate((element, point) => element.contains(document.elementFromPoint(point.x, point.y)), { x, y })).toBe(true)
     const cdp = await context.newCDPSession(touchPage)
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] })
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 40, id: 1 }] })
@@ -1346,8 +1354,8 @@ test('touch scrolling over shortcuts scrolls a short homepage without starting a
     await expect.poll(() => home.evaluate((element) => element.scrollTop)).toBeGreaterThan(scrollBeforeGesture)
     await expect(home.locator('.shortcut-cell.dragging')).toHaveCount(0)
 
-    const source = touchPage.locator('.shortcut-cell[data-item-id="weather"] .shortcut-open')
-    const target = touchPage.locator('.shortcut-cell[data-item-id="calendar"] .shortcut-open')
+    const source = activeGrid.locator('.shortcut-cell[data-item-id="weather"] .shortcut-open')
+    const target = activeGrid.locator('.shortcut-cell[data-item-id="calendar"] .shortcut-open')
     await source.evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }))
     const sourceBounds = await source.boundingBox()
     const targetBounds = await target.boundingBox()
