@@ -261,7 +261,7 @@ describe('new-tab color theme', () => {
 
     wrapper.unmount()
     wrapper = null!
-    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, themeMode: 'dark' }))
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, showSearchBar: true, themeMode: 'dark' }))
     await mountApp()
     await nextTick()
     expect(wrapper.get('main.home').classes()).toContain('theme-dark')

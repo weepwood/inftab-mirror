@@ -55,6 +55,11 @@ async function openWorkspaceActions(page: Page, name: string) {
 }
 
 test('search engine menu keeps Tab focus in the search controls', async ({ page }) => {
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key) ?? '{}'), showSearchBar: true, showClock: true }))
+  })
+  await page.reload()
   const picker = page.getByRole('button', { name: '当前搜索引擎：Baidu' })
   const search = page.getByRole('searchbox', { name: '输入并搜索' })
 
@@ -71,6 +76,11 @@ test('search engine menu keeps Tab focus in the search controls', async ({ page 
 })
 
 test('horizontal arrows in composite menus do not turn the homepage', async ({ page }) => {
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key) ?? '{}'), showSearchBar: true, showClock: true }))
+  })
+  await page.reload()
   const currentPage = page.locator('.page-dot[aria-current="page"]')
   const initialPage = await currentPage.getAttribute('aria-label')
 
@@ -352,6 +362,11 @@ test('workspace tabs can be reordered without moving the homepage and persist th
 test('search submits an encoded query to the selected engine and category', async ({ page }) => {
   await page.evaluate(() => {
     const key = 'inftab.preferences.v1'
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key) ?? '{}'), showSearchBar: true, showClock: true }))
+  })
+  await page.reload()
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
     const preferences = JSON.parse(localStorage.getItem(key) ?? '{}')
     localStorage.setItem(key, JSON.stringify({
       ...preferences,
@@ -378,6 +393,11 @@ test('search submits an encoded query to the selected engine and category', asyn
 test('restores a visible search category when stored preferences select a hidden one', async ({ page }) => {
   await page.evaluate(() => {
     const key = 'inftab.preferences.v1'
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key) ?? '{}'), showSearchBar: true, showClock: true }))
+  })
+  await page.reload()
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
     const preferences = JSON.parse(localStorage.getItem(key) ?? '{}')
     localStorage.setItem(key, JSON.stringify({ ...preferences, mode: 'photos', visibleSearchModes: ['html', 'news'] }))
   })
@@ -396,6 +416,11 @@ test('restores a visible search category when stored preferences select a hidden
 })
 
 test('a custom search engine can be added and used from the homepage', async ({ page }) => {
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key) ?? '{}'), showSearchBar: true, showClock: true }))
+  })
+  await page.reload()
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   await page.getByPlaceholder('例如：维基百科').fill('Example Search')
   await page.getByPlaceholder('https://example.com/search?q={query}').fill('https://search.example/find?q={query}')
@@ -899,6 +924,11 @@ test('reduced-motion preference keeps page effects but caps their duration', asy
 })
 
 test('settings persist and the main view fits a narrow viewport', async ({ page }) => {
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key) ?? '{}'), showSearchBar: true, showClock: true }))
+  })
+  await page.reload()
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const showClock = page.getByLabel('显示时间和日期')
   await showClock.uncheck()
@@ -981,6 +1011,11 @@ test('protocol-relative shortcut icons from browser storage cannot trigger remot
 })
 
 test('settings changes synchronize between open tabs', async ({ page }) => {
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key) ?? '{}'), showSearchBar: true, showClock: true }))
+  })
+  await page.reload()
   const secondTab = await page.context().newPage()
   await secondTab.goto('/')
   await expect(secondTab.locator('.home-clock')).toBeVisible()
@@ -1475,6 +1510,11 @@ test('weather panel can search for another city after its initial forecast loads
 })
 
 test('weather widget keeps its source and the homepage usable while offline, then recovers on retry', async ({ page }) => {
+  await page.evaluate(() => {
+    const key = 'inftab.preferences.v1'
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key) ?? '{}'), showSearchBar: true, showClock: true }))
+  })
+  await page.reload()
   let geocodingAttempts = 0
   await page.route('https://geocoding-api.open-meteo.com/**', async (route) => {
     geocodingAttempts += 1

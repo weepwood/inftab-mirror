@@ -15,6 +15,7 @@ for (const viewport of [
 ]) {
   test(`homepage keeps its visual hierarchy without clipping at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
+    await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showClock: true, showSearchBar: true })))
     await page.goto('/')
     await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toBeVisible()
 
@@ -95,6 +96,7 @@ test('responsive columns do not overwrite the saved desktop grid or icon prefere
 })
 
 test('settings navigation stays below its measured header and switches remain keyboard operable', async ({ page }) => {
+  await page.addInitScript(() => { if (!localStorage.getItem('inftab.preferences.v1')) localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showClock: true, showSearchBar: true })) })
   await page.goto('/')
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const panel = page.getByRole('dialog', { name: '设置' })
@@ -127,6 +129,7 @@ test('settings navigation stays below its measured header and switches remain ke
 })
 
 test('dark surfaces and the teleported engine menu share the same theme tokens', async ({ page }) => {
+  await page.addInitScript(() => { if (!localStorage.getItem('inftab.preferences.v1')) localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showClock: true, showSearchBar: true })) })
   await page.goto('/')
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const panel = page.getByRole('dialog', { name: '设置' })

@@ -236,3 +236,18 @@ test('action menus share keyboard navigation and restore focus on Escape', async
   await page.keyboard.press('Tab')
   await expect(menu).toHaveCount(0)
 })
+
+test('clean default homepage preserves on-demand search and wheel wrap', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('.home-clock')).toHaveCount(0)
+  await expect(page.locator('.search-area')).toHaveCount(0)
+  const dots = page.locator('.page-dot')
+  await expect.poll(() => dots.count()).toBeGreaterThan(1)
+  await page.locator('.shortcut-grid-viewport').hover()
+  await page.mouse.wheel(0, -100)
+  await expect(dots.last()).toHaveAttribute('aria-current', 'page')
+  await page.mouse.wheel(0, 100)
+  await expect(dots.first()).toHaveAttribute('aria-current', 'page')
+  await page.keyboard.press('Control+f')
+  await expect(page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })).toBeFocused()
+})
