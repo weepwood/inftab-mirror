@@ -264,3 +264,15 @@ test('continuous slide retains visible slots during fast alternating wheel input
   await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toHaveCount(1)
   await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
 })
+
+test('fine wheel input reverses without an extra page and settles the compositor track', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  await page.locator('.shortcut-grid-viewport').hover()
+  await page.mouse.wheel(0, 70)
+  await page.mouse.wheel(0, 60)
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
+  await page.mouse.wheel(0, -30)
+  await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
+})

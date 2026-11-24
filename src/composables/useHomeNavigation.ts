@@ -11,6 +11,8 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
   const wheelOffset = ref(0)
   let accumulated = 0
+  let lastWheelTime = 0
+  let speed = 0
   let frame = 0
   const threshold = 100
   function resetWheel() {
@@ -18,7 +20,7 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
     if (frame) cancelAnimationFrame(frame)
     frame = 0
     wheelTimer = undefined
-    accumulated = 0
+    accumulated = speed = lastWheelTime = 0
     wheelOffset.value = 0
   }
   let wheelTimer: ReturnType<typeof setTimeout> | undefined
@@ -59,10 +61,22 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
     const delta = (horizontal ? event.deltaX : event.deltaY) * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? threshold : 1)
     if (!Number.isFinite(delta) || !delta || !event.cancelable) return
     event.preventDefault()
-    accumulated += Math.max(-threshold, Math.min(threshold, delta))
-    if (Math.abs(accumulated) >= threshold) {
-      movePage(Math.sign(accumulated))
+    // Discrete wheel notches remain one-page actions; preserve the fractional
+    // remainder of high-resolution input instead of discarding it at each turn.
+    if (Math.abs(delta) >= threshold) {
+      movePage(Math.sign(delta))
       return
+    }
+    const now = performance.now()
+    const dt = Math.max(8, now - lastWheelTime)
+    speed = delta / dt
+    lastWheelTime = now
+    accumulated += delta
+    if (Math.abs(accumulated) >= threshold) {
+      const direction = Math.sign(accumulated)
+      const remainder = accumulated - direction * threshold
+      movePage(direction)
+      accumulated = remainder
     }
     if (!frame) frame = requestAnimationFrame(() => {
       frame = 0
@@ -70,7 +84,8 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
     })
     if (wheelTimer !== undefined) clearTimeout(wheelTimer)
     wheelTimer = setTimeout(() => {
-      if (Math.abs(accumulated) >= 40) movePage(Math.sign(accumulated))
+      const projected = accumulated + Math.max(-20, Math.min(20, speed * 24))
+      if (Math.abs(projected) >= 40 && Math.sign(projected) === Math.sign(accumulated)) movePage(Math.sign(accumulated))
       else resetWheel()
     }, 100)
   }

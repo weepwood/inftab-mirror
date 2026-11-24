@@ -62,8 +62,14 @@ const { draggingId, dragPosition, draggedItem, onPointerDown, openItem } = useSh
 const outgoingPage = ref<{ index: number; effect: PageTransitionEffect; direction: number; duration: number }>()
 const incomingPage = ref<number>()
 const physicalPage = ref(props.currentPage)
-const slidePosition = ref(physicalPage.value)
-const visibleCenter = computed(() => Math.round(slidePosition.value))
+let slidePosition = physicalPage.value
+const visibleCenter = ref(slidePosition)
+function paintSlide(position: number) {
+  slidePosition = position
+  visibleCenter.value = Math.round(position)
+  // Keep fractional frame updates out of Vue's component render path.
+  gridViewport.value?.style.setProperty('--slide-x', `${(visibleCenter.value - position) * 100}%`)
+}
 let slideFrame = 0
 let transitionTimer = 0
 let previewOrigin: number | undefined
@@ -85,9 +91,9 @@ function prefersReducedMotion() {
 function snapSlide(duration = props.transitionDuration) {
   stopSlide()
   const target = physicalPage.value
-  const distance = slidePosition.value - target
+  const distance = slidePosition - target
   if (!duration || (props.transitionEffect === 'slide' && prefersReducedMotion()) || Math.abs(distance) < .002) {
-    slidePosition.value = target
+    paintSlide(target)
     velocity = 0
     return
   }
@@ -98,10 +104,10 @@ function snapSlide(duration = props.transitionDuration) {
   const tick = (now: number) => {
     const time = Math.max(0, now - start)
     const decay = Math.exp(-rate * time)
-    slidePosition.value = target + (distance + slope * time) * decay
+    paintSlide(target) + (distance + slope * time) * decay
     velocity = (initialVelocity - rate * slope * time) * decay
-    if (time >= duration || Math.abs(slidePosition.value - target) < .002) {
-      slidePosition.value = target
+    if (time >= duration || Math.abs(slidePosition - target) < .002) {
+      paintSlide(target)
       velocity = 0
       slideFrame = 0
     } else slideFrame = requestAnimationFrame(tick)
@@ -112,12 +118,15 @@ watch(() => props.wheelOffset ?? 0, offset => {
   if (props.transitionEffect !== 'slide') return
   if (offset) {
     stopSlide()
-    previewOrigin ??= slidePosition.value
-    const next = previewOrigin - offset
     const now = performance.now()
-    velocity = (next - slidePosition.value) / Math.max(8, now - previewTime)
+    if (previewOrigin === undefined) {
+      previewOrigin = slidePosition
+      previewTime = now - 16
+    }
+    const next = previewOrigin - offset
+    velocity = (next - slidePosition) / Math.max(8, now - previewTime)
     previewTime = now
-    slidePosition.value = next
+    paintSlide(next)
   } else {
     previewOrigin = undefined
     if (performance.now() - previewTime > 100) velocity = 0
@@ -178,7 +187,7 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
   const distance = direction > 0 ? (pageIndex - previousPage + count) % count : (previousPage - pageIndex + count) % count
   physicalPage.value += direction * distance
   previewOrigin = undefined
-  if (distance > 1) slidePosition.value = physicalPage.value
+  if (distance > 1) paintSlide(physicalPage.value)
   snapSlide(props.transitionEffect === 'trails' ? duration : props.transitionDuration)
 })
 
@@ -188,7 +197,7 @@ watch(() => [pages.value.length, props.transitionEffect] as const, () => {
   velocity = 0
   outgoingPage.value = undefined
   incomingPage.value = undefined
-  slidePosition.value = physicalPage.value = props.currentPage
+  paintSlide(physicalPage.value = props.currentPage)
 }, { flush: 'post' })
 
 watch(() => [...props.items, ...(props.folderShortcuts ?? [])].map((item) => [item.id, item.icon] as const), (icons) => {
@@ -370,7 +379,7 @@ onBeforeUnmount(() => {
           'particles-mode': transitionEffect === 'particles',
           'continuous-slide': transitionEffect !== 'particles',
         }"
-        :style="{ transform: transitionEffect === 'particles' ? 'none' : `translate3d(${(physicalPage - slidePosition) * 100}%, 0, 0)` }"
+        :style="transitionEffect === 'particles' ? { transform: 'none' } : undefined"
       >
           <section
             v-for="renderPage in displayPages"
@@ -389,7 +398,7 @@ onBeforeUnmount(() => {
           :aria-hidden="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderPage.trackIndex !== physicalPage"
           :inert="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderPage.trackIndex !== physicalPage"
           :style="{
-            transform: transitionEffect !== 'particles' ? `translateX(${(renderPage.trackIndex - physicalPage) * 100}%)` : undefined,
+            transform: transitionEffect !== 'particles' ? `translateX(${(renderPage.trackIndex - visibleCenter) * 100}%)` : undefined,
             '--grid-columns': columns,
             '--grid-rows': reservedRows,
             '--shortcut-size': `${iconSize}px`,

@@ -148,12 +148,13 @@ function updateDockMagnification(event: PointerEvent) {
   magnificationFrame = window.requestAnimationFrame(() => {
     magnificationFrame = 0
     const entries = Array.from(dock.value?.querySelectorAll<HTMLElement>('.home-dock-entry') ?? [])
-    const centers = entries.map((entry) => {
-      const bounds = entry.getBoundingClientRect()
-      return bounds.left + bounds.width / 2
-    })
-    const itemSize = centers.length > 1 ? Math.abs(centers[1]! - centers[0]!) : (entries[0]?.offsetWidth || 48)
-    const influenceRadius = itemSize * 3
+    if (!entries.length) return
+    const first = entries[0]!.getBoundingClientRect()
+    const last = entries.at(-1)!.getBoundingClientRect()
+    const itemSize = first.width || 48
+    const pitch = entries.length > 1 ? (last.left - first.left) / (entries.length - 1) : itemSize
+    const centers = entries.map((_, index) => first.left + itemSize / 2 + index * pitch)
+    const influenceRadius = Math.max(itemSize, pitch) * 2.8
     dock.value?.classList.add('is-magnifying')
     const scales = centers.map(center => {
       const proximity = Math.max(0, 1 - Math.abs(pointerX - center) / influenceRadius)
@@ -162,8 +163,8 @@ function updateDockMagnification(event: PointerEvent) {
     const expansion = scales.map(scale => (scale - 1) * Math.max(0, itemSize - 4))
     const total = expansion.reduce((sum, value) => sum + value, 0)
     const bounds = dock.value?.getBoundingClientRect()
-    const left = centers[0]! - itemSize / 2
-    const right = centers.at(-1)! + itemSize / 2
+    const left = first.left
+    const right = last.right
     const room = bounds?.width ? Math.max(0, bounds.right - right) + Math.max(0, left - bounds.left) : total
     const factor = total > 0 ? Math.min(1, room / total) : 1
     let offset = bounds?.width ? -Math.min(total * factor / 2, Math.max(0, left - bounds.left)) : -total / 2
@@ -254,7 +255,6 @@ onBeforeUnmount(() => {
           class="home-dock-item"
           :data-dock-item-id="item.id"
           :aria-label="`打开${item.title}`"
-          :title="item.title"
           draggable="true"
           @dragstart="startDrag($event, item.id)"
           @dragend="endDrag"

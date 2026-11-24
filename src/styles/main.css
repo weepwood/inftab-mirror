@@ -1188,18 +1188,17 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 :root[data-custom-theme] .shortcut-editor { --editor-control-border: var(--ui-border); --editor-focus: var(--ui-accent-text); --editor-action-fill: var(--ui-accent); border-radius: var(--ui-radius-dialog); }
 
 /* Launcher interaction polish: stable hit targets and compositor-only wheel preview. */
-.shortcut-pages.is-wheel-tracking { transition: none !important; }
 .page-dots { border-color: transparent; background: transparent; backdrop-filter: none; gap: 2px; }
 .page-dot, .page-dot.active { width: 24px; transition: none; }
 .page-dot.active::after { width: 12px; }
 .home-dock { bottom: 4px; left: 50%; transform: translateX(-50%); max-width: max(100px, calc(100vw - 380px)); }
-.home-dock::before { inset: auto 2px 3px; height: calc(var(--dock-item-size) + 14px); border-radius: 19px; background: rgba(240,245,255,.3); border: 1px solid rgba(255,255,255,.4); box-shadow: 0 8px 24px #0003, inset 0 1px 0 #ffffff30; }
+.home-dock::before { inset: auto 2px 3px; height: calc(var(--dock-item-size) + 14px); border-radius: 18px; background: linear-gradient(180deg, #ffffff42, #e1e8f12b); border: 1px solid #ffffff52; box-shadow: 0 8px 28px #0003, inset 0 1px 0 #ffffff4d; backdrop-filter: blur(24px) saturate(160%); }
+.theme-dark .home-dock::before { background: linear-gradient(180deg, #333841a8, #181c24a8); border-color: #ffffff26; }
 .home-dock-track { padding: calc(var(--dock-item-size) * .7 + 10px) 16px 10px; gap: min(var(--dock-gap-setting), 12px); }
 .home-dock-entry:hover .home-dock-icon { outline: none; }
 .home-dock-item:active .home-dock-icon { filter: brightness(.85); }
-.home-dock.dock-auto-hide { transition: transform 180ms ease-out; }
+.home-dock.dock-auto-hide { transition: transform 240ms cubic-bezier(.22,.75,.25,1); }
 @media (hover: hover) and (pointer: fine) and (min-width: 781px) {
-  .home-dock.dock-auto-hide:not(:hover):not(:focus-within):not(.dock-menu-open) { transform: translate(-50%, calc(var(--dock-item-size) + 8px)); }
 }
 @media (max-width: 780px) { .home-dock { bottom: 36px; left: 14px; max-width: max(90px, calc(100vw - 202px)); transform: none; } .home-dock.dock-auto-hide:not(:hover):not(:focus-within):not(.dock-menu-open) { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .home-dock.dock-auto-hide, .home-dock-icon { transition: none; } }
@@ -1210,7 +1209,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 @media (prefers-reduced-motion: reduce) { .shortcut-pages:not(.motion-opt-in) { transition-duration: 0ms !important; } }
 
 /* The continuous slide track renders only the currently visible virtual slots. */
-.shortcut-pages.continuous-slide { display: grid; transition: none !important; }
+.shortcut-pages.continuous-slide { display: grid; transform: translate3d(var(--slide-x, 0%), 0, 0); transition: none !important; }
 .continuous-slide .shortcut-page { grid-area: 1 / 1; width: 100%; }
 .home-dock.dock-dragging .home-dock-icon { transition: none; }
 .home-dock-entry.dock-drag-source { opacity: .45; }
@@ -1226,7 +1225,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 /* Stable visual hierarchy without changing stored launcher dimensions. */
 .shortcut-grid-wrap { isolation: isolate; }
 .page-dot:focus-visible { outline-offset: 2px; }
-.home-dock-entry::before { content: attr(data-title); position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ui-text); background: var(--ui-surface); border: 1px solid var(--ui-border); padding: 4px 8px; border-radius: 7px; font-size: 11px; opacity: 0; pointer-events: none; transition: opacity 100ms ease; z-index: 5; }
+ .home-dock-entry::before { content: attr(data-title); position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ui-text); background: var(--ui-surface); border: 1px solid var(--ui-border); padding: 4px 8px; border-radius: 7px; font-size: 11px; opacity: 0; pointer-events: none; transition: opacity 100ms ease; z-index: 5; }
 @media (hover: hover) and (pointer: fine) {
   .home-dock:not(.dock-dragging) .home-dock-entry:hover::before, .home-dock-entry:focus-within::before { opacity: 1; transform: translate(var(--dock-shift-x, 0px), calc(-1 * var(--dock-icon-size) * (var(--dock-scale, 1) - 1))) translateX(-50%); }
   .home-dock:not(.magnification-off) .home-dock-track { padding-top: calc(var(--dock-item-size) * .7 + 34px); }
