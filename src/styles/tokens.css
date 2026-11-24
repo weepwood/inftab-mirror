@@ -1,0 +1,148 @@
+/* Semantic UI tokens. Forest keeps the existing visual identity. */
+:root {
+  --ui-accent: #467d68;
+  --ui-accent-hover: #35634f;
+  --ui-accent-text: #3e755e;
+  --ui-accent-soft: #eaf3ee;
+  --ui-text: #2c3d34;
+  --ui-muted: #637368;
+  --ui-border: #e1e8e2;
+  --ui-surface: #fff;
+  --ui-panel: #f3f6f3;
+  --ui-field: #fafcf9;
+  --ui-hover: #edf3ee;
+  --ui-danger: #b74750;
+  --ui-danger-soft: #fff0f1;
+  --ui-menu-shadow: 0 16px 44px rgba(12, 32, 20, .18), 0 2px 8px rgba(12, 32, 20, .06);
+  --panel-header-height: 94px;
+  --ui-focus: #7aa8ff;
+  --ui-radius-control: 10px;
+  --ui-radius-menu: 14px;
+  --ui-radius-card: 18px;
+  --ui-radius-dialog: 22px;
+  --ui-radius-panel: 24px;
+  --ui-motion-fast: .15s;
+  --ui-motion-normal: .18s;
+  --ui-motion-panel: .24s;
+  --ui-ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ui-glass-search: rgba(255, 255, 255, .92);
+  --ui-glass-widget: rgba(250, 253, 249, .9);
+  --ui-glass-border: rgba(255, 255, 255, .78);
+  --ui-widget-border: rgba(255, 255, 255, .65);
+}
+.theme-dark {
+  --ui-accent: #528970;
+  --ui-accent-hover: #43765e;
+  --ui-accent-text: #a2d1b8;
+  --ui-accent-soft: #2c4034;
+  --ui-text: #e0e9e2;
+  --ui-muted: #a0afa5;
+  --ui-border: #354238;
+  --ui-surface: #222d25;
+  --ui-panel: #19231d;
+  --ui-field: #26322a;
+  --ui-hover: #2b3a2f;
+  --ui-danger: #ee9aa1;
+  --ui-danger-soft: #442c32;
+  --ui-menu-shadow: 0 16px 44px rgba(0, 0, 0, .32), 0 2px 8px rgba(0, 0, 0, .18);
+  --ui-glass-search: rgba(27, 39, 31, .9);
+  --ui-glass-widget: rgba(30, 43, 34, .9);
+  --ui-glass-border: rgba(207, 235, 215, .22);
+  --ui-widget-border: var(--ui-border);
+}
+
+:root[data-theme-palette="slate"] {
+  --ui-accent: #475569;
+  --ui-accent-hover: #334155;
+  --ui-accent-text: #334155;
+  --ui-accent-soft: #e8edf3;
+  --ui-text: #202b3a;
+  --ui-muted: #586779;
+  --ui-border: #dce3eb;
+  --ui-surface: #ffffff;
+  --ui-panel: #f1f4f8;
+  --ui-field: #f8fafc;
+  --ui-hover: #e8edf3;
+  --ui-glass-search: rgba(250,252,255,.92);
+  --ui-glass-widget: rgba(244,247,251,.9);
+}
+
+:root[data-theme-palette="slate"] .theme-dark {
+  --ui-accent: #5e799b;
+  --ui-accent-hover: #48617f;
+  --ui-accent-text: #b9d1ee;
+  --ui-accent-soft: #304057;
+  --ui-text: #e2e8f0;
+  --ui-muted: #a6b3c5;
+  --ui-border: #3a4658;
+  --ui-surface: #263241;
+  --ui-panel: #1c2532;
+  --ui-field: #2b3849;
+  --ui-hover: #334155;
+  --ui-glass-search: rgba(35,46,61,.92);
+  --ui-glass-widget: rgba(39,51,67,.9);
+}
+
+:root[data-theme-palette="indigo"] {
+  --ui-accent: #5551a5;
+  --ui-accent-hover: #423d8b;
+  --ui-accent-text: #494596;
+  --ui-accent-soft: #eeedfa;
+  --ui-text: #292945;
+  --ui-muted: #666681;
+  --ui-border: #e0e0ed;
+  --ui-surface: #ffffff;
+  --ui-panel: #f4f3fa;
+  --ui-field: #faf9fd;
+  --ui-hover: #eeedf8;
+  --ui-glass-search: rgba(252,251,255,.92);
+  --ui-glass-widget: rgba(247,246,253,.9);
+}
+
+:root[data-theme-palette="indigo"] .theme-dark {
+  --ui-accent: #6964ad;
+  --ui-accent-hover: #534e96;
+  --ui-accent-text: #c8c5ff;
+  --ui-accent-soft: #39365a;
+  --ui-text: #ecebfa;
+  --ui-muted: #b3b1cb;
+  --ui-border: #43415b;
+  --ui-surface: #2d2b43;
+  --ui-panel: #222036;
+  --ui-field: #343149;
+  --ui-hover: #3c3954;
+  --ui-glass-search: rgba(43,41,65,.92);
+  --ui-glass-widget: rgba(49,46,72,.9);
+}
+
+:root[data-theme-palette="sand"] {
+  --ui-accent: #906543;
+  --ui-accent-hover: #754e31;
+  --ui-accent-text: #815634;
+  --ui-accent-soft: #f5eade;
+  --ui-text: #392e26;
+  --ui-muted: #76675b;
+  --ui-border: #e8ded2;
+  --ui-surface: #fffdfa;
+  --ui-panel: #f8f3eb;
+  --ui-field: #fdfaf5;
+  --ui-hover: #f1e9df;
+  --ui-glass-search: rgba(255,252,247,.92);
+  --ui-glass-widget: rgba(251,246,238,.9);
+}
+
+:root[data-theme-palette="sand"] .theme-dark {
+  --ui-accent: #a17a58;
+  --ui-accent-hover: #815c3e;
+  --ui-accent-text: #e8c5a4;
+  --ui-accent-soft: #49372b;
+  --ui-text: #f0e5d8;
+  --ui-muted: #bdac9e;
+  --ui-border: #514336;
+  --ui-surface: #352c26;
+  --ui-panel: #29221e;
+  --ui-field: #403329;
+  --ui-hover: #493b30;
+  --ui-glass-search: rgba(53,43,36,.92);
+  --ui-glass-widget: rgba(59,47,39,.9);
+}

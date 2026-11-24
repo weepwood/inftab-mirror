@@ -7,7 +7,7 @@ import { parseWorkspaceBackup, type WorkspaceBackup } from '../data/backup'
 import { compressImageBlob } from '../data/images'
 import { maxImageUploadBytes, maxWallpaperDataUrlLength } from '../data/imageLimits'
 import { isValidCustomSearchTemplate } from '../data/search'
-import { availableHomeWidgetIds, maxDockItems, type CustomSearchEngine, type HomeWidgetId, type PageTransitionEffect, type Preferences, type SearchMode, type ThemeMode, type WallpaperRotation } from '../types'
+import { availableHomeWidgetIds, maxDockItems, type CustomSearchEngine, type HomeWidgetId, type PageTransitionEffect, type Preferences, type SearchMode, type ThemeMode, type ThemePalette, type WallpaperRotation } from '../types'
 import { homeWidgetPlugins } from '../plugins/widgetRegistry'
 import { homeWidgetPresets } from '../data/homeWidgetPresets'
 
@@ -292,6 +292,11 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
           <option value="light">浅色</option>
           <option value="dark">深色</option>
           <option value="system">跟随系统</option>
+        </SelectField>
+      </label>
+      <label class="toggle-row">界面配色
+        <SelectField aria-label="界面配色" :model-value="preferences.themePalette" @update:model-value="update('themePalette', $event as ThemePalette)">
+          <option value="forest">雾林 · 原版</option><option value="slate">岩灰</option><option value="indigo">靛蓝</option><option value="sand">暖砂</option>
         </SelectField>
       </label>
       <label class="toggle-row"><span>显示时间和日期</span><input type="checkbox" :checked="preferences.showClock" @change="update('showClock', ($event.target as HTMLInputElement).checked)" /></label>

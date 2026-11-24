@@ -293,3 +293,10 @@ describe('local state sanitization', () => {
     ])).toEqual([{ id: 'wiki', name: 'Wiki', template: 'https://example.com/?q={query}' }])
   })
 })
+
+
+it('preserves legacy forest palette and validates the new palette independently of color mode', () => {
+  expect(sanitizePreferences({}).themePalette).toBe('forest')
+  expect(sanitizePreferences({ themePalette: 'sand', themeMode: 'dark' })).toMatchObject({ themePalette: 'sand', themeMode: 'dark' })
+  expect(sanitizePreferences({ themePalette: 'invalid' }).themePalette).toBe('forest')
+})
