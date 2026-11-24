@@ -346,3 +346,62 @@ describe('useStoredState', () => {
     scope.stop()
   })
 })
+
+
+describe('storage failure recovery', () => {
+  it('ignores corrupt remote JSON without cancelling pending edits', async () => {
+    vi.useFakeTimers()
+    const storage = installMemoryStorage({ 'state.v1': '{"title":"saved"}' })
+    const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
+    vi.stubGlobal('window', { addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener), removeEventListener: vi.fn() })
+    const scope = effectScope()
+    const state = scope.run(() => useStoredState('state.v1', { title: '' }))!
+    state.value.title = 'local edit'
+    await listeners.get('storage')!({ key: 'state.v1', oldValue: '{"title":"saved"}', newValue: '{broken' } as StorageEvent)
+    expect(state.value.title).toBe('local edit')
+    await vi.advanceTimersByTimeAsync(180)
+    expect(storage.get('state.v1')).toBe('{"title":"local edit"}')
+    scope.stop()
+  })
+
+  it('retries a failed write on pagehide without creating a retry loop', async () => {
+    vi.useFakeTimers()
+    const values = new Map<string, string>()
+    let denied = true
+    const setItem = vi.fn((key: string, value: string) => {
+      if (denied) throw new Error('quota')
+      values.set(key, value)
+    })
+    vi.stubGlobal('localStorage', { getItem: (key: string) => values.get(key) ?? null, setItem })
+    const listeners = new Map<string, () => void>()
+    vi.stubGlobal('window', { addEventListener: (type: string, listener: () => void) => listeners.set(type, listener), removeEventListener: vi.fn() })
+    const scope = effectScope()
+    const state = scope.run(() => useStoredState('state.v1', { title: '' }))!
+    state.value.title = 'recover me'
+    await vi.advanceTimersByTimeAsync(180)
+    expect(setItem).toHaveBeenCalledTimes(1)
+    expect(state.value.title).toBe('recover me')
+    expect(vi.getTimerCount()).toBe(0)
+    denied = false
+    listeners.get('pagehide')!()
+    expect(values.get('state.v1')).toBe('{"title":"recover me"}')
+    scope.stop()
+    expect(setItem).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not retry a failed stale write after a valid remote update', async () => {
+    vi.useFakeTimers()
+    const setItem = vi.fn(() => { throw new Error('quota') })
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem })
+    const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
+    vi.stubGlobal('window', { addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener), removeEventListener: vi.fn() })
+    const scope = effectScope()
+    const state = scope.run(() => useStoredState('state.v1', 'default', undefined, { mergeConcurrentChanges: false }))!
+    state.value = 'local'
+    await vi.advanceTimersByTimeAsync(180)
+    await listeners.get('storage')!({ key: 'state.v1', oldValue: null, newValue: '"remote"' } as StorageEvent)
+    scope.stop()
+    expect(state.value).toBe('remote')
+    expect(setItem).toHaveBeenCalledTimes(1)
+  })
+})

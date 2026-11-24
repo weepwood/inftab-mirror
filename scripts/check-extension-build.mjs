@@ -27,7 +27,9 @@ if (!existsSync(manifestPath)) {
 
 const manifest = readJson(manifestPath, 'dist/manifest.json')
 const sourceManifest = readJson(sourceManifestPath, 'public/manifest.json')
-if (!manifest || !sourceManifest) process.exit(1)
+const packageMetadata = readJson(fileURLToPath(new URL('../package.json', import.meta.url)), 'package.json')
+if (!manifest || !sourceManifest || !packageMetadata) process.exit(1)
+if (manifest.version !== packageMetadata.version) fail('extension and package versions must match.')
 
 if (JSON.stringify(manifest) !== JSON.stringify(sourceManifest)) fail('the packaged manifest does not match public/manifest.json.')
 if (manifest.manifest_version !== 3) fail('manifest_version must be 3.')
