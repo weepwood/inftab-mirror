@@ -5,13 +5,13 @@ import { launcherIcons } from './launcherIcons'
 import { closeMenuOnFocusout, navigateMenu } from './menuNavigation'
 import type { LauncherItem } from '../types'
 
-const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean }>(), {
+const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean; autoHide?: boolean }>(), {
   magnificationEnabled: false,
   iconSize: 44,
   iconGap: 2,
   darkTheme: false,
 })
-const emit = defineEmits<{ open: [item: LauncherItem, event?: MouseEvent]; remove: [id: string] }>()
+const emit = defineEmits<{ open: [item: LauncherItem, event?: MouseEvent]; remove: [id: string]; reorder: [sourceId: string, targetId?: string] }>()
 const dock = ref<HTMLElement>()
 const contextMenu = ref<HTMLElement>()
 const contextItem = ref<LauncherItem>()
@@ -33,6 +33,19 @@ let suppressClickTimer: ReturnType<typeof setTimeout> | undefined
 let suppressClick = false
 let suppressedClickPointerId: number | undefined
 let magnificationFrame = 0
+let pointerX = 0
+let dragId: string | undefined
+const failedIcons = ref<Record<string, string>>({})
+function startDrag(event: DragEvent, id: string) {
+  dragId = id
+  if (event.dataTransfer) { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', id) }
+}
+function dropItem(event: DragEvent, targetId: string) {
+  if (!dragId) return
+  event.preventDefault()
+  emit('reorder', dragId, targetId)
+  dragId = undefined
+}
 
 function clearSuppressedClick() {
   suppressClick = false
@@ -118,8 +131,8 @@ function preventGestureClick(event: MouseEvent) {
 
 function updateDockMagnification(event: PointerEvent) {
   if (event.pointerType === 'touch' || !props.magnificationEnabled || !dock.value) return
-  const pointerX = event.clientX
-  if (magnificationFrame) window.cancelAnimationFrame(magnificationFrame)
+  pointerX = event.clientX
+  if (magnificationFrame) return
   magnificationFrame = window.requestAnimationFrame(() => {
     magnificationFrame = 0
     const entries = Array.from(dock.value?.querySelectorAll<HTMLElement>('.home-dock-entry') ?? [])
@@ -127,14 +140,14 @@ function updateDockMagnification(event: PointerEvent) {
       const bounds = entry.getBoundingClientRect()
       return bounds.left + bounds.width / 2
     })
-    const itemSize = entries[0]?.getBoundingClientRect().width ?? 48
+    const itemSize = centers.length > 1 ? Math.abs(centers[1]! - centers[0]!) : 48
     const influenceRadius = itemSize * 3
     dock.value?.classList.add('is-magnifying')
     entries.forEach((entry, index) => {
       const distance = pointerX - centers[index]!
       const proximity = Math.max(0, 1 - Math.abs(distance) / influenceRadius)
       const influence = proximity * proximity * (3 - 2 * proximity)
-      entry.style.setProperty('--dock-scale', (1 + influence * .5).toFixed(3))
+      entry.style.setProperty('--dock-scale', (1 + influence * .65).toFixed(3))
       entry.style.setProperty('--dock-shift-x', `${(-Math.sign(distance) * influence * itemSize * .25).toFixed(2)}px`)
       entry.style.zIndex = influence > .05 ? '2' : ''
     })
@@ -201,15 +214,18 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <nav v-if="items.length" ref="dock" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px` }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="clearDockMagnification" @click.capture="preventGestureClick">
+  <nav v-if="items.length" ref="dock" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled, 'dock-auto-hide': props.autoHide, 'dock-menu-open': Boolean(contextItem) }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px` }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="clearDockMagnification" @click.capture="preventGestureClick">
     <div class="home-dock-track">
-      <div v-for="item in items" :key="item.id" class="home-dock-entry" :data-title="item.title">
+      <div v-for="item in items" :key="item.id" class="home-dock-entry" :data-title="item.title" @dragover.prevent @drop="dropItem($event, item.id)">
         <button
           type="button"
           class="home-dock-item"
           :data-dock-item-id="item.id"
           :aria-label="`打开${item.title}`"
           :title="item.title"
+          draggable="true"
+          @dragstart="startDrag($event, item.id)"
+          @dragend="dragId = undefined"
           @click="emit('open', item, $event)"
           @auxclick.middle.prevent="emit('open', item, $event)"
           @contextmenu="showContextMenu($event, item, $event.clientX, $event.clientY)"
@@ -217,7 +233,7 @@ onBeforeUnmount(() => {
         >
           <span class="home-dock-icon" :class="{ builtin: item.action }" :data-action="item.action" :style="{ backgroundColor: item.action ? undefined : item.color, '--dock-glow-color': item.color }">
             <component v-if="item.action && launcherIcons[item.action]" :is="launcherIcons[item.action]" :size="24" :stroke-width="1.8" />
-            <img v-else-if="item.icon" :src="item.icon" decoding="async" alt="" />
+            <img v-else-if="item.icon && failedIcons[item.id] !== item.icon" :src="item.icon" decoding="async" alt="" draggable="false" @error="failedIcons[item.id] = item.icon!" />
             <span v-else>{{ item.mark }}</span>
           </span>
         </button>

@@ -21,3 +21,13 @@ it('does not flip pages or consume scroll while an overlay is open', () => {
     expect(currentPage.value).toBe(1)
   } finally { scope.stop() }
 })
+
+it('accepts consecutive and reversed wheel inputs without a cooldown, wrapping in both directions', () => {
+  const scope = effectScope()
+  const currentPage = ref(2)
+  const nav = scope.run(() => useHomeNavigation({ currentPage, overlayOpen: ref(false), pageDirection: ref(1), pageCount: ref(3), minimalMode: ref(false), shortHomeScrollEnabled: ref(false) }))!
+  try {
+    for (const deltaY of [100, 100, -100]) nav.handleHomeWheel(new WheelEvent('wheel', { deltaY, cancelable: true }))
+    expect(currentPage.value).toBe(0)
+  } finally { scope.stop() }
+})

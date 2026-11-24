@@ -361,6 +361,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
         <span>{{ effect.label }}</span><input type="radio" name="page-transition-effect" :checked="preferences.pageTransitionEffect === effect.id" @change="setTransitionEffect(effect.id)" />
       </label>
       <label class="range-label"><span>翻页动画时长</span><strong>{{ preferences.pageTransitionMs }} ms</strong><input type="range" min="0" max="2000" step="40" :value="preferences.pageTransitionMs" @input="update('pageTransitionMs', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="toggle-row"><span>自动隐藏 Dock</span><input type="checkbox" :checked="preferences.dockAutoHide" @change="update('dockAutoHide', ($event.target as HTMLInputElement).checked)" /></label>
       <label class="toggle-row"><span>Dock 图标放大效果</span><input type="checkbox" :checked="preferences.dockMagnification" @change="update('dockMagnification', ($event.target as HTMLInputElement).checked)" /></label>
       <label class="toggle-row"><span>Dock 图标跟随首页大小</span><input type="checkbox" :checked="preferences.dockFollowLauncherSize" @change="update('dockFollowLauncherSize', ($event.target as HTMLInputElement).checked)" /></label>
       <label class="range-label"><span>Dock 图标大小</span><strong>{{ preferences.dockIconSize }} px</strong><input type="range" min="32" max="60" step="2" :value="preferences.dockIconSize" :disabled="preferences.dockFollowLauncherSize" @input="update('dockIconSize', Number(($event.target as HTMLInputElement).value))" /></label>

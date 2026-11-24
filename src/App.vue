@@ -263,7 +263,7 @@ const activePanelListeners = computed<Record<string, (...args: never[]) => void>
 const homeWidgetContext = computed(() => ({ preferences: preferences.value, todos: todos.value, addTodo, toggleTodo, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
 const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayout({ preferences: layoutPreferences, viewport, layoutColumns, allLauncherItems, homeDockItems, pageCount, minimalMode, localSearchMode })
 const overlayOpen = computed(() => Boolean(activePanel.value || shortcutDialog.value || folderDialogOpen.value || commandPaletteOpen.value || layoutEditorOpen.value || pendingDestructiveAction.value))
-const { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen })
+const { wheelOffset, movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen })
 watch(overlayOpen, (open) => { if (open) cancelHomeSwipe() }, { flush: 'sync' })
 
 watch(pageCount, (count) => { currentPage.value = Math.min(currentPage.value, count - 1) })
@@ -651,10 +651,10 @@ function handleKeydown(event: KeyboardEvent) {
   }
   const focusSearchShortcut = event.key === '/' && !event.altKey && !event.ctrlKey && !event.metaKey
     || event.key.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)
-  if (focusSearchShortcut && !editingText && !activePanel.value && !shortcutDialog.value && !folderDialogOpen.value && searchBar.value) {
+  if (focusSearchShortcut && !editingText && !activePanel.value && !shortcutDialog.value && !folderDialogOpen.value) {
     event.preventDefault()
-    localSearchMode.value = false
-    searchBar.value.focusSearch()
+    if (searchBar.value) searchBar.value.focusSearch()
+    else setLocalSearch(true)
     return
   }
   if (event.key === 'ArrowRight' && !editingText && !navigatingComposite && !localSearchMode.value && !minimalMode.value && !shortcutDialog.value && !folderDialogOpen.value && !activePanel.value) movePage(1)
@@ -850,6 +850,7 @@ onBeforeUnmount(() => {
         :show-names="layoutPreferences.showNames"
         :current-page="currentPage"
         :transition-direction="pageDirection"
+        :wheel-offset="wheelOffset"
         :transition-effect="preferences.pageTransitionEffect"
         :transition-duration="preferences.pageTransitionMs"
         @open="openItem"
@@ -869,7 +870,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" @open="openItem" @remove="toggleDockItem" />
+    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
       <span>{{ storageError }}</span>

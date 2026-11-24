@@ -100,6 +100,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     hiddenLauncherIds,
     dockItemIds,
     dockMagnification: booleanPreference('dockMagnification'),
+    dockAutoHide: booleanPreference('dockAutoHide'),
     dockFollowLauncherSize: booleanPreference('dockFollowLauncherSize'),
     dockIconSize: integerPreference('dockIconSize', 32, 60),
     dockIconGap: integerPreference('dockIconGap', 0, 16),
