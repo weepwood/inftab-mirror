@@ -34,12 +34,16 @@ gh run list --limit 10
 | V1.2 视觉系统 | 修复焦点顺序回归后完整验收通过：[45376496953](https://github.com/weepwood/inftab-mirror/actions/runs/45376496953) |
 | V1.3 个人工作台 | 小视口修复 #16 后完整验收通过：[45379979286](https://github.com/weepwood/inftab-mirror/actions/runs/45379979286) |
 | V1.4.0 性能专项 | 已合并 #15；main 快照 `ae60eba2b022bb2e3c1c45276781f616b9353d33`；[正式验收 45382168902](https://github.com/weepwood/inftab-mirror/actions/runs/45382168902) 与 [Pages 45382169145](https://github.com/weepwood/inftab-mirror/actions/runs/45382169145) 成功 |
-| V1.5.0 主题管理 | #17 已合并，main `9e4b776bfe91864fca66965554a8eee44a4d77f3`；[快速 CI](https://github.com/weepwood/inftab-mirror/actions/runs/45388060219) 671 项、[UI](https://github.com/weepwood/inftab-mirror/actions/runs/45388060220) 30 项、[数据](https://github.com/weepwood/inftab-mirror/actions/runs/45388060259) 4 项通过，全部预算达标。正式验收 [45389072450](https://github.com/weepwood/inftab-mirror/actions/runs/45389072450) 与 Pages [45389072571](https://github.com/weepwood/inftab-mirror/actions/runs/45389072571) 仍需查询最终结果 |
-| [#18 V1.6 PWA](https://github.com/weepwood/inftab-mirror/pull/18) | 已转正式 PR，目标 main，分支 feat/v1.6-pwa-offline；当前提交同步 V1.5 合并树，待最新 CI 与 PWA 专项 |
+| [#17 V1.5.0](https://github.com/weepwood/inftab-mirror/pull/17) | 正式待审查，分支 `feat/v1.5-theme-editor`，head `b15d9857a6f8a947f973e1b4db19d6e4eb7e636e`；尚未合并 |
+| [#18 V1.6 PWA](https://github.com/weepwood/inftab-mirror/pull/18) | 草稿，分支 `feat/v1.6-pwa-offline`，head `09ab37ab68c6d370a4273dd08466e5191dd49621`，base 为 #17 当前候选提交；未执行正式 CI，不能当作 main 功能 |
 
-**当前重点：** V1.5 先前首屏超出 7 字节的阻塞已通过复用校验解决。通过的 2e505cd 构建首屏 60.5/60.5 KiB、全部 JS 154.9/156 KiB、CSS 21.5/64 KiB、产物 1387.3/4096 KiB；余量很小。PWA 将显式计入经典外部 JS 首屏入口，不允许因非 module 脚本而漏计。PWA 专项先构建、运行浏览器验证，再独立执行相同硬门禁，以便获得真实故障数据；快速 CI 保持原 verify。未测试成功前不得合并。
+**当前阻塞：** #17 最新 [CI 45386276941](https://github.com/weepwood/inftab-mirror/actions/runs/45386276941)：83 个测试文件、671 项测试通过；首屏 JS gzip 61,959 字节，预算 61,952 字节，超出 7 字节（均四舍五入显示 60.5 KiB）；全部 JS 154.9/156 KiB、CSS 21.5/64 KiB、产物 1387.6/4096 KiB 达标。[UI 45386276728](https://github.com/weepwood/inftab-mirror/actions/runs/45386276728) 与 [数据 45386276673](https://github.com/weepwood/inftab-mirror/actions/runs/45386276673) 成功。不能因仅超 7 字节就跳过门禁。优先寻找有意义的首屏精简并留出余量；不提高预算、不删功能或验证。
 
-**下一步：** 确认 V1.5 正式验收 → 核对 #18 最新 CI、浏览器离线与升级故障回归、扩展隔离、实际包体，按结果修复 → 准备 1.6.0 候选并完整验收（稳定 Chrome/Edge 增加 PWA 测试）→ V1.7 插件 SDK。HTTP 小型版本夹具验证真实 worker，并非完整双生产构建。原资源预算与用户数据契约不变。Pages 成功不等同于 GitHub Release 或扩展上架。
+**下一步：** 修复 #17 包体问题 → 同步最新 main 并核实最新 CI/UI/数据检查全部成功 → 审查合并 → 等待 V1.5 对应 main 的 Release validation → 将 #18 同步并改为 main 目标、正式待审查 → 完成 PWA 专项及实际升级/故障/扩展兼容验证 → 版本收尾。不能将 #18 合进 #17。GitHub Pages 部署成功与正式验收通过均不等于已经创建 GitHub Release 或上架扩展商店。
+
+### 本轮交接补充
+- 文档 #19 已合并，main 为 `ba25de2be398ae9cc8c3b758209d92d4e1f3218a`（仅新增 AGENTS.md）；本候选同步该提交。
+- #17 在 b15d985 后继续复用布尔/整数偏好读取与 RGB 解析，保留原校验和预算；准确的新 head 与 CI 以 GitHub 为准，尚未验证。
 
 ## 3. 代码导航与责任边界
 
@@ -60,7 +64,7 @@ gh run list --limit 10
 | `src/plugins/ids.ts`, `registry.ts`, `widgetRegistry.ts`, `asyncComponent.ts` | 内置可信面板/小组件的 ID、类型化上下文、属性/事件、按需加载和重试 |
 | `vite.config.ts`, `scripts/check-bundle-size.mjs`, `scripts/check-extension-build.mjs` | 分包策略、体积门禁、MV3 包结构和版本一致性 |
 
-V1.5 已合并模块：#17 的 `src/data/customTheme.ts`、`themeEditorData.ts`、`themeExchange.ts`、`configMigration.ts`、`src/components/CustomThemeEditor.vue`、`ConfigMigration.vue`；V1.6 候选分支（main 尚无）：#18 的 `scripts/build-pwa.mjs`、`pwa-client.js`、`pwa-worker.js`、`pwa.css`、`e2e/pwa-offline.spec.ts`。
+候选分支额外入口（main 尚无）：#17 的 `src/data/customTheme.ts`、`themeEditorData.ts`、`themeExchange.ts`、`configMigration.ts`、`src/components/CustomThemeEditor.vue`、`ConfigMigration.vue`；#18 的 `scripts/build-pwa.mjs`、`pwa-client.js`、`pwa-worker.js`、`pwa.css`、`e2e/pwa-offline.spec.ts`。
 
 ## 4. 不可破坏的行为与数据契约
 
@@ -93,7 +97,7 @@ V1.5 已合并模块：#17 的 `src/data/customTheme.ts`、`themeEditorData.ts`�
 
 #17 注意：主题格式 `inftab-theme` v1，只接受六位十六进制色与受限数值；基础纯色对比度不代表所有透明场景通过 WCAG。预设与应用主题独立。配置迁移四组（外观、全局布局、组件、入口与工作区/Dock），未选数据和生产力内容保留。旧备份可缺少新字段。
 
-#18 注意：默认不自动启用；缓存仅同作用域已列举的静态资源（包含懒加载模块），不得缓存任意网络请求、个人数据或扩展清单。新版本完整校验后等待旧页面全部关闭，不强制 skipWaiting；失败保留旧版本。清理只针对当前应用缓存，不清除用户数据或其他应用缓存。HTTPS/localhost 网页可用，扩展协议不得注册。现有三项 PWA 生产回归及一项版本夹具尚待运行；需要真实双版本升级、损坏响应失败回滚、缓存停用竞争、Pages 子路径、Chrome/Edge 安装、MV3 隔离等验证。联网服务和外部网站不会因 PWA 而变成离线可用。
+#18 注意：默认不自动启用；缓存仅同作用域已列举的静态资源（包含懒加载模块），不得缓存任意网络请求、个人数据或扩展清单。新版本完整校验后等待旧页面全部关闭，不强制 skipWaiting；失败保留旧版本。清理只针对当前应用缓存，不清除用户数据或其他应用缓存。HTTPS/localhost 网页可用，扩展协议不得注册。现有三项 PWA 生产回归尚待运行；需要真实双版本升级、损坏响应失败回滚、缓存停用竞争、Pages 子路径、Chrome/Edge 安装、MV3 隔离等验证。联网服务和外部网站不会因 PWA 而变成离线可用。
 
 ## 6. 开发验证、CI 与发布规范
 
@@ -151,3 +155,29 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - [内置插件开发](docs/plugin-development.md)：注册、类型契约、权限、组件与测试。
 - [UI 设计规范](docs/ui-design.md)、[交互细节](docs/ui-skill-refinements.md)、[参考审计](docs/product-reference-audit.md)。
 - [V1.4 发布说明](docs/releases/v1.4.0.md)，后续版本说明位于对应候选分支，合并后可在 main 查询。
+
+
+## 首页交互专项候选（2026-11-24）
+- 默认隐藏时钟与常驻搜索，保留已有用户显式偏好和按需搜索；默认使用滑动效果。
+- 滚轮归一化、累计小增量、取消固定锁，滑动模式提供逐帧预览；保留短屏纵向滚动和浮层保护。
+- Dock 增加自动隐藏偏好、鼠标拖动排序、失败图标回退与玻璃材质调整；触屏不自动隐藏。
+- 风险：默认偏好变化、快速循环翻页与旧粒子动画、拖拽、窄屏及扩展备份兼容；须实际执行 CI 和浏览器专项验证。候选提交不代表验收通过。
+
+- 首轮候选 #20（1c6bfda）常规 CI 发现 16 项失败，包含默认布局变化导致的旧测试前提失效及网格 DOM 预算回归；本次恢复相邻页挂载上限、明确旧偏好测试数据、补充新默认布局测试及自动隐藏备份校验。新提交仍须重新验收。
+
+- 保留工作区切换器与 Dock 的非重叠布局边界（窄屏优先可操作性）；补充默认首页/滚轮环绕/按需搜索的 Chromium 验收，旧搜索与时钟测试显式使用旧偏好。
+
+- #20 head a20a65d：[UI 专项 45394505966](https://github.com/weepwood/inftab-mirror/actions/runs/45394505966) 成功（包含 launcher benchmark）；[CI 45394505892](https://github.com/weepwood/inftab-mirror/actions/runs/45394505892) 83/83 文件、673/673 测试通过，首屏 JS gzip 62145/61952 B 超出 193 B。后续将默认关闭的时钟改为按需加载，保持预算不变，并补充生产 chunk 验证；新 head 需重新执行门禁。
+
+- #20 head c2360b5：[CI 45394911323](https://github.com/weepwood/inftab-mirror/actions/runs/45394911323) 83/83 文件、673/673 测试通过；首屏 JS 60.4/60.5 KiB、全部 JS 155.8/156 KiB、CSS 21.9/64 KiB、产物 1390.8/4096 KiB 均达标；[UI 45394911521](https://github.com/weepwood/inftab-mirror/actions/runs/45394911521) 成功。正式发布的稳定浏览器、MV3、跨标签并发与旧 Dock 交互测试更新显式配置，保留原有行为断言及新增默认布局断言；当前新提交尚未验收，不将前序绿灯冒充新 head 结果。
+
+## 连续滑动与 Dock 深度打磨候选（2026-11-24）
+- #20 已合并到 f9abe11，CI 45395230139 与 UI 45395230086 成功，Pages 45395462136 成功。正式发布完整浏览器验收与真实设备触控板仍待验证。
+- 新专项独立于 #18 PWA：滑动模式改用可见位置驱动的虚拟循环槽（最多四个），逐帧按经过时间吸附、反向操作从当前视觉位置开始；粒子/拖尾保持原路径。Dock 增加前后插入反馈与 Shift+方向键排序、拖动期间保持展开。未经真实设备测试，不声称实现完整触控板物理惯性或高刷新率验收。
+- 首屏与全部 JS gzip 预算保持不变；此前余量很小，需 CI 实际验证。
+
+- #21 首轮 UI 45395894380 成功、CI 45395894238 675/675 单测通过但全部 JS gzip 160074/159744 B（超 330 B）；#18 旧分支 45389399034 与 45389399104 均因包体积失败，PWA 独立处理，不降低预算。
+- 本轮将 slide/trails 共用虚拟轨道、移除五循环重定位代码，按四舍五入后的可见槽更新列表，使用解析式临界阻尼吸附及速度估计；粒子模式继续独立渲染。Dock 放大考虑可用边界、增加 CSS 提示；管理器新增工作区筛选；短屏无搜索间距纳入布局预算。新的提交需重新验证，无真实设备帧率数据。
+
+## #18 PWA 独立产物治理（2026-11-24）
+- 将旧 PWA 变更基于 f39411c 主分支重新整合，保留原 #18 历史；dist 为原 MV3/core，dist-web 为 Pages 网站。原 60.5/156 KiB 预算不变，网站额外 bootstrap <=512 B、额外 JS <=10 KiB、完整网站 <=4 MiB；新增逐文件一致性校验，不能把应用核心挪到 PWA 白名单逃避检查。默认静态入口，主动启用或已注册时才载入离线客户端。离线资源校验、旧版本标签页保护、停用清理与扩展隔离均需专项测试。

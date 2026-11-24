@@ -4,6 +4,7 @@ test('opt-in precaches a complete built shell and works offline without caching 
   await page.goto('/')
   await expect(page.locator('link[rel=manifest]')).toHaveAttribute('href',/app\.webmanifest$/)
   expect(await page.evaluate(()=>navigator.serviceWorker.controller)).toBeNull()
+  expect(await page.evaluate(()=>performance.getEntriesByType('resource').some(entry=>entry.name.endsWith('/pwa-client.js')))).toBe(false)
   await page.getByRole('button',{name:'启用离线工作台'}).click()
   await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller),{timeout:30000}).toBe(true)
   await expect(page.locator('.pwa-status')).toContainText('离线资源已就绪')

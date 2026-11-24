@@ -5,12 +5,6 @@
   const workerUrl = new URL('sw.js',base).href
   const controlled = () => navigator.serviceWorker.controller?.scriptURL === workerUrl
   const owned = candidate => candidate?.scope === base.href && [candidate.active,candidate.waiting,candidate.installing].some(worker=>worker?.scriptURL===workerUrl)
-  const manifest = document.createElement('link')
-  manifest.rel='manifest'; manifest.href=new URL('app.webmanifest',base).href
-  document.head.append(manifest)
-  const css=document.createElement('link')
-  css.rel='stylesheet'; css.href=new URL('pwa.css',base).href
-  document.head.append(css)
   const root=document.createElement('aside')
   root.className='inftab-pwa-control'
   const button=document.createElement('button')

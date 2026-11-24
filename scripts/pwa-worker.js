@@ -71,6 +71,6 @@ self.addEventListener('message',event=>{
       if(!await self.registration.unregister()){disabling=false;throw Error('注销失败，请重新检查离线状态。')}
       for(const key of await caches.keys()) if(ownedCache(key)) await caches.delete(key)
       port.postMessage({ok:true})
-    }catch(error){port.postMessage({ok:false,message:error.message||'离线缓存操作失败。'})}
+    }catch(error){disabling=false;port.postMessage({ok:false,message:error.message||'离线缓存操作失败。'})}
   })())
 })

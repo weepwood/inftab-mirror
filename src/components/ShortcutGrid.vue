@@ -22,6 +22,7 @@ const props = defineProps<{
   transitionDirection: number
   transitionEffect: PageTransitionEffect
   transitionDuration: number
+  wheelOffset?: number
 }>()
 
 const emit = defineEmits<{
@@ -37,34 +38,19 @@ const emit = defineEmits<{
 
 const pageSize = computed(() => props.columns * props.rows)
 const reservedRows = computed(() => reservedShortcutRows(props.items.length, props.columns, props.rows))
-const cycleCount = 5
-const centerCycle = Math.floor(cycleCount / 2)
 const pages = computed(() => splitShortcutPages(props.items, pageSize.value))
-function centeredPhysicalPage(pageIndex = props.currentPage) {
-  return pages.value.length > 1 ? pages.value.length * centerCycle + pageIndex : pageIndex
-}
 const displayPages = computed(() => {
-  if (props.transitionEffect === 'particles') {
-    const visiblePageIndexes = new Set([props.currentPage, outgoingPage.value?.index, incomingPage.value]
-      .filter((index): index is number => typeof index === 'number'))
-    return pages.value.flatMap((items, pageIndex) => visiblePageIndexes.has(pageIndex)
-      ? [{ items, pageIndex, clone: false, trackIndex: pageIndex }]
-      : [])
-  }
-  if (pages.value.length < 2) {
-    return pages.value.map((items, pageIndex) => ({ items, pageIndex, clone: false, trackIndex: pageIndex }))
-  }
-  return Array.from({ length: cycleCount }, (_, cycleIndex) => pages.value.map((items, pageIndex) => {
-    const trackIndex = cycleIndex * pages.value.length + pageIndex
-    return {
-      // Keep every track slot to preserve seamless looping, but only mount
-      // shortcut cells for the visible page and its immediate neighbors.
-      items: Math.abs(trackIndex - physicalPage.value) <= 1 ? items : [],
-      pageIndex,
-      clone: cycleIndex !== centerCycle,
-      trackIndex,
-    }
-  })).flat()
+  const count = pages.value.length
+  const target = physicalPage.value
+  const center = visibleCenter.value
+  const indices = props.transitionEffect === 'particles'
+    ? [target, outgoingPage.value?.index]
+    : count > 1 ? [center - 1, center, center + 1, target] : [target]
+  if (props.transitionEffect === 'trails') indices.push(outgoingPage.value?.index)
+  return [...new Set(indices)].filter((index): index is number => index !== undefined).sort((a, b) => a - b).map(trackIndex => {
+    const pageIndex = ((trackIndex % count) + count) % count
+    return { items: pages.value[pageIndex] ?? [], pageIndex, clone: props.transitionEffect !== 'particles' && trackIndex !== target, trackIndex }
+  })
 })
 const contextItem = ref<LauncherItem>()
 const contextPosition = ref({ left: 0, top: 0 })
@@ -75,119 +61,69 @@ const gridViewport = ref<HTMLElement>()
 const { draggingId, dragPosition, draggedItem, onPointerDown, openItem } = useShortcutDrag(props, emit, gridViewport, pages, moveAnnouncement)
 const outgoingPage = ref<{ index: number; effect: PageTransitionEffect; direction: number; duration: number }>()
 const incomingPage = ref<number>()
-const physicalPage = ref(props.transitionEffect === 'particles' ? props.currentPage : centeredPhysicalPage())
-const trackOffsetPx = ref(0)
-const resettingTrack = ref(false)
+const physicalPage = ref(props.currentPage)
+const slidePosition = ref(physicalPage.value)
+const visibleCenter = computed(() => Math.round(slidePosition.value))
+let slideFrame = 0
 let transitionTimer = 0
-let trackSettleTimer = 0
-let trackTransitionPending = false
-let resetFrame = 0
-let rebaseFrame = 0
-
+let previewOrigin: number | undefined
+let previewTime = 0
+let velocity = 0
 const { playParticleTransition, cancelParticleTransition } = useShortcutParticles(gridViewport)
-
+function stopSlide() {
+  if (slideFrame) cancelAnimationFrame(slideFrame)
+  slideFrame = 0
+}
 function cancelTransitionTimers() {
-  if (transitionTimer) window.clearTimeout(transitionTimer)
-  if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
-  if (resetFrame) cancelAnimationFrame(resetFrame)
-  resetFrame = 0
+  stopSlide()
+  clearTimeout(transitionTimer)
   cancelParticleTransition()
 }
-
-function completeTrackTransition() {
-  if (!trackTransitionPending) return
-  trackTransitionPending = false
-  if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
-  trackSettleTimer = 0
-}
-
-function finishTrackReset() {
-  if (props.transitionEffect === 'particles' || pages.value.length < 2) {
-    completeTrackTransition()
-    return
-  }
-  const centeredPage = centeredPhysicalPage()
-  if (physicalPage.value === centeredPage) {
-    completeTrackTransition()
-    return
-  }
-  resettingTrack.value = true
-  physicalPage.value = centeredPage
-  if (resetFrame) cancelAnimationFrame(resetFrame)
-  resetFrame = requestAnimationFrame(() => {
-    resetFrame = requestAnimationFrame(() => {
-      resettingTrack.value = false
-      trackOffsetPx.value = 0
-      resetFrame = 0
-      completeTrackTransition()
-    })
-  })
-}
-
-function readTrackTranslateX(track: HTMLElement) {
-  const transform = getComputedStyle(track).transform
-  if (transform === 'none') return 0
-  const values = transform.slice(transform.indexOf('(') + 1, -1).split(',').map(Number)
-  return transform.startsWith('matrix3d') ? values[12] ?? 0 : values[4] ?? 0
-}
-
-function rebaseTrackIfNeeded() {
-  const pageCount = pages.value.length
-  if (props.transitionEffect === 'particles' || pageCount < 2) return
-  const lowerLimit = pageCount
-  const upperLimit = pageCount * (cycleCount - 1)
-  if (physicalPage.value >= lowerLimit && physicalPage.value < upperLimit) return
-
-  const track = gridViewport.value?.querySelector<HTMLElement>('.shortcut-pages')
-  const viewportWidth = gridViewport.value?.getBoundingClientRect().width ?? 0
-  const targetBeforeRebase = physicalPage.value
-  const targetAfterRebase = centeredPhysicalPage()
-  if (!track || !viewportWidth) {
-    physicalPage.value = targetAfterRebase
-    return
-  }
-
-  // Shift by whole page cycles while preserving the exact in-flight visual position.
-  const currentX = readTrackTranslateX(track)
-  trackOffsetPx.value = currentX + targetBeforeRebase * viewportWidth
-  resettingTrack.value = true
-  physicalPage.value = targetAfterRebase
-  if (rebaseFrame) cancelAnimationFrame(rebaseFrame)
-  rebaseFrame = requestAnimationFrame(() => {
-    resettingTrack.value = false
-    trackOffsetPx.value = 0
-    rebaseFrame = 0
-  })
-}
-
-function settleTrackTransition() {
-  if (!trackTransitionPending) return
-  if (trackSettleTimer) window.clearTimeout(trackSettleTimer)
-  trackSettleTimer = 0
-  finishTrackReset()
-}
-
 function prefersReducedMotion() {
   return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
-
-function scheduleTrackSettleFallback() {
-  if (!trackTransitionPending) return
-  const reducedMotion = prefersReducedMotion()
-  const configuredDuration = Math.max(0, props.transitionDuration)
-  const trackDuration = reducedMotion && props.transitionEffect === 'trails'
-    ? Math.min(configuredDuration, 1200)
-    : configuredDuration
-  const visualDuration = props.transitionEffect === 'trails'
-    ? (reducedMotion ? Math.min(1200, Math.max(420, configuredDuration)) : Math.max(260, configuredDuration))
-    : 0
-  trackSettleTimer = window.setTimeout(settleTrackTransition, Math.max(trackDuration, visualDuration) + 180)
+function snapSlide(duration = props.transitionDuration) {
+  stopSlide()
+  const target = physicalPage.value
+  const distance = slidePosition.value - target
+  if (!duration || (props.transitionEffect === 'slide' && prefersReducedMotion()) || Math.abs(distance) < .002) {
+    slidePosition.value = target
+    velocity = 0
+    return
+  }
+  const rate = 8 / Math.max(100, duration)
+  const initialVelocity = Math.max(-.008, Math.min(.008, velocity))
+  const slope = initialVelocity + rate * distance
+  const start = performance.now()
+  const tick = (now: number) => {
+    const time = Math.max(0, now - start)
+    const decay = Math.exp(-rate * time)
+    slidePosition.value = target + (distance + slope * time) * decay
+    velocity = (initialVelocity - rate * slope * time) * decay
+    if (time >= duration || Math.abs(slidePosition.value - target) < .002) {
+      slidePosition.value = target
+      velocity = 0
+      slideFrame = 0
+    } else slideFrame = requestAnimationFrame(tick)
+  }
+  slideFrame = requestAnimationFrame(tick)
 }
-
-function handleTrackTransitionEnd(event: TransitionEvent) {
-  if (event.target !== event.currentTarget || event.propertyName !== 'transform') return
-  settleTrackTransition()
-}
+watch(() => props.wheelOffset ?? 0, offset => {
+  if (props.transitionEffect !== 'slide') return
+  if (offset) {
+    stopSlide()
+    previewOrigin ??= slidePosition.value
+    const next = previewOrigin - offset
+    const now = performance.now()
+    velocity = (next - slidePosition.value) / Math.max(8, now - previewTime)
+    previewTime = now
+    slidePosition.value = next
+  } else {
+    previewOrigin = undefined
+    if (performance.now() - previewTime > 100) velocity = 0
+    snapSlide()
+  }
+})
 
 watch(() => props.currentPage, (pageIndex, previousPage) => {
   if (pageIndex === previousPage) return
@@ -209,14 +145,6 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
     })
   }
   cancelTransitionTimers()
-  if (rebaseFrame) {
-    cancelAnimationFrame(rebaseFrame)
-    rebaseFrame = 0
-    resettingTrack.value = false
-    trackOffsetPx.value = 0
-  }
-  trackTransitionPending = true
-  resettingTrack.value = false
   const direction = props.transitionDirection < 0 ? -1 : 1
   const duration = prefersReducedMotion()
     ? Math.min(1200, Math.max(420, props.transitionDuration))
@@ -243,30 +171,24 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
       outgoingPage.value = undefined
       incomingPage.value = undefined
       transitionTimer = 0
-      completeTrackTransition()
     }, particleDuration)
     return
   }
-  physicalPage.value += direction
-  rebaseTrackIfNeeded()
-  scheduleTrackSettleFallback()
+  const count = pages.value.length
+  const distance = direction > 0 ? (pageIndex - previousPage + count) % count : (previousPage - pageIndex + count) % count
+  physicalPage.value += direction * distance
+  previewOrigin = undefined
+  if (distance > 1) slidePosition.value = physicalPage.value
+  snapSlide(props.transitionEffect === 'trails' ? duration : props.transitionDuration)
 })
 
 watch(() => [pages.value.length, props.transitionEffect] as const, () => {
   cancelTransitionTimers()
-  if (rebaseFrame) cancelAnimationFrame(rebaseFrame)
-  rebaseFrame = 0
-  trackTransitionPending = false
+  previewOrigin = undefined
+  velocity = 0
   outgoingPage.value = undefined
   incomingPage.value = undefined
-  resettingTrack.value = true
-  trackOffsetPx.value = 0
-  physicalPage.value = props.transitionEffect === 'particles' ? props.currentPage : centeredPhysicalPage()
-  if (resetFrame) cancelAnimationFrame(resetFrame)
-  resetFrame = requestAnimationFrame(() => {
-    resettingTrack.value = false
-    resetFrame = 0
-  })
+  slidePosition.value = physicalPage.value = props.currentPage
 }, { flush: 'post' })
 
 watch(() => [...props.items, ...(props.folderShortcuts ?? [])].map((item) => [item.id, item.icon] as const), (icons) => {
@@ -416,7 +338,6 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   cancelTransitionTimers()
-  if (rebaseFrame) cancelAnimationFrame(rebaseFrame)
   window.removeEventListener('click', handleWindowClick)
   window.removeEventListener('keydown', closeContextOnEscape)
 })
@@ -447,10 +368,9 @@ onBeforeUnmount(() => {
         :class="{
           'motion-opt-in': transitionEffect !== 'slide',
           'particles-mode': transitionEffect === 'particles',
-          'is-resetting': resettingTrack,
+          'continuous-slide': transitionEffect !== 'particles',
         }"
-        :style="{ transform: transitionEffect === 'particles' ? 'none' : `translate3d(calc(-${physicalPage * 100}% + ${trackOffsetPx}px), 0, 0)` }"
-        @transitionend="handleTrackTransitionEnd"
+        :style="{ transform: transitionEffect === 'particles' ? 'none' : `translate3d(${(physicalPage - slidePosition) * 100}%, 0, 0)` }"
       >
           <section
             v-for="renderPage in displayPages"
@@ -469,6 +389,7 @@ onBeforeUnmount(() => {
           :aria-hidden="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderPage.trackIndex !== physicalPage"
           :inert="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderPage.trackIndex !== physicalPage"
           :style="{
+            transform: transitionEffect !== 'particles' ? `translateX(${(renderPage.trackIndex - physicalPage) * 100}%)` : undefined,
             '--grid-columns': columns,
             '--grid-rows': reservedRows,
             '--shortcut-size': `${iconSize}px`,

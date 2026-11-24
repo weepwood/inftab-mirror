@@ -5,6 +5,10 @@ on:
     paths:
       - 'scripts/build-pwa.mjs'
       - 'scripts/pwa-*'
+      - 'scripts/check-pwa-build.mjs'
+      - 'package.json'
+      - '.github/workflows/deploy-pages.yml'
+      - 'playwright.production.config.ts'
       - 'e2e/pwa-offline.spec.ts'
       - 'e2e/pwa-update.spec.ts'
       - 'playwright.config.ts'
@@ -31,13 +35,13 @@ jobs:
       - run: npm ci
       - name: Build production fixtures
         id: build
-        run: npx vite build && node scripts/build-pwa.mjs && node scripts/check-extension-build.mjs
+        run: npm run build:web
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e:production:built -- e2e/pwa-offline.spec.ts e2e/pwa-update.spec.ts
       - run: npm run test:e2e:extension:built
       - name: Enforce unchanged bundle budgets
         if: steps.build.outcome == 'success' && !cancelled()
-        run: node scripts/check-bundle-size.mjs
+        run: node scripts/check-bundle-size.mjs && node scripts/check-pwa-build.mjs
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

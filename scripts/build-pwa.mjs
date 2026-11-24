@@ -1,10 +1,14 @@
 import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, readdirSync, cpSync, rmSync } from 'node:fs'
 import { resolve, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { deflateSync } from 'node:zlib'
 
-const dist = fileURLToPath(new URL('../dist/', import.meta.url))
+const core = fileURLToPath(new URL('../dist/', import.meta.url))
+const dist = fileURLToPath(new URL('../dist-web/', import.meta.url))
+rmSync(dist, { recursive: true, force: true })
+cpSync(core, dist, { recursive: true })
+rmSync(resolve(dist, 'manifest.json'), { force: true })
 const here = fileURLToPath(new URL('./', import.meta.url))
 const write = (name, data) => writeFileSync(resolve(dist,name),data)
 const read = name => readFileSync(resolve(dist,name))
@@ -45,12 +49,13 @@ write('app.webmanifest',JSON.stringify({
   icons:[192,512].map(size=>({src:'pwa-'+size+'.png',sizes:size+'x'+size,type:'image/png',purpose:'any maskable'})),
 },null,2))
 write('pwa-client.js',readFileSync(resolve(here,'pwa-client.js')))
+write('pwa-bootstrap.js',readFileSync(resolve(here,'pwa-bootstrap.js')))
 write('pwa.css',readFileSync(resolve(here,'pwa.css')))
 const html=read('index.html').toString()
 if (!html.includes('</body>')) throw Error('PWA: invalid built HTML')
-write('index.html',html.replace('</body>','<script defer src="./pwa-client.js"></script>\n  </body>'))
+write('index.html',html.replace('</head>','<link rel="manifest" href="./app.webmanifest"><link rel="stylesheet" href="./pwa.css"></head>').replace('</body>','<aside class="inftab-pwa-control" id="pwa-bootstrap"><button type="button">启用离线工作台</button></aside><script defer src="./pwa-bootstrap.js"></script></body>'))
 function walk(dir){return readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(resolve(dir,e.name)):[resolve(dir,e.name)])}
-const allowed = /^(?:index\.html|app\.webmanifest|pwa-client\.js|pwa\.css|pwa-(?:192|512)\.png|windmill\.svg|(?:assets|wallpapers|search-engines|inftab-icons)\/[^?#]+)$/
+const allowed = /^(?:index\.html|app\.webmanifest|pwa-(?:client|bootstrap)\.js|pwa\.css|pwa-(?:192|512)\.png|windmill\.svg|(?:assets|wallpapers|search-engines|inftab-icons)\/[^?#]+)$/
 const files=walk(dist).map(path=>relative(dist,path).split(sep).join('/')).filter(name=>allowed.test(name)).sort()
 if (!files.includes('index.html') || !files.some(name=>name.startsWith('assets/'))) throw Error('PWA: missing app shell')
 const records=files.map(path=>({path,hash:sha(read(path)),bytes:read(path).length}))

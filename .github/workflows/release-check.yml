@@ -31,6 +31,8 @@ jobs:
         run: npm ci
       - name: Check types, run regression tests and build once
         run: npm run verify
+      - name: Build and validate web-only offline assets
+        run: node scripts/build-pwa.mjs && node scripts/check-pwa-build.mjs
       - name: Install Chromium and stable Chrome and Edge
         run: npx playwright install --with-deps chromium chrome msedge
       - name: Run browser end-to-end tests
@@ -56,5 +58,13 @@ jobs:
         with:
           name: verified-dist-${{ github.sha }}
           path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Save verified website build
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-web-${{ github.sha }}
+          path: dist-web/
           if-no-files-found: error
           retention-days: 14
