@@ -212,7 +212,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .workspace-actions button:disabled { opacity: .45; cursor: not-allowed; }
 .workspace-actions .danger { color: #a33333; }
 .workspace-pinned-hint { margin: 3px 10px; }
-.workspace-create { display: flex; flex: none; align-items: center; gap: 9px; min-height: 44px; margin-top: 8px; padding: 0 10px; border: 0; border-top: 1px solid #d9e3da; background: transparent; color: #356f4d; text-align: left; font-weight: 600; cursor: pointer; }
+.workspace-create, .workspace-editor-action { display: flex; flex: none; align-items: center; gap: 9px; min-height: 44px; margin-top: 8px; padding: 0 10px; border: 0; border-top: 1px solid #d9e3da; background: transparent; color: #356f4d; text-align: left; font-weight: 600; cursor: pointer; }
 .workspace-create:disabled { color: #6f7e74; cursor: not-allowed; }
 .workspace-no-results { padding: 16px 8px; color: #66776c; font-size: 13px; text-align: center; }
 .workspace-form { display: grid; gap: 9px; padding: 4px 7px 6px; }
@@ -228,7 +228,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .theme-dark .workspace-panel-heading span, .theme-dark .workspace-form-hint, .theme-dark .workspace-pinned-hint, .theme-dark .workspace-no-results { color: #b0c1b3; }
 .theme-dark .workspace-row.is-active { background: #365d43; color: #fff; }
 .theme-dark .workspace-filter, .theme-dark .workspace-form input { background: #23392c; border-color: #647d69; color: #fff; }
-.theme-dark .workspace-create { color: #b3e2bd; border-color: #506457; }
+.theme-dark .workspace-create, .theme-dark .workspace-editor-action { color: #b3e2bd; border-color: #506457; }
 .theme-dark .workspace-create:disabled { color: #a2b2a5; }
 .theme-dark .workspace-actions .danger, .theme-dark .workspace-form-error { color: #ffaaaa; }
 .theme-dark .workspace-form-actions button { border-color: #66816c; }

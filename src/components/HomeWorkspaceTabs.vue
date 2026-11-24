@@ -228,8 +228,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutsidePoint
           </div>
           <p v-if="!filtered.length" class="workspace-no-results">没有找到匹配的工作区</p>
         </div>
-        <button type="button" class="workspace-create" @click="close(true); emit('editHomeLayout')">首页布局与小组件</button>
-        <button v-if="globalLayout && saveLayout" type="button" class="workspace-create workspace-layout-edit" @click="editLayout">编辑当前工作区布局</button>
+        <button type="button" class="workspace-editor-action" @click="close(true); emit('editHomeLayout')">首页布局与小组件</button>
+        <button v-if="globalLayout && saveLayout" type="button" class="workspace-editor-action workspace-layout-edit" @click="editLayout">编辑当前工作区布局</button>
         <button type="button" class="workspace-create" :disabled="workspaces.length >= maxHomeWorkspaces" @click="beginEdit('')"><Plus :size="17" aria-hidden="true" /> {{ workspaces.length >= maxHomeWorkspaces ? '已达到 20 个工作区上限' : '新建工作区' }}</button>
       </template>
       <form v-else class="workspace-form" @submit.prevent="saveEdit" @keydown.enter="preventCompositionSubmit">

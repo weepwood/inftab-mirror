@@ -22,10 +22,11 @@ function openHistory(): Promise<IDBDatabase> {
 }
 
 export function trimHistory(entries: HistoryEntry[]) {
-  let bytes = 0
-  return [...entries].sort((a, b) => b.createdAt - a.createdAt).filter((entry, index) => {
-    if (index >= maxHistoryEntries || bytes + entry.bytes > maxHistoryBytes) return false
+  let bytes = 0, count = 0
+  return [...entries].sort((a, b) => b.createdAt - a.createdAt).filter(entry => {
+    if (count >= maxHistoryEntries || bytes + entry.bytes > maxHistoryBytes) return false
     bytes += entry.bytes
+    count++
     return true
   })
 }
@@ -50,6 +51,7 @@ export async function captureHistory(snapshot: WorkspaceBackup, reason: HistoryR
         if (reason === 'daily' && entries.some(entry => dayKey(entry.createdAt) === dayKey(now))) { meta.put(dayKey(now), 'lastDaily'); return }
         const entry: HistoryEntry = { id: createLocalId(), createdAt: now, reason, bytes, shortcuts: snapshot.shortcuts.length, content }
         const keep = new Set(trimHistory([entry, ...entries]).map(item => item.id))
+        if (!keep.has(entry.id)) { tx.abort(); return }
         store.put(entry)
         meta.put(dayKey(now), 'lastDaily')
         for (const existing of entries) if (!keep.has(existing.id)) store.delete(existing.id)

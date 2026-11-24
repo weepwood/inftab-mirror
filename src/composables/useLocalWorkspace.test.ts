@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { effectScope } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createLayoutDraft } from '../data/layoutEditor'
 import { parseWorkspaceBackup } from '../data/backup'
 import { defaultFocusTimerState, startFocusTimer } from '../data/focusTimer'
 import { getLocalDateKey, maxCompletionDatesPerHabit } from '../data/habits'
@@ -1022,4 +1023,24 @@ it('persists independent workspace layouts, round-trips backups and resets to gl
   expect(workspace.restoreBackup(legacy, 'merge')).toBeUndefined()
   expect(workspace.homeWorkspaces.value.find(item => item.id === id)?.layout?.columns).toBe(3)
   expect(workspace.saveWorkspaceLayout('missing', { columns: 4 })).toBe(false)
+})
+
+
+it('rejects stale layout drafts and does not turn inherited fields into overrides when only widgets change', () => {
+  scope = effectScope()
+  const workspace = scope.run(() => useLocalWorkspace())!
+  const id = workspace.createHomeWorkspace('Draft workspace')!
+  workspace.saveWorkspaceLayout(id, { columns: 4 })
+  const current = () => workspace.homeWorkspaces.value.find(item => item.id === id)!
+  const draft = createLayoutDraft(current(), workspace.preferences.value)
+  draft.widgetIds = ['todo-summary']
+  expect(workspace.saveHomeLayout(draft)).toBeUndefined()
+  expect(current().layout).toEqual({ columns: 4 })
+  expect(workspace.preferences.value.homeWidgetIds).toEqual(['todo-summary'])
+  const stale = createLayoutDraft(current(), workspace.preferences.value)
+  workspace.updatePreferences({ columns: 8 })
+  stale.layout.columns = 2
+  expect(workspace.saveHomeLayout(stale)).toContain('发生变化')
+  expect(current().layout).toEqual({ columns: 4 })
+  expect(workspace.preferences.value.columns).toBe(8)
 })

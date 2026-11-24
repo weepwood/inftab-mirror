@@ -122,3 +122,14 @@ it('saves only the current workspace layout and supports reverting to global', a
   await wrapper.findAll('.workspace-layout-form button')[0]!.trigger('click')
   expect(saveLayout).toHaveBeenLastCalledWith('work', undefined)
 })
+
+
+it('keeps the layout entry distinct from the create action and restores focus after cancel', async () => {
+  const w = setup()
+  await w.get('.home-workspace-trigger').trigger('click')
+  expect(w.get('.workspace-create').text()).toContain('新建工作区')
+  await w.get('.workspace-editor-action').trigger('click')
+  expect(w.emitted('editHomeLayout')).toEqual([[]])
+  expect(w.find('.workspace-panel').exists()).toBe(false)
+  expect(document.activeElement).toBe(w.get('.home-workspace-trigger').element)
+})
