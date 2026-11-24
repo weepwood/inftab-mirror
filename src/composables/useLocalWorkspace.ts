@@ -11,6 +11,7 @@ import { isValidCustomSearchTemplate } from '../data/search'
 import { defaultFocusTimerState, sanitizeFocusTimerState } from '../data/focusTimerState'
 import { defaultHomeWorkspace, defaultHomeWorkspaceId, maxHomeWorkspaceNameLength, maxHomeWorkspaces, sanitizeActiveHomeWorkspaceId, sanitizeHomeWorkspaces, type HomeWorkspace } from '../data/homeWorkspaces'
 import type { CountdownItem, CustomSearchEngine, Habit, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
+import { maxHabits } from '../data/habits'
 import { createLocalId } from '../data/createId'
 import { truncateCodePoints } from '../data/text'
 
