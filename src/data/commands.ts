@@ -16,6 +16,7 @@ export const homeCommands = [
   { id: 'dark', label: '切换深色主题', detail: '外观', keywords: 'dark theme' },
   { id: 'system', label: '主题跟随系统', detail: '外观', keywords: 'system theme' },
   { id: 'minimal', label: '切换极简模式', detail: '视图', keywords: 'minimal' },
+  { id: 'layout', label: '编辑首页布局与小组件', detail: '视图', keywords: 'layout widgets customize' },
   { id: 'home', label: '返回第一页', detail: '视图', keywords: 'home' },
 ] as const
 

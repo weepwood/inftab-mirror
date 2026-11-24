@@ -1,3 +1,4 @@
+import { layoutSignature, type LayoutEditorDraft } from '../data/layoutEditor'
 import type { ShortcutBatch } from '../data/workspaceTools'
 import { useStoredState } from './useStoredState'
 import { computed, watch } from 'vue'
@@ -174,6 +175,17 @@ export function useLocalWorkspace() {
     return true
   }
 
+  function saveHomeLayout(draft: LayoutEditorDraft): string | undefined {
+    const workspace = homeWorkspaces.value.find(item => item.id === draft.workspaceId)
+    if (!workspace || activeHomeWorkspaceId.value !== draft.workspaceId || layoutSignature(workspace, preferences.value) !== draft.baseline) return '布局已在其他位置发生变化，请关闭后重新编辑。'
+    const layout = draft.inherit ? undefined : sanitizeWorkspaceLayout(draft.layout)
+    if (!draft.inherit && !layout) return '布局配置无效。'
+    const next = sanitizePreferences({ ...preferences.value, homeWidgetIds: draft.widgetIds, homeWidgetSizes: draft.widgetSizes })
+    if (!saveWorkspaceLayout(draft.workspaceId, layout)) return '工作区不存在。'
+    preferences.value = next
+    return undefined
+  }
+
   function updatePreferences(update: Partial<Preferences>) {
     preferences.value = sanitizePreferences({ ...preferences.value, ...update })
   }
@@ -263,6 +275,7 @@ export function useLocalWorkspace() {
     removeNote,
     updatePreferences,
     saveWorkspaceLayout,
+    saveHomeLayout,
     addCustomSearchEngine,
     removeCustomSearchEngine,
     resetPreferences,

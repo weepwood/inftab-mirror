@@ -10,6 +10,7 @@ import { getOverlayFocusable, trapOverlayTab, isComposingKey } from './composabl
 import { useHomeNavigation } from './composables/useHomeNavigation'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent, storageWriteSuccessEvent } from './composables/useStoredState'
+import type { LayoutEditorDraft } from './data/layoutEditor'
 import { resolveWorkspaceLayout } from './data/workspaceLayout'
 import { launcherItems } from './data/defaults'
 import { buildSearchUrl } from './data/search'
@@ -63,6 +64,7 @@ const CommandPalette = lazyPluginComponent(
   '正在加载命令面板…',
   '命令面板暂时无法加载。',
 )
+const HomeLayoutEditor = lazyPluginComponent(() => import('./components/HomeLayoutEditor.vue'), '正在加载布局编辑器…', '布局编辑器加载失败。')
 const HomeWorkspaceTabs = lazyPluginComponent(
   () => import('./components/HomeWorkspaceTabs.vue'),
   '正在加载工作区…',
@@ -113,6 +115,7 @@ const {
   removeNote,
   updatePreferences,
   saveWorkspaceLayout,
+  saveHomeLayout,
   applyShortcutBatch,
   addCustomSearchEngine,
   removeCustomSearchEngine,
@@ -135,6 +138,7 @@ const effectiveTheme = computed(() => preferences.value.themeMode === 'system'
   : preferences.value.themeMode)
 watch(() => preferences.value.themePalette, (palette) => { document.documentElement.dataset.themePalette = palette }, { immediate: true })
 const commandPaletteOpen = ref(false)
+const layoutEditorOpen = ref(false)
 const currentPage = ref(0)
 const pageDirection = ref(1)
 const activePanel = ref<Panel>(null)
@@ -294,7 +298,7 @@ const activePanelListeners = computed<Record<string, (...args: never[]) => void>
   : {})
 const homeWidgetContext = computed(() => ({ preferences: preferences.value, todos: todos.value, addTodo, toggleTodo, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
 const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayout({ preferences: layoutPreferences, viewport, layoutColumns, allLauncherItems, homeDockItems, pageCount, minimalMode, localSearchMode })
-const overlayOpen = computed(() => Boolean(activePanel.value || shortcutDialog.value || folderDialogOpen.value || commandPaletteOpen.value || pendingDestructiveAction.value))
+const overlayOpen = computed(() => Boolean(activePanel.value || shortcutDialog.value || folderDialogOpen.value || commandPaletteOpen.value || layoutEditorOpen.value || pendingDestructiveAction.value))
 const { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen })
 watch(overlayOpen, (open) => { if (open) cancelHomeSwipe() }, { flush: 'sync' })
 
@@ -609,8 +613,17 @@ function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode:
   }).catch(error => { backupExportError.value = '导入已停止：' + (error instanceof Error ? error.message : '无法保存恢复点。') })
 }
 
+function openLayoutEditor() {
+  if (!overlayOpen.value) layoutEditorOpen.value = true
+}
+function applyHomeLayout(draft: LayoutEditorDraft) {
+  const error = saveHomeLayout(draft)
+  if (!error) layoutEditorOpen.value = false
+  return error
+}
+
 function openCommandPalette() {
-  if (!activePanel.value && !shortcutDialog.value && !folderDialogOpen.value && !pendingDestructiveAction.value) commandPaletteOpen.value = true
+  if (!overlayOpen.value) commandPaletteOpen.value = true
 }
 
 async function runCommand(id: string) {
@@ -618,6 +631,7 @@ async function runCommand(id: string) {
   await nextTick()
   if (id === 'find') setLocalSearch(true)
   else if (id === 'add') openShortcutDialog()
+  else if (id === 'layout') openLayoutEditor()
   else if (id === 'minimal') toggleMinimalMode()
   else if (id === 'light' || id === 'dark' || id === 'system') updatePreferences({ themeMode: id })
   else if (id === 'home') goToPage(0)
@@ -626,6 +640,10 @@ async function runCommand(id: string) {
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented || isComposingKey(event) || pendingDestructiveAction.value) return
+  if (layoutEditorOpen.value) {
+    if (event.key === 'Escape') layoutEditorOpen.value = false
+    return
+  }
   if (commandPaletteOpen.value) {
     if (event.key === 'Escape') commandPaletteOpen.value = false
     return
@@ -819,6 +837,7 @@ onBeforeUnmount(() => {
         :save-layout="saveWorkspaceLayout"
         @move="moveHomeWorkspace"
         @remove="requestHomeWorkspaceRemoval"
+        @edit-home-layout="openLayoutEditor"
       />
       <SearchBar
         ref="searchBar"
@@ -906,6 +925,7 @@ onBeforeUnmount(() => {
       </aside>
     </div>
 
+    <HomeLayoutEditor v-if="layoutEditorOpen" :workspace="activeHomeWorkspace" :preferences="preferences" :save="applyHomeLayout" @close="layoutEditorOpen = false" />
     <CommandPalette v-if="commandPaletteOpen" @close="commandPaletteOpen = false" @run="runCommand" />
 
     <FolderDialog
