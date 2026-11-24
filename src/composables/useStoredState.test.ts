@@ -405,3 +405,23 @@ describe('storage failure recovery', () => {
     expect(setItem).toHaveBeenCalledTimes(1)
   })
 })
+
+it('does not echo a timer scheduled while a remote merge is resolving', async () => {
+  vi.useFakeTimers()
+  const previous = '{"first":"before","second":"before"}'
+  const external = '{"first":"remote","second":"before"}'
+  const storage = installMemoryStorage({ 'state.v1': previous })
+  const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
+  vi.stubGlobal('window', { addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener), removeEventListener: vi.fn() })
+  const scope = effectScope()
+  try {
+    const state = scope.run(() => useStoredState('state.v1', { first: 'before', second: 'before' }))!
+    state.value.first = 'local'
+    storage.set('state.v1', external)
+    const pending = listeners.get('storage')!({ key: 'state.v1', oldValue: previous, newValue: external } as StorageEvent)
+    state.value.first = 'remote'
+    await pending
+    expect(state.value).toEqual(JSON.parse(external))
+    expect(vi.getTimerCount()).toBe(0)
+  } finally { scope.stop() }
+})

@@ -148,6 +148,11 @@ export function useStoredState<T>(
         }
       }
     }
+    // Local edits can schedule another write while the merge chunk is loading.
+    // The merged result below is authoritative; never leave that stale timer.
+    clearTimeout(persistTimer)
+    persistTimer = undefined
+    needsWrite = false
     ignoreNextPersistence = true
     try {
       value.value = nextValue
