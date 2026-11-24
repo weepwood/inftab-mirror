@@ -34,7 +34,7 @@ test('launcher sustained operation reports DOM retention and idle recovery', asy
   })
   async function checkpoint() {
     await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toHaveCount(1)
-    await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
+    await expect.poll(() => page.locator('.shortcut-page[aria-hidden="false"]').evaluate(el => Math.abs(el.getBoundingClientRect().left - el.closest('.shortcut-grid-viewport')!.getBoundingClientRect().left))).toBeLessThan(2)
     await expect.poll(() => dock.locator('.home-dock-entry').evaluateAll(els => els.every(el => !(el as HTMLElement).style.transform))).toBe(true)
     await cdp.send('HeapProfiler.collectGarbage')
     const heap = await cdp.send('Runtime.getHeapUsage')

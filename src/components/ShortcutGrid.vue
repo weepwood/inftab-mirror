@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Folder } from '@lucide/vue'
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import { Virtual } from 'swiper/modules'
+import type { Swiper as SwiperInstance } from 'swiper'
+import 'swiper/css'
+import 'swiper/css/virtual'
 import { launcherIcons } from './launcherIcons'
 import { maxDockItems, type LauncherItem, type PageTransitionEffect } from '../types'
 import { useShortcutDrag } from '../composables/useShortcutDrag'
@@ -22,7 +27,6 @@ const props = defineProps<{
   transitionDirection: number
   transitionEffect: PageTransitionEffect
   transitionDuration: number
-  wheelOffset?: number
 }>()
 
 const emit = defineEmits<{
@@ -34,23 +38,34 @@ const emit = defineEmits<{
   reorder: [sourceId: string, targetId: string]
   moveByKeyboard: [itemId: string, direction: -1 | 1]
   swipe: [direction: number]
+  pageChange: [page: number]
+  animationState: [busy: boolean]
 }>()
 
 const pageSize = computed(() => props.columns * props.rows)
 const reservedRows = computed(() => reservedShortcutRows(props.items.length, props.columns, props.rows))
 const pages = computed(() => splitShortcutPages(props.items, pageSize.value))
+const particleMode = computed(() => props.transitionEffect === 'particles')
 const displayPages = computed(() => {
-  const count = pages.value.length
-  const target = physicalPage.value
-  const center = visibleCenter.value
-  const indices = props.transitionEffect === 'particles'
-    ? [target, outgoingPage.value?.index]
-    : count > 1 ? [center - 1, center, center + 1, target] : [target]
-  if (props.transitionEffect === 'trails') indices.push(outgoingPage.value?.index)
-  return [...new Set(indices)].filter((index): index is number => index !== undefined).sort((a, b) => a - b).map(trackIndex => {
-    const pageIndex = ((trackIndex % count) + count) % count
-    return { items: pages.value[pageIndex] ?? [], pageIndex, clone: props.transitionEffect !== 'particles' && trackIndex !== target, trackIndex }
-  })
+  const indices = particleMode.value
+    ? [...new Set([props.currentPage, outgoingPage.value?.index])].filter((index): index is number => index !== undefined)
+    : pages.value.map((_, index) => index)
+  return indices.map(pageIndex => ({ items: pages.value[pageIndex] ?? [], pageIndex }))
+})
+const swiperModules = [Virtual]
+const virtualOptions = { enabled: true, addSlidesBefore: 0, addSlidesAfter: 0 }
+const swiperOptions = computed(() => particleMode.value ? {} : {
+  modules: swiperModules,
+  virtual: pages.value.length > 3 ? virtualOptions : false,
+  initialSlide: props.currentPage,
+  loop: pages.value.length > 1,
+  slidesPerView: 1,
+  slidesPerGroup: 1,
+  speed: slideDuration(),
+  preventInteractionOnTransition: true,
+  noSwipingClass: 'shortcut-cell',
+  simulateTouch: false,
+  watchOverflow: true,
 })
 const contextItem = ref<LauncherItem>()
 const contextPosition = ref({ left: 0, top: 0 })
@@ -58,72 +73,66 @@ const moveAnnouncement = ref('')
 const failedIconUrls = ref(new Map<string, string>())
 let contextMenuTrigger: HTMLElement | undefined
 const gridViewport = ref<HTMLElement>()
-const slideTrack = ref<HTMLElement>()
 const { draggingId, dragPosition, draggedItem, onPointerDown, openItem } = useShortcutDrag(props, emit, gridViewport, pages, moveAnnouncement)
 const outgoingPage = ref<{ index: number; effect: PageTransitionEffect; direction: number; duration: number }>()
 const incomingPage = ref<number>()
-const physicalPage = ref(props.currentPage)
-let slidePosition = physicalPage.value
-const visibleCenter = ref(slidePosition)
-function paintSlide(position: number) {
-  slidePosition = position
-  visibleCenter.value = Math.round(position)
-  // Keep fractional frame updates out of Vue's component render path.
-  slideTrack.value?.style.setProperty('--slide-x', `${(visibleCenter.value - position) * 100}%`)
-}
-let slideFrame = 0
+let swiper: SwiperInstance | undefined
 let transitionTimer = 0
-let velocity = 0
+let requestedPage: number | undefined
+let pendingFocus: string | undefined
 const { playParticleTransition, cancelParticleTransition } = useShortcutParticles(gridViewport)
-function stopSlide() {
-  if (slideFrame) cancelAnimationFrame(slideFrame)
-  slideFrame = 0
-}
 function cancelTransitionTimers() {
-  stopSlide()
   clearTimeout(transitionTimer)
   cancelParticleTransition()
 }
 function prefersReducedMotion() {
   return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
-function snapSlide(duration = props.transitionDuration) {
-  stopSlide()
-  const reduced = props.transitionEffect === 'slide' && prefersReducedMotion()
-  // Committed page plus its signed residual is one continuous input target.
-  // Never use the old rendered position as a new origin on every wheel event.
-  const target = physicalPage.value - (props.transitionEffect === 'slide' && !reduced ? props.wheelOffset ?? 0 : 0)
-  const distance = slidePosition - target
-  if (!duration || reduced || (Math.abs(distance) < .002 && Math.abs(velocity) < .0001)) {
-    paintSlide(target)
-    velocity = 0
-    return
-  }
-  const rate = 8 / Math.max(100, duration)
-  // A committed wheel page should settle monotonically, not overshoot and
-  // flash back. Preserve compatible momentum but discard opposite velocity.
-  const initialVelocity = Math.sign(velocity) === -Math.sign(distance)
-    ? Math.sign(velocity) * Math.min(.008, Math.abs(velocity), rate * Math.abs(distance))
-    : 0
-  const slope = initialVelocity + rate * distance
-  const start = performance.now()
-  const tick = (now: number) => {
-    const time = Math.max(0, now - start)
-    const decay = Math.exp(-rate * time)
-    paintSlide(target + (distance + slope * time) * decay)
-    velocity = (initialVelocity - rate * slope * time) * decay
-    if (time >= duration || (Math.abs(slidePosition - target) < .002 && Math.abs(velocity) < .0001)) {
-      paintSlide(target)
-      velocity = 0
-      slideFrame = 0
-    } else slideFrame = requestAnimationFrame(tick)
-  }
-  slideFrame = requestAnimationFrame(tick)
+function slideDuration() {
+  return props.transitionEffect === 'slide' && prefersReducedMotion() ? 0
+    : props.transitionEffect === 'trails' ? Math.min(1200, Math.max(260, props.transitionDuration)) : props.transitionDuration
 }
-watch(() => props.wheelOffset ?? 0, offset => {
-  if (props.transitionEffect === 'slide' && !prefersReducedMotion()) snapSlide(offset ? 120 : props.transitionDuration)
-})
-
+function restorePageFocus() {
+  const id = pendingFocus
+  pendingFocus = undefined
+  if (!id) return
+  void nextTick(() => {
+    const button = Array.from(gridViewport.value?.querySelectorAll<HTMLElement>('.shortcut-page[aria-hidden="false"] .shortcut-open') ?? [])
+      .find(el => el.closest<HTMLElement>('[data-item-id]')?.dataset.itemId === id)
+    if (!document.activeElement || document.activeElement === document.body || gridViewport.value?.contains(document.activeElement)) button?.focus({ preventScroll: true })
+  })
+}
+function onSwiper(instance: SwiperInstance) {
+  swiper = instance
+  instance.wrapperEl.classList.add('shortcut-pages')
+  requestedPage = undefined
+  emit('animationState', false)
+}
+function onTransitionEnd() {
+  requestedPage = undefined
+  emit('animationState', false)
+  restorePageFocus()
+  if (swiper && !swiper.destroyed && swiper.realIndex !== props.currentPage) navigateSwiper(props.currentPage)
+}
+function onSlideChange(instance: SwiperInstance) {
+  if (instance !== swiper || requestedPage !== undefined) return
+  if (instance.realIndex !== props.currentPage) emit('pageChange', instance.realIndex)
+}
+function navigateSwiper(page: number) {
+  const instance = swiper
+  if (!instance || instance.destroyed || instance.animating) return
+  if (instance.realIndex === page) { restorePageFocus(); return }
+  requestedPage = page
+  const speed = slideDuration()
+  emit('animationState', speed > 0)
+  const count = pages.value.length
+  const next = (instance.realIndex + 1) % count, prev = (instance.realIndex + count - 1) % count
+  if (page === next && (page !== prev || props.transitionDirection > 0)) instance.slideNext(speed)
+  else if (page === prev) instance.slidePrev(speed)
+  else if (instance.params.loop) instance.slideToLoop(page, speed)
+  else instance.slideTo(page, speed)
+  if (!speed) { requestedPage = undefined; emit('animationState', false); restorePageFocus() }
+}
 watch(() => props.currentPage, (pageIndex, previousPage) => {
   if (pageIndex === previousPage) return
   const focusedButton = document.activeElement instanceof HTMLElement
@@ -135,13 +144,7 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
     const slot = focusedItemIndex % pageSize.value
     const targetIndex = Math.min(pageIndex * pageSize.value + slot, props.items.length - 1)
     const targetId = props.items[targetIndex]?.id
-    if (targetId) void nextTick(() => {
-      const buttons = Array.from(gridViewport.value?.querySelectorAll<HTMLElement>('.shortcut-open') ?? [])
-      const targetButton = buttons
-        .find((button) => button.closest<HTMLElement>('[data-item-id]')?.dataset.itemId === targetId
-          && button.closest('.shortcut-page[aria-hidden="false"]'))
-      targetButton?.focus({ preventScroll: true })
-    })
+    if (targetId) pendingFocus = targetId
   }
   cancelTransitionTimers()
   const direction = props.transitionDirection < 0 ? -1 : 1
@@ -151,7 +154,7 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
   incomingPage.value = props.transitionEffect === 'particles' ? pageIndex : undefined
   if (props.transitionEffect !== 'slide') {
     outgoingPage.value = {
-      index: props.transitionEffect === 'particles' ? previousPage : physicalPage.value,
+      index: previousPage,
       effect: props.transitionEffect,
       direction,
       duration,
@@ -164,7 +167,7 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
   }
 
   if (props.transitionEffect === 'particles') {
-    physicalPage.value = pageIndex
+    restorePageFocus()
     const particleDuration = Math.max(duration + 140, 1220)
     transitionTimer = window.setTimeout(() => {
       outgoingPage.value = undefined
@@ -173,21 +176,15 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
     }, particleDuration)
     return
   }
-  const count = pages.value.length
-  const distance = direction > 0 ? (pageIndex - previousPage + count) % count : (previousPage - pageIndex + count) % count
-  physicalPage.value += direction * distance
-  // A commit retargets the same spring; it must not teleport the viewport.
-  // Explicit distant page-dot jumps still use the established instant path.
-  if (distance > 1) paintSlide(physicalPage.value)
-  snapSlide(props.transitionEffect === 'trails' ? duration : props.wheelOffset ? 120 : props.transitionDuration)
+  navigateSwiper(pageIndex)
 })
 
 watch(() => [pages.value.length, props.transitionEffect] as const, () => {
   cancelTransitionTimers()
-  velocity = 0
   outgoingPage.value = undefined
   incomingPage.value = undefined
-  paintSlide(physicalPage.value = props.currentPage)
+  requestedPage = undefined
+  emit('animationState', false)
 }, { flush: 'post' })
 
 watch(() => [...props.items, ...(props.folderShortcuts ?? [])].map((item) => [item.id, item.icon] as const), (icons) => {
@@ -337,6 +334,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   cancelTransitionTimers()
+  emit('animationState', false)
   window.removeEventListener('click', handleWindowClick)
   window.removeEventListener('keydown', closeContextOnEscape)
 })
@@ -361,42 +359,44 @@ onBeforeUnmount(() => {
       </span>
       <span v-if="showNames" class="shortcut-name">{{ draggedItem.title }}</span>
     </div>
-    <div ref="gridViewport" class="shortcut-grid-viewport">
-      <div
-        ref="slideTrack"
-        class="shortcut-pages"
-        :class="{
-          'motion-opt-in': transitionEffect !== 'slide',
-          'particles-mode': transitionEffect === 'particles',
-          'continuous-slide': transitionEffect !== 'particles',
-        }"
-        :style="transitionEffect === 'particles' ? { transform: 'none' } : undefined"
+    <div ref="gridViewport" class="shortcut-grid-viewport" :style="{
+      '--grid-columns': columns,
+      '--grid-rows': reservedRows,
+      '--shortcut-size': `${iconSize}px`,
+      '--shortcut-radius': `${iconRadius}px`,
+      '--outgoing-duration': `${outgoingPage?.duration ?? 0}ms`,
+      '--incoming-duration': `${outgoingPage?.duration ?? transitionDuration}ms`,
+    }">
+      <component
+        :is="particleMode ? 'div' : Swiper"
+        :key="`${transitionEffect}-${pages.length}`"
+        v-bind="swiperOptions"
+        :class="particleMode ? 'shortcut-pages particles-mode motion-opt-in' : 'launcher-swiper'"
+        :style="particleMode ? { transform: 'none' } : undefined"
+        @swiper="onSwiper"
+        @slide-change="onSlideChange"
+        @transition-start="emit('animationState', true)"
+        @transition-end="onTransitionEnd"
       >
-          <section
+          <component
+            :is="particleMode ? 'section' : SwiperSlide"
+            :tag="particleMode ? undefined : 'section'"
             v-for="renderPage in displayPages"
-            :key="renderPage.trackIndex"
+            :key="renderPage.pageIndex"
+            :virtual-index="particleMode ? undefined : renderPage.pageIndex"
             class="shortcut-page"
-          :class="{
-            'particles-out': !renderPage.clone && outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'particles',
-            'particles-in': incomingPage === renderPage.pageIndex && transitionEffect === 'particles',
-            'trails-out': outgoingPage?.index === renderPage.trackIndex && outgoingPage.effect === 'trails',
-            'trails-to-next': outgoingPage?.index === renderPage.trackIndex && outgoingPage.effect === 'trails' && outgoingPage.direction > 0,
-            'trails-to-previous': outgoingPage?.index === renderPage.trackIndex && outgoingPage.effect === 'trails' && outgoingPage.direction < 0,
-          }"
+            :class="{
+              'particles-out': outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'particles',
+              'particles-in': incomingPage === renderPage.pageIndex && particleMode,
+              'trails-out': outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'trails',
+              'trails-to-next': outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'trails' && outgoingPage.direction > 0,
+              'trails-to-previous': outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'trails' && outgoingPage.direction < 0,
+            }"
             :data-page-index="renderPage.pageIndex"
-          :data-render-index="renderPage.trackIndex"
-            :data-clone="String(renderPage.clone)"
-          :aria-hidden="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderPage.trackIndex !== physicalPage"
-          :inert="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderPage.trackIndex !== physicalPage"
-          :style="{
-            transform: transitionEffect !== 'particles' ? `translateX(${(renderPage.trackIndex - visibleCenter) * 100}%)` : undefined,
-            '--grid-columns': columns,
-            '--grid-rows': reservedRows,
-            '--shortcut-size': `${iconSize}px`,
-            '--shortcut-radius': `${iconRadius}px`,
-            '--outgoing-duration': `${outgoingPage?.duration ?? 0}ms`,
-            '--incoming-duration': `${outgoingPage?.duration ?? transitionDuration}ms`,
-          }"
+            :data-clone="String(renderPage.pageIndex !== currentPage && !particleMode)"
+            :aria-hidden="renderPage.pageIndex !== currentPage"
+            :inert="renderPage.pageIndex !== currentPage"
+            :style="particleMode ? { '--grid-rows': reservedRows, '--outgoing-duration': `${outgoingPage?.duration ?? 0}ms`, '--incoming-duration': `${outgoingPage?.duration ?? transitionDuration}ms` } : undefined"
           >
           <article
             v-for="(item, itemIndex) in renderPage.items"
@@ -425,8 +425,8 @@ onBeforeUnmount(() => {
               <span v-if="showNames" class="shortcut-name">{{ item.title }}</span>
             </button>
           </article>
-        </section>
-      </div>
+        </component>
+      </component>
     </div>
 
     <ShortcutContextMenu
