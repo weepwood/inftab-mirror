@@ -15,9 +15,13 @@ function openHistory(): Promise<IDBDatabase> {
     if (!globalThis.indexedDB) { reject(new Error('浏览器不支持本地备份历史。')); return }
     const request = indexedDB.open('inftab-backup-history', 1)
     request.onupgradeneeded = () => { request.result.createObjectStore(storeName, { keyPath: 'id' }); request.result.createObjectStore('meta') }
-    request.onsuccess = () => resolve(request.result)
+    let blocked = false
+    request.onsuccess = () => {
+      if (blocked) request.result.close()
+      else resolve(request.result)
+    }
     request.onerror = () => reject(request.error ?? new Error('无法打开备份历史。'))
-    request.onblocked = () => reject(new Error('备份数据库被其他标签页占用。'))
+    request.onblocked = () => { blocked = true; reject(new Error('备份数据库被其他标签页占用。')) }
   })
 }
 

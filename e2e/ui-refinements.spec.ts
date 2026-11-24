@@ -386,8 +386,61 @@ test('Dock spring retargets across icons and settles without leaving enlarged st
     const b = el.getBoundingClientRect()
     return Array.from(el.querySelectorAll('.home-dock-icon')).every(icon => { const r = icon.getBoundingClientRect(); return r.left >= b.left - 1 && r.right <= b.right + 1 })
   })).toBe(true)
+  const grid = page.locator('.shortcut-grid-viewport')
+  const gridBounds = (await grid.boundingBox())!
+  expect(gridBounds.width).toBeLessThan(1000)
+  expect(Math.abs(gridBounds.x + gridBounds.width / 2 - 720)).toBeLessThan(2)
   await testInfo.attach('launcher-dock-desktop', { body: await page.screenshot(), contentType: 'image/png' })
   await page.mouse.move(720, 130)
   await expect(dock).not.toHaveClass(/is-magnifying/)
   await expect.poll(() => slots.last().evaluate(el => (el as HTMLElement).style.getPropertyValue('--dock-scale'))).toBe('')
+})
+
+test('launcher sustained input retains bounded DOM and reports heap and compositor layers', async ({ page, context }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ columns: 2, rows: 1, pageTransitionEffect: 'slide', dockItemIds: ['weather','notes'], dockMagnification: true })))
+  await page.goto('/')
+  const grid = page.locator('.shortcut-grid-viewport')
+  await expect(grid).toBeVisible()
+  const cdp = await context.newCDPSession(page)
+  let maxLayers = 0, layerSamples = 0
+  cdp.on('LayerTree.layerTreeDidChange', event => {
+    if (event.layers) { layerSamples++; maxLayers = Math.max(maxLayers, event.layers.length) }
+  })
+  try {
+    await cdp.send('LayerTree.enable')
+    await cdp.send('HeapProfiler.collectGarbage')
+    const before = await cdp.send('Runtime.getHeapUsage')
+    const stats = await grid.evaluate(async el => {
+      let maxSlots = 0, blank = 0
+      const intervals: number[] = []
+      let previous = performance.now()
+      for (let i = 0; i < 80; i++) {
+        await new Promise<void>(resolve => requestAnimationFrame(now => {
+          intervals.push(now - previous); previous = now
+          el.dispatchEvent(new WheelEvent('wheel', { deltaX: i % 8 < 4 ? 100 : -100, bubbles: true, cancelable: true }))
+          const bounds = el.getBoundingClientRect()
+          const slots = [...el.querySelectorAll('.shortcut-page')]
+          maxSlots = Math.max(maxSlots, slots.length)
+          if (!slots.some(slot => { const r = slot.getBoundingClientRect(); return r.left < bounds.right && r.right > bounds.left && slot.querySelector('.shortcut-cell') })) blank++
+          resolve()
+        }))
+      }
+      const sorted = [...intervals].sort((a,b) => a-b)
+      return { frames: intervals.length, p95: sorted[Math.floor((sorted.length-1)*.95)], maxFrame: sorted.at(-1), maxSlots, blank }
+    })
+    await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toHaveCount(1)
+    await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
+    await cdp.send('HeapProfiler.collectGarbage')
+    const after = await cdp.send('Runtime.getHeapUsage')
+    const result = { ...stats, maxLayers, layerSamples, heapBefore: before.usedSize, heapAfter: after.usedSize, heapDelta: after.usedSize-before.usedSize }
+    await testInfo.attach('launcher-stress-diagnostics', { body: JSON.stringify(result), contentType: 'application/json' })
+    console.log('Launcher stress diagnostics:', JSON.stringify(result))
+    expect(stats.frames).toBe(80)
+    expect(stats.maxSlots).toBeLessThanOrEqual(4)
+    expect(stats.blank).toBe(0)
+  } finally {
+    await cdp.send('LayerTree.disable')
+    await cdp.detach()
+  }
 })

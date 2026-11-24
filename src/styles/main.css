@@ -1271,3 +1271,12 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 @media (min-width: 781px) and (min-height: 680px) {
   .home.home-with-dock:not(.home-scrollable) .home-content:not(.home-content-minimal):not(:has(.home-clock,.search-area,.home-widget-shelf,.panel-loading)) { padding-bottom: 88px; }
 }
+
+/* Wide clean launcher: visually group the icons without changing stored spacing or mobile layout. */
+@media (min-width: 1100px) and (min-height: 680px) {
+  .home:not(.home-scrollable) .home-content:not(.home-content-minimal):not(:has(.home-clock,.search-area,.home-widget-shelf,.panel-loading)) .shortcut-grid-wrap {
+    max-width: min(100%, calc(var(--grid-columns) * (var(--shortcut-size) + var(--shortcut-gap-x) + 48px)));
+  }
+  .home-actions { padding: 4px; gap: 3px; border-radius: 16px; }
+  .home-actions .round-action { width: 36px; height: 36px; }
+}
