@@ -34,6 +34,11 @@ let suppressClick = false
 let suppressedClickPointerId: number | undefined
 let magnificationFrame = 0
 let pointerX = 0
+let lastFrame = 0
+let dirty = false
+let hovering = false
+let geometry: { slots: HTMLElement[]; left: number; right: number; size: number } | undefined
+const springs = new Map<HTMLElement, { scale: number; velocity: number; target: number }>()
 const dragId = ref<string>()
 const dropTarget = ref<{ id: string; after: boolean }>()
 const failedIcons = ref<Record<string, string>>({})
@@ -48,6 +53,7 @@ function slotBounds(el: HTMLElement) {
   return { left, right: left + el.offsetWidth, width: el.offsetWidth }
 }
 const flips = new Map<HTMLElement, Animation>()
+watch(() => props.magnificationEnabled, enabled => { if (!enabled) clearDockMagnification() })
 watch(() => props.items.map(item => item.id).join('|'), async (_, __, onCleanup) => {
   const before = new Map(entries().map(el => [el, el.getBoundingClientRect().left]))
   flips.forEach(animation => animation.cancel())
@@ -171,42 +177,82 @@ function preventGestureClick(event: MouseEvent) {
 function updateDockMagnification(event: PointerEvent) {
   if (event.pointerType === 'touch' || dragId.value || !props.magnificationEnabled || !dock.value) return
   pointerX = event.clientX
-  if (magnificationFrame) return
-  magnificationFrame = window.requestAnimationFrame(() => {
-    magnificationFrame = 0
+  hovering = dirty = true
+  queueMagnification()
+}
+
+function queueMagnification() {
+  if (!magnificationFrame) magnificationFrame = requestAnimationFrame(paintMagnification)
+}
+
+function paintMagnification(now: number) {
+  magnificationFrame = 0
+  if (!dock.value) return
+  if (dirty) {
+    dirty = false
     const slots = entries()
-    if (!slots.length) return
-    const first = slotBounds(slots[0]!)
-    const last = slotBounds(slots.at(-1)!)
-    const itemSize = first.width || 48
-    const pitch = slots.length > 1 ? (last.left - first.left) / (slots.length - 1) : itemSize
-    const influenceRadius = Math.max(itemSize, pitch) * 2.8
-    dock.value?.classList.add('is-magnifying')
-    const scales = slots.map((_, index) => {
-      const proximity = Math.max(0, 1 - Math.abs(pointerX - first.left - itemSize / 2 - index * pitch) / influenceRadius)
-      return 1 + .65 * proximity * proximity * (3 - 2 * proximity)
+    if (!slots.length) { clearDockMagnification(); return }
+    const first = slotBounds(slots[0]!), last = slotBounds(slots.at(-1)!)
+    const size = first.width || 48
+    const radius = Math.max(size, (last.left - first.left) / Math.max(1, slots.length - 1)) * 2.8
+    const bounds = dock.value.getBoundingClientRect()
+    geometry = { slots, size, left: bounds.width ? Math.max(0, first.left - bounds.left) : size * slots.length, right: bounds.width ? Math.max(0, bounds.right - last.right) : size * slots.length }
+    slots.forEach(el => {
+      const rect = slotBounds(el)
+      const p = Math.max(0, 1 - Math.abs(pointerX - rect.left - rect.width / 2) / radius)
+      const state = springs.get(el) ?? { scale: 1, velocity: 0, target: 1 }
+      state.target = hovering ? 1 + .65 * p * p * (3 - 2 * p) : 1
+      springs.set(el, state)
     })
-    const expansion = scales.map(scale => (scale - 1) * Math.max(0, itemSize - 4))
-    const total = expansion.reduce((sum, value) => sum + value, 0)
-    const bounds = dock.value?.getBoundingClientRect()
-    const left = bounds?.width ? Math.max(0, first.left - bounds.left) : total
-    const right = bounds?.width ? Math.max(0, bounds.right - last.right) : total
-    const factor = Math.min(1, (left + right) / (total || 1))
-    let offset = Math.max(-left, Math.min(-total * factor / 2, right - total * factor))
-    dock.value?.style.setProperty('--dock-lift', String(1 + (Math.max(...scales) - 1) * factor * .18))
-    slots.forEach((entry, index) => {
-      const extra = expansion[index]! * factor
-      entry.style.setProperty('--dock-scale', (1 + (scales[index]! - 1) * factor).toFixed(3))
-      entry.style.setProperty('--dock-shift-x', `${(offset + extra / 2).toFixed(2)}px`)
-      entry.style.zIndex = scales[index]! > 1.05 ? '2' : ''
-      offset += extra
-    })
+  }
+  if (!geometry) return
+  // Exact solution of x'' + 2*w*x' + w*w*x = 0, preserving velocity on retarget.
+  // Time is milliseconds; w = .028/ms. No frame-rate-dependent Euler integration.
+  const dt = lastFrame ? Math.min(64, Math.max(0, now - lastFrame)) : 16
+  lastFrame = now
+  const rate = .028, decay = Math.exp(-rate * dt)
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const { slots, left, right, size } = geometry
+  let moving = false
+  const scales = slots.map(el => {
+    const s = springs.get(el)!
+    const distance = s.scale - s.target, slope = s.velocity + rate * distance
+    s.scale = reduced ? s.target : s.target + (distance + slope * dt) * decay
+    s.velocity = reduced ? 0 : (s.velocity - rate * slope * dt) * decay
+    if (Math.abs(s.scale - s.target) > .001 || Math.abs(s.velocity) > .00005) moving = true
+    else { s.scale = s.target; s.velocity = 0 }
+    return Math.max(1, Math.min(1.65, s.scale))
   })
+  const expansion = scales.map(scale => (scale - 1) * Math.max(0, size - 4))
+  const total = expansion.reduce((sum, value) => sum + value, 0)
+  const factor = Math.min(1, (left + right) / (total || 1))
+  let offset = Math.max(-left, Math.min(-total * factor / 2, right - total * factor))
+  dock.value.classList.add('is-magnifying')
+  dock.value.style.setProperty('--dock-lift', String(1 + (Math.max(...scales) - 1) * factor * .18))
+  slots.forEach((entry, index) => {
+    const extra = expansion[index]! * factor
+    entry.style.setProperty('--dock-scale', (1 + (scales[index]! - 1) * factor).toFixed(3))
+    entry.style.setProperty('--dock-shift-x', `${(offset + extra / 2).toFixed(2)}px`)
+    entry.style.zIndex = scales[index]! > 1.05 ? '2' : ''
+    offset += extra
+  })
+  if (moving) queueMagnification()
+  else if (!hovering) clearDockMagnification()
+  else lastFrame = 0
+}
+
+function releaseDockMagnification() {
+  hovering = false
+  if (geometry) { dirty = true; queueMagnification() }
+  else clearDockMagnification()
 }
 
 function clearDockMagnification() {
-  if (magnificationFrame) window.cancelAnimationFrame(magnificationFrame)
-  magnificationFrame = 0
+  cancelAnimationFrame(magnificationFrame)
+  magnificationFrame = lastFrame = 0
+  hovering = dirty = false
+  geometry = undefined
+  springs.clear()
   dock.value?.classList.remove('is-magnifying')
   dock.value?.style.removeProperty('--dock-lift')
   entries().forEach(entry => {
@@ -275,7 +321,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <nav v-if="items.length" ref="dock" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled, 'dock-auto-hide': props.autoHide, 'dock-menu-open': Boolean(contextItem), 'dock-dragging': Boolean(dragId) }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px` }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="clearDockMagnification" @click.capture="preventGestureClick">
+  <nav v-if="items.length" ref="dock" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled, 'dock-auto-hide': props.autoHide, 'dock-menu-open': Boolean(contextItem), 'dock-dragging': Boolean(dragId) }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px` }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="releaseDockMagnification" @click.capture="preventGestureClick">
     <div class="home-dock-track">
       <div v-for="item in items" :key="item.id" class="home-dock-entry" :data-title="item.title" :class="{ 'dock-drag-source': dragId === item.id, 'dock-drop-before': dropTarget?.id === item.id && !dropTarget.after, 'dock-drop-after': dropTarget?.id === item.id && dropTarget.after }" @dragover="previewDrop($event, item.id)" @drop="dropItem($event, item.id)">
         <button

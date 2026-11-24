@@ -299,6 +299,9 @@ test('records frame intervals and track coverage during uninterrupted and revers
     const grid = document.querySelector<HTMLElement>('.shortcut-grid-viewport')!
     const intervals: number[] = []
     let blank = 0
+    const longTasks: number[] = []
+    const observer = PerformanceObserver.supportedEntryTypes.includes('longtask') ? new PerformanceObserver(list => longTasks.push(...list.getEntries().map(entry => entry.duration))) : undefined
+    observer?.observe({ type: 'longtask' })
     let maxSlots = 0
     let previous = performance.now()
     const started = previous
@@ -323,9 +326,13 @@ test('records frame intervals and track coverage during uninterrupted and revers
       }
       requestAnimationFrame(frame)
     })
-    return { intervals, blank, maxSlots, sent }
+    longTasks.push(...(observer?.takeRecords().map(entry => entry.duration) ?? []))
+    observer?.disconnect()
+    const ordered = [...intervals].sort((a,b) => a-b)
+    return { intervals, blank, maxSlots, sent, longTasks, p95: ordered[Math.floor((ordered.length - 1) * .95)], maxFrame: ordered.at(-1) }
   })
   await testInfo.attach('frame-diagnostics', { body: JSON.stringify(stats), contentType: 'application/json' })
+  console.log('Launcher frame diagnostics:', JSON.stringify({ p95: stats.p95, maxFrame: stats.maxFrame, longTasks: stats.longTasks, blank: stats.blank, maxSlots: stats.maxSlots }))
   expect(stats.sent).toBe(8)
   expect(stats.blank).toBe(0)
   expect(stats.maxSlots).toBeLessThanOrEqual(4)
@@ -362,4 +369,25 @@ test('empty launcher area follows touch movement and cancellation returns to its
   await touch('pointermove', 160)
   await touch('pointerup', 160)
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
+})
+
+test('Dock spring retargets across icons and settles without leaving enlarged styles', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ dockItemIds: ['weather','notes','calendar','calculator'], dockMagnification: true })))
+  await page.goto('/')
+  const dock = page.locator('.home-dock')
+  const slots = dock.locator('.home-dock-entry')
+  await slots.first().hover()
+  await expect.poll(() => slots.first().evaluate(el => Number((el as HTMLElement).style.getPropertyValue('--dock-scale')))).toBeGreaterThan(1.1)
+  await slots.last().hover()
+  await expect.poll(() => slots.last().evaluate(el => Number((el as HTMLElement).style.getPropertyValue('--dock-scale')))).toBeGreaterThan(1.1)
+  await expect.poll(() => dock.evaluate(el => {
+    const b = el.getBoundingClientRect()
+    return Array.from(el.querySelectorAll('.home-dock-icon')).every(icon => { const r = icon.getBoundingClientRect(); return r.left >= b.left - 1 && r.right <= b.right + 1 })
+  })).toBe(true)
+  await testInfo.attach('launcher-dock-desktop', { body: await page.screenshot(), contentType: 'image/png' })
+  await page.mouse.move(720, 130)
+  await expect(dock).not.toHaveClass(/is-magnifying/)
+  await expect.poll(() => slots.last().evaluate(el => (el as HTMLElement).style.getPropertyValue('--dock-scale'))).toBe('')
 })

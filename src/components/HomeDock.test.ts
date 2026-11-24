@@ -158,7 +158,9 @@ describe('HomeDock magnification', () => {
     wrapper.get('.home-dock').element.dispatchEvent(pointerEvent('pointermove', {
       pointerType: 'mouse', clientX: 24,
     }))
-    runFrame?.(0)
+    { const callback = runFrame; runFrame = undefined; callback?.(16) }
+    expect(parseFloat((entries[0]!.element as HTMLElement).style.getPropertyValue('--dock-scale'))).toBeLessThan(1.65)
+    for (let time = 32; time <= 640; time += 16) { const callback = runFrame; runFrame = undefined; callback?.(time) }
 
     expect((entries[0]!.element as HTMLElement).style.getPropertyValue('--dock-scale')).toBe('1.650')
     expect(Number((entries[1]!.element as HTMLElement).style.getPropertyValue('--dock-scale'))).toBeGreaterThan(1)
@@ -167,6 +169,7 @@ describe('HomeDock magnification', () => {
     expect(wrapper.get('.home-dock').classes()).toContain('is-magnifying')
 
     wrapper.get('.home-dock').element.dispatchEvent(pointerEvent('pointerleave', {}))
+    for (let time = 656; time <= 1296; time += 16) { const callback = runFrame; runFrame = undefined; callback?.(time) }
 
     expect((entries[0]!.element as HTMLElement).style.getPropertyValue('--dock-scale')).toBe('')
     expect((entries[1]!.element as HTMLElement).style.getPropertyValue('--dock-shift-x')).toBe('')

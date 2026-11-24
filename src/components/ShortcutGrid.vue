@@ -106,7 +106,7 @@ function snapSlide(duration = props.transitionDuration) {
     const decay = Math.exp(-rate * time)
     paintSlide(target + (distance + slope * time) * decay)
     velocity = (initialVelocity - rate * slope * time) * decay
-    if (time >= duration || Math.abs(slidePosition - target) < .002) {
+    if (time >= duration || (Math.abs(slidePosition - target) < .002 && Math.abs(velocity) < .0001)) {
       paintSlide(target)
       velocity = 0
       slideFrame = 0
@@ -115,7 +115,7 @@ function snapSlide(duration = props.transitionDuration) {
   slideFrame = requestAnimationFrame(tick)
 }
 watch(() => props.wheelOffset ?? 0, offset => {
-  if (props.transitionEffect !== 'slide') return
+  if (props.transitionEffect !== 'slide' || prefersReducedMotion()) return
   if (offset) {
     stopSlide()
     const now = performance.now()
@@ -187,6 +187,11 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
   const distance = direction > 0 ? (pageIndex - previousPage + count) % count : (previousPage - pageIndex + count) % count
   physicalPage.value += direction * distance
   previewOrigin = undefined
+  if (props.transitionEffect === 'slide' && props.wheelOffset && !prefersReducedMotion()) {
+    previewOrigin = physicalPage.value
+    paintSlide(previewOrigin - props.wheelOffset)
+    return
+  }
   if (distance > 1) paintSlide(physicalPage.value)
   snapSlide(props.transitionEffect === 'trails' ? duration : props.transitionDuration)
 })

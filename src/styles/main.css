@@ -175,7 +175,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .home-dock-item { width: var(--dock-item-size, 48px); height: var(--dock-item-size, 48px); display: grid; place-items: center; border: 0; border-radius: 10px; padding: 0; background: transparent; color: #fff; cursor: pointer; }
 .home-dock-item:focus-visible { outline-offset: 3px; }
 .home-dock-icon { width: var(--dock-icon-size, 44px); height: var(--dock-icon-size, 44px); display: grid; place-items: center; overflow: hidden; border-radius: 12px; corner-shape: squircle; color: #303640; font-size: 19px; box-shadow: 0 3px 9px rgba(8, 12, 17, .24); transform: translateX(var(--dock-shift-x, 0px)) scale(var(--dock-scale, 1)); transform-origin: center bottom; transition: transform .16s cubic-bezier(.2, .8, .2, 1); }
-.home-dock.is-magnifying .home-dock-icon { transition: transform 85ms cubic-bezier(.2,.85,.3,1); }
+.home-dock.is-magnifying .home-dock-icon, .home-dock.is-magnifying::before { transition: none; }
 .home-dock-entry:hover .home-dock-icon, .home-dock-item:focus-visible .home-dock-icon { outline: 2px solid var(--dock-glow-color, rgba(255, 255, 255, .8)); outline-offset: 1px; }
 .home-dock-icon img { width: 100%; height: 100%; object-fit: contain; }
 .dock-context-menu { width: 176px; }
@@ -1261,3 +1261,13 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .page-dot.active::after { box-shadow: 0 0 0 1px #0003, 0 1px 5px #0006; }
 @media (hover: none) { .shortcut-open:hover:not(:active) .shortcut-icon { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .page-dot::after { transition: none; } }
+
+/* Compact visual hierarchy: keep controls and icon grid dimensions user-owned. */
+.home-actions { border-color: #ffffff35; background: linear-gradient(180deg,#ffffff20,#ffffff0d); box-shadow: 0 4px 20px #00000012, inset 0 1px 0 #ffffff25; }
+.theme-dark .home-actions { background: linear-gradient(180deg,#22262d99,#171a20aa); border-color: #ffffff20; }
+.home-actions .round-action[aria-pressed="true"] { background: #ffffff2b; }
+.shortcut-open:focus-visible .shortcut-icon { outline: 2px solid #fff; outline-offset: 3px; }
+.shortcut-icon { corner-shape: squircle; }
+@media (min-width: 781px) and (min-height: 680px) {
+  .home.home-with-dock:not(.home-scrollable) .home-content:not(.home-content-minimal):not(:has(.home-clock,.search-area,.home-widget-shelf,.panel-loading)) { padding-bottom: 88px; }
+}
