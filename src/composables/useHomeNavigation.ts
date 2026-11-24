@@ -11,14 +11,14 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
   const wheelOffset = ref(0)
   let accumulated = 0
+  let lastWheelTime = 0
+  let speed = 0
   let frame = 0
   const threshold = 100
   function resetWheel() {
-    if (wheelTimer !== undefined) clearTimeout(wheelTimer)
-    if (frame) cancelAnimationFrame(frame)
-    frame = 0
-    wheelTimer = undefined
-    accumulated = 0
+    clearTimeout(wheelTimer)
+    cancelAnimationFrame(frame)
+    frame = accumulated = speed = lastWheelTime = 0
     wheelOffset.value = 0
   }
   let wheelTimer: ReturnType<typeof setTimeout> | undefined
@@ -31,10 +31,9 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   
   function goToPage(page: number) {
     if (page === currentPage.value) return
-    resetWheel()
-    const forward = (page - currentPage.value + pageCount.value) % pageCount.value
-    pageDirection.value = forward <= pageCount.value / 2 ? 1 : -1
-    currentPage.value = page
+    const count = pageCount.value
+    const forward = (page - currentPage.value + count) % count
+    movePage(forward <= count / 2 ? forward : forward - count)
   }
   
   function startHomeSwipe(event: PointerEvent) {
@@ -59,18 +58,30 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
     const delta = (horizontal ? event.deltaX : event.deltaY) * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? threshold : 1)
     if (!Number.isFinite(delta) || !delta || !event.cancelable) return
     event.preventDefault()
-    accumulated += Math.max(-threshold, Math.min(threshold, delta))
-    if (Math.abs(accumulated) >= threshold) {
-      movePage(Math.sign(accumulated))
+    // Discrete wheel notches remain one-page actions; preserve the fractional
+    // remainder of high-resolution input instead of discarding it at each turn.
+    if (Math.abs(delta) >= threshold) {
+      movePage(Math.sign(delta))
       return
+    }
+    const now = performance.now()
+    speed = delta / Math.max(16, now - lastWheelTime)
+    lastWheelTime = now
+    accumulated += delta
+    if (Math.abs(accumulated) >= threshold) {
+      const direction = Math.sign(accumulated)
+      const remainder = accumulated - direction * threshold
+      movePage(direction)
+      accumulated = remainder
     }
     if (!frame) frame = requestAnimationFrame(() => {
       frame = 0
       wheelOffset.value = -accumulated / threshold * 0.8
     })
-    if (wheelTimer !== undefined) clearTimeout(wheelTimer)
+    clearTimeout(wheelTimer)
     wheelTimer = setTimeout(() => {
-      if (Math.abs(accumulated) >= 40) movePage(Math.sign(accumulated))
+      const direction = Math.sign(accumulated)
+      if (Math.abs(accumulated) + Math.max(-20, Math.min(20, direction * speed * 24)) >= 40) movePage(direction)
       else resetWheel()
     }, 100)
   }

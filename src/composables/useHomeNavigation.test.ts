@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { effectScope, ref } from 'vue'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { useHomeNavigation } from './useHomeNavigation'
 
 it('does not flip pages or consume scroll while an overlay is open', () => {
@@ -29,5 +29,37 @@ it('accepts consecutive and reversed wheel inputs without a cooldown, wrapping i
   try {
     for (const deltaY of [100, 100, -100]) nav.handleHomeWheel(new WheelEvent('wheel', { deltaY, cancelable: true }))
     expect(currentPage.value).toBe(0)
+  } finally { scope.stop() }
+})
+
+it('preserves fine-grained wheel remainder and allows reversal before settling', () => {
+  vi.useFakeTimers()
+  const scope = effectScope()
+  const currentPage = ref(0)
+  const nav = scope.run(() => useHomeNavigation({ currentPage, overlayOpen: ref(false), pageDirection: ref(1), pageCount: ref(5), minimalMode: ref(false), shortHomeScrollEnabled: ref(false) }))!
+  const wheel = (deltaX: number) => nav.handleHomeWheel(new WheelEvent('wheel', { deltaX, cancelable: true }))
+  try {
+    wheel(70)
+    wheel(60)
+    expect(currentPage.value).toBe(1)
+    wheel(-30)
+    vi.advanceTimersByTime(150)
+    expect(currentPage.value).toBe(1)
+    expect(nav.wheelOffset.value).toBe(0)
+    wheel(-100)
+    expect(currentPage.value).toBe(0)
+  } finally { scope.stop(); vi.useRealTimers() }
+})
+
+it('uses the shortest cyclic path for explicit page selections', () => {
+  const scope = effectScope()
+  const currentPage = ref(0)
+  const pageDirection = ref(1)
+  const nav = scope.run(() => useHomeNavigation({ currentPage, pageDirection, overlayOpen: ref(false), pageCount: ref(5), minimalMode: ref(false), shortHomeScrollEnabled: ref(false) }))!
+  try {
+    nav.goToPage(4)
+    expect([currentPage.value, pageDirection.value]).toEqual([4, -1])
+    nav.goToPage(1)
+    expect([currentPage.value, pageDirection.value]).toEqual([1, 1])
   } finally { scope.stop() }
 })
