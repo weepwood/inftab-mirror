@@ -1156,3 +1156,11 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .workspace-layout-form input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--ui-accent); }
 .workspace-layout-form .workspace-form-actions { flex-wrap: wrap; }
 .workspace-layout-form .workspace-form-actions button { min-height: 36px; padding: 0 9px; }
+
+/* Short viewports must leave room for the list even with all workspace actions.
+   A single scroll container keeps both rows and footer buttons reachable. */
+@media (max-height: 440px) {
+  .workspace-panel { overflow-y: auto; overscroll-behavior: contain; }
+  .workspace-panel-heading, .workspace-list, .workspace-form { flex: none; }
+  .workspace-list, .workspace-layout-form { overflow: visible; max-height: none; }
+}

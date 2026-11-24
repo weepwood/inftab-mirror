@@ -14,6 +14,8 @@ on:
       - 'src/styles/tokens.css'
       - 'src/components/SettingsPanel.vue'
       - 'src/components/SelectField.vue'
+      - 'src/components/HomeWorkspaceTabs.vue'
+      - 'e2e/workspace-switcher.spec.ts'
       - 'e2e/ui-refinements.spec.ts'
       - 'e2e/visual-system.spec.ts'
       - '.github/workflows/risk-check.yml'
@@ -42,7 +44,7 @@ jobs:
       - name: Install only Chromium
         run: npx playwright install --with-deps chromium
       - name: Verify overlay and visual contracts
-        run: npm run test:e2e -- e2e/visual-system.spec.ts e2e/accessibility.spec.ts e2e/ui-refinements.spec.ts
+        run: npm run test:e2e -- e2e/visual-system.spec.ts e2e/accessibility.spec.ts e2e/ui-refinements.spec.ts e2e/workspace-switcher.spec.ts
       - name: Save failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

@@ -29,6 +29,12 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 480 
     const filter = page.getByRole('searchbox', { name: '查找工作区' })
     await filter.fill('19')
     await expect(page.locator('.home-workspace-tab')).toHaveCount(1)
+    const filteredBounds = await page.locator('.home-workspace-tab').boundingBox()
+    expect(filteredBounds?.height ?? 0).toBeGreaterThan(0)
+    if (viewport.height <= 440) {
+      await expect(panel).toHaveCSS('overflow-y', 'auto')
+      await expect(page.locator('.workspace-list')).toHaveCSS('overflow-y', 'visible')
+    }
     await page.getByRole('button', { name: '工作区 19', exact: true }).click()
     await expect(trigger).toContainText('工作区 19')
     await page.reload()
