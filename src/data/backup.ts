@@ -1,3 +1,4 @@
+import { sanitizeCustomTheme } from './customTheme'
 import { isRecord } from './validation'
 import { availableHomeWidgetIds, maxDockItems, type CountdownItem, type CustomSearchEngine, type Habit, type Note, type Preferences, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
 import { launcherItems } from './defaults'
@@ -75,6 +76,7 @@ export function parseWorkspaceBackup(value: unknown): WorkspaceBackup {
   const optionalPreferenceTypes: Record<string, (item: unknown) => boolean> = {
     themeMode: (item) => ['light', 'dark', 'system'].includes(String(item)),
     themePalette: (item) => typeof item === 'string' && ['forest', 'slate', 'indigo', 'sand'].includes(item),
+    customTheme: (item) => item === null || !!sanitizeCustomTheme(item),
     wallpaperRotation: (item) => ['off', 'hourly', 'daily'].includes(String(item)),
     wallpaperRotationLastAt: (item) => typeof item === 'number' && Number.isFinite(item) && item >= 0,
     hiddenLauncherIds: (item) => Array.isArray(item) && item.every((id) => typeof id === 'string' && launcherItems.some((launcher) => launcher.id === id && launcher.action && launcher.id !== 'settings')),

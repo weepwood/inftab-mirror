@@ -11,6 +11,7 @@ import { useHomeNavigation } from './composables/useHomeNavigation'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent, storageWriteSuccessEvent } from './composables/useStoredState'
 import type { LayoutEditorDraft } from './data/layoutEditor'
+import { applyCustomTheme } from './data/customTheme'
 import { resolveWorkspaceLayout } from './data/workspaceLayout'
 import { launcherItems } from './data/defaults'
 import { buildSearchUrl } from './data/search'
@@ -137,6 +138,7 @@ const effectiveTheme = computed(() => preferences.value.themeMode === 'system'
   ? (systemPrefersDark.value ? 'dark' : 'light')
   : preferences.value.themeMode)
 watch(() => preferences.value.themePalette, (palette) => { document.documentElement.dataset.themePalette = palette }, { immediate: true })
+watch(() => preferences.value.customTheme, theme => applyCustomTheme(document.documentElement, theme), { immediate: true })
 const commandPaletteOpen = ref(false)
 const layoutEditorOpen = ref(false)
 const currentPage = ref(0)
@@ -778,6 +780,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   historyDisposed = true
   if (historyTimer !== undefined) clearTimeout(historyTimer)
+  applyCustomTheme(document.documentElement)
   delete document.documentElement.dataset.themePalette
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', updateViewport)

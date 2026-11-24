@@ -11,6 +11,8 @@ export type PageTransitionEffect = 'slide' | 'particles' | 'trails'
 export type WallpaperRotation = 'off' | 'hourly' | 'daily'
 export type ThemeMode = 'light' | 'dark' | 'system'
 export type ThemePalette = 'forest' | 'slate' | 'indigo' | 'sand'
+export interface ThemeColors { accent: string; surface: string; text: string }
+export interface CustomTheme { light: ThemeColors; dark: ThemeColors; radius: number; opacity: number }
 export type HomeWidgetSize = 'standard' | 'wide' | 'full'
 export const maxDockItems = 24
 
@@ -86,6 +88,7 @@ export interface Note {
 export interface Preferences {
   themeMode: ThemeMode
   themePalette: ThemePalette
+  customTheme?: CustomTheme | null
   openShortcutsInNewTab: boolean
   openSearchInNewTab: boolean
   openBookmarksInNewTab: boolean

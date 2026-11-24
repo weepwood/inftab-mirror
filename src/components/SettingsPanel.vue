@@ -4,6 +4,8 @@ import type { WorkspaceTools } from '../data/workspaceTools'
 import { lazyPluginComponent } from '../plugins/asyncComponent'
 const ShortcutManager = lazyPluginComponent(() => import('./ShortcutManager.vue'), '正在加载数据管理…', '数据管理加载失败。')
 const showManager = ref(false)
+const CustomThemeEditor = lazyPluginComponent(() => import('./CustomThemeEditor.vue'), '正在加载主题编辑器…', '主题编辑器加载失败。')
+const showThemeEditor = ref(false)
 import { Check, Database, FolderPlus, House, LayoutGrid, Palette, Plus, Search, X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { launcherItems, searchModes, wallpaperChoices } from '../data/defaults'
@@ -306,6 +308,11 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       <label class="toggle-row"><span>显示时间和日期</span><input type="checkbox" :checked="preferences.showClock" @change="update('showClock', ($event.target as HTMLInputElement).checked)" /></label>
     </section>
 
+    <section class="settings-section">
+      <div class="section-heading"><div><h3>自定义主题</h3><p>{{ preferences.customTheme ? '已启用自定义配色，关闭后恢复内置配色' : '独立编辑浅色和深色外观' }}</p></div></div>
+      <button class="button-secondary" type="button" :aria-expanded="showThemeEditor" @click="showThemeEditor = !showThemeEditor">{{ showThemeEditor ? '收起主题编辑器' : '打开主题编辑器' }}</button>
+      <CustomThemeEditor v-if="showThemeEditor" :theme="preferences.customTheme" @apply="update('customTheme', $event)" />
+    </section>
     <section class="settings-section">
       <div class="section-heading">
         <div><h3>背景图库</h3><p>选择归档壁纸或本地背景主题</p></div>

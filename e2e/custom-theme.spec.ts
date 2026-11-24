@@ -1,0 +1,26 @@
+import { expect, test } from '@playwright/test'
+test('custom theme draft applies, persists and restores built-in palette', async ({ page }) => {
+  await page.goto('/')
+  const open = async () => {
+    await page.locator('.home-actions').getByRole('button', {name:'打开设置',exact:true}).click()
+    await page.getByRole('button',{name:'打开主题编辑器'}).click()
+    return page.locator('.custom-theme-editor')
+  }
+  let editor = await open()
+  await expect(editor).toBeVisible()
+  await editor.getByLabel('浅色强调色').fill('#394a82')
+  await expect(page.locator('html')).not.toHaveAttribute('data-custom-theme','')
+  await editor.getByRole('button',{name:'应用自定义主题'}).click()
+  await expect(page.locator('html')).toHaveAttribute('data-custom-theme','')
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.style.getPropertyValue('--custom-light-accent'))).toBe('#394a82')
+  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('inftab.preferences.v1')??'{}').customTheme?.light.accent)).toBe('#394a82')
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-custom-theme','')
+  editor = await open()
+  await editor.getByRole('button',{name:'深色预览'}).click()
+  await editor.getByLabel('深色正文颜色').fill('#202a39')
+  await expect(editor.getByRole('button',{name:'应用自定义主题'})).toBeDisabled()
+  await editor.getByRole('button',{name:'取消草稿并重载'}).click()
+  await editor.getByRole('button',{name:'恢复内置配色'}).click()
+  await expect(page.locator('html')).not.toHaveAttribute('data-custom-theme','')
+})
