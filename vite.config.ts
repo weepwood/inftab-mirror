@@ -3,7 +3,22 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   base: './',
-  plugins: [vue()],
+  plugins: [vue(), {
+    name: 'swiper-budget-isolation',
+    apply: 'build',
+    generateBundle(_, bundle) {
+      const vendor = Object.values(bundle).filter(chunk => chunk.type === 'chunk' && chunk.name === 'swiper-vendor')
+      if (vendor.length !== 1 || vendor[0]?.type !== 'chunk') throw new Error('Expected one isolated Swiper vendor chunk')
+      const isSwiper = (id: string) => id.replaceAll('\\', '/').includes('/node_modules/swiper/')
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== 'chunk') continue
+        for (const [id, module] of Object.entries(chunk.modules)) {
+          if (!module.renderedLength) continue
+          if (isSwiper(id) !== (chunk.name === 'swiper-vendor')) throw new Error('Swiper budget isolation violated: ' + id + ' in ' + chunk.name)
+        }
+      }
+    },
+  }],
   server: { allowedHosts: ['.e2b.app'] },
   preview: { allowedHosts: ['.e2b.app'] },
   build: {
@@ -14,6 +29,8 @@ export default defineConfig({
           // add request and gzip overhead. Dynamic panels/widgets stay lazy.
           groups: [
             { name: 'startup', tags: ['$initial'], priority: 20 },
+            // Only Swiper-owned modules qualify for the separate gzip allowance.
+            { name: 'swiper-vendor', test: /\/node_modules\/swiper\//, priority: 30, includeDependenciesRecursively: false },
             // Coalesce only non-startup Lucide modules: a dozen tiny icon files
             // otherwise repeat import/gzip overhead. Never pull tools into home.
             {

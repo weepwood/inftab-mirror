@@ -9,6 +9,7 @@ const budgets = {
   javascriptGzip: 156 * 1024, // Includes opt-in management, HTML and backup history chunks.
   // Keeps the backup parser in the lazy settings chunk and preserves headroom for startup code.
   javascriptEntryGzip: 60.5 * 1024, // Bounded overhead for optional workspace data; heavy tools remain lazy.
+  swiperGzip: 30 * 1024, // Only the isolated, verified Swiper vendor chunk.
   cssGzip: 64 * 1024,
   totalOutput: 4 * 1024 * 1024,
 }
@@ -24,7 +25,10 @@ const files = collectFiles(outputDirectory)
 const javascriptFiles = files.filter((path) => path.endsWith('.js'))
 const cssFiles = files.filter((path) => path.endsWith('.css'))
 const gzipSize = (paths) => paths.reduce((total, path) => total + gzipSync(readFileSync(path)).byteLength, 0)
-const javascriptGzip = gzipSize(javascriptFiles)
+const swiperFiles = javascriptFiles.filter(path => /^swiper-vendor-[\w-]+\.js$/.test(path.split(/[\\/]/).at(-1)))
+if (swiperFiles.length !== 1) throw new Error('Expected exactly one isolated Swiper vendor asset')
+const swiperGzip = gzipSize(swiperFiles)
+const javascriptGzip = gzipSize(javascriptFiles.filter(path => !swiperFiles.includes(path)))
 const html = readFileSync(join(outputDirectory, 'index.html'), 'utf8')
 const entryAssets = [
   ...[...html.matchAll(/<script\b(?=[^>]*\btype="module")(?=[^>]*\bsrc="([^"]+)")[^>]*>/g)].map((match) => match[1]),
@@ -43,11 +47,12 @@ const cssGzip = gzipSize(cssFiles)
 const totalOutput = files.reduce((total, path) => total + statSync(path).size, 0)
 
 const format = (bytes) => `${(bytes / 1024).toFixed(1)} KiB`
-console.log(`Bundle budgets: initial JS gzip ${format(javascriptEntryGzip)} / ${format(budgets.javascriptEntryGzip)}, all JS gzip ${format(javascriptGzip)} / ${format(budgets.javascriptGzip)}, CSS gzip ${format(cssGzip)} / ${format(budgets.cssGzip)}, output ${format(totalOutput)} / ${format(budgets.totalOutput)}`)
+console.log(`Bundle budgets: initial JS gzip ${format(javascriptEntryGzip)} / ${format(budgets.javascriptEntryGzip)}, non-Swiper JS gzip ${format(javascriptGzip)} / ${format(budgets.javascriptGzip)}, Swiper gzip ${format(swiperGzip)} / ${format(budgets.swiperGzip)}, combined JS gzip ${format(javascriptGzip + swiperGzip)} / ${format(budgets.javascriptGzip + budgets.swiperGzip)}, CSS gzip ${format(cssGzip)} / ${format(budgets.cssGzip)}, output ${format(totalOutput)} / ${format(budgets.totalOutput)}`)
 
 const exceeded = [
   ['Initial JavaScript gzip', javascriptEntryGzip, budgets.javascriptEntryGzip],
-  ['JavaScript gzip', javascriptGzip, budgets.javascriptGzip],
+  ['Non-Swiper JavaScript gzip', javascriptGzip, budgets.javascriptGzip],
+  ['Swiper vendor gzip', swiperGzip, budgets.swiperGzip],
   ['CSS gzip', cssGzip, budgets.cssGzip],
   ['Total output', totalOutput, budgets.totalOutput],
 ].filter(([, actual, limit]) => actual > limit)
