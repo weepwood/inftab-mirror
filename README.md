@@ -87,6 +87,7 @@ npm run test:e2e:extension
 - 合并到 main：仅构建与校验产物后自动更新 Pages，属于持续预览，不等同于正式版本验收。
 - 正式里程碑版本（如 v1.1.0、v1.2.0）：合并 `docs/releases/vX.Y.0.md` 正式里程碑说明、推送对应 tag 或手动运行 Release validation，对相同提交运行全部浏览器、生产和扩展测试。正式 Release/扩展发布前必须确认该提交的完整验证通过；此工作流不自动创建公开 Release。
 - 小修订与补丁 tag 默认不触发全量 E2E；涉及数据迁移、权限、导航等高风险改动时，可手动运行 Release validation 或针对性 E2E。
+- Focused UI validation 仅在浮层焦点、首页导航、命令面板、主题令牌或专项测试文件变化时运行 Chromium 专项验证，也支持手动触发；不作为所有普通 PR 的全量回归门禁。
 
 GitHub Pages 使用 `dist/` 作为发布目录。首次部署前，在仓库 **Settings → Pages → Build and deployment** 中将 Source 设为 **GitHub Actions**。之后推送到 `main` 会自动构建并发布；也可以在 Actions 页面手动运行工作流。`vite.config.ts` 使用相对资源路径，支持部署在仓库子路径下。
 

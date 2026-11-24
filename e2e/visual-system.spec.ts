@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test('palette is persistent, applies to native command dialog and preserves keyboard focus', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
-  await page.getByRole('button', { name: '打开设置', exact: true }).click()
+  await page.locator('.home-actions').getByRole('button', { name: '打开设置', exact: true }).click()
   await page.getByRole('combobox', { name: '界面配色' }).selectOption('indigo')
   await expect(page.locator('html')).toHaveAttribute('data-theme-palette', 'indigo')
   await page.locator('.panel-close').click()
@@ -20,6 +20,10 @@ test('palette is persistent, applies to native command dialog and preserves keyb
   await search.press('Enter')
   await expect(dialog).toHaveCount(0)
   await expect(page.locator('.home')).toHaveClass(/theme-dark/)
+  await trigger.click()
+  await expect(dialog).toHaveCSS('color', 'rgb(236, 235, 250)')
+  await dialog.getByRole('combobox', { name: '搜索命令' }).press('Escape')
+  await expect(dialog).toHaveCount(0)
   await expect(trigger).toBeFocused()
 })
 
