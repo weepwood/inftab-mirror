@@ -194,12 +194,12 @@ function paintMagnification(now: number) {
     if (!slots.length) { clearDockMagnification(); return }
     const first = slotBounds(slots[0]!), last = slotBounds(slots.at(-1)!)
     const size = first.width || 48
-    const radius = Math.max(size, (last.left - first.left) / Math.max(1, slots.length - 1)) * 2.8
+    const pitch = (last.left - first.left) / Math.max(1, slots.length - 1)
+    const radius = Math.max(size, pitch) * 2.8
     const bounds = dock.value.getBoundingClientRect()
     geometry = { slots, size, left: bounds.width ? Math.max(0, first.left - bounds.left) : size * slots.length, right: bounds.width ? Math.max(0, bounds.right - last.right) : size * slots.length }
-    slots.forEach(el => {
-      const rect = slotBounds(el)
-      const p = Math.max(0, 1 - Math.abs(pointerX - rect.left - rect.width / 2) / radius)
+    slots.forEach((el, index) => {
+      const p = Math.max(0, 1 - Math.abs(pointerX - first.left - size / 2 - index * pitch) / radius)
       const state = springs.get(el) ?? { scale: 1, velocity: 0, target: 1 }
       state.target = hovering ? 1 + .65 * p * p * (3 - 2 * p) : 1
       springs.set(el, state)
