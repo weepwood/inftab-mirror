@@ -17,13 +17,15 @@
   const info=document.createElement('p'); info.className='pwa-info'
   const check=document.createElement('button'); check.type='button';check.textContent='检查更新'
   const inspect=document.createElement('button');inspect.type='button';inspect.textContent='刷新缓存信息'
-  const installHelp=document.createElement('p');installHelp.textContent='未显示安装按钮时，可查看浏览器菜单中的安装应用或添加到主屏幕。'
-  const help=document.createElement('p');help.textContent='新版本验证完成后，关闭所有工作台标签页再打开。浏览器支持时可安装应用。'
+  const installHelp=document.createElement('p');installHelp.textContent='安装：Chrome/Edge 地址栏或菜单 → 安装应用；iOS Safari 分享 → 添加到主屏幕。'
+  const help=document.createElement('p');help.textContent='更新需关闭全部工作台标签页再打开。离线可用本地工具，天气、搜索等网络功能需联网。'
   details.append(summary,info,check,inspect,help,installHelp)
   const status=document.createElement('span')
   status.setAttribute('role','status'); status.className='pwa-status'
   root.append(button,install,details,status); document.body.append(root)
-  let registration, prompt, busy=false, stopped=false, updateFailed=false
+  let registration, prompt=window.__inftabInstallPrompt, busy=false, stopped=false, updateFailed=false
+  delete window.__inftabInstallPrompt
+  install.hidden=!prompt
   const requestWorker=type=>new Promise((resolve,reject)=>{
     if(!controlled())return reject(Error('离线工作线程尚未就绪。'))
     const channel=new MessageChannel()
@@ -32,7 +34,7 @@
     navigator.serviceWorker.controller.postMessage({type},[channel.port2])
   })
   async function refreshInfo(){
-    try{const data=await requestWorker('cache-info');info.textContent='版本 '+data.revision.slice(0,8)+' · '+data.count+' 个资源 · '+(data.bytes/1048576).toFixed(2)+' MiB · '+data.versions+' 份版本缓存'}catch(error){info.textContent=error.message}
+    try{const data=await requestWorker('cache-info');info.textContent='版本 '+data.revision.slice(0,8)+' · '+data.count+'/'+(data.expected??data.count)+' 个资源 · '+(data.bytes/1048576).toFixed(2)+' MiB · '+data.versions+' 份版本缓存'+(data.count<data.expected?' · 缓存缺失，建议联网清理后重新启用':'')}catch(error){info.textContent=error.message}
   }
   details.addEventListener('toggle',()=>{if(details.open)void refreshInfo()})
   inspect.addEventListener('click',refreshInfo)
@@ -47,8 +49,8 @@
   function render(){
     if(busy||stopped)return
     const ready=controlled()
-    details.hidden=!ready
-    check.disabled=!navigator.onLine
+    details.hidden=!ready && !registration
+    check.disabled=!navigator.onLine || !ready
     if(ready&&details.open)void refreshInfo()
     button.textContent=ready?'停用并清理离线缓存':'启用离线工作台'
     status.textContent=ready&&!navigator.onLine?'离线模式 · 本地功能可用':registration?.waiting?'新版本已缓存，关闭所有工作台标签页后更新。':registration?.installing?'正在下载并验证新版本…':ready?(updateFailed?'更新失败，当前缓存仍可使用。':'离线资源已就绪'):''
@@ -62,12 +64,13 @@
       worker.addEventListener('statechange',()=>{if(worker.state==='redundant'&&controlled())updateFailed=true;render()})
       render()
     }
-    candidate.addEventListener('updatefound',observeWorker)
+    candidate.onupdatefound=observeWorker
     observeWorker()
     candidate.waiting?.addEventListener('statechange',render)
   }
   async function enable(){
     if(busy)return
+    if(!navigator.onLine){status.textContent='请联网后启用离线工作台。';return}
     busy=true;button.disabled=true;status.textContent='正在准备离线资源…'
     try {
       const existing=await navigator.serviceWorker.getRegistration(base.href)

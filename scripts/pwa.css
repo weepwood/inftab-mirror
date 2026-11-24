@@ -13,3 +13,6 @@
 
 @media(max-width:480px){.inftab-pwa-control{max-width:calc(100vw - 24px)}.inftab-pwa-control .pwa-details{max-height:45vh;overflow:auto;overscroll-behavior:contain}}
 @media(prefers-reduced-motion:reduce){.inftab-pwa-control *{animation:none;transition:none}}
+
+.inftab-pwa-control .pwa-details{box-shadow:0 8px 24px #0003;backdrop-filter:blur(16px)}
+.inftab-pwa-control .pwa-status{max-width:100%;overflow-wrap:anywhere}

@@ -21,6 +21,7 @@ let wrapper: VueWrapper = null!
 async function mountApp(): Promise<VueWrapper> {
   wrapper = mount(App, { attachTo: document.body })
   await vi.waitFor(() => expect(wrapper.find('.shortcut-grid-wrap').exists()).toBe(true), { timeout: 5_000 })
+  if (JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').showSearchBar) await vi.waitFor(() => expect(wrapper.find('.search-area').exists()).toBe(true))
   return wrapper
 }
 
@@ -105,8 +106,7 @@ describe('new-tab landmarks', () => {
     expect(wrapper.find('.home-clock').exists()).toBe(false)
     expect(wrapper.find('.search-area').exists()).toBe(false)
     window.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true, cancelable: true }))
-    await nextTick()
-    expect(wrapper.find('[aria-label="搜索快捷入口名称或网址"]').exists()).toBe(true)
+    await vi.waitFor(() => expect(wrapper.find('[aria-label="搜索快捷入口名称或网址"]').exists()).toBe(true))
   })
   it('offers only direct page dots without previous/next arrow controls', async () => {
     await mountApp()
@@ -385,7 +385,7 @@ describe('new-tab keyboard search', () => {
     window.dispatchEvent(shortcut)
 
     expect(shortcut.defaultPrevented).toBe(true)
-    await nextTick()
+    await vi.waitFor(() => expect(wrapper.find('input[type="search"]').exists()).toBe(true))
     const input = wrapper.get('input[type="search"]')
     expect(input.attributes('placeholder')).toBe('搜索快捷入口名称或网址')
     await waitForLauncherSearch()
@@ -405,7 +405,7 @@ describe('new-tab keyboard search', () => {
     localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true }))
     await mountApp()
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', metaKey: true, bubbles: true, cancelable: true }))
-    await nextTick()
+    await vi.waitFor(() => expect(wrapper.find('input[type="search"]').exists()).toBe(true))
     const input = wrapper.get('input[type="search"]')
     await waitForLauncherSearch()
     await input.setValue('there-is-no-matching-shortcut')

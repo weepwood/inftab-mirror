@@ -289,3 +289,14 @@ test('default homepage does not fetch the optional clock until enabled', async (
   await expect(page.locator('.home-clock')).toBeVisible()
   expect(clockRequests).toHaveLength(1)
 })
+
+test('default launcher only fetches the search component when requested', async ({ page }) => {
+  const requests: string[] = []
+  page.on('request', request => { if (/\/assets\/SearchBar-[^/]+\.js(?:\?|$)/.test(request.url())) requests.push(request.url()) })
+  await page.reload()
+  await expect(page.locator('.shortcut-grid-viewport')).toBeVisible()
+  expect(requests).toHaveLength(0)
+  await page.keyboard.press('Control+f')
+  await expect(page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })).toBeFocused()
+  expect(requests).toHaveLength(1)
+})

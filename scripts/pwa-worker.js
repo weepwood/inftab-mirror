@@ -59,7 +59,7 @@ self.addEventListener('message',event=>{
         const keys=await caches.keys()
         const cache=keys.includes(cacheName)?await caches.open(cacheName):null
         const present=new Set(cache?(await cache.keys()).map(request=>request.url):[])
-        port.postMessage({ok:true,revision:REVISION,count:present.size,bytes:ASSETS.reduce((sum,[path,,bytes])=>sum+(present.has(new URL(path,scope).href)?bytes:0),0),versions:keys.filter(ownedCache).length})
+        port.postMessage({ok:true,revision:REVISION,count:present.size,expected:ASSETS.length,bytes:ASSETS.reduce((sum,[path,,bytes])=>sum+(present.has(new URL(path,scope).href)?bytes:0),0),versions:keys.filter(ownedCache).length})
         return
       }
       if(disabling) throw Error('正在清理离线缓存。')

@@ -84,3 +84,16 @@ test('offline management does not recreate cleared caches after disable',async({
   await expect(page.getByRole('button',{name:'启用离线工作台'})).toBeVisible()
   expect(await page.evaluate(()=>localStorage.getItem('inftab.pwa.enabled.v1'))).toBeNull()
 })
+
+test('reports cache completeness and provides install guidance',async({page,context})=>{
+  await page.goto('/')
+  await page.getByRole('button',{name:'启用离线工作台'}).click()
+  await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller),{timeout:30000}).toBe(true)
+  await page.locator('.pwa-details summary').click()
+  await expect(page.locator('.pwa-info')).toContainText(/\d+\/\d+ 个资源/)
+  await expect(page.locator('.pwa-details')).toContainText('添加到主屏幕')
+  await context.setOffline(true)
+  await expect(page.locator('.pwa-status')).toContainText('离线模式')
+  await expect(page.getByRole('button',{name:'检查更新'})).toBeDisabled()
+  await context.setOffline(false)
+})
