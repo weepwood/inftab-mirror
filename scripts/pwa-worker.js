@@ -64,9 +64,10 @@ self.addEventListener('message',event=>{
       }
       if(disabling) throw Error('正在清理离线缓存。')
       if(self.registration.waiting||self.registration.installing) throw Error('新版本正在更新，请关闭工作台标签页后重试。')
-      const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true})
-      if(clients.some(client=>client.id!==source.id&&inScope(client.url))) throw Error('请先关闭其他工作台标签页，再停用并清理。')
       disabling=true
+      const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true})
+      if(clients.some(client=>client.id!==source.id&&inScope(client.url))){disabling=false;throw Error('请先关闭其他工作台标签页，再停用并清理。')}
+      if(self.registration.waiting||self.registration.installing){disabling=false;throw Error('新版本正在更新，请关闭工作台标签页后重试。')}
       if(!await self.registration.unregister()){disabling=false;throw Error('注销失败，请重新检查离线状态。')}
       for(const key of await caches.keys()) if(ownedCache(key)) await caches.delete(key)
       port.postMessage({ok:true})

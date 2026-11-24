@@ -6,6 +6,7 @@ on:
       - 'scripts/build-pwa.mjs'
       - 'scripts/pwa-*'
       - 'e2e/pwa-offline.spec.ts'
+      - 'e2e/pwa-update.spec.ts'
       - 'playwright.config.ts'
       - '.github/workflows/pwa-check.yml'
   workflow_dispatch:
@@ -27,7 +28,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e:production:built -- e2e/pwa-offline.spec.ts
+      - run: npm run test:e2e:production:built -- e2e/pwa-offline.spec.ts e2e/pwa-update.spec.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
