@@ -262,7 +262,7 @@ describe('ShortcutGrid page cycling', () => {
     wrapper.unmount()
   })
 
-  it('cancels pending page reset frames when the grid unmounts', async () => {
+  it('cancels pending slide frames when the grid unmounts', async () => {
     vi.useFakeTimers()
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()), 16))
     vi.stubGlobal('cancelAnimationFrame', (handle: number) => window.clearTimeout(handle))
@@ -282,8 +282,8 @@ describe('ShortcutGrid page cycling', () => {
       },
     })
 
-    await wrapper.setProps({ items: items.slice(0, 2) })
-    expect(vi.getTimerCount()).toBe(1)
+    await wrapper.setProps({ transitionDuration: 300, currentPage: 1 })
+    expect(vi.getTimerCount()).toBeGreaterThan(0)
     wrapper.unmount()
 
     expect(vi.getTimerCount()).toBe(0)

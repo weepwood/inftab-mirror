@@ -152,7 +152,7 @@ function updateDockMagnification(event: PointerEvent) {
       const bounds = entry.getBoundingClientRect()
       return bounds.left + bounds.width / 2
     })
-    const itemSize = centers.length > 1 ? Math.abs(centers[1]! - centers[0]!) : 48
+    const itemSize = centers.length > 1 ? Math.abs(centers[1]! - centers[0]!) : (entries[0]?.offsetWidth || 48)
     const influenceRadius = itemSize * 3
     dock.value?.classList.add('is-magnifying')
     const scales = centers.map(center => {
@@ -161,10 +161,16 @@ function updateDockMagnification(event: PointerEvent) {
     })
     const expansion = scales.map(scale => (scale - 1) * Math.max(0, itemSize - 4))
     const total = expansion.reduce((sum, value) => sum + value, 0)
-    let offset = -total / 2
+    const bounds = dock.value?.getBoundingClientRect()
+    const left = centers[0]! - itemSize / 2
+    const right = centers.at(-1)! + itemSize / 2
+    const room = bounds?.width ? Math.max(0, bounds.right - right) + Math.max(0, left - bounds.left) : total
+    const factor = total > 0 ? Math.min(1, room / total) : 1
+    let offset = bounds?.width ? -Math.min(total * factor / 2, Math.max(0, left - bounds.left)) : -total / 2
+    if (bounds?.width) offset = Math.min(offset, Math.max(0, bounds.right - right) - total * factor)
     entries.forEach((entry, index) => {
-      const extra = expansion[index]!
-      entry.style.setProperty('--dock-scale', scales[index]!.toFixed(3))
+      const extra = expansion[index]! * factor
+      entry.style.setProperty('--dock-scale', (1 + (scales[index]! - 1) * factor).toFixed(3))
       entry.style.setProperty('--dock-shift-x', `${(offset + extra / 2).toFixed(2)}px`)
       entry.style.zIndex = scales[index]! > 1.05 ? '2' : ''
       offset += extra

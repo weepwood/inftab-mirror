@@ -1222,3 +1222,13 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
   .home-dock.dock-auto-hide.dock-dragging { transform: translateX(-50%); }
   .home-dock.dock-auto-hide::after { content: ''; position: absolute; top: 4px; left: 50%; width: 34px; height: 3px; border-radius: 99px; background: #ffffff80; transform: translateX(-50%); pointer-events: none; }
 }
+
+/* Stable visual hierarchy without changing stored launcher dimensions. */
+.shortcut-grid-wrap { isolation: isolate; }
+.page-dot:focus-visible { outline-offset: 2px; }
+.home-dock-entry::before { content: attr(data-title); position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ui-text); background: var(--ui-surface); border: 1px solid var(--ui-border); padding: 4px 8px; border-radius: 7px; font-size: 11px; opacity: 0; pointer-events: none; transition: opacity 100ms ease; z-index: 5; }
+@media (hover: hover) and (pointer: fine) {
+  .home-dock:not(.dock-dragging) .home-dock-entry:hover::before, .home-dock-entry:focus-within::before { opacity: 1; transform: translate(var(--dock-shift-x, 0px), calc(-1 * var(--dock-icon-size) * (var(--dock-scale, 1) - 1))) translateX(-50%); }
+  .home-dock:not(.magnification-off) .home-dock-track { padding-top: calc(var(--dock-item-size) * .7 + 34px); }
+}
+@media (prefers-reduced-motion: reduce) { .home-dock-entry::before { transition: none; } }

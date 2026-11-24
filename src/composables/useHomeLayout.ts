@@ -45,7 +45,7 @@ export function useHomeLayout({ preferences, viewport, layoutColumns, allLaunche
     const searchVisible = preferences.value.showSearchBar || localSearchMode.value || minimalMode.value
     const tabHeight = searchVisible && !localSearchMode.value && preferences.value.visibleSearchModes.length ? (veryShortHeight ? 26 : smallMobile ? 28 : 33) : 0
     const searchHeight = searchVisible ? Math.min(preferences.value.searchHeight, veryShortHeight ? 44 : mobile ? 48 : 100) : 0
-    const configuredTopGap = searchVisible ? preferences.value.gridTopGap * (mobile && !compactHeight ? 0.68 : 1) : 0
+    const configuredTopGap = searchVisible ? preferences.value.gridTopGap * (mobile && !compactHeight ? 0.68 : 1) : 16
     const gridTopGap = veryShortHeight ? Math.min(configuredTopGap, 16) : compactHeight ? Math.min(configuredTopGap, 28) : configuredTopGap
     const paginationHeight = pageCount.value > 1 ? (veryShortHeight ? 31 : compactHeight ? 37 : mobile ? 43 : 48) : 0
     const nameHeight = preferences.value.showNames ? (smallMobile ? 13 : 17) + 7 : 0

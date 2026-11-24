@@ -10,6 +10,7 @@ import type { WorkspaceBackup } from '../data/backup'
 const props = defineProps<{ tools: WorkspaceTools }>()
 const query = ref('')
 const tagFilter = ref('')
+const workspaceFilter = ref('')
 const selected = ref<string[]>([])
 const destination = ref('')
 const tag = ref('')
@@ -26,7 +27,7 @@ const tags = computed(() => [...new Set(props.tools.shortcuts.flatMap(item => it
 const searchRows = computed(() => props.tools.shortcuts.map(item => ({ item, text: (item.title + ' ' + item.url + ' ' + (item.tags ?? []).join(' ')).toLowerCase() })))
 const filtered = computed(() => {
   const term = query.value.trim().toLowerCase()
-  return searchRows.value.filter(row => (!tagFilter.value || row.item.tags?.includes(tagFilter.value)) && row.text.includes(term)).map(row => row.item)
+  return searchRows.value.filter(row => (!tagFilter.value || row.item.tags?.includes(tagFilter.value)) && (!workspaceFilter.value || props.tools.workspaces.find(w => w.id === workspaceFilter.value)?.itemIds.includes(row.item.id)) && row.text.includes(term)).map(row => row.item)
 })
 const shortcutIds = computed(() => new Set(props.tools.shortcuts.map(item => item.id)))
 const selectedIds = computed(() => selected.value.filter(id => shortcutIds.value.has(id)))
@@ -122,6 +123,7 @@ function exportHistory(id: string) { void execute(async () => { downloadWorkspac
     <fieldset :disabled="busy">
       <legend>批量管理快捷入口</legend>
       <label>搜索入口<input v-model="query" type="search" placeholder="名称、网址、标签" /></label>
+      <label>所属工作区<select v-model="workspaceFilter"><option value="">全部工作区</option><option v-for="workspace in tools.workspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></select></label>
       <label>标签筛选<select v-model="tagFilter"><option value="">全部标签</option><option v-for="item in tags" :key="item">{{ item }}</option></select></label>
       <div class="manager-actions"><button type="button" @click="selectVisible">全选筛选结果</button><button type="button" @click="selected = []; confirmDelete = false">清空选择</button><span>{{ selectedIds.length }} / {{ tools.shortcuts.length }} 已选</span></div>
       <div class="manager-list" role="group" aria-label="选择快捷入口">
