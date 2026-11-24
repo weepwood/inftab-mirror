@@ -20,9 +20,12 @@
     "verify": "npm run check && npm test && npm run build",
     "test": "vitest run && node scripts/check-default-assets.mjs",
     "test:e2e": "playwright test",
-    "test:e2e:production": "npm run build && playwright test --config playwright.production.config.ts",
-    "test:e2e:stable": "npm run build && playwright test --config playwright.stable.config.ts",
-    "test:e2e:extension": "npm run check && npm run build && playwright test --config playwright.extension.config.ts"
+    "test:e2e:production": "npm run build && npm run test:e2e:production:built",
+    "test:e2e:stable": "npm run build && npm run test:e2e:stable:built",
+    "test:e2e:extension": "npm run check && npm run build && npm run test:e2e:extension:built",
+    "test:e2e:production:built": "playwright test --config playwright.production.config.ts",
+    "test:e2e:stable:built": "playwright test --config playwright.stable.config.ts",
+    "test:e2e:extension:built": "playwright test --config playwright.extension.config.ts"
   },
   "dependencies": {
     "@lucide/vue": "^1.55.0",

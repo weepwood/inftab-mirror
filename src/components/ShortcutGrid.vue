@@ -3,7 +3,9 @@ import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, r
 import { Folder } from '@lucide/vue'
 import { launcherIcons } from './launcherIcons'
 import { maxDockItems, type LauncherItem, type PageTransitionEffect } from '../types'
-import { truncateCodePoints } from '../data/text'
+import { useShortcutDrag } from '../composables/useShortcutDrag'
+import { useShortcutParticles } from '../composables/useShortcutParticles'
+import { splitShortcutPages, reservedShortcutRows } from '../data/shortcutPagination'
 
 const ShortcutContextMenu = defineAsyncComponent(() => import('./ShortcutContextMenu.vue'))
 
@@ -34,16 +36,10 @@ const emit = defineEmits<{
 }>()
 
 const pageSize = computed(() => props.columns * props.rows)
-const reservedRows = computed(() => Math.min(props.rows, Math.max(1, Math.ceil(props.items.length / props.columns))))
+const reservedRows = computed(() => reservedShortcutRows(props.items.length, props.columns, props.rows))
 const cycleCount = 5
 const centerCycle = Math.floor(cycleCount / 2)
-const pages = computed(() => {
-  const result: LauncherItem[][] = []
-  for (let index = 0; index < props.items.length; index += pageSize.value) {
-    result.push(props.items.slice(index, index + pageSize.value))
-  }
-  return result
-})
+const pages = computed(() => splitShortcutPages(props.items, pageSize.value))
 function centeredPhysicalPage(pageIndex = props.currentPage) {
   return pages.value.length > 1 ? pages.value.length * centerCycle + pageIndex : pageIndex
 }
@@ -75,160 +71,20 @@ const contextPosition = ref({ left: 0, top: 0 })
 const moveAnnouncement = ref('')
 const failedIconUrls = ref(new Map<string, string>())
 let contextMenuTrigger: HTMLElement | undefined
-const draggingId = ref('')
-const dragPosition = ref({ x: 0, y: 0 })
-const draggedItem = computed(() => props.items.find((item) => item.id === draggingId.value))
 const gridViewport = ref<HTMLElement>()
+const { draggingId, dragPosition, draggedItem, onPointerDown, openItem } = useShortcutDrag(props, emit, gridViewport, pages, moveAnnouncement)
 const outgoingPage = ref<{ index: number; effect: PageTransitionEffect; direction: number; duration: number }>()
 const incomingPage = ref<number>()
 const physicalPage = ref(props.transitionEffect === 'particles' ? props.currentPage : centeredPhysicalPage())
 const trackOffsetPx = ref(0)
 const resettingTrack = ref(false)
-let pointer: {
-  id: number
-  type: string
-  x: number
-  y: number
-  clientX: number
-  clientY: number
-  sourceId: string
-  targetId: string
-  dockTargetId?: string
-  dragging: boolean
-  scrolling: boolean
-  scrollContainer?: HTMLElement
-  scrollStartTop: number
-  hold?: number
-} | undefined
-let suppressClick = false
-let suppressClickTimer = 0
-let edgeTimer: number | undefined
-let edgeDirection = 0
-let lastEdgeDirection = 0
-let particleFrame = 0
 let transitionTimer = 0
 let trackSettleTimer = 0
 let trackTransitionPending = false
 let resetFrame = 0
 let rebaseFrame = 0
 
-interface IconParticle {
-  x: number
-  y: number
-  vx: number
-  vy: number
-  size: number
-  color: string
-  delay: number
-}
-
-function iconParticles(icon: HTMLElement, direction: number, iconIndex: number, iconCount: number): IconParticle[] {
-  const bounds = icon.getBoundingClientRect()
-  const image = icon.querySelector('img')
-  const mark = icon.querySelector<HTMLElement>('.shortcut-mark')
-  const sample = document.createElement('canvas')
-  sample.width = 48
-  sample.height = 48
-  const context = sample.getContext('2d', { willReadFrequently: true })
-  if (!context) return []
-  const radius = Math.min(13, Number.parseFloat(getComputedStyle(icon).borderRadius) || 0)
-  context.fillStyle = getComputedStyle(icon).backgroundColor
-  context.beginPath()
-  context.roundRect(0, 0, 48, 48, radius)
-  context.fill()
-  if (image?.complete && image.naturalWidth > 0) {
-    context.save()
-    context.beginPath()
-    context.roundRect(0, 0, 48, 48, radius)
-    context.clip()
-    context.drawImage(image, 0, 0, 48, 48)
-    context.restore()
-  } else if (mark) {
-    context.fillStyle = getComputedStyle(mark).color
-    context.font = `700 ${Math.min(25, Number.parseFloat(getComputedStyle(mark).fontSize) || 21)}px system-ui`
-    context.textAlign = 'center'
-    context.textBaseline = 'middle'
-    context.fillText(truncateCodePoints(mark.textContent?.trim() ?? '', 5), 24, 24, 42)
-  }
-  let pixels: ImageData
-  try {
-    pixels = context.getImageData(0, 0, 48, 48)
-  } catch {
-    return []
-  }
-  const stride = Math.max(4, Math.ceil(Math.sqrt((48 * 48 * iconCount) / 900)))
-  const result: IconParticle[] = []
-  const stepDelay = (iconIndex / Math.max(1, iconCount - 1)) * 90
-  for (let y = 1; y < 48; y += stride) {
-    for (let x = 1; x < 48; x += stride) {
-      const offset = (y * 48 + x) * 4
-      const alpha = pixels.data[offset + 3] / 255
-      if (alpha < 0.12 || Math.random() > 0.88) continue
-      const angle = Math.random() * Math.PI * 2
-      const speed = 24 + Math.random() * 95
-      result.push({
-        x: bounds.left + (x / 48) * bounds.width,
-        y: bounds.top + (y / 48) * bounds.height,
-        vx: Math.cos(angle) * speed - direction * (20 + Math.random() * 54),
-        vy: Math.sin(angle) * speed - 18,
-        size: 1.5 + Math.random() * 3.5,
-        color: `rgba(${pixels.data[offset]}, ${pixels.data[offset + 1]}, ${pixels.data[offset + 2]}, ${alpha})`,
-        delay: stepDelay,
-      })
-    }
-  }
-  return result
-}
-
-function playParticleTransition(pageIndex: number, direction: number, duration: number) {
-  const page = gridViewport.value?.querySelector<HTMLElement>(`.shortcut-page[data-page-index="${pageIndex}"]:not([data-clone="true"])`)
-  const icons = [...(page?.querySelectorAll<HTMLElement>('.shortcut-icon') ?? [])]
-  if (!icons.length) return
-  const particles = icons.flatMap((icon, index) => iconParticles(icon, direction, index, icons.length))
-  if (!particles.length) return
-  cancelParticleTransition()
-  const canvas = document.createElement('canvas')
-  canvas.id = 'shortcut-particle-canvas'
-  canvas.setAttribute('aria-hidden', 'true')
-  Object.assign(canvas.style, { position: 'fixed', inset: '0', width: '100vw', height: '100vh', zIndex: '4', pointerEvents: 'none' })
-  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
-  canvas.width = Math.round(window.innerWidth * pixelRatio)
-  canvas.height = Math.round(window.innerHeight * pixelRatio)
-  document.body.append(canvas)
-  const context = canvas.getContext('2d')
-  if (!context) { canvas.remove(); return }
-  context.scale(pixelRatio, pixelRatio)
-  const startedAt = performance.now()
-  const animationDuration = Math.max(260, duration)
-  const animate = (now: number) => {
-    context.clearRect(0, 0, window.innerWidth, window.innerHeight)
-    let hasParticles = false
-    for (const particle of particles) {
-      const elapsed = now - startedAt - particle.delay
-      if (elapsed < 0) { hasParticles = true; continue }
-      const progress = Math.min(1, elapsed / animationDuration)
-      if (progress >= 1) continue
-      hasParticles = true
-      const eased = 1 - (1 - progress) ** 2
-      context.globalAlpha = (1 - progress) ** 1.4
-      context.fillStyle = particle.color
-      context.shadowColor = particle.color
-      context.shadowBlur = 7 * (1 - progress)
-      context.fillRect(particle.x + particle.vx * eased * 0.48, particle.y + particle.vy * eased * 0.48 + 34 * progress * progress, particle.size * (1 - progress * 0.55), particle.size * (1 - progress * 0.55))
-    }
-    context.globalAlpha = 1
-    context.shadowBlur = 0
-    if (hasParticles) particleFrame = requestAnimationFrame(animate)
-    else { canvas.remove(); particleFrame = 0 }
-  }
-  particleFrame = requestAnimationFrame(animate)
-}
-
-function cancelParticleTransition() {
-  if (particleFrame) cancelAnimationFrame(particleFrame)
-  particleFrame = 0
-  document.getElementById('shortcut-particle-canvas')?.remove()
-}
+const { playParticleTransition, cancelParticleTransition } = useShortcutParticles(gridViewport)
 
 function cancelTransitionTimers() {
   if (transitionTimer) window.clearTimeout(transitionTimer)
@@ -419,160 +275,6 @@ watch(() => props.items.map((item) => [item.id, item.icon] as const), (icons) =>
   if (failed.size !== failedIconUrls.value.size) failedIconUrls.value = failed
 })
 
-function startDrag() {
-  if (!pointer || pointer.dragging) return
-  pointer.dragging = true
-  draggingId.value = pointer.sourceId
-  dragPosition.value = { x: pointer.clientX, y: pointer.clientY }
-}
-
-function onPointerDown(event: PointerEvent, item: LauncherItem) {
-  if (event.button !== 0 || (event.target instanceof Element && event.target.closest('.shortcut-context-menu'))) return
-  const scrollContainer = event.currentTarget instanceof HTMLElement
-    ? event.currentTarget.closest<HTMLElement>('.home.home-scrollable') ?? undefined
-    : undefined
-  pointer = {
-    id: event.pointerId,
-    type: event.pointerType,
-    x: event.clientX,
-    y: event.clientY,
-    clientX: event.clientX,
-    clientY: event.clientY,
-    sourceId: item.id,
-    targetId: item.id,
-    dragging: false,
-    scrolling: false,
-    scrollContainer,
-    scrollStartTop: scrollContainer?.scrollTop ?? 0,
-  }
-  if (event.pointerType === 'touch') {
-    pointer.hold = window.setTimeout(startDrag, 360)
-  }
-  window.addEventListener('pointermove', onPointerMove, { passive: false })
-  window.addEventListener('pointerup', onPointerUp)
-  window.addEventListener('pointercancel', cancelPointer)
-}
-
-function onPointerMove(event: PointerEvent) {
-  if (!pointer || event.pointerId !== pointer.id) return
-  pointer.clientX = event.clientX
-  pointer.clientY = event.clientY
-  const deltaX = event.clientX - pointer.x
-  const deltaY = event.clientY - pointer.y
-  if (pointer.type === 'touch' && !pointer.dragging && !pointer.scrolling) {
-    if (Math.abs(deltaX) > 18 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
-      if (pointer.hold) window.clearTimeout(pointer.hold)
-      pointer.hold = undefined
-      return
-    }
-    if (pointer.scrollContainer && Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX) * 1.2) {
-      if (pointer.hold) window.clearTimeout(pointer.hold)
-      pointer.hold = undefined
-      pointer.scrolling = true
-    }
-    if (Math.abs(deltaX) + Math.abs(deltaY) > 10) {
-      if (pointer.scrolling) {
-        event.preventDefault()
-        pointer.scrollContainer!.scrollTop = pointer.scrollStartTop - deltaY
-        return
-      }
-      if (!pointer.scrollContainer) {
-        if (pointer.hold) window.clearTimeout(pointer.hold)
-        pointer.hold = undefined
-        startDrag()
-      }
-    }
-  } else if (!pointer.dragging && !pointer.scrolling && Math.hypot(deltaX, deltaY) > 7) {
-    startDrag()
-  }
-  if (!pointer.dragging) return
-  event.preventDefault()
-  dragPosition.value = { x: event.clientX, y: event.clientY }
-  const hit = document.elementFromPoint(event.clientX, event.clientY)
-  const inDock = hit?.closest('.home-dock')
-  pointer.dockTargetId = hit?.closest<HTMLElement>('[data-dock-item-id]')?.dataset.dockItemId
-  const target = inDock ? undefined : hit?.closest<HTMLElement>('[data-item-id]')
-  if (target?.dataset.itemId) pointer.targetId = target.dataset.itemId
-  if (!inDock) scheduleEdgePageTurn(event.clientX)
-}
-
-function scheduleEdgePageTurn(clientX: number) {
-  const bounds = gridViewport.value?.getBoundingClientRect()
-  if (!bounds) return
-  const direction = clientX < bounds.left + 26 && pages.value.length > 1
-    ? -1
-    : clientX > bounds.right - 26 && pages.value.length > 1 ? 1 : 0
-  if (direction !== edgeDirection) {
-    if (edgeTimer) window.clearTimeout(edgeTimer)
-    edgeTimer = undefined
-    edgeDirection = direction
-  }
-  if (!direction) {
-    lastEdgeDirection = 0
-    return
-  }
-  if (!edgeTimer && lastEdgeDirection !== direction) {
-    edgeTimer = window.setTimeout(() => {
-      emit('swipe', direction)
-      lastEdgeDirection = direction
-      edgeTimer = undefined
-    }, 480)
-  }
-}
-
-function cleanPointer() {
-  window.removeEventListener('pointermove', onPointerMove)
-  window.removeEventListener('pointerup', onPointerUp)
-  window.removeEventListener('pointercancel', cancelPointer)
-  if (pointer?.hold) window.clearTimeout(pointer.hold)
-  if (edgeTimer) window.clearTimeout(edgeTimer)
-  edgeTimer = undefined
-  edgeDirection = 0
-  lastEdgeDirection = 0
-}
-
-function onPointerUp(event: PointerEvent) {
-  if (!pointer || event.pointerId !== pointer.id) return
-  const deltaX = event.clientX - pointer.x
-  const deltaY = event.clientY - pointer.y
-  if (pointer.scrolling) {
-    suppressNextClick()
-  } else if (pointer.dragging && document.elementFromPoint(event.clientX, event.clientY)?.closest('.home-dock')) {
-    const sourceId = pointer.sourceId
-    const title = props.items.find((item) => item.id === sourceId)?.title ?? '入口'
-    const alreadyDocked = props.dockItemIds?.includes(sourceId) ?? false
-    if (sourceId !== pointer.dockTargetId) emit('dock', sourceId, pointer.dockTargetId)
-    moveAnnouncement.value = alreadyDocked
-      ? `已调整${title}在 Dock 中的位置。`
-      : `已将${title}固定到 Dock。`
-    suppressNextClick()
-  } else if (pointer.dragging && pointer.sourceId !== pointer.targetId) {
-    emit('reorder', pointer.sourceId, pointer.targetId)
-    suppressNextClick()
-  } else if (pointer.type === 'touch' && !pointer.dragging && Math.abs(deltaX) > 52 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
-    emit('swipe', deltaX < 0 ? 1 : -1)
-    suppressNextClick()
-  }
-  draggingId.value = ''
-  pointer = undefined
-  cleanPointer()
-}
-
-function suppressNextClick() {
-  suppressClick = true
-  if (suppressClickTimer) window.clearTimeout(suppressClickTimer)
-  suppressClickTimer = window.setTimeout(() => {
-    suppressClick = false
-    suppressClickTimer = 0
-  }, 100)
-}
-
-function cancelPointer() {
-  draggingId.value = ''
-  pointer = undefined
-  cleanPointer()
-}
-
 function openContextMenu(event: MouseEvent, item: LauncherItem) {
   if (!item.shortcut && !item.folder) {
     closeContextMenu()
@@ -628,18 +330,6 @@ function closeContextMenu(restoreFocus = false) {
 
 function handleWindowClick() {
   closeContextMenu()
-}
-
-function openItem(event: MouseEvent, item: LauncherItem) {
-  if (suppressClick) {
-    event.preventDefault()
-    event.stopPropagation()
-    suppressClick = false
-    if (suppressClickTimer) window.clearTimeout(suppressClickTimer)
-    suppressClickTimer = 0
-    return
-  }
-  emit('open', item, event)
 }
 
 function hasUsableIcon(item: LauncherItem) {
@@ -718,10 +408,8 @@ onMounted(() => {
   window.addEventListener('keydown', closeContextOnEscape)
 })
 onBeforeUnmount(() => {
-  cleanPointer()
   cancelTransitionTimers()
   if (rebaseFrame) cancelAnimationFrame(rebaseFrame)
-  if (suppressClickTimer) window.clearTimeout(suppressClickTimer)
   window.removeEventListener('click', handleWindowClick)
   window.removeEventListener('keydown', closeContextOnEscape)
 })

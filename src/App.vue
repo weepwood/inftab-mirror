@@ -5,6 +5,8 @@ import { ArrowLeft, House, Menu, Plus, Search, X } from '@lucide/vue'
 import SearchBar from './components/SearchBar.vue'
 import ClockWidget from './components/ClockWidget.vue'
 import { lazyPluginComponent, retryAsyncLoad } from './plugins/asyncComponent'
+import { useHomeLayout } from './composables/useHomeLayout'
+import { useHomeNavigation } from './composables/useHomeNavigation'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent, storageWriteSuccessEvent } from './composables/useStoredState'
 import { launcherItems } from './data/defaults'
@@ -152,8 +154,6 @@ const activeHomeWorkspace = computed(() => homeWorkspaces.value.find((workspace)
 const activeHomeWorkspaceItemIds = computed(() => new Set(activeHomeWorkspace.value?.itemIds ?? []))
 const shortcutLimitReached = computed(() => !shortcutDraft.value?.id && shortcuts.value.length >= 500)
 const folderLimitReached = computed(() => !activeFolder.value && folders.value.length >= 500)
-let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
-let homeWheelLocked = false
 let wallpaperRotationTimer: number | undefined
 let wallpaperRotationRequest = 0
 let focusTimerInterval: number | undefined
@@ -278,78 +278,8 @@ const activePanelListeners = computed<Record<string, (...args: never[]) => void>
   ? panelRegistry.value.getPanelListeners(activePanel.value, panelContext.value)
   : {})
 const homeWidgetContext = computed(() => ({ preferences: preferences.value, todos: todos.value, addTodo, toggleTodo, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
-const showHomeWidgets = computed(() => preferences.value.homeWidgetIds.length > 0)
-const shortHomeScrollEnabled = computed(() => !minimalMode.value && (showHomeWidgets.value || homeDockItems.value.length > 0) && viewport.value.height <= 560)
-const homeWidgetRows = computed(() => {
-  if (!showHomeWidgets.value || viewport.value.width <= 780) return showHomeWidgets.value ? 1 : 0
-  const shelfWidth = Math.min(Math.max(0, viewport.value.width - 64), 960)
-  const columns = Math.max(1, Math.floor((shelfWidth + 12) / 252))
-  let rows = 1
-  let occupiedColumns = 0
-  for (const id of preferences.value.homeWidgetIds) {
-    const size = preferences.value.homeWidgetSizes[id]
-    const span = size === 'full' ? columns : size === 'wide' ? Math.min(2, columns) : 1
-    if (occupiedColumns + span > columns) {
-      rows += 1
-      occupiedColumns = 0
-    }
-    occupiedColumns += span
-  }
-  return rows
-})
-const compactRows = computed(() => Math.min(preferences.value.rows, Math.max(1, Math.ceil(allLauncherItems.value.length / layoutColumns.value))))
-const fitMetrics = computed(() => {
-  const { width, height } = viewport.value
-  const mobile = width <= 780
-  const smallMobile = width <= 480
-  const compactHeight = height <= 680
-  const veryShortHeight = height <= 560
-  const rows = compactRows.value
-  const topPadding = veryShortHeight ? 38 : compactHeight ? Math.min(64, Math.max(48, height * 0.09)) : mobile ? Math.min(128, Math.max(80, height * 0.14)) : Math.min(112, Math.max(80, height * 0.1))
-  const clockSize = compactHeight ? 40 : showHomeWidgets.value ? 48 : mobile ? 64 : height <= 800 ? 72 : 88
-  const clockBottomGap = compactHeight ? 16 : 28
-  const clockClearance = preferences.value.showClock && !veryShortHeight ? clockSize + 12 + 20 + clockBottomGap : 0
-  const searchVisible = preferences.value.showSearchBar || localSearchMode.value || minimalMode.value
-  const tabHeight = searchVisible && !localSearchMode.value && preferences.value.visibleSearchModes.length ? (veryShortHeight ? 26 : smallMobile ? 28 : 33) : 0
-  const searchHeight = searchVisible ? Math.min(preferences.value.searchHeight, veryShortHeight ? 44 : mobile ? 48 : 100) : 0
-  const configuredTopGap = searchVisible ? preferences.value.gridTopGap * (mobile && !compactHeight ? 0.68 : 1) : 0
-  const gridTopGap = veryShortHeight ? Math.min(configuredTopGap, 16) : compactHeight ? Math.min(configuredTopGap, 28) : configuredTopGap
-  const paginationHeight = pageCount.value > 1 ? (veryShortHeight ? 31 : compactHeight ? 37 : mobile ? 43 : 48) : 0
-  const nameHeight = preferences.value.showNames ? (smallMobile ? 13 : 17) + 7 : 0
-  const footerClearance = veryShortHeight ? 24 : 38
-  const workspaceTabsClearance = 46
-  const dockClearance = homeDockItems.value.length ? 76 : 0
-  const widgetClearance = showHomeWidgets.value && !shortHomeScrollEnabled.value
-    ? homeWidgetRows.value * 112 + Math.max(0, homeWidgetRows.value - 1) * 12 + 22
-    : 0
-  const available = height - topPadding - clockClearance - widgetClearance - dockClearance - workspaceTabsClearance - tabHeight - searchHeight - gridTopGap - paginationHeight - footerClearance - rows * nameHeight
-  const requestedGap = Math.min(preferences.value.gridGapY, smallMobile ? 20 : mobile ? 24 : preferences.value.gridGapY)
-  const fittedGap = rows > 1 ? Math.min(requestedGap, Math.max(4, (available - rows * Math.min(preferences.value.iconSize, 48)) / (rows - 1))) : requestedGap
-  const fittedIcon = Math.max(28, Math.min(preferences.value.iconSize, (available - (rows - 1) * fittedGap) / rows))
-  return { fittedGap, fittedIcon, topPadding, clockSize, clockBottomGap }
-})
-const backgroundStyle = computed(() => {
-  const value = preferences.value.customWallpaper.trim() || preferences.value.wallpaper
-  const backgroundImage = value.startsWith('linear-gradient') ? value : `url("${value.replaceAll('"', '%22')}")`
-  return {
-    backgroundImage,
-    '--page-shade': String(preferences.value.shade),
-    '--home-top-padding': `${fitMetrics.value.topPadding}px`,
-    '--clock-size': `${fitMetrics.value.clockSize}px`,
-    '--clock-bottom-gap': `${fitMetrics.value.clockBottomGap}px`,
-    '--grid-columns': String(layoutColumns.value),
-    '--shortcut-size': `${preferences.value.iconSize}px`,
-    '--shortcut-radius': `${preferences.value.iconRadius}px`,
-    '--search-width': `${preferences.value.searchWidth}px`,
-    '--search-height': `${preferences.value.searchHeight}px`,
-    '--grid-top-gap': `${preferences.value.gridTopGap}px`,
-    '--shortcut-gap-x': `${preferences.value.gridGapX}px`,
-    '--shortcut-gap-y': `${fitMetrics.value.fittedGap}px`,
-    '--fit-icon-size': `${fitMetrics.value.fittedIcon}px`,
-    '--page-transition-duration': `${preferences.value.pageTransitionMs}ms`,
-    '--hover-glow-strength': String(preferences.value.hoverGlow / 100),
-  }
-})
+const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayout({ preferences, viewport, layoutColumns, allLauncherItems, homeDockItems, pageCount, minimalMode, localSearchMode })
+const { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, activePanel, shortcutDialog })
 
 watch(pageCount, (count) => { currentPage.value = Math.min(currentPage.value, count - 1) })
 watch(() => [preferences.value.wallpaperRotation, preferences.value.wallpaperRotationLastAt, preferences.value.wallpaper, preferences.value.customWallpaper] as const, () => { void scheduleWallpaperRotation() })
@@ -639,44 +569,6 @@ function saveShortcut(shortcut: Shortcut, workspaceId: string) {
   shortcutDialog.value = false
 }
 
-function movePage(direction: number) {
-  if (pageCount.value < 2) return
-  pageDirection.value = direction < 0 ? -1 : 1
-  currentPage.value = (currentPage.value + direction + pageCount.value) % pageCount.value
-}
-
-function goToPage(page: number) {
-  if (page === currentPage.value) return
-  pageDirection.value = page > currentPage.value ? 1 : -1
-  currentPage.value = page
-}
-
-function startHomeSwipe(event: PointerEvent) {
-  if (minimalMode.value || event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf, .home-dock, .search-area'))) return
-  homeTouchStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
-}
-
-function finishHomeSwipe(event: PointerEvent) {
-  if (!homeTouchStart || event.pointerId !== homeTouchStart.pointerId) return
-  const deltaX = event.clientX - homeTouchStart.x
-  const deltaY = event.clientY - homeTouchStart.y
-  if (Math.abs(deltaX) > 52 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) movePage(deltaX < 0 ? 1 : -1)
-  homeTouchStart = undefined
-}
-
-function handleHomeWheel(event: WheelEvent) {
-  if (minimalMode.value || shortHomeScrollEnabled.value) return
-  if (activePanel.value || shortcutDialog.value || homeWheelLocked
-    || (event.target instanceof Element && event.target.closest('.home-widget-shelf, .home-dock, .search-area'))) return
-  const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-  const delta = horizontal ? event.deltaX : event.deltaY
-  if (Math.abs(delta) <= 24) return
-  event.preventDefault()
-  movePage(delta > 0 ? 1 : -1)
-  homeWheelLocked = true
-  setTimeout(() => { homeWheelLocked = false }, 450)
-}
-
 function reorderItems(sourceId: string, targetId: string) {
   reorderLauncherOrder(sourceId, targetId, allLauncherItems.value.map((item) => item.id))
 }
@@ -869,7 +761,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': !minimalMode && (showHomeWidgets || shortHomeScrollEnabled), 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode }" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="homeTouchStart = undefined" @wheel="handleHomeWheel">
+  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': !minimalMode && (showHomeWidgets || shortHomeScrollEnabled), 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode }" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="cancelHomeSwipe()" @wheel="handleHomeWheel">
     <a class="skip-link" href="#main-content">跳到快捷入口</a>
     <h1 class="visually-hidden">Infinity 新标签页</h1>
     <div class="background-shade"></div>
