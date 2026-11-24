@@ -85,6 +85,8 @@ for (const themeMode of ['light', 'dark'] as const) {
       .toBe(themeMode === 'light' ? 'dark' : 'light')
     await select.focus()
     await page.keyboard.press('Tab')
+    await expect(panel.getByRole('combobox', { name: '界面配色' })).toBeFocused()
+    await page.keyboard.press('Tab')
     await expect(panel.getByRole('checkbox', { name: '显示时间和日期' })).toBeFocused()
   })
 }
@@ -98,6 +100,8 @@ test('native dropdown fallback remains keyboard-accessible without the enhanced 
   await page.keyboard.press('ArrowDown')
   await expect(select).toHaveValue('dark')
   await expect(page.locator('.home')).toHaveClass(/theme-dark/)
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('combobox', { name: '界面配色' })).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(page.getByRole('checkbox', { name: '显示时间和日期' })).toBeFocused()
 })
