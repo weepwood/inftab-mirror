@@ -15,6 +15,11 @@ on:
       - 'playwright.stable.config.ts'
       - 'e2e-extension/new-tab.spec.ts'
       - 'scripts/check-bundle-size.mjs'
+      - 'vite.config.ts'
+      - 'src/data/browserApiShared.ts'
+      - 'src/data/browserBookmarks.ts'
+      - 'src/data/browserHistory.ts'
+      - 'src/data/browserTabs.ts'
       - '.github/workflows/pwa-check.yml'
   workflow_dispatch:
 permissions:
@@ -38,6 +43,8 @@ jobs:
         run: npm run build:web
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e:production:built -- e2e/pwa-offline.spec.ts e2e/pwa-update.spec.ts
+      - name: Verify production lazy loading contracts
+        run: npm run test:e2e:production:built -- e2e/production-chunks.spec.ts
       - run: npm run test:e2e:extension:built
       - name: Enforce unchanged bundle budgets
         if: steps.build.outcome == 'success' && !cancelled()
