@@ -85,6 +85,8 @@ export function sanitizePreferences(value: unknown): Preferences {
     themeMode: merged.themeMode === 'light' || merged.themeMode === 'dark' || merged.themeMode === 'system'
       ? merged.themeMode
       : defaultPreferences.themeMode,
+    themePalette: merged.themePalette === 'slate' || merged.themePalette === 'indigo' || merged.themePalette === 'sand'
+      ? merged.themePalette : defaultPreferences.themePalette,
     openShortcutsInNewTab: typeof raw.openShortcutsInNewTab === 'boolean' ? raw.openShortcutsInNewTab : defaultPreferences.openShortcutsInNewTab,
     openSearchInNewTab: typeof raw.openSearchInNewTab === 'boolean' ? raw.openSearchInNewTab : defaultPreferences.openSearchInNewTab,
     openBookmarksInNewTab: typeof raw.openBookmarksInNewTab === 'boolean' ? raw.openBookmarksInNewTab : defaultPreferences.openBookmarksInNewTab,

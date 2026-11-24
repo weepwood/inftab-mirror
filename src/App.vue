@@ -56,6 +56,11 @@ const ShortcutEditor = lazyPluginComponent(
   '正在加载快捷入口表单…',
   '快捷入口表单暂时无法加载，请重试。',
 )
+const CommandPalette = lazyPluginComponent(
+  () => import('./components/CommandPalette.vue'),
+  '正在加载命令面板…',
+  '命令面板暂时无法加载。',
+)
 const HomeWorkspaceTabs = lazyPluginComponent(
   () => import('./components/HomeWorkspaceTabs.vue'),
   '正在加载工作区…',
@@ -124,6 +129,8 @@ const systemPrefersDark = ref(false)
 const effectiveTheme = computed(() => preferences.value.themeMode === 'system'
   ? (systemPrefersDark.value ? 'dark' : 'light')
   : preferences.value.themeMode)
+watch(() => preferences.value.themePalette, (palette) => { document.documentElement.dataset.themePalette = palette }, { immediate: true })
+const commandPaletteOpen = ref(false)
 const currentPage = ref(0)
 const pageDirection = ref(1)
 const activePanel = ref<Panel>(null)
@@ -616,8 +623,32 @@ function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode:
   backupExportError.value = restoreBackup(backup, mode) ?? ''
 }
 
+function openCommandPalette() {
+  if (!activePanel.value && !shortcutDialog.value && !folderDialogOpen.value && !pendingDestructiveAction.value) commandPaletteOpen.value = true
+}
+
+async function runCommand(id: string) {
+  commandPaletteOpen.value = false
+  await nextTick()
+  if (id === 'find') setLocalSearch(true)
+  else if (id === 'add') openShortcutDialog()
+  else if (id === 'minimal') toggleMinimalMode()
+  else if (id === 'light' || id === 'dark' || id === 'system') updatePreferences({ themeMode: id })
+  else if (id === 'home') goToPage(0)
+  else if (id.startsWith('panel:')) openPanel(id.slice(6) as PanelId)
+}
+
 function handleKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented || pendingDestructiveAction.value) return
+  if (commandPaletteOpen.value) {
+    if (event.key === 'Escape') commandPaletteOpen.value = false
+    return
+  }
+  if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'p' && !activePanel.value && !shortcutDialog.value && !folderDialogOpen.value) {
+    event.preventDefault()
+    openCommandPalette()
+    return
+  }
   if (event.key === 'Escape') {
     if (shortcutDialog.value) {
       shortcutDialog.value = false
@@ -743,6 +774,7 @@ onMounted(() => {
   }
 })
 onBeforeUnmount(() => {
+  delete document.documentElement.dataset.themePalette
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', updateViewport)
   window.removeEventListener(storageWriteErrorEvent, handleStorageWriteError)
@@ -767,6 +799,7 @@ onBeforeUnmount(() => {
     <div class="background-shade"></div>
     <div class="home-brand" aria-label="Infinity 新标签页"><span class="brand-mark" aria-hidden="true">∞</span><span class="brand-word">infinity</span><span class="brand-label">新标签页</span></div>
     <header class="home-actions">
+      <button type="button" class="round-action home-command-toggle" aria-label="打开命令面板" title="命令面板（Ctrl/⌘+Shift+P）" @click="openCommandPalette"><span aria-hidden="true">⌘</span></button>
       <button v-if="!minimalMode" type="button" class="round-action home-create-shortcut" aria-label="新建快捷入口" title="新建快捷入口" @click="openShortcutDialog()"><Plus :size="19" /></button>
       <button type="button" class="round-action home-search-toggle" aria-label="查找快捷入口" title="查找快捷入口（Ctrl/⌘+F）" :aria-pressed="localSearchMode" @click="setLocalSearch(!localSearchMode)"><Search :size="18" /></button>
       <button type="button" class="round-action minimal-mode-toggle" :aria-label="minimalMode ? '退出极简模式' : '进入极简模式'" :aria-pressed="minimalMode" :title="minimalMode ? '退出极简模式' : '进入极简模式'" @click="toggleMinimalMode"><X v-if="minimalMode" :size="18" /><span v-else class="minimal-mode-symbol" aria-hidden="true"></span></button>
@@ -881,6 +914,8 @@ onBeforeUnmount(() => {
         <component v-else :is="activePanelComponent" v-bind="activePanelProps" v-on="activePanelListeners" />
       </aside>
     </div>
+
+    <CommandPalette v-if="commandPaletteOpen" @close="commandPaletteOpen = false" @run="runCommand" />
 
     <FolderDialog
       v-if="folderDialogOpen"

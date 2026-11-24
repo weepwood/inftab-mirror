@@ -5,6 +5,7 @@ const base = import.meta.env.BASE_URL
 
 export const defaultPreferences: Preferences = {
   themeMode: 'light',
+  themePalette: 'forest',
   openShortcutsInNewTab: true,
   openSearchInNewTab: false,
   openBookmarksInNewTab: true,

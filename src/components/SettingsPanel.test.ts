@@ -392,3 +392,10 @@ describe('SettingsPanel backup preview', () => {
     expect(parseBackup).toHaveBeenCalledOnce()
   })
 })
+
+
+it('emits a palette change without changing the color mode', async () => {
+  wrapper = mount(SettingsPanel, { props: { preferences: { ...defaultPreferences } } })
+  await wrapper.get('select[aria-label="界面配色"]').setValue('indigo')
+  expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual({ themePalette: 'indigo' })
+})
