@@ -37,7 +37,7 @@ let pointerX = 0
 let lastFrame = 0
 let dirty = false
 let hovering = false
-let geometry: { slots: HTMLElement[]; left: number; right: number; size: number } | undefined
+let geometry: { slots: HTMLElement[]; left: number; right: number; size: number; origin: number; pitch: number; radius: number } | undefined
 type Spring = { position: number; velocity: number; target: number }
 const springs = new Map<HTMLElement, Spring>()
 // Critical damping, exact integration; shared between magnification and reorder.
@@ -88,7 +88,7 @@ function paintReorder(now: number) {
   })
   if (reorders.size) reorderFrame = requestAnimationFrame(paintReorder)
 }
-watch(() => props.magnificationEnabled, enabled => { if (!enabled) clearDockMagnification() })
+watch(() => [props.magnificationEnabled, props.iconSize, props.iconGap], clearDockMagnification)
 watch(() => props.items.map(item => item.id).join('|'), async (_, __, onCleanup) => {
   const active = document.activeElement
   const focused = active instanceof HTMLElement && dock.value?.contains(active) ? active : undefined
@@ -230,16 +230,18 @@ function paintMagnification(now: number) {
   if (!dock.value) return
   if (dirty) {
     dirty = false
-    const slots = entries()
-    if (!slots.length) { clearDockMagnification(); return }
-    const first = slotBounds(slots[0]!), last = slotBounds(slots.at(-1)!)
-    const size = first.width || 48
-    const pitch = (last.left - first.left) / Math.max(1, slots.length - 1)
-    const radius = Math.max(size, pitch) * 2.8
-    const bounds = dock.value.getBoundingClientRect()
-    geometry = { slots, size, left: bounds.width ? Math.max(0, first.left - bounds.left) : size * slots.length, right: bounds.width ? Math.max(0, bounds.right - last.right) : size * slots.length }
+    if (!geometry) {
+      const slots = entries()
+      if (!slots.length) { clearDockMagnification(); return }
+      const first = slotBounds(slots[0]!), last = slotBounds(slots.at(-1)!)
+      const size = first.width || 48
+      const pitch = (last.left - first.left) / Math.max(1, slots.length - 1)
+      const bounds = dock.value.getBoundingClientRect()
+      geometry = { slots, size, origin: first.left + size / 2, pitch, radius: Math.max(size, pitch) * 2.8, left: bounds.width ? Math.max(0, first.left - bounds.left) : size * slots.length, right: bounds.width ? Math.max(0, bounds.right - last.right) : size * slots.length }
+    }
+    const { slots, origin, pitch, radius } = geometry
     slots.forEach((el, index) => {
-      const p = Math.max(0, 1 - Math.abs(pointerX - first.left - size / 2 - index * pitch) / radius)
+      const p = Math.max(0, 1 - Math.abs(pointerX - origin - index * pitch) / radius)
       const state = springs.get(el) ?? { position: 1, velocity: 0, target: 1 }
       state.target = hovering ? 1 + .65 * p * p * (3 - 2 * p) : 1
       springs.set(el, state)

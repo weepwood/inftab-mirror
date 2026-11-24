@@ -1207,7 +1207,8 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 @media (prefers-reduced-motion: reduce) { .shortcut-pages:not(.motion-opt-in) { transition-duration: 0ms !important; } }
 
 /* The continuous slide track renders only the currently visible virtual slots. */
-.shortcut-pages.continuous-slide { display: grid; transform: translate3d(var(--slide-x, 0%), 0, 0); transition: none !important; }
+@property --slide-x { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+.shortcut-pages.continuous-slide { display: grid; transform: translateX(var(--slide-x, 0%)); transition: none !important; will-change: auto; }
 .continuous-slide .shortcut-page { grid-area: 1 / 1; width: 100%; }
 .home-dock.dock-dragging .home-dock-icon { transition: none; }
 .home-dock-entry.dock-drag-source { opacity: .45; }
@@ -1247,7 +1248,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 }
 
 /* Magnification and reorder own different transform layers. */
-.home-dock::before { transform: scaleY(var(--dock-lift, 1)); transform-origin: center bottom; transition: transform 150ms cubic-bezier(.2,.8,.2,1); }
+.home-dock::before { transform: scale(clamp(.94, calc(.94 + (var(--dock-lift, 1) - 1) * .5), 1), var(--dock-lift, 1)); transform-origin: center bottom; transition: transform 150ms cubic-bezier(.2,.8,.2,1); }
 @supports (transition-timing-function: linear(0, 1)) {
   .home-dock:not(.is-magnifying) .home-dock-icon { transition: transform 280ms linear(0,.46,.82,1.04,1.08,1.04,1.01,1); }
 }
