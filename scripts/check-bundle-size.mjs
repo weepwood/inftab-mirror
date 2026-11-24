@@ -28,6 +28,7 @@ const javascriptGzip = gzipSize(javascriptFiles)
 const html = readFileSync(join(outputDirectory, 'index.html'), 'utf8')
 const entryAssets = [
   ...[...html.matchAll(/<script\b(?=[^>]*\btype="module")(?=[^>]*\bsrc="([^"]+)")[^>]*>/g)].map((match) => match[1]),
+  ...[...html.matchAll(/<script\b(?=[^>]*\bsrc="(\.\/[^"#?]+\.js)")[^>]*>/g)].map((match) => match[1]),
   ...[...html.matchAll(/<link\b(?=[^>]*\brel="modulepreload")(?=[^>]*\bhref="([^"]+)")[^>]*>/g)].map((match) => match[1]),
 ].filter((asset) => typeof asset === 'string')
 const javascriptEntryFiles = [...new Set(entryAssets.map((asset) => resolve(outputDirectory, asset.replace(/^\.\//, ''))))]
@@ -43,6 +44,7 @@ const cssGzip = gzipSize(cssFiles)
 const totalOutput = files.reduce((total, path) => total + statSync(path).size, 0)
 
 const format = (bytes) => `${(bytes / 1024).toFixed(1)} KiB`
+console.log(`Initial JS gzip bytes: ${javascriptEntryGzip} / ${budgets.javascriptEntryGzip}`)
 console.log(`Bundle budgets: initial JS gzip ${format(javascriptEntryGzip)} / ${format(budgets.javascriptEntryGzip)}, all JS gzip ${format(javascriptGzip)} / ${format(budgets.javascriptGzip)}, CSS gzip ${format(cssGzip)} / ${format(budgets.cssGzip)}, output ${format(totalOutput)} / ${format(budgets.totalOutput)}`)
 
 const exceeded = [

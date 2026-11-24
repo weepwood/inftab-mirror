@@ -27,6 +27,9 @@ test('loads the packaged MV3 extension as the browser new-tab page', async () =>
 
     await expect(page).toHaveURL(/^chrome-extension:\/\/[a-p]{32}\/index\.html/)
     await expect(page.getByRole('heading', { name: 'Infinity 新标签页' })).toBeVisible()
+    await expect(page.locator('.inftab-pwa-control')).toHaveCount(0)
+    await expect(page.locator('link[rel=manifest][href$="app.webmanifest"]')).toHaveCount(0)
+    expect(await page.evaluate(() => localStorage.getItem('inftab.pwa.enabled.v1'))).toBeNull()
 
     await page.route('https://translate.google.com/**', (route) => route.fulfill({
       contentType: 'text/html',

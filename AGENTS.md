@@ -34,18 +34,12 @@ gh run list --limit 10
 | V1.2 视觉系统 | 修复焦点顺序回归后完整验收通过：[45376496953](https://github.com/weepwood/inftab-mirror/actions/runs/45376496953) |
 | V1.3 个人工作台 | 小视口修复 #16 后完整验收通过：[45379979286](https://github.com/weepwood/inftab-mirror/actions/runs/45379979286) |
 | V1.4.0 性能专项 | 已合并 #15；main 快照 `ae60eba2b022bb2e3c1c45276781f616b9353d33`；[正式验收 45382168902](https://github.com/weepwood/inftab-mirror/actions/runs/45382168902) 与 [Pages 45382169145](https://github.com/weepwood/inftab-mirror/actions/runs/45382169145) 成功 |
-| [#17 V1.5.0](https://github.com/weepwood/inftab-mirror/pull/17) | 正式待审查，分支 `feat/v1.5-theme-editor`，head `b15d9857a6f8a947f973e1b4db19d6e4eb7e636e`；尚未合并 |
-| [#18 V1.6 PWA](https://github.com/weepwood/inftab-mirror/pull/18) | 草稿，分支 `feat/v1.6-pwa-offline`，head `09ab37ab68c6d370a4273dd08466e5191dd49621`，base 为 #17 当前候选提交；未执行正式 CI，不能当作 main 功能 |
+| V1.5.0 主题管理 | #17 已合并，main `9e4b776bfe91864fca66965554a8eee44a4d77f3`；[快速 CI](https://github.com/weepwood/inftab-mirror/actions/runs/45388060219) 671 项、[UI](https://github.com/weepwood/inftab-mirror/actions/runs/45388060220) 30 项、[数据](https://github.com/weepwood/inftab-mirror/actions/runs/45388060259) 4 项通过，全部预算达标。正式验收 [45389072450](https://github.com/weepwood/inftab-mirror/actions/runs/45389072450) 与 Pages [45389072571](https://github.com/weepwood/inftab-mirror/actions/runs/45389072571) 仍需查询最终结果 |
+| [#18 V1.6 PWA](https://github.com/weepwood/inftab-mirror/pull/18) | 已转正式 PR，目标 main，分支 feat/v1.6-pwa-offline；当前提交同步 V1.5 合并树，待最新 CI 与 PWA 专项 |
 
-**当前阻塞：** #17 最新 [CI 45386276941](https://github.com/weepwood/inftab-mirror/actions/runs/45386276941)：83 个测试文件、671 项测试通过；首屏 JS gzip 61,959 字节，预算 61,952 字节，超出 7 字节（均四舍五入显示 60.5 KiB）；全部 JS 154.9/156 KiB、CSS 21.5/64 KiB、产物 1387.6/4096 KiB 达标。[UI 45386276728](https://github.com/weepwood/inftab-mirror/actions/runs/45386276728) 与 [数据 45386276673](https://github.com/weepwood/inftab-mirror/actions/runs/45386276673) 成功。不能因仅超 7 字节就跳过门禁。优先寻找有意义的首屏精简并留出余量；不提高预算、不删功能或验证。
+**当前重点：** V1.5 先前首屏超出 7 字节的阻塞已通过复用校验解决。通过的 2e505cd 构建首屏 60.5/60.5 KiB、全部 JS 154.9/156 KiB、CSS 21.5/64 KiB、产物 1387.3/4096 KiB；余量很小。PWA 将显式计入经典外部 JS 首屏入口，不允许因非 module 脚本而漏计。PWA 专项先构建、运行浏览器验证，再独立执行相同硬门禁，以便获得真实故障数据；快速 CI 保持原 verify。未测试成功前不得合并。
 
-**下一步：** 修复 #17 包体问题 → 同步最新 main 并核实最新 CI/UI/数据检查全部成功 → 审查合并 → 等待 V1.5 对应 main 的 Release validation → 将 #18 同步并改为 main 目标、正式待审查 → 完成 PWA 专项及实际升级/故障/扩展兼容验证 → 版本收尾。不能将 #18 合进 #17。GitHub Pages 部署成功与正式验收通过均不等于已经创建 GitHub Release 或上架扩展商店。
-
-### 本轮交接补充
-- 文档 #19 已合并，main 为 `ba25de2be398ae9cc8c3b758209d92d4e1f3218a`（仅新增 AGENTS.md）；本候选同步该提交。
-- #17 在 b15d985 后继续复用布尔/整数偏好读取与 RGB 解析，保留原校验和预算；准确的新 head 与 CI 以 GitHub 为准，尚未验证。
-
-- #18 本轮同步最新 #17，新增 `e2e/pwa-update.spec.ts`（真实浏览器/worker、小型 HTTP 版本夹具，非完整生产双构建），覆盖损坏更新回滚、旧版本离线读取、等待激活、作用域清理；新增停用并发保护。待专项运行。
+**下一步：** 确认 V1.5 正式验收 → 核对 #18 最新 CI、浏览器离线与升级故障回归、扩展隔离、实际包体，按结果修复 → 准备 1.6.0 候选并完整验收（稳定 Chrome/Edge 增加 PWA 测试）→ V1.7 插件 SDK。HTTP 小型版本夹具验证真实 worker，并非完整双生产构建。原资源预算与用户数据契约不变。Pages 成功不等同于 GitHub Release 或扩展上架。
 
 ## 3. 代码导航与责任边界
 
@@ -66,7 +60,7 @@ gh run list --limit 10
 | `src/plugins/ids.ts`, `registry.ts`, `widgetRegistry.ts`, `asyncComponent.ts` | 内置可信面板/小组件的 ID、类型化上下文、属性/事件、按需加载和重试 |
 | `vite.config.ts`, `scripts/check-bundle-size.mjs`, `scripts/check-extension-build.mjs` | 分包策略、体积门禁、MV3 包结构和版本一致性 |
 
-候选分支额外入口（main 尚无）：#17 的 `src/data/customTheme.ts`、`themeEditorData.ts`、`themeExchange.ts`、`configMigration.ts`、`src/components/CustomThemeEditor.vue`、`ConfigMigration.vue`；#18 的 `scripts/build-pwa.mjs`、`pwa-client.js`、`pwa-worker.js`、`pwa.css`、`e2e/pwa-offline.spec.ts`。
+V1.5 已合并模块：#17 的 `src/data/customTheme.ts`、`themeEditorData.ts`、`themeExchange.ts`、`configMigration.ts`、`src/components/CustomThemeEditor.vue`、`ConfigMigration.vue`；V1.6 候选分支（main 尚无）：#18 的 `scripts/build-pwa.mjs`、`pwa-client.js`、`pwa-worker.js`、`pwa.css`、`e2e/pwa-offline.spec.ts`。
 
 ## 4. 不可破坏的行为与数据契约
 
@@ -99,7 +93,7 @@ gh run list --limit 10
 
 #17 注意：主题格式 `inftab-theme` v1，只接受六位十六进制色与受限数值；基础纯色对比度不代表所有透明场景通过 WCAG。预设与应用主题独立。配置迁移四组（外观、全局布局、组件、入口与工作区/Dock），未选数据和生产力内容保留。旧备份可缺少新字段。
 
-#18 注意：默认不自动启用；缓存仅同作用域已列举的静态资源（包含懒加载模块），不得缓存任意网络请求、个人数据或扩展清单。新版本完整校验后等待旧页面全部关闭，不强制 skipWaiting；失败保留旧版本。清理只针对当前应用缓存，不清除用户数据或其他应用缓存。HTTPS/localhost 网页可用，扩展协议不得注册。现有三项 PWA 生产回归尚待运行；需要真实双版本升级、损坏响应失败回滚、缓存停用竞争、Pages 子路径、Chrome/Edge 安装、MV3 隔离等验证。联网服务和外部网站不会因 PWA 而变成离线可用。
+#18 注意：默认不自动启用；缓存仅同作用域已列举的静态资源（包含懒加载模块），不得缓存任意网络请求、个人数据或扩展清单。新版本完整校验后等待旧页面全部关闭，不强制 skipWaiting；失败保留旧版本。清理只针对当前应用缓存，不清除用户数据或其他应用缓存。HTTPS/localhost 网页可用，扩展协议不得注册。现有三项 PWA 生产回归及一项版本夹具尚待运行；需要真实双版本升级、损坏响应失败回滚、缓存停用竞争、Pages 子路径、Chrome/Edge 安装、MV3 隔离等验证。联网服务和外部网站不会因 PWA 而变成离线可用。
 
 ## 6. 开发验证、CI 与发布规范
 

@@ -93,14 +93,19 @@ test('versioned worker rejects corrupted updates and activates a verified versio
     await other.goto(url)
     await expect(other.locator('main')).toHaveText('Version 1')
     await other.close()
+    // Wait from an out-of-scope page on the same origin so it does not
+    // accidentally keep the old worker alive during the activation check.
+    const observer=await context.newPage()
+    await observer.goto(new URL('/observer',url).href)
     await page.close()
+    await expect.poll(()=>observer.evaluate(async({oldKey,newKey})=>{
+      const keys=await caches.keys()
+      return keys.includes(newKey)&&!keys.includes(oldKey)
+    },{oldKey:prefix+revision(1),newKey:prefix+revision(3)}),{timeout:20000}).toBe(true)
     const next=await context.newPage()
     await next.goto(url)
-    await expect.poll(()=>next.evaluate(async()=>{
-      const reg=await navigator.serviceWorker.getRegistration()
-      return !!navigator.serviceWorker.controller&&!reg?.waiting
-    }),{timeout:20000}).toBe(true)
-    await next.reload()
+    await expect.poll(()=>next.evaluate(()=>!!navigator.serviceWorker.controller),{timeout:20000}).toBe(true)
+    await observer.close()
     await expect(next.locator('main')).toHaveText('Version 3')
     expect(await next.evaluate(()=>fetch('./assets/lazy.js').then(r=>r.text()))).toBe('export default 3')
     const keys=await next.evaluate(()=>caches.keys())

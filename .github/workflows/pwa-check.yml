@@ -8,6 +8,9 @@ on:
       - 'e2e/pwa-offline.spec.ts'
       - 'e2e/pwa-update.spec.ts'
       - 'playwright.config.ts'
+      - 'playwright.stable.config.ts'
+      - 'e2e-extension/new-tab.spec.ts'
+      - 'scripts/check-bundle-size.mjs'
       - '.github/workflows/pwa-check.yml'
   workflow_dispatch:
 permissions:
@@ -26,9 +29,15 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - name: Build production fixtures
+        id: build
+        run: npx vite build && node scripts/build-pwa.mjs && node scripts/check-extension-build.mjs
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e:production:built -- e2e/pwa-offline.spec.ts e2e/pwa-update.spec.ts
+      - run: npm run test:e2e:extension:built
+      - name: Enforce unchanged bundle budgets
+        if: steps.build.outcome == 'success' && !cancelled()
+        run: node scripts/check-bundle-size.mjs
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

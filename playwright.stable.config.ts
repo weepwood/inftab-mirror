@@ -4,7 +4,7 @@ const baseURL = 'http://127.0.0.1:4175'
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: 'stable-browser.spec.ts',
+  testMatch: ['stable-browser.spec.ts', 'pwa-offline.spec.ts', 'pwa-update.spec.ts'],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
