@@ -14,6 +14,8 @@ const status = ref('')
 const presetId = ref('')
 const presetName = ref('')
 const pendingDelete = ref('')
+const presetBaseline = ref(JSON.stringify(props.presets ?? []))
+const presetsConflict = computed(() => presetBaseline.value !== JSON.stringify(props.presets ?? []))
 const selectedPreset = computed(() => props.presets?.find(item => item.id === presetId.value))
 function selectPreset() {
   pendingDelete.value = ''
@@ -21,7 +23,9 @@ function selectPreset() {
   if (selectedPreset.value) { readId++; draft.value = clone(selectedPreset.value.theme); status.value = '预设已载入草稿，尚未应用。' }
 }
 function writePresets(next: ThemePreset[]) {
+  if (presetsConflict.value) { status.value = '预设库已在其他标签页修改，请重新加载。'; return false }
   if (!validThemePresets(next)) { status.value = '预设名称不能为空、重复或超过 40 字，最多保存 20 个预设。'; return false }
+  presetBaseline.value = JSON.stringify(next)
   emit('updatePresets', next)
   pendingDelete.value = ''
   status.value = '预设库已保存。'
@@ -57,6 +61,8 @@ const conflict = computed(() => baseline.value !== JSON.stringify(props.theme ??
 function reload() {
   readId++
   baseline.value = JSON.stringify(props.theme ?? null)
+  presetBaseline.value = JSON.stringify(props.presets ?? [])
+  presetId.value = ''; presetName.value = ''; pendingDelete.value = ''
   draft.value = clone(props.theme ?? defaultCustomTheme)
   status.value = ''
 }
@@ -96,15 +102,16 @@ onBeforeUnmount(() => { readId++ })
 <template>
   <div class="custom-theme-editor">
     <section class="theme-presets" aria-label="主题预设库">
+      <p v-if="presetsConflict" role="alert">预设库已在其他标签页修改，请重新加载草稿后操作。</p>
       <strong>主题预设库 · {{ presets?.length ?? 0 }} / {{ maxThemePresets }}</strong>
       <label>选择预设<select v-model="presetId" aria-label="选择主题预设" @change="selectPreset"><option value="">新建预设</option><option v-for="item in presets ?? []" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
       <label>预设名称<input v-model="presetName" aria-label="预设名称" maxlength="40" placeholder="例如：午夜蓝" /></label>
-      <div class="theme-actions"><button type="button" :disabled="!valid || !presetName.trim()" @click="savePreset()">{{ selectedPreset ? '更新预设' : '保存为预设' }}</button><button v-if="selectedPreset" type="button" :disabled="!valid || !presetName.trim()" @click="savePreset(true)">复制草稿为新预设</button><button v-if="selectedPreset" type="button" :disabled="!presetName.trim()" @click="renamePreset">重命名预设</button><button v-if="selectedPreset" type="button" @click="deletePreset">{{ pendingDelete === selectedPreset.id ? '确认删除预设' : '删除预设' }}</button><button v-if="pendingDelete" type="button" @click="pendingDelete = ''">取消删除</button></div>
+      <div class="theme-actions"><button type="button" :disabled="presetsConflict || !valid || !presetName.trim()" @click="savePreset()">{{ selectedPreset ? '更新预设' : '保存为预设' }}</button><button v-if="selectedPreset" type="button" :disabled="presetsConflict || !valid || !presetName.trim()" @click="savePreset(true)">复制草稿为新预设</button><button v-if="selectedPreset" type="button" :disabled="presetsConflict || !presetName.trim()" @click="renamePreset">重命名预设</button><button v-if="selectedPreset" type="button" :disabled="presetsConflict" @click="deletePreset">{{ pendingDelete === selectedPreset.id ? '确认删除预设' : '删除预设' }}</button><button v-if="pendingDelete" type="button" @click="pendingDelete = ''">取消删除</button></div>
       <button type="button" class="theme-default" @click="readId++; draft = clone(defaultCustomTheme); status = '默认主题已载入草稿。'">载入默认主题草稿</button>
       <p>预设与正在应用的主题相互独立，删除预设不会改变当前外观。</p>
     </section>
     <div class="theme-actions" role="group" aria-label="预览模式"><button type="button" :aria-pressed="mode === 'light'" @click="mode = 'light'">浅色预览</button><button type="button" :aria-pressed="mode === 'dark'" @click="mode = 'dark'">深色预览</button></div>
-    <div class="theme-preview" :style="{ '--preview-accent': colors.accent, '--preview-surface': colors.surface, '--preview-text': colors.text, '--preview-radius': draft.radius + 'px', '--preview-opacity': draft.opacity / 100 }" aria-label="主题草稿预览">
+    <div class="theme-preview" :style="{ '--preview-accent': colors.accent, '--preview-surface': colors.surface, '--preview-text': colors.text, '--preview-radius': draft.radius + 'px', '--preview-opacity': draft.opacity + '%' }" aria-label="主题草稿预览">
       <div class="theme-preview-card"><strong>工作台预览</strong><span>搜索、快捷入口和小组件</span><div class="theme-preview-field">搜索网站或输入网址</div><span class="theme-preview-button">主要操作</span></div>
     </div>
     <div class="theme-colors">
@@ -135,7 +142,7 @@ onBeforeUnmount(() => { readId++ })
 .theme-actions button:disabled { opacity: .5; cursor: not-allowed; }
 .theme-preview { padding: 12px; border-radius: 14px; background: linear-gradient(140deg,#72877c,#bac3cf); }
 .theme-preview-card { display: grid; gap: 8px; padding: 14px; color: var(--preview-text); border-radius: calc(var(--preview-radius) + 8px); background: var(--preview-surface); }
-@supports (color: color-mix(in srgb, black, white)) { .theme-preview-card { background: color-mix(in srgb, var(--preview-surface) calc(var(--preview-opacity) * 100%), transparent); } }
+@supports (color: color-mix(in srgb, black, white)) { .theme-preview-card { background: color-mix(in srgb, var(--preview-surface) var(--preview-opacity), transparent); } }
 .theme-preview-card strong { font-size: 16px; }
 .theme-preview-field { padding: 9px; border-radius: var(--preview-radius); border: 1px solid currentColor; }
 .theme-preview-button { justify-self: start; padding: 7px 10px; border-radius: var(--preview-radius); background: var(--preview-accent); color: white; }

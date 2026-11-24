@@ -34,3 +34,29 @@ test('custom theme draft applies, persists and restores built-in palette', async
   await editor.getByRole('button',{name:'恢复内置配色'}).click()
   await expect(page.locator('html')).not.toHaveAttribute('data-custom-theme','')
 })
+
+test('stale theme and preset drafts reject external edits until reloaded', async ({page, context}) => {
+  const other = await context.newPage()
+  try {
+    await page.goto('/')
+    const open = async (target: typeof page) => {
+      await target.locator('.home-actions').getByRole('button',{name:'打开设置',exact:true}).click()
+      await target.getByRole('button',{name:'打开主题编辑器'}).click()
+      return target.locator('.custom-theme-editor')
+    }
+    const first = await open(page)
+    await first.getByLabel('浅色强调色').fill('#394a82')
+    await first.getByLabel('预设名称').fill('Local draft')
+    await other.goto('/')
+    const second = await open(other)
+    await second.getByLabel('预设名称').fill('Remote preset')
+    await second.getByRole('button',{name:'保存为预设'}).click()
+    await second.getByRole('button',{name:'应用自定义主题'}).click()
+    await expect(first.getByRole('button',{name:'应用自定义主题'})).toBeDisabled()
+    await expect(first.getByRole('button',{name:'保存为预设'})).toBeDisabled()
+    await first.getByRole('button',{name:'取消草稿并重载'}).click()
+    await expect(first.getByRole('button',{name:'应用自定义主题'})).toBeEnabled()
+    await expect(first.getByLabel('选择主题预设').locator('option')).toHaveCount(2)
+    await expect(first.getByLabel('浅色强调色')).toHaveValue('#365f91')
+  } finally { await other.close() }
+})
