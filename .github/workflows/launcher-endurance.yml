@@ -1,0 +1,40 @@
+name: Launcher 600-second production endurance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'e2e/launcher-soak.spec.ts'
+      - '.github/workflows/launcher-endurance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: launcher-endurance-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  endurance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      INFTAB_SOAK_SECONDS: '600'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build production assets with unchanged budgets
+        run: npm run build:web
+      - run: npx playwright install --with-deps chromium
+      - name: Run 600-second production endurance test
+        run: npm run test:e2e:production:built -- e2e/launcher-soak.spec.ts --workers=1 --retries=0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launcher-endurance-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14

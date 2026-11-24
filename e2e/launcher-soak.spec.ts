@@ -41,38 +41,56 @@ test('launcher sustained operation reports DOM retention and idle recovery', asy
     const counters = await cdp.send('Memory.getDOMCounters')
     return { heap: heap.usedSize, ...counters, layers, slots: await page.locator('.shortcut-page').count() }
   }
+  async function detachedRoots() {
+    try {
+      const report = await cdp.send('DOM.getDetachedDomNodes')
+      return report.detachedNodes.map(node => ({
+        name: node.treeNode.nodeName,
+        retained: node.retainedNodeIds.length,
+      }))
+    } catch { return null }
+  }
+  async function dockCycle() {
+    const item = dock.locator('[data-dock-item-id="weather"]')
+    await item.focus()
+    await page.keyboard.press('Shift+ArrowRight')
+    await expect(item).toBeFocused()
+    await page.keyboard.press('Shift+ArrowLeft')
+    await expect(item).toBeFocused()
+    if (seconds === 600) {
+      const bounds = (await dock.boundingBox())!
+      // Sweep through the stable Dock band, including a reversal and leave.
+      await page.mouse.move(bounds.x + bounds.width * .25, bounds.y + bounds.height * .7)
+      await page.mouse.move(bounds.x + bounds.width * .75, bounds.y + bounds.height * .7, { steps: 4 })
+      await page.mouse.move(bounds.x + bounds.width * .25, bounds.y + bounds.height * .7, { steps: 4 })
+      await page.mouse.move(20, 20)
+      await expect(dock).not.toHaveClass(/is-magnifying/)
+    }
+  }
   try {
     await cdp.send('LayerTree.enable')
     await cdp.send('Performance.enable')
     await pulse()
+    await dockCycle()
     const baseline = await checkpoint()
+    const detachedBefore = await detachedRoots()
     const before = await cdp.send('Performance.getMetrics')
     const samples = []
     const start = Date.now()
     while (Date.now() - start < seconds * 1000) {
       const input = await pulse()
-      const item = dock.locator('[data-dock-item-id="weather"]')
-      await item.focus()
-      await page.keyboard.press('Shift+ArrowRight')
-      await expect(item).toBeFocused()
-      await page.keyboard.press('Shift+ArrowLeft')
-      await expect(item).toBeFocused()
+      await dockCycle()
       const idle = await checkpoint()
       expect(idle.slots).toBeLessThanOrEqual(4)
       samples.push({ elapsedMs: Date.now() - start, input, ...idle })
     }
     const after = await cdp.send('Performance.getMetrics')
-    // Experimental method may not exist on the bundled Chromium. Record
-    // unsupported explicitly, rather than reporting a false zero.
-    let detached: number | null = null
-    try {
-      const report = await cdp.send('DOM.getDetachedDomNodes')
-      detached = report.detachedNodes.length
-    } catch { /* optional diagnostic */ }
-    const result = { seconds, baseline, samples, peakLayers, detached, cpu: Object.fromEntries(after.metrics.filter(m => /^(TaskDuration|ScriptDuration|LayoutDuration|RecalcStyleDuration)$/.test(m.name)).map(m => [m.name, m.value - (before.metrics.find(x => x.name === m.name)?.value ?? 0)])) }
+    const detachedAfter = await detachedRoots()
+    const result = { seconds, baseline, samples, peakLayers, detachedBefore, detachedAfter, detached: detachedAfter?.length ?? null, cpu: Object.fromEntries(after.metrics.filter(m => /^(TaskDuration|ScriptDuration|LayoutDuration|RecalcStyleDuration)$/.test(m.name)).map(m => [m.name, m.value - (before.metrics.find(x => x.name === m.name)?.value ?? 0)])) }
     await testInfo.attach('launcher-soak', { body: JSON.stringify(result, null, 2), contentType: 'application/json' })
     console.log('Launcher soak diagnostics:', JSON.stringify(result))
     expect(samples.length).toBeGreaterThan(0)
+    expect(samples.every(sample => sample.documents === baseline.documents)).toBe(true)
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') || '{}').dockItemIds)).toEqual(['weather','notes','calendar'])
   } finally {
     await cdp.send('Performance.disable')

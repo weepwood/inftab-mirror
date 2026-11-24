@@ -216,6 +216,7 @@ function preventGestureClick(event: MouseEvent) {
 
 function updateDockMagnification(event: PointerEvent) {
   if (event.pointerType === 'touch' || dragId.value || !props.magnificationEnabled || !dock.value) return
+  if (hovering && pointerX === event.clientX) return
   pointerX = event.clientX
   hovering = dirty = true
   queueMagnification()
@@ -266,7 +267,7 @@ function paintMagnification(now: number) {
   const factor = Math.min(1, (left + right) / (total || 1))
   let offset = Math.max(-left, Math.min(-total * factor / 2, right - total * factor))
   dock.value.classList.add('is-magnifying')
-  dock.value.style.setProperty('--dock-lift', String(1 + (Math.max(...scales) - 1) * factor * .18))
+  dock.value.style.setProperty('--dock-lift', (1 + (Math.max(...scales) - 1) * factor * .18).toFixed(3))
   slots.forEach((entry, index) => {
     const extra = expansion[index]! * factor
     entry.style.setProperty('--dock-scale', (1 + (scales[index]! - 1) * factor).toFixed(3))

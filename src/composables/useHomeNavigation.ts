@@ -69,7 +69,7 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   }
   
   function handleHomeWheel(event: WheelEvent) {
-    if (minimalMode.value || overlayOpen.value || pageCount.value < 2 || event.ctrlKey
+    if (homeTouchStart || minimalMode.value || overlayOpen.value || pageCount.value < 2 || event.ctrlKey
       || (event.target instanceof Element && event.target.closest('.home-widget-shelf, .home-dock, .search-area'))) return
     const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY)
     if (shortHomeScrollEnabled.value && !horizontal) return

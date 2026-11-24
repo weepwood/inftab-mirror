@@ -93,7 +93,7 @@ function snapSlide(duration = props.transitionDuration) {
   stopSlide()
   const target = physicalPage.value
   const distance = slidePosition - target
-  if (!duration || (props.transitionEffect === 'slide' && prefersReducedMotion()) || Math.abs(distance) < .002) {
+  if (!duration || (props.transitionEffect === 'slide' && prefersReducedMotion()) || (Math.abs(distance) < .002 && Math.abs(velocity) < .0001)) {
     paintSlide(target)
     velocity = 0
     return
