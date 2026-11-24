@@ -46,6 +46,13 @@ export default defineConfig({
               test: /\/src\/components\/(?:ShortcutEditor|FolderDialog|ConfirmDialog)\.vue/,
               includeDependenciesRecursively: false,
             },
+            // Coalesce optional management forms, sharing template and validation
+            // overhead without pulling them into the homepage startup graph.
+            {
+              name: 'settings-tools',
+              test: /\/src\/components\/(?:CustomThemeEditor|ConfigMigration|ShortcutManager)\.vue/,
+              includeDependenciesRecursively: false,
+            },
             // Small offline tools share Vue/icon imports and repeated form markup.
             // Group them for gzip efficiency, but fetch none on the homepage.
             {

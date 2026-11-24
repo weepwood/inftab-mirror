@@ -31,19 +31,16 @@ export const defaultCustomTheme: CustomTheme = {
   dark: { accent: '#435e8a', surface: '#202a39', text: '#edf2fa' },
   radius: 10, opacity: 96,
 }
-export function themeVariables(theme: CustomTheme) {
-  return {
-    '--custom-light-accent': theme.light.accent, '--custom-light-surface': theme.light.surface, '--custom-light-text': theme.light.text,
-    '--custom-dark-accent': theme.dark.accent, '--custom-dark-surface': theme.dark.surface, '--custom-dark-text': theme.dark.text,
-    '--custom-radius': theme.radius + 'px', '--custom-opacity': theme.opacity + '%',
-  }
-}
 export function applyCustomTheme(root: HTMLElement, theme?: CustomTheme | null) {
   const safe = sanitizeCustomTheme(theme)
-  for (const [key, value] of Object.entries(themeVariables(safe ?? defaultCustomTheme))) {
-    if (safe) root.style.setProperty(key, value)
-    else root.style.removeProperty(key)
+  const update = (key: string, value?: string) => value === undefined
+    ? root.style.removeProperty('--custom-' + key)
+    : root.style.setProperty('--custom-' + key, value)
+  for (const mode of ['light','dark'] as const) {
+    for (const field of ['accent','surface','text'] as const) update(mode + '-' + field, safe?.[mode][field])
   }
+  update('radius', safe ? safe.radius + 'px' : undefined)
+  update('opacity', safe ? safe.opacity + '%' : undefined)
   root.toggleAttribute('data-custom-theme', !!safe)
 }
 
