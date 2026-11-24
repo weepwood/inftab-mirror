@@ -1,6 +1,7 @@
 import type { CustomTheme } from '../types'
 import { sanitizeCustomTheme } from './customTheme'
 import { isRecord } from './validation'
+import { downloadText } from './downloadBackup'
 
 export const maxThemeFileBytes = 16 * 1024
 export function parseThemeFile(text: string): CustomTheme {
@@ -17,9 +18,5 @@ export function serializeThemeFile(theme: CustomTheme) {
   return JSON.stringify({ format: 'inftab-theme', version: 1, theme: safe }, null, 2)
 }
 export function downloadThemeFile(theme: CustomTheme) {
-  const url = URL.createObjectURL(new Blob([serializeThemeFile(theme)], { type: 'application/json' }))
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = 'inftab-theme.json'
-  try { document.body.append(anchor); anchor.click() } finally { anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000) }
+  downloadText(serializeThemeFile(theme), 'application/json', 'inftab-theme.json')
 }

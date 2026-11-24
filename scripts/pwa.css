@@ -4,3 +4,9 @@
 .inftab-pwa-control button:focus-visible{outline:2px solid white;outline-offset:2px}
 .inftab-pwa-control .pwa-status:not(:empty){padding:5px 8px;background:rgba(20,33,28,.85);border-radius:8px}
 @media(max-height:440px){.inftab-pwa-control{position:absolute;bottom:auto;top:4px;left:4px}}
+
+.inftab-pwa-control [hidden]{display:none!important}
+.inftab-pwa-control .pwa-details{flex-basis:100%;max-width:100%;box-sizing:border-box;padding:8px 10px;background:rgba(20,33,28,.94);border:1px solid rgba(255,255,255,.3);border-radius:10px}
+.inftab-pwa-control summary{cursor:pointer;font-weight:600;min-height:24px}
+.inftab-pwa-control .pwa-details p{margin:6px 0;color:#e1ebe5;overflow-wrap:anywhere}
+.inftab-pwa-control .pwa-details button{margin:2px 4px 2px 0}

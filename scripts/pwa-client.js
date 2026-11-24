@@ -17,16 +17,45 @@
   button.type='button'; button.textContent='启用离线工作台'
   const install=document.createElement('button')
   install.type='button'; install.textContent='安装应用'; install.hidden=true
+  const details=document.createElement('details')
+  details.className='pwa-details'; details.hidden=true
+  const summary=document.createElement('summary'); summary.textContent='离线管理'
+  const info=document.createElement('p'); info.className='pwa-info'
+  const check=document.createElement('button'); check.type='button';check.textContent='检查更新'
+  const inspect=document.createElement('button');inspect.type='button';inspect.textContent='刷新缓存信息'
+  const help=document.createElement('p');help.textContent='新版本验证完成后，关闭所有工作台标签页再打开。浏览器支持时可安装应用。'
+  details.append(summary,info,check,inspect,help)
   const status=document.createElement('span')
   status.setAttribute('role','status'); status.className='pwa-status'
-  root.append(button,install,status); document.body.append(root)
-  let registration, prompt, busy=false
+  root.append(button,install,details,status); document.body.append(root)
+  let registration, prompt, busy=false, stopped=false
+  const requestWorker=type=>new Promise((resolve,reject)=>{
+    if(!controlled())return reject(Error('离线工作线程尚未就绪。'))
+    const channel=new MessageChannel()
+    const timer=setTimeout(()=>{channel.port1.close();reject(Error('离线管理响应超时。'))},5000)
+    channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();event.data?.ok?resolve(event.data):reject(Error(event.data?.message||'操作失败。'))}
+    navigator.serviceWorker.controller.postMessage({type},[channel.port2])
+  })
+  async function refreshInfo(){
+    try{const data=await requestWorker('cache-info');info.textContent='版本 '+data.revision.slice(0,8)+' · '+data.count+' 个资源 · '+(data.bytes/1048576).toFixed(2)+' MiB · '+data.versions+' 份版本缓存'}catch(error){info.textContent=error.message}
+  }
+  details.addEventListener('toggle',()=>{if(details.open)void refreshInfo()})
+  inspect.addEventListener('click',refreshInfo)
+  check.addEventListener('click',async()=>{
+    if(!navigator.onLine){status.textContent='当前离线，联网后再检查。';return}
+    if(!owned(registration)){status.textContent='离线工作线程尚未就绪。';return}
+    check.disabled=true
+    try{await registration.update();status.textContent=registration.waiting?'新版本已缓存，关闭所有工作台标签页后更新。':registration.installing?'正在下载并验证新版本…':'暂未检测到新版本。'}catch{status.textContent='更新检查失败，当前缓存仍可使用。'}finally{check.disabled=false}
+  })
   function enabled(){try{return localStorage.getItem(key)==='1'}catch{return false}}
   function remember(value){try{if(value)localStorage.setItem(key,'1');else localStorage.removeItem(key)}catch{}}
   function render(){
-    if(busy)return
+    if(busy||stopped)return
     const ready=controlled()
-    button.textContent=ready?'停用离线工作台':'启用离线工作台'
+    details.hidden=!ready
+    check.disabled=!navigator.onLine
+    if(ready&&details.open)void refreshInfo()
+    button.textContent=ready?'停用并清理离线缓存':'启用离线工作台'
     status.textContent=registration?.waiting?'新版本已缓存，关闭所有工作台标签页后更新。':ready?(navigator.onLine?'离线资源已就绪':'离线模式 · 本地功能可用'):''
   }
   function observe(candidate){
@@ -59,10 +88,9 @@
   button.addEventListener('click',async()=>{
     if(controlled() || owned(registration)&&registration.active){
       if(!navigator.onLine){status.textContent='请联网后停用离线模式。';return}
-      if(!confirm('停用离线工作台？建议先关闭其他工作台标签页。不会删除用户数据。'))return
-      const current=registration??await navigator.serviceWorker.getRegistration(base.href)
-      if(owned(current))await current.unregister()
-      remember(false);status.textContent='已停止注册，刷新页面后生效。';button.disabled=true
+      if(!confirm('停用并清理当前工作台的离线资源？不会删除笔记、待办、设置或本地恢复点。'))return
+      busy=true;button.disabled=true
+      try{await requestWorker('disable');remember(false);stopped=true;details.hidden=true;status.textContent='已清理离线缓存，请刷新页面。';button.textContent='离线缓存已清理'}catch(error){status.textContent=error.message;button.disabled=false}finally{busy=false}
       return
     }
     void enable()
@@ -73,10 +101,10 @@
   install.addEventListener('click',async()=>{
     if(!prompt)return
     const pending=prompt;prompt=undefined;install.hidden=true
-    await pending.prompt()
+    try{await pending.prompt()}catch{status.textContent='可尝试通过浏览器菜单安装应用。'}
   })
   navigator.serviceWorker.addEventListener('controllerchange',render)
-  window.addEventListener('online',render);window.addEventListener('offline',render)
+  window.addEventListener('online',()=>{render();if(!stopped&&owned(registration))void registration.update().catch(()=>{})});window.addEventListener('offline',render)
   window.addEventListener('appinstalled',()=>{install.hidden=true;void enable()})
   if(controlled()){
     void navigator.serviceWorker.getRegistration(base.href).then(value=>{if(owned(value)){observe(value);if(navigator.onLine)void value.update().catch(()=>{})}render()}).catch(render)

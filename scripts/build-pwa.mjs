@@ -53,8 +53,8 @@ function walk(dir){return readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isD
 const allowed = /^(?:index\.html|app\.webmanifest|pwa-client\.js|pwa\.css|pwa-(?:192|512)\.png|windmill\.svg|(?:assets|wallpapers|search-engines|inftab-icons)\/[^?#]+)$/
 const files=walk(dist).map(path=>relative(dist,path).split(sep).join('/')).filter(name=>allowed.test(name)).sort()
 if (!files.includes('index.html') || !files.some(name=>name.startsWith('assets/'))) throw Error('PWA: missing app shell')
-const records=files.map(path=>({path,hash:sha(read(path))}))
-const bytes=files.reduce((sum,path)=>sum+read(path).length,0)
+const records=files.map(path=>({path,hash:sha(read(path)),bytes:read(path).length}))
+const bytes=records.reduce((sum,asset)=>sum+asset.bytes,0)
 if(bytes>4*1024*1024) throw Error('PWA: precache exceeds 4 MiB')
 const worker=readFileSync(resolve(here,'pwa-worker.js'),'utf8')
 const revision=sha(Buffer.from(worker+JSON.stringify(records))).slice(0,24)
