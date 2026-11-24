@@ -106,3 +106,31 @@ it('decays touch release projection when the finger pauses before release', () =
     expect(currentPage.value).toBe(1)
   } finally { scope.stop(); clock.mockRestore() }
 })
+
+it('keeps sub-threshold wheel motion completely static even after input stops', () => {
+  vi.useFakeTimers()
+  const scope = effectScope(), currentPage = ref(0)
+  let now = 0
+  const clock = vi.spyOn(performance, 'now').mockImplementation(() => now)
+  const nav = scope.run(() => useHomeNavigation({ currentPage, pageDirection: ref(1), pageCount: ref(5), minimalMode: ref(false), shortHomeScrollEnabled: ref(false), overlayOpen: ref(false) }))!
+  const wheel = (deltaY: number) => nav.handleHomeWheel(new WheelEvent('wheel', { deltaY, cancelable: true }))
+  try {
+    for (const delta of [20, 30, 40]) {
+      now += 20; wheel(delta)
+      expect(currentPage.value).toBe(0)
+      expect(nav.wheelOffset.value).toBe(0)
+    }
+    now += 300; vi.advanceTimersByTime(300)
+    expect(currentPage.value).toBe(0)
+    expect(nav.wheelOffset.value).toBe(0)
+    wheel(60); now += 20; wheel(40)
+    expect(currentPage.value).toBe(1)
+    expect(nav.wheelOffset.value).toBe(0)
+    now += 20; wheel(-30); now += 20; wheel(-30)
+    now += 300; vi.advanceTimersByTime(300)
+    expect(currentPage.value).toBe(1)
+    expect(nav.wheelOffset.value).toBe(0)
+    wheel(-100)
+    expect(currentPage.value).toBe(0)
+  } finally { scope.stop(); clock.mockRestore(); vi.useRealTimers() }
+})
