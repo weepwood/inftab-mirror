@@ -1198,8 +1198,6 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .home-dock-entry:hover .home-dock-icon { outline: none; }
 .home-dock-item:active .home-dock-icon { filter: brightness(.85); }
 .home-dock.dock-auto-hide { transition: transform 240ms cubic-bezier(.22,.75,.25,1); }
-@media (hover: hover) and (pointer: fine) and (min-width: 781px) {
-}
 @media (max-width: 780px) { .home-dock { bottom: 36px; left: 14px; max-width: max(90px, calc(100vw - 202px)); transform: none; } .home-dock.dock-auto-hide:not(:hover):not(:focus-within):not(.dock-menu-open) { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .home-dock.dock-auto-hide, .home-dock-icon { transition: none; } }
 
@@ -1225,7 +1223,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 /* Stable visual hierarchy without changing stored launcher dimensions. */
 .shortcut-grid-wrap { isolation: isolate; }
 .page-dot:focus-visible { outline-offset: 2px; }
- .home-dock-entry::before { content: attr(data-title); position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ui-text); background: var(--ui-surface); border: 1px solid var(--ui-border); padding: 4px 8px; border-radius: 7px; font-size: 11px; opacity: 0; pointer-events: none; transition: opacity 100ms ease; z-index: 5; }
+.home-dock-entry::before { content: attr(data-title); position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ui-text); background: var(--ui-surface); border: 1px solid var(--ui-border); padding: 4px 8px; border-radius: 7px; font-size: 11px; opacity: 0; pointer-events: none; transition: opacity 100ms ease; z-index: 5; }
 @media (hover: hover) and (pointer: fine) {
   .home-dock:not(.dock-dragging) .home-dock-entry:hover::before, .home-dock-entry:focus-within::before { opacity: 1; transform: translate(var(--dock-shift-x, 0px), calc(-1 * var(--dock-icon-size) * (var(--dock-scale, 1) - 1))) translateX(-50%); }
   .home-dock:not(.magnification-off) .home-dock-track { padding-top: calc(var(--dock-item-size) * .7 + 34px); }

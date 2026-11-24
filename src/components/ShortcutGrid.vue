@@ -104,7 +104,7 @@ function snapSlide(duration = props.transitionDuration) {
   const tick = (now: number) => {
     const time = Math.max(0, now - start)
     const decay = Math.exp(-rate * time)
-    paintSlide(target) + (distance + slope * time) * decay
+    paintSlide(target + (distance + slope * time) * decay)
     velocity = (initialVelocity - rate * slope * time) * decay
     if (time >= duration || Math.abs(slidePosition - target) < .002) {
       paintSlide(target)
