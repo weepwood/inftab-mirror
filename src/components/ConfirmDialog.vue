@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { trapOverlayTab, isComposingKey } from '../composables/overlayFocus'
 import { onMounted, ref } from 'vue'
 import { X } from '@lucide/vue'
 
@@ -10,27 +11,16 @@ const dialog = ref<HTMLElement>()
 const cancelButton = ref<HTMLButtonElement>()
 
 function handleKeydown(event: KeyboardEvent) {
+  if (isComposingKey(event)) { event.stopPropagation(); return }
+  if (event.defaultPrevented) return
   if (event.key === 'Escape') {
     event.preventDefault()
     event.stopPropagation()
     emit('cancel')
     return
   }
-  if (event.key !== 'Tab' || !dialog.value) return
-  const focusable = [...dialog.value.querySelectorAll<HTMLElement>('button:not([disabled])')]
-  const first = focusable[0]
-  const last = focusable.at(-1)
-  if (!first || !last) {
-    event.preventDefault()
-  } else if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
+  trapOverlayTab(event, dialog.value)
 }
-
 onMounted(() => cancelButton.value?.focus())
 </script>
 

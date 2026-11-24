@@ -6,6 +6,7 @@ import SearchBar from './components/SearchBar.vue'
 import ClockWidget from './components/ClockWidget.vue'
 import { lazyPluginComponent, retryAsyncLoad } from './plugins/asyncComponent'
 import { useHomeLayout } from './composables/useHomeLayout'
+import { getOverlayFocusable, trapOverlayTab, isComposingKey } from './composables/overlayFocus'
 import { useHomeNavigation } from './composables/useHomeNavigation'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent, storageWriteSuccessEvent } from './composables/useStoredState'
@@ -286,7 +287,9 @@ const activePanelListeners = computed<Record<string, (...args: never[]) => void>
   : {})
 const homeWidgetContext = computed(() => ({ preferences: preferences.value, todos: todos.value, addTodo, toggleTodo, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
 const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayout({ preferences, viewport, layoutColumns, allLauncherItems, homeDockItems, pageCount, minimalMode, localSearchMode })
-const { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, activePanel, shortcutDialog })
+const overlayOpen = computed(() => Boolean(activePanel.value || shortcutDialog.value || folderDialogOpen.value || commandPaletteOpen.value || pendingDestructiveAction.value))
+const { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen })
+watch(overlayOpen, (open) => { if (open) cancelHomeSwipe() }, { flush: 'sync' })
 
 watch(pageCount, (count) => { currentPage.value = Math.min(currentPage.value, count - 1) })
 watch(() => [preferences.value.wallpaperRotation, preferences.value.wallpaperRotationLastAt, preferences.value.wallpaper, preferences.value.customWallpaper] as const, () => { void scheduleWallpaperRotation() })
@@ -299,7 +302,7 @@ watch(activePanel, async (panel, previousPanel) => {
   }
   if (!panel) return
   await nextTick()
-  sidePanel.value?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]):not([type="hidden"]):not(.visually-hidden), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]):not(.visually-hidden)')?.focus()
+  if (sidePanel.value) getOverlayFocusable(sidePanel.value)[0]?.focus()
 })
 watch(shortcutDialog, async (isOpen) => {
   if (isOpen) {
@@ -313,23 +316,8 @@ watch(shortcutDialog, async (isOpen) => {
 }, { flush: 'post' })
 
 function handlePanelKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Tab' || !sidePanel.value) return
-  const focusable = [...sidePanel.value.querySelectorAll<HTMLElement>(
-    'button:not([disabled]), input:not([disabled]):not([type="hidden"]):not(.visually-hidden), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]):not(.visually-hidden)',
-  )]
-  if (!focusable.length) {
-    event.preventDefault()
-    return
-  }
-  const first = focusable[0]!
-  const last = focusable.at(-1)!
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
+  if (isComposingKey(event)) { event.stopPropagation(); return }
+  trapOverlayTab(event, sidePanel.value)
 }
 
 function openWebUrl(url: string, newTab: boolean, event?: MouseEvent) {
@@ -540,10 +528,7 @@ function openShortcutDialog(item?: LauncherItem) {
 }
 
 function handleShortcutDialogKeydown(event: KeyboardEvent) {
-  if (event.isComposing || event.keyCode === 229) {
-    event.stopPropagation()
-    return
-  }
+  if (isComposingKey(event)) { event.stopPropagation(); return }
   if (event.defaultPrevented) return
   if (event.key === 'Escape') {
     event.preventDefault()
@@ -551,20 +536,7 @@ function handleShortcutDialogKeydown(event: KeyboardEvent) {
     shortcutDialog.value = false
     return
   }
-  if (event.key !== 'Tab' || !shortcutDialogElement.value) return
-  const focusable = [...shortcutDialogElement.value.querySelectorAll<HTMLElement>(
-    'button:enabled, input:enabled:not([type="file"]), select:enabled, summary',
-  )].filter((element) => !element.closest('details:not([open])') || element.matches('summary'))
-  const first = focusable[0]
-  const last = focusable.at(-1)
-  if (!first || !last) event.preventDefault()
-  else if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
+  trapOverlayTab(event, shortcutDialogElement.value)
 }
 
 function saveShortcut(shortcut: Shortcut, workspaceId: string) {
@@ -639,7 +611,7 @@ async function runCommand(id: string) {
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  if (event.defaultPrevented || pendingDestructiveAction.value) return
+  if (event.defaultPrevented || isComposingKey(event) || pendingDestructiveAction.value) return
   if (commandPaletteOpen.value) {
     if (event.key === 'Escape') commandPaletteOpen.value = false
     return
