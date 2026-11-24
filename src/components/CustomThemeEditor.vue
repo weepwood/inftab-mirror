@@ -1,15 +1,51 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
-import type { CustomTheme } from '../types'
-import { contrastRatio, defaultCustomTheme, sanitizeCustomTheme } from '../data/customTheme'
+import type { CustomTheme, ThemePreset } from '../types'
+import { createLocalId } from '../data/createId'
+import { contrastRatio, defaultCustomTheme, sanitizeCustomTheme, maxThemePresets, validThemePresets } from '../data/customTheme'
 import { downloadThemeFile, maxThemeFileBytes, parseThemeFile } from '../data/themeExchange'
 
-const props = defineProps<{ theme?: CustomTheme | null }>()
-const emit = defineEmits<{ apply: [theme: CustomTheme | null] }>()
+const props = defineProps<{ theme?: CustomTheme | null; presets?: ThemePreset[] }>()
+const emit = defineEmits<{ apply: [theme: CustomTheme | null]; updatePresets: [presets: ThemePreset[]] }>()
 const clone = (theme: CustomTheme) => ({ ...theme, light: { ...theme.light }, dark: { ...theme.dark } })
 const draft = ref(clone(props.theme ?? defaultCustomTheme))
 const mode = ref<'light' | 'dark'>('light')
 const status = ref('')
+const presetId = ref('')
+const presetName = ref('')
+const pendingDelete = ref('')
+const selectedPreset = computed(() => props.presets?.find(item => item.id === presetId.value))
+function selectPreset() {
+  pendingDelete.value = ''
+  presetName.value = selectedPreset.value?.name ?? ''
+  if (selectedPreset.value) { readId++; draft.value = clone(selectedPreset.value.theme); status.value = '预设已载入草稿，尚未应用。' }
+}
+function writePresets(next: ThemePreset[]) {
+  if (!validThemePresets(next)) { status.value = '预设名称不能为空、重复或超过 40 字，最多保存 20 个预设。'; return false }
+  emit('updatePresets', next)
+  pendingDelete.value = ''
+  status.value = '预设库已保存。'
+  return true
+}
+function savePreset(copy = false) {
+  if (!valid.value) return
+  const existing = props.presets ?? []
+  const id = !copy && selectedPreset.value ? selectedPreset.value.id : createLocalId()
+  const name = presetName.value.normalize('NFKC').trim()
+  const item = { id, name, theme: clone(valid.value) }
+  const next = existing.some(row => row.id === id) ? existing.map(row => row.id === id ? item : row) : [...existing, item]
+  if (writePresets(next)) presetId.value = id
+}
+function renamePreset() {
+  const current = selectedPreset.value
+  if (current) writePresets((props.presets ?? []).map(row => row.id === current.id ? { ...row, name: presetName.value.normalize('NFKC').trim() } : row))
+}
+function deletePreset() {
+  const current = selectedPreset.value
+  if (!current) return
+  if (pendingDelete.value !== current.id) { pendingDelete.value = current.id; return }
+  if (writePresets((props.presets ?? []).filter(row => row.id !== current.id))) { presetId.value = ''; presetName.value = '' }
+}
 let readId = 0
 const baseline = ref(JSON.stringify(props.theme ?? null))
 const valid = computed(() => sanitizeCustomTheme(draft.value))
@@ -59,6 +95,14 @@ onBeforeUnmount(() => { readId++ })
 
 <template>
   <div class="custom-theme-editor">
+    <section class="theme-presets" aria-label="主题预设库">
+      <strong>主题预设库 · {{ presets?.length ?? 0 }} / 20</strong>
+      <label>选择预设<select v-model="presetId" aria-label="选择主题预设" @change="selectPreset"><option value="">新建预设</option><option v-for="item in presets ?? []" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
+      <label>预设名称<input v-model="presetName" aria-label="预设名称" maxlength="40" placeholder="例如：午夜蓝" /></label>
+      <div class="theme-actions"><button type="button" :disabled="!valid || !presetName.trim()" @click="savePreset()">{{ selectedPreset ? '更新预设' : '保存为预设' }}</button><button v-if="selectedPreset" type="button" :disabled="!valid || !presetName.trim()" @click="savePreset(true)">复制草稿为新预设</button><button v-if="selectedPreset" type="button" :disabled="!presetName.trim()" @click="renamePreset">重命名预设</button><button v-if="selectedPreset" type="button" @click="deletePreset">{{ pendingDelete === selectedPreset.id ? '确认删除预设' : '删除预设' }}</button><button v-if="pendingDelete" type="button" @click="pendingDelete = ''">取消删除</button></div>
+      <button type="button" class="theme-default" @click="readId++; draft = clone(defaultCustomTheme); status = '默认主题已载入草稿。'">载入默认主题草稿</button>
+      <p>预设与正在应用的主题相互独立，删除预设不会改变当前外观。</p>
+    </section>
     <div class="theme-actions" role="group" aria-label="预览模式"><button type="button" :aria-pressed="mode === 'light'" @click="mode = 'light'">浅色预览</button><button type="button" :aria-pressed="mode === 'dark'" @click="mode = 'dark'">深色预览</button></div>
     <div class="theme-preview" :style="{ '--preview-accent': colors.accent, '--preview-surface': colors.surface, '--preview-text': colors.text, '--preview-radius': draft.radius + 'px', '--preview-opacity': draft.opacity / 100 }" aria-label="主题草稿预览">
       <div class="theme-preview-card"><strong>工作台预览</strong><span>搜索、快捷入口和小组件</span><div class="theme-preview-field">搜索网站或输入网址</div><span class="theme-preview-button">主要操作</span></div>
@@ -82,6 +126,9 @@ onBeforeUnmount(() => { readId++ })
 
 <style scoped>
 .custom-theme-editor { display: grid; gap: 10px; margin-top: 12px; font-size: 12px; color: var(--ui-text); }
+.theme-presets { display: grid; gap: 8px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-card); padding: 10px; }
+.theme-presets label { display: grid; gap: 4px; }
+.theme-presets input, .theme-presets select, .theme-default { width: 100%; min-width: 0; padding: 7px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); color: var(--ui-text); background: var(--ui-field); }
 .theme-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .theme-actions button { border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); background: var(--ui-field); color: var(--ui-text); min-height: 34px; padding: 5px 9px; cursor: pointer; }
 .theme-actions button[aria-pressed=true] { background: var(--ui-accent-soft); color: var(--ui-accent-text); }

@@ -1,4 +1,4 @@
-import type { CustomTheme, ThemeColors } from '../types'
+import type { CustomTheme, ThemeColors, ThemePreset } from '../types'
 import { isRecord } from './validation'
 
 const color = (value: unknown): string | undefined => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : undefined
@@ -45,4 +45,24 @@ export function applyCustomTheme(root: HTMLElement, theme?: CustomTheme | null) 
     else root.style.removeProperty(key)
   }
   root.toggleAttribute('data-custom-theme', !!safe)
+}
+
+export const maxThemePresets = 20
+export function sanitizeThemePresets(value: unknown): ThemePreset[] {
+  if (!Array.isArray(value)) return []
+  const ids = new Set<string>(), names = new Set<string>()
+  const result: ThemePreset[] = []
+  for (const entry of value.slice(0, maxThemePresets)) {
+    if (!isRecord(entry) || typeof entry.id !== 'string' || !/^[a-z0-9-]{1,128}$/i.test(entry.id) || typeof entry.name !== 'string') continue
+    const name = entry.name.normalize('NFKC').trim()
+    const key = name.toLowerCase()
+    const theme = sanitizeCustomTheme(entry.theme)
+    if (!name || Array.from(name).length > 40 || ids.has(entry.id) || names.has(key) || !theme) continue
+    ids.add(entry.id); names.add(key)
+    result.push({ id: entry.id, name, theme })
+  }
+  return result
+}
+export function validThemePresets(value: unknown): boolean {
+  return Array.isArray(value) && value.length <= maxThemePresets && sanitizeThemePresets(value).length === value.length
 }

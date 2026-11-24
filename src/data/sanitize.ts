@@ -1,4 +1,4 @@
-import { sanitizeCustomTheme } from './customTheme'
+import { sanitizeCustomTheme, sanitizeThemePresets } from './customTheme'
 import { isRecord, isValidRecordId } from './validation'
 import { defaultLauncherOrder, defaultPreferences, launcherItems, wallpaperChoices } from './defaults'
 import { maxWallpaperDataUrlLength } from './imageLimits'
@@ -90,6 +90,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     themePalette: merged.themePalette === 'slate' || merged.themePalette === 'indigo' || merged.themePalette === 'sand'
       ? merged.themePalette : defaultPreferences.themePalette,
     ...(raw.customTheme === undefined ? {} : { customTheme: sanitizeCustomTheme(raw.customTheme) ?? null }),
+    ...(raw.themePresets === undefined ? {} : { themePresets: sanitizeThemePresets(raw.themePresets) }),
     openShortcutsInNewTab: typeof raw.openShortcutsInNewTab === 'boolean' ? raw.openShortcutsInNewTab : defaultPreferences.openShortcutsInNewTab,
     openSearchInNewTab: typeof raw.openSearchInNewTab === 'boolean' ? raw.openSearchInNewTab : defaultPreferences.openSearchInNewTab,
     openBookmarksInNewTab: typeof raw.openBookmarksInNewTab === 'boolean' ? raw.openBookmarksInNewTab : defaultPreferences.openBookmarksInNewTab,
