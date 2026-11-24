@@ -7,6 +7,10 @@ on:
       - 'src/composables/overlayFocus.ts'
       - 'src/composables/useHomeNavigation.ts'
       - 'src/components/CommandPalette.vue'
+      - 'src/components/ShortcutGrid.vue'
+      - 'src/composables/useShortcutParticles.ts'
+      - 'src/data/launcherSearch.ts'
+      - 'scripts/benchmark-launcher*'
       - 'src/styles/tokens.css'
       - 'src/components/SettingsPanel.vue'
       - 'src/components/SelectField.vue'
@@ -33,6 +37,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Launcher performance diagnostics
+        run: npm run benchmark:launcher
       - name: Install only Chromium
         run: npx playwright install --with-deps chromium
       - name: Verify overlay and visual contracts

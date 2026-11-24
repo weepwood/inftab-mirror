@@ -453,8 +453,8 @@ onBeforeUnmount(() => {
         @transitionend="handleTrackTransitionEnd"
       >
           <section
-            v-for="(renderPage, renderIndex) in displayPages"
-            :key="renderIndex"
+            v-for="renderPage in displayPages"
+            :key="renderPage.trackIndex"
             class="shortcut-page"
           :class="{
             'particles-out': !renderPage.clone && outgoingPage?.index === renderPage.pageIndex && outgoingPage.effect === 'particles',

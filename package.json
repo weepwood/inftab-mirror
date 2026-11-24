@@ -19,6 +19,7 @@
     "check": "vue-tsc --noEmit && tsc -p tsconfig.e2e-extension.json && vue-tsc -p tsconfig.plugin-tests.json",
     "verify": "npm run check && npm test && npm run build",
     "test": "vitest run && node scripts/check-default-assets.mjs",
+    "benchmark:launcher": "node scripts/benchmark-launcher.mjs",
     "test:e2e": "playwright test",
     "test:e2e:production": "npm run build && npm run test:e2e:production:built",
     "test:e2e:stable": "npm run build && npm run test:e2e:stable:built",
