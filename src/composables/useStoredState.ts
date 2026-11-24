@@ -60,21 +60,24 @@ export function useStoredState<T>(
     reject: (reason?: unknown) => void
   }> = []
   let ignoreNextPersistence = false
+  let needsWrite = false
   function writeValue(next: T) {
     try {
       adapter.write(key, JSON.stringify(next))
+      needsWrite = false
       targetWindow?.dispatchEvent?.(new CustomEvent(storageWriteSuccessEvent, { detail: { key } }))
     } catch {
+      needsWrite = true
       targetWindow?.dispatchEvent?.(new CustomEvent(storageWriteErrorEvent, { detail: { key } }))
     }
   }
   function flushPendingWrite() {
-    if (persistTimer === undefined) return
-    clearTimeout(persistTimer)
+    if (persistTimer !== undefined) clearTimeout(persistTimer)
     persistTimer = undefined
-    writeValue(value.value)
+    if (needsWrite) writeValue(value.value)
   }
   function scheduleWrite() {
+    needsWrite = true
     if (isDisposed) {
       // A storage event already accepted before disposal can still be merging
       // concurrent edits. Persist it now instead of creating a timer whose
@@ -100,8 +103,6 @@ export function useStoredState<T>(
   const handleStorage = async (event: StorageEvent) => {
     if (event.storageArea && event.storageArea !== targetStorage) return
     if (event.key !== key && event.key !== null) return
-    if (persistTimer !== undefined) clearTimeout(persistTimer)
-    persistTimer = undefined
     let externalValue: T
     try {
       externalValue = event.key === null
@@ -110,8 +111,13 @@ export function useStoredState<T>(
           ? structuredClone(fallback)
           : normalize(JSON.parse(event.newValue))
     } catch {
-      externalValue = structuredClone(fallback)
+      // A corrupt remote payload must not reset a valid in-memory state or
+      // cancel a pending local edit. Explicit removal/clear is handled above.
+      return
     }
+    if (persistTimer !== undefined) clearTimeout(persistTimer)
+    persistTimer = undefined
+    needsWrite = false
     let nextValue = externalValue
     let persistMergedValue = false
     if (options.mergeConcurrentChanges !== false && event.key === key
