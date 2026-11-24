@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { trapOverlayTab, isComposingKey } from '../composables/overlayFocus'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { FolderOpen, Pencil, Trash2, X } from '@lucide/vue'
 import type { Shortcut, ShortcutFolder } from '../types'
@@ -82,29 +83,16 @@ function cancelEditing() {
 }
 
 function handleDialogKeydown(event: KeyboardEvent) {
+  if (isComposingKey(event)) { event.stopPropagation(); return }
+  if (event.defaultPrevented) return
   if (event.key === 'Escape') {
     event.preventDefault()
     event.stopPropagation()
     emit('close')
     return
   }
-  if (event.key !== 'Tab' || !dialog.value) return
-  const focusable = [...dialog.value.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])')]
-  if (!focusable.length) {
-    event.preventDefault()
-    return
-  }
-  const first = focusable[0]!
-  const last = focusable.at(-1)!
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
+  trapOverlayTab(event, dialog.value)
 }
-
 function save() {
   const cleanTitle = title.value.trim()
   if (!cleanTitle) {

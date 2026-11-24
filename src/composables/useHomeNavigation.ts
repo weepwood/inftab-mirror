@@ -1,13 +1,12 @@
 import { onScopeDispose, type Ref } from 'vue'
 
-export function useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, activePanel, shortcutDialog }: {
+export function useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen }: {
   currentPage: Ref<number>
   pageDirection: Ref<number>
   pageCount: Readonly<Ref<number>>
   minimalMode: Ref<boolean>
   shortHomeScrollEnabled: Readonly<Ref<boolean>>
-  activePanel: Readonly<Ref<string | null>>
-  shortcutDialog: Ref<boolean>
+  overlayOpen: Readonly<Ref<boolean>>
 }) {
   let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
   let homeWheelLocked = false
@@ -25,12 +24,13 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   }
   
   function startHomeSwipe(event: PointerEvent) {
-    if (minimalMode.value || event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf, .home-dock, .search-area'))) return
+    if (overlayOpen.value || minimalMode.value || event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf, .home-dock, .search-area'))) return
     homeTouchStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
   }
   
   function finishHomeSwipe(event: PointerEvent) {
     if (!homeTouchStart || event.pointerId !== homeTouchStart.pointerId) return
+    if (overlayOpen.value) { homeTouchStart = undefined; return }
     const deltaX = event.clientX - homeTouchStart.x
     const deltaY = event.clientY - homeTouchStart.y
     if (Math.abs(deltaX) > 52 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) movePage(deltaX < 0 ? 1 : -1)
@@ -39,7 +39,7 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   
   function handleHomeWheel(event: WheelEvent) {
     if (minimalMode.value || shortHomeScrollEnabled.value) return
-    if (activePanel.value || shortcutDialog.value || homeWheelLocked
+    if (overlayOpen.value || homeWheelLocked
       || (event.target instanceof Element && event.target.closest('.home-widget-shelf, .home-dock, .search-area'))) return
     const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY)
     const delta = horizontal ? event.deltaX : event.deltaY

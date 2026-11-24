@@ -20,3 +20,14 @@ it('filters, selects and executes commands from the keyboard', async () => {
     expect(wrapper.emitted('close')).toHaveLength(1)
   } finally { wrapper.unmount() }
 })
+
+
+it('does not execute or dismiss commands during IME composition', async () => {
+  const wrapper = mount(CommandPalette, { attachTo: document.body })
+  try {
+    await wrapper.get('input').trigger('keydown', { key: 'Enter', isComposing: true })
+    await wrapper.get('input').trigger('keydown', { key: 'Escape', isComposing: true })
+    expect(wrapper.emitted('run')).toBeUndefined()
+    expect(wrapper.emitted('close')).toBeUndefined()
+  } finally { wrapper.unmount() }
+})

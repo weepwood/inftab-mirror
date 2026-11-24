@@ -347,3 +347,13 @@ describe('workspace backups', () => {
     ])
   })
 })
+
+
+it('round-trips valid palettes, accepts legacy backups and rejects unsupported palette values', () => {
+  const parsed = parseWorkspaceBackup(backup({ preferences: { ...defaultPreferences, themePalette: 'sand', themeMode: 'dark' } }))
+  expect(parseWorkspaceBackup(JSON.parse(JSON.stringify(parsed))).preferences).toMatchObject({ themePalette: 'sand', themeMode: 'dark' })
+  const legacy: Record<string, unknown> = { ...defaultPreferences }
+  delete legacy.themePalette
+  expect(parseWorkspaceBackup(backup({ preferences: legacy })).preferences.themePalette).toBe('forest')
+  expect(() => parseWorkspaceBackup(backup({ preferences: { ...defaultPreferences, themePalette: 'unknown' } }))).toThrow(/页面设置无法识别/)
+})

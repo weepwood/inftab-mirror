@@ -1,0 +1,46 @@
+name: Focused UI validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/composables/overlayFocus.ts'
+      - 'src/composables/useHomeNavigation.ts'
+      - 'src/components/CommandPalette.vue'
+      - 'src/styles/tokens.css'
+      - 'e2e/visual-system.spec.ts'
+      - '.github/workflows/risk-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: focused-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install only Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify overlay and visual contracts
+        run: npm run test:e2e -- e2e/visual-system.spec.ts e2e/accessibility.spec.ts
+      - name: Save failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: focused-ui-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1142,3 +1142,10 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 @media (max-width: 480px) { .home-command-toggle { font-size: 16px; } .home-brand .brand-word { display: none; } }
 @media (prefers-reduced-motion: no-preference) { .command-palette[open] { animation: pop-in var(--ui-motion-normal) var(--ui-ease-out); } }
 @media (prefers-reduced-motion: reduce) { .command-palette { animation: none; } }
+
+/* Overlay controls use shared tokens and keep touch scrolling local. */
+.command-results { touch-action: pan-y; }
+.command-option { -webkit-tap-highlight-color: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  .panel-backdrop, .modal-backdrop, .side-panel, .shortcut-dialog, .command-palette { animation: none; }
+}
