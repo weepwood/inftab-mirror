@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { X } from '@lucide/vue'
 import { launcherIcons } from './launcherIcons'
 import { closeMenuOnFocusout, navigateMenu } from './menuNavigation'
@@ -37,6 +37,26 @@ let pointerX = 0
 const dragId = ref<string>()
 const dropTarget = ref<{ id: string; after: boolean }>()
 const failedIcons = ref<Record<string, string>>({})
+// FLIP: capture the visible pre-reorder position, then invert the keyed move.
+// Animate only the entry wrapper, not the magnified inner icon.
+const entries = () => Array.from(dock.value?.querySelectorAll<HTMLElement>('.home-dock-entry') ?? [])
+const flips = new Map<HTMLElement, Animation>()
+watch(() => props.items.map(item => item.id).join('|'), async () => {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  const before = new Map(entries().map(el => [el, el.getBoundingClientRect().left]))
+  flips.forEach(animation => animation.cancel())
+  flips.clear()
+  await nextTick()
+  for (const el of entries()) {
+    const old = before.get(el)
+    if (old === undefined || !el.animate) continue
+    const dx = old - el.getBoundingClientRect().left
+    if (Math.abs(dx) < 1) continue
+    const animation = el.animate([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.2,.85,.25,1)' })
+    flips.set(el, animation)
+    animation.onfinish = () => { if (flips.get(el) === animation) flips.delete(el) }
+  }
+})
 function startDrag(event: DragEvent, id: string) {
   dragId.value = id
   clearDockMagnification()
@@ -143,15 +163,15 @@ function updateDockMagnification(event: PointerEvent) {
   if (magnificationFrame) return
   magnificationFrame = window.requestAnimationFrame(() => {
     magnificationFrame = 0
-    const entries = Array.from(dock.value?.querySelectorAll<HTMLElement>('.home-dock-entry') ?? [])
-    if (!entries.length) return
-    const first = entries[0]!.getBoundingClientRect()
-    const last = entries.at(-1)!.getBoundingClientRect()
+    const slots = entries()
+    if (!slots.length) return
+    const first = slots[0]!.getBoundingClientRect()
+    const last = slots.at(-1)!.getBoundingClientRect()
     const itemSize = first.width || 48
-    const pitch = entries.length > 1 ? (last.left - first.left) / (entries.length - 1) : itemSize
+    const pitch = slots.length > 1 ? (last.left - first.left) / (slots.length - 1) : itemSize
     const influenceRadius = Math.max(itemSize, pitch) * 2.8
     dock.value?.classList.add('is-magnifying')
-    const scales = entries.map((_, index) => {
+    const scales = slots.map((_, index) => {
       const proximity = Math.max(0, 1 - Math.abs(pointerX - first.left - itemSize / 2 - index * pitch) / influenceRadius)
       return 1 + .65 * proximity * proximity * (3 - 2 * proximity)
     })
@@ -162,7 +182,8 @@ function updateDockMagnification(event: PointerEvent) {
     const right = bounds?.width ? Math.max(0, bounds.right - last.right) : total
     const factor = Math.min(1, (left + right) / (total || 1))
     let offset = Math.max(-left, Math.min(-total * factor / 2, right - total * factor))
-    entries.forEach((entry, index) => {
+    dock.value?.style.setProperty('--dock-lift', String(1 + (Math.max(...scales) - 1) * factor * .18))
+    slots.forEach((entry, index) => {
       const extra = expansion[index]! * factor
       entry.style.setProperty('--dock-scale', (1 + (scales[index]! - 1) * factor).toFixed(3))
       entry.style.setProperty('--dock-shift-x', `${(offset + extra / 2).toFixed(2)}px`)
@@ -176,7 +197,8 @@ function clearDockMagnification() {
   if (magnificationFrame) window.cancelAnimationFrame(magnificationFrame)
   magnificationFrame = 0
   dock.value?.classList.remove('is-magnifying')
-  dock.value?.querySelectorAll<HTMLElement>('.home-dock-entry').forEach((entry) => {
+  dock.value?.style.removeProperty('--dock-lift')
+  entries().forEach(entry => {
     entry.style.removeProperty('--dock-scale')
     entry.style.removeProperty('--dock-shift-x')
     entry.style.removeProperty('z-index')
@@ -236,6 +258,8 @@ onBeforeUnmount(() => {
   cleanGestureListeners()
   clearSuppressedClick()
   clearDockMagnification()
+  flips.forEach(animation => animation.cancel())
+  flips.clear()
 })
 </script>
 

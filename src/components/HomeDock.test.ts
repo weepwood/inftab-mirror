@@ -179,3 +179,18 @@ it('offers keyboard reordering without dragging', async () => {
   await wrapper.get('[data-dock-item-id="weather"]').trigger('keydown', { key: 'ArrowRight', shiftKey: true })
   expect(wrapper.emitted('reorder')).toEqual([['weather', 'mail', true]])
 })
+
+it('animates keyed Dock reordering on the wrapper without moving the icon transform', async () => {
+  const mail = { ...item, id: 'mail', title: '邮件' }
+  wrapper = mount(HomeDock, { props: { items: [item, mail] } })
+  const animate = vi.fn(() => ({ cancel: vi.fn(), onfinish: null }))
+  const entries = wrapper.findAll('.home-dock-entry')
+  entries.forEach(entry => {
+    const el = entry.element as HTMLElement
+    Object.defineProperty(el, 'animate', { value: animate })
+    vi.spyOn(el, 'getBoundingClientRect').mockImplementation(() => ({ left: Array.from(el.parentElement!.children).indexOf(el) * 50 } as DOMRect))
+  })
+  await wrapper.setProps({ items: [mail, item] })
+  await nextTick()
+  expect(animate).toHaveBeenCalledTimes(2)
+})
