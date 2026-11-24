@@ -425,3 +425,22 @@ it('does not echo a timer scheduled while a remote merge is resolving', async ()
     expect(vi.getTimerCount()).toBe(0)
   } finally { scope.stop() }
 })
+
+it('honors an explicit remote key deletion without resurrecting pending local edits', async () => {
+  vi.useFakeTimers()
+  const oldValue = '{"first":"saved","second":"saved"}'
+  const values = installMemoryStorage({ 'state.v1': oldValue })
+  const listeners = new Map<string, (event: StorageEvent) => void | Promise<void>>()
+  vi.stubGlobal('window', { addEventListener: (type: string, listener: (event: StorageEvent) => void) => listeners.set(type, listener), removeEventListener: vi.fn() })
+  const scope = effectScope()
+  try {
+    const fallback = { first: '', second: '' }
+    const state = scope.run(() => useStoredState('state.v1', fallback))!
+    state.value.first = 'unsaved'
+    values.delete('state.v1')
+    await listeners.get('storage')!({ key: 'state.v1', oldValue, newValue: null } as StorageEvent)
+    await vi.advanceTimersByTimeAsync(180)
+    expect(state.value).toEqual(fallback)
+    expect(values.has('state.v1')).toBe(false)
+  } finally { scope.stop() }
+})

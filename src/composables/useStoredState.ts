@@ -120,7 +120,7 @@ export function useStoredState<T>(
     needsWrite = false
     let nextValue = externalValue
     let persistMergedValue = false
-    if (options.mergeConcurrentChanges !== false && event.key === key
+    if (options.mergeConcurrentChanges !== false && event.key === key && event.newValue !== null
       && (typeof event.oldValue === 'string' || event.oldValue === null)) {
       let previousValue: T
       let hasPreviousValue = false

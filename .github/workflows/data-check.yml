@@ -12,6 +12,8 @@ on:
       - 'src/composables/useStoredState.ts'
       - 'src/composables/useLocalWorkspace.ts'
       - 'src/data/storageAdapter.ts'
+      - 'src/data/workspaceJournal.ts'
+      - 'e2e/workspace-journal.spec.ts'
       - 'src/components/ShortcutManager.vue'
       - 'src/data/layoutEditor.ts'
       - 'src/data/configMigration.ts'
@@ -39,7 +41,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- e2e/data-management.spec.ts e2e/layout-editor.spec.ts e2e/config-migration.spec.ts
+      - run: npm run test:e2e -- e2e/data-management.spec.ts e2e/layout-editor.spec.ts e2e/config-migration.spec.ts e2e/workspace-journal.spec.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
