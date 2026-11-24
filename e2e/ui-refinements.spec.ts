@@ -510,3 +510,36 @@ for (const mode of ['light', 'dark'] as const) test(`launcher controls remain vi
   await expect(label).toBeVisible()
   await testInfo.attach(`launcher-${mode}-wallpaper`, { body: await page.screenshot(), contentType: 'image/png' })
 })
+
+test('fine wheel threshold commit does not teleport the icon track', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ columns: 2, rows: 1, pageTransitionEffect: 'slide', pageTransitionMs: 300 })))
+  await page.goto('/')
+  const grid = page.locator('.shortcut-grid-viewport')
+  await expect(grid).toBeVisible()
+  const result = await grid.evaluate(async el => {
+    const sample = () => {
+      const slot = el.querySelector<HTMLElement>('.shortcut-page')!
+      const bounds = el.getBoundingClientRect(), rect = slot.getBoundingClientRect()
+      return Number(slot.dataset.renderIndex) - (rect.left - bounds.left) / bounds.width
+    }
+    const send = (deltaX: number) => el.dispatchEvent(new WheelEvent('wheel', { deltaX, bubbles: true, cancelable: true }))
+    const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    send(70)
+    await frame(); await frame()
+    const before = sample()
+    send(60)
+    // The Vue patch is allowed to run, but no animation frame has run yet.
+    await Promise.resolve(); await Promise.resolve()
+    const after = sample()
+    send(-30)
+    await Promise.resolve(); await Promise.resolve()
+    const reversed = sample()
+    return { before, after, reversed, jump: Math.abs(after-before), reverseJump: Math.abs(reversed-after) }
+  })
+  await testInfo.attach('fine-wheel-continuity', { body: JSON.stringify(result), contentType: 'application/json' })
+  expect(result.jump).toBeLessThan(.02)
+  expect(result.reverseJump).toBeLessThan(.02)
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
+  await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
+})

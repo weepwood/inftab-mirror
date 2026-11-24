@@ -529,3 +529,31 @@ it('keeps virtual slots bounded and the destination interactive across rapid wra
   await wrapper.setProps({ wheelOffset: 0 })
   wrapper.unmount()
 })
+
+it('keeps the painted position continuous when fine wheel input commits and reverses', async () => {
+  installAnimationEnvironment()
+  const frames: { current?: FrameRequestCallback } = {}
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.current = callback; return 1 })
+  vi.stubGlobal('cancelAnimationFrame', () => { frames.current = undefined })
+  let time = 0
+  vi.spyOn(performance, 'now').mockImplementation(() => time)
+  const advance = () => { time += 16; const callback = frames.current; frames.current = undefined; callback?.(time) }
+  const wrapper = mount(ShortcutGrid, { props: { items, columns: 2, rows: 1, iconSize: 64, iconRadius: 24, showNames: true, currentPage: 0, transitionDirection: 1, transitionEffect: 'slide', transitionDuration: 300, wheelOffset: 0 } })
+  const offset = () => parseFloat((wrapper.get('.shortcut-pages').element as HTMLElement).style.getPropertyValue('--slide-x')) || 0
+  try {
+    await wrapper.setProps({ wheelOffset: -.7 })
+    advance()
+    const before = offset()
+    expect(before).toBeLessThan(0)
+    await wrapper.setProps({ currentPage: 1, wheelOffset: -.3 })
+    expect(offset()).toBe(before)
+    advance()
+    const after = offset()
+    expect(after).not.toBe(before)
+    await wrapper.setProps({ wheelOffset: 0 })
+    expect(offset()).toBe(after)
+    for (let i = 0; i < 30; i++) advance()
+    expect(offset()).toBeCloseTo(0)
+    expect(wrapper.get('.shortcut-page[aria-hidden="false"]').attributes('data-page-index')).toBe('1')
+  } finally { wrapper.unmount() }
+})
