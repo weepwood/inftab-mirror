@@ -12,6 +12,7 @@ const props = withDefaults(defineProps<{
   customEngines?: CustomSearchEngine[]
   darkTheme?: boolean
   localSearch?: boolean
+  autofocus?: boolean
 }>(), { customEngines: () => [], darkTheme: false, localSearch: false })
 
 const emit = defineEmits<{
@@ -186,6 +187,7 @@ function closeOnEscape(event: KeyboardEvent) {
 }
 
 onMounted(() => {
+  if (props.autofocus) focusSearch()
   window.addEventListener('pointerdown', closeOnOutsidePointer)
   window.addEventListener('keydown', closeOnEscape)
 })

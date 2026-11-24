@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, defineAsyncComponent, h, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { Component } from 'vue'
 import { ArrowLeft, House, Menu, Plus, Search, X } from '@lucide/vue'
-import SearchBar from './components/SearchBar.vue'
 import { lazyPluginComponent, retryAsyncLoad } from './plugins/asyncComponent'
 import { useHomeLayout } from './composables/useHomeLayout'
 import { getOverlayFocusable, trapOverlayTab, isComposingKey } from './composables/overlayFocus'
@@ -25,20 +24,20 @@ import { maxDockItems, type HomeWidgetId, type HomeWidgetSize, type LauncherItem
 type Panel = PanelId | null
 const lazyHome = (loader: Parameters<typeof lazyPluginComponent>[0], name: string, retry = false) => lazyPluginComponent(loader, '正在加载' + name + '…', name + (retry ? '暂时无法加载，请重试。' : '暂时无法加载。'))
 
+const SearchBar = defineAsyncComponent({
+  loader: () => retryAsyncLoad(() => import('./components/SearchBar.vue')),
+  errorComponent: { render: () => h('button', { type: 'button', class: 'plugin-page-reload', onClick: () => location.reload() }, '搜索加载失败，重新加载页面') },
+})
 const ClockWidget = lazyHome(() => import('./components/ClockWidget.vue'), '时钟')
 const LauncherSearchResults = lazyHome(() => import('./components/LauncherSearchResults.vue'), '入口查找', true)
 const ShortcutGrid = lazyHome(() => import('./components/ShortcutGrid.vue'), '快捷入口', true)
 const HomeWidgetShelf = lazyHome(() => import('./components/HomeWidgetShelf.vue'), '首页组件')
-const HomeDock = lazyPluginComponent(
-  () => import('./components/HomeDock.vue'),
-  '正在加载常驻 Dock…',
-  '常驻 Dock 暂时无法加载。',
-)
+const HomeDock = lazyHome(() => import('./components/HomeDock.vue'), '常驻 Dock')
 const FolderDialog = lazyHome(() => import('./components/FolderDialog.vue'), '文件夹', true)
 const ConfirmDialog = lazyHome(() => import('./components/ConfirmDialog.vue'), '确认对话框', true)
 const ShortcutEditor = lazyHome(() => import('./components/ShortcutEditor.vue'), '快捷入口表单', true)
 const CommandPalette = lazyHome(() => import('./components/CommandPalette.vue'), '命令面板')
-const HomeLayoutEditor = lazyPluginComponent(() => import('./components/HomeLayoutEditor.vue'), '正在加载布局编辑器…', '布局编辑器加载失败。')
+const HomeLayoutEditor = lazyHome(() => import('./components/HomeLayoutEditor.vue'), '布局编辑器')
 const HomeWorkspaceTabs = lazyHome(() => import('./components/HomeWorkspaceTabs.vue'), '工作区')
 
 const baseUrl = import.meta.env.BASE_URL
@@ -818,6 +817,7 @@ onBeforeUnmount(() => {
         :custom-engines="customSearchEngines"
         :dark-theme="effectiveTheme === 'dark'"
         :local-search="localSearchMode"
+        :autofocus="minimalMode || localSearchMode"
         @exit-local-search="setLocalSearch(false)"
         @search="submitSearch"
         @translate="submitTranslation"

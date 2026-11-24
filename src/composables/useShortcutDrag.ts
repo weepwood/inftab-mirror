@@ -86,12 +86,7 @@ export function useShortcutDrag(props: { readonly items: LauncherItem[]; readonl
         pointer.scrolling = true
       }
       if (Math.abs(deltaX) + Math.abs(deltaY) > 10) {
-        if (pointer.scrolling) {
-          event.preventDefault()
-          pointer.scrollContainer!.scrollTop = pointer.scrollStartTop - deltaY
-          return
-        }
-        if (!pointer.scrollContainer) {
+        if (!pointer.scrolling && !pointer.scrollContainer) {
           if (pointer.hold) window.clearTimeout(pointer.hold)
           pointer.hold = undefined
           startDrag()
@@ -99,6 +94,11 @@ export function useShortcutDrag(props: { readonly items: LauncherItem[]; readonl
       }
     } else if (!pointer.dragging && !pointer.scrolling && Math.hypot(deltaX, deltaY) > 7) {
       startDrag()
+    }
+    if (pointer.scrolling) {
+      event.preventDefault()
+      pointer.scrollContainer!.scrollTop = pointer.scrollStartTop - deltaY
+      return
     }
     if (!pointer.dragging) return
     event.preventDefault()
