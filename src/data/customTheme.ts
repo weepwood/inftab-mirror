@@ -3,15 +3,15 @@ import { isRecord } from './validation'
 
 const color = (value: unknown): string | undefined => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : undefined
 function luminance(value: string) {
-  const channels = [1, 3, 5].map(i => {
-    const v = Number.parseInt(value.slice(i, i + 2), 16) / 255
+  const channel = (shift: number) => {
+    const v = ((Number.parseInt(value.slice(1), 16) >> shift) & 255) / 255
     return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4
-  })
-  return channels[0]! * .2126 + channels[1]! * .7152 + channels[2]! * .0722
+  }
+  return channel(16) * .2126 + channel(8) * .7152 + channel(0) * .0722
 }
 export function contrastRatio(a: string, b: string) {
-  const first = luminance(a), second = luminance(b)
-  return (Math.max(first, second) + .05) / (Math.min(first, second) + .05)
+  const first = luminance(a) + .05, second = luminance(b) + .05
+  return Math.max(first / second, second / first)
 }
 function parseColors(value: unknown): ThemeColors | undefined {
   if (!isRecord(value)) return undefined
