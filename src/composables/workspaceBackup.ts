@@ -115,7 +115,8 @@ export function createBackupActions({ preferences, shortcuts, folders, launcherO
     if (overLimitSections.length) {
       return `合并失败：${overLimitSections.join('、')}将超过数量上限，未导入任何数据。请先整理现有内容，或选择覆盖导入。`
     }
-    const mergedShortcutItems = sanitizeShortcuts(mergeById(shortcuts.value, importedShortcuts))
+    const existingById = new Map(shortcuts.value.map(item => [item.id, item]))
+    const mergedShortcutItems = sanitizeShortcuts(mergeById(shortcuts.value, importedShortcuts.map(item => item.tags === undefined && existingById.get(item.id)?.tags !== undefined ? { ...item, tags: existingById.get(item.id)!.tags } : item)))
     const mergedFolderItems = sanitizeFolders(mergeById(folders.value, importedFolders), mergedShortcutItems)
     const allowedWorkspaceItemIds = new Set([
       ...builtInLauncherIds,

@@ -357,3 +357,9 @@ it('round-trips valid palettes, accepts legacy backups and rejects unsupported p
   expect(parseWorkspaceBackup(backup({ preferences: legacy })).preferences.themePalette).toBe('forest')
   expect(() => parseWorkspaceBackup(backup({ preferences: { ...defaultPreferences, themePalette: 'unknown' } }))).toThrow(/页面设置无法识别/)
 })
+
+
+it('preserves normalized shortcut tags through JSON backup', () => {
+  const raw = backup({shortcuts:[{id:'custom',title:'Custom',url:'https://example.com/',color:'#abc',mark:'C',tags:[' Work ','work','学习',null]}]})
+  expect(parseWorkspaceBackup(raw).shortcuts[0]?.tags).toEqual(['Work','学习'])
+})

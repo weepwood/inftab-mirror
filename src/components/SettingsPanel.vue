@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import SelectField from './SelectField.vue'
+import type { WorkspaceTools } from '../data/workspaceTools'
+import { lazyPluginComponent } from '../plugins/asyncComponent'
+const ShortcutManager = lazyPluginComponent(() => import('./ShortcutManager.vue'), '正在加载数据管理…', '数据管理加载失败。')
+const showManager = ref(false)
 import { Check, Database, FolderPlus, House, LayoutGrid, Palette, Plus, Search, X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { launcherItems, searchModes, wallpaperChoices } from '../data/defaults'
@@ -11,7 +15,7 @@ import { availableHomeWidgetIds, maxDockItems, type CustomSearchEngine, type Hom
 import { homeWidgetPlugins } from '../plugins/widgetRegistry'
 import { homeWidgetPresets } from '../data/homeWidgetPresets'
 
-const props = withDefaults(defineProps<{ preferences: Preferences; exportError?: string; customEngines?: CustomSearchEngine[] }>(), { customEngines: () => [] })
+const props = withDefaults(defineProps<{ preferences: Preferences; exportError?: string; customEngines?: CustomSearchEngine[]; workspaceTools?: WorkspaceTools }>(), { customEngines: () => [] })
 const transitionEffects: { id: PageTransitionEffect; label: string }[] = [
   { id: 'particles', label: '微粒消散' },
   { id: 'trails', label: '光迹拖尾' },
@@ -444,6 +448,11 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
     </div>
 
     <div class="settings-group" data-group="data">
+    <section v-if="workspaceTools" class="settings-section">
+      <div class="section-heading"><div><h3>快捷入口与备份历史</h3><p>批量管理、标签、HTML 书签与本地恢复点</p></div></div>
+      <button class="button-secondary" type="button" :aria-expanded="showManager" @click="showManager = !showManager">{{ showManager ? '收起数据管理' : '打开数据管理' }}</button>
+      <ShortcutManager v-if="showManager" :tools="workspaceTools" />
+    </section>
     <section class="settings-section">
       <div class="section-heading"><div><h3>备份与迁移</h3><p>导出或恢复本机数据</p></div></div>
       <div class="backup-actions">

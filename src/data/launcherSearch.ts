@@ -43,7 +43,7 @@ export function findLauncherMatches(options: SearchOptions): LauncherSearchMatch
       const folderTitle = item.shortcut ? folderNames.get(item.id) : undefined
       const title = normalize(item.title)
       const url = normalize(item.shortcut?.url ?? '')
-      const context = normalize(`${folderTitle ?? ''} ${item.action ? '' : workspace.name}`)
+      const context = normalize(`${folderTitle ?? ''} ${item.action ? '' : workspace.name} ${item.shortcut?.tags?.join(' ') ?? ''}`)
       if (!terms.every((term) => `${title} ${url} ${context}`.includes(term))) continue
       const score = title === needle ? 0 : title.startsWith(needle) ? 1
         : terms.every((term) => title.includes(term)) ? 2

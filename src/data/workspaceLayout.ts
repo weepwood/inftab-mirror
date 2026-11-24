@@ -18,11 +18,6 @@ export function sanitizeWorkspaceLayout(value: unknown): WorkspaceLayoutOverride
 }
 
 export function resolveWorkspaceLayout(global: WorkspaceLayout, local?: WorkspaceLayoutOverrides): WorkspaceLayout {
-  return {
-    columns: local?.columns ?? global.columns,
-    rows: local?.rows ?? global.rows,
-    iconSize: local?.iconSize ?? global.iconSize,
-    iconRadius: local?.iconRadius ?? global.iconRadius,
-    showNames: local?.showNames ?? global.showNames,
-  }
+  const { columns, rows, iconSize, iconRadius, showNames } = global
+  return { columns, rows, iconSize, iconRadius, showNames, ...local }
 }

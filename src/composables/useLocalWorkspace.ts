@@ -1,3 +1,4 @@
+import type { ShortcutBatch } from '../data/workspaceTools'
 import { useStoredState } from './useStoredState'
 import { computed, watch } from 'vue'
 import { watchDeferredReference } from './watchDeferredReference'
@@ -199,7 +200,25 @@ export function useLocalWorkspace() {
 
   const { createBackup, restoreBackup } = createBackupActions({ preferences, shortcuts, folders, launcherOrder, homeWorkspaces, activeHomeWorkspaceId, builtInLauncherIds, todos, habits, countdowns, notes, customSearchEngines, focusTimer, activeNoteId, weatherCity })
 
+  async function applyShortcutBatch(action: ShortcutBatch): Promise<string | undefined> {
+    try {
+      const { planShortcutBatch } = await import('../data/shortcutBatch')
+      const next = planShortcutBatch(createBackup(), action)
+      if (action.kind !== 'move') shortcuts.value = next.shortcuts
+      if (action.kind === 'move' || action.kind === 'delete') {
+        folders.value = next.folders
+        homeWorkspaces.value = next.homeWorkspaces!
+      }
+      if (action.kind === 'delete') {
+        launcherOrder.value = next.launcherOrder
+        preferences.value = next.preferences
+      }
+      return undefined
+    } catch (error) { return error instanceof Error ? error.message : '批量操作失败。' }
+  }
+
   return {
+    applyShortcutBatch,
     preferences,
     shortcuts,
     folders,

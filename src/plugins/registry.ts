@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+import type { WorkspaceTools } from '../data/workspaceTools'
 import type { WorkspaceBackup } from '../data/backup'
 import type { BookmarkShortcutCandidate, BookmarkShortcutImportResult, CountdownItem, CustomSearchEngine, Habit, Note, Preferences, TodoItem } from '../types'
 import type { FocusTimerState } from '../data/focusTimer'
@@ -9,6 +10,7 @@ export type { PanelId } from './ids'
 export { launcherPanelRoutes, shortcutPanelRoutes, type LauncherPanelAction } from './routes'
 
 export interface PanelPluginContext {
+  workspaceTools?: WorkspaceTools
   preferences: Preferences
   backupExportError: string
   todos: TodoItem[]
@@ -61,7 +63,7 @@ export interface PanelContextById {
   history: { openInNewTab: boolean }
   calculator: NoContext
   calendar: NoContext
-  settings: Pick<PanelPluginContext, 'preferences' | 'backupExportError' | 'customSearchEngines' | 'updatePreferences' | 'resetPreferences' | 'openShortcut' | 'openFolder' | 'exportBackup' | 'importBackup' | 'addCustomSearchEngine' | 'removeCustomSearchEngine'>
+  settings: Pick<PanelPluginContext, 'preferences' | 'backupExportError' | 'customSearchEngines' | 'updatePreferences' | 'resetPreferences' | 'openShortcut' | 'openFolder' | 'exportBackup' | 'importBackup' | 'addCustomSearchEngine' | 'removeCustomSearchEngine' | 'workspaceTools'>
   todos: Pick<PanelPluginContext, 'todos' | 'addTodo' | 'toggleTodo' | 'updateTodo' | 'removeTodo' | 'clearCompletedTodos'>
   habits: Pick<PanelPluginContext, 'habits' | 'addHabit' | 'updateHabit' | 'toggleHabitToday' | 'removeHabit'>
   'focus-timer': Pick<PanelPluginContext, 'focusTimer' | 'startFocusTimer' | 'pauseFocusTimer' | 'resetFocusTimer' | 'setFocusDuration'>
@@ -75,7 +77,7 @@ export interface PanelPropsById {
   history: { openInNewTab: boolean }
   calculator: NoProps
   calendar: NoProps
-  settings: { preferences: Preferences; exportError: string; customEngines: CustomSearchEngine[] }
+  settings: { preferences: Preferences; exportError: string; customEngines: CustomSearchEngine[]; workspaceTools?: WorkspaceTools }
   todos: { items: TodoItem[] }
   habits: { items: Habit[] }
   'focus-timer': { state: FocusTimerState }
@@ -187,6 +189,7 @@ export const panelPlugins = {
   },
   settings: {
     context: (context) => ({
+      ...(context.workspaceTools ? { workspaceTools: context.workspaceTools } : {}),
       preferences: context.preferences,
       backupExportError: context.backupExportError,
       customSearchEngines: context.customSearchEngines,
@@ -202,7 +205,7 @@ export const panelPlugins = {
     title: '设置',
     description: '按自己的习惯调整新标签页',
     component: lazyPanel(() => import('../components/SettingsPanel.vue')),
-    props: (context) => ({ preferences: context.preferences, exportError: context.backupExportError, customEngines: context.customSearchEngines }),
+    props: (context) => ({ preferences: context.preferences, exportError: context.backupExportError, customEngines: context.customSearchEngines, ...(context.workspaceTools ? { workspaceTools: context.workspaceTools } : {}) }),
     listeners: (context) => ({
       update: context.updatePreferences,
       reset: context.resetPreferences,

@@ -6,9 +6,9 @@ import { fileURLToPath } from 'node:url'
 const outputDirectory = fileURLToPath(new URL('../dist/', import.meta.url))
 const budgets = {
   // Allows opt-in widgets and interactive workspace/Dock controls to remain in lazy chunks.
-  javascriptGzip: 140 * 1024, // Aggregate lazy features; startup cap remains unchanged.
+  javascriptGzip: 156 * 1024, // Includes opt-in management, HTML and backup history chunks.
   // Keeps the backup parser in the lazy settings chunk and preserves headroom for startup code.
-  javascriptEntryGzip: 58.5 * 1024,
+  javascriptEntryGzip: 60.5 * 1024, // Bounded overhead for optional workspace data; heavy tools remain lazy.
   cssGzip: 64 * 1024,
   totalOutput: 4 * 1024 * 1024,
 }

@@ -113,6 +113,7 @@ const {
   removeNote,
   updatePreferences,
   saveWorkspaceLayout,
+  applyShortcutBatch,
   addCustomSearchEngine,
   removeCustomSearchEngine,
   resetPreferences,
@@ -217,6 +218,24 @@ let systemThemeQuery: MediaQueryList | undefined
 function updateSystemTheme(event?: MediaQueryListEvent) {
   systemPrefersDark.value = event?.matches ?? systemThemeQuery?.matches ?? false
 }
+function importBookmarks(items: import('./types').BookmarkShortcutCandidate[]) {
+    if (shortcuts.value.length + items.length > 500) return { added: 0, error: '快捷入口已达到 500 个上限，请先删除一些再导入。' }
+    const newShortcuts: Shortcut[] = items.map(({ title, url }) => {
+      const cleanTitle = truncateCodePoints(title.trim(), 80) || url
+      return {
+        id: createLocalId(),
+        title: cleanTitle,
+        url,
+        color: '#3d82f6',
+        mark: Array.from(truncateCodePoints(cleanTitle, 2)).join(' ').toUpperCase(),
+      }
+    })
+    if (!addShortcutsData(newShortcuts, activeHomeWorkspaceId.value)) {
+      return { added: 0, error: '书签未能完整导入；请检查网址或快捷入口数量后重试。' }
+    }
+    return { added: newShortcuts.length }
+}
+
 const panelContext = computed<PanelPluginContext>(() => ({
   preferences: preferences.value,
   backupExportError: backupExportError.value,
@@ -236,23 +255,8 @@ const panelContext = computed<PanelPluginContext>(() => ({
     openShortcutDialog()
     shortcutDraft.value = { title, url }
   },
-  importBookmarks: (items) => {
-    if (shortcuts.value.length + items.length > 500) return { added: 0, error: '快捷入口已达到 500 个上限，请先删除一些再导入。' }
-    const newShortcuts: Shortcut[] = items.map(({ title, url }) => {
-      const cleanTitle = truncateCodePoints(title.trim(), 80) || url
-      return {
-        id: createLocalId(),
-        title: cleanTitle,
-        url,
-        color: '#3d82f6',
-        mark: Array.from(truncateCodePoints(cleanTitle, 2)).join(' ').toUpperCase(),
-      }
-    })
-    if (!addShortcutsData(newShortcuts, activeHomeWorkspaceId.value)) {
-      return { added: 0, error: '书签未能完整导入；请检查网址或快捷入口数量后重试。' }
-    }
-    return { added: newShortcuts.length }
-  },
+  importBookmarks,
+  workspaceTools: { shortcuts: shortcuts.value, workspaces: homeWorkspaces.value, activeId: activeHomeWorkspaceId.value, getBackup: createBackup, restore: restoreBackup, batch: applyShortcutBatch, importBookmarks },
   openFolder: () => openFolderEditor(),
   exportBackup: downloadBackup,
   importBackup: applyWorkspaceBackup,
@@ -595,6 +599,10 @@ async function downloadBackup() {
 }
 
 function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode: 'merge' | 'replace') {
+  if (window.indexedDB) {
+    const snapshot = createBackup()
+    void import('./data/backupHistory').then(module => module.captureHistory(snapshot, 'before-change')).catch(() => undefined)
+  }
   backupExportError.value = restoreBackup(backup, mode) ?? ''
 }
 
@@ -732,7 +740,9 @@ function handleStorageWriteSuccess(event: Event) {
   if (failedStorageWriteKeys.size === 0) storageError.value = backupExportError.value
 }
 
+let historyTimer: ReturnType<typeof setTimeout> | undefined
 onMounted(() => {
+  if (window.indexedDB) historyTimer = setTimeout(() => { void import('./data/backupHistory').then(module => module.captureHistory(createBackup(), 'daily')).catch(() => undefined) }, 2000)
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('resize', updateViewport)
   window.addEventListener(storageWriteErrorEvent, handleStorageWriteError)
@@ -749,6 +759,7 @@ onMounted(() => {
   }
 })
 onBeforeUnmount(() => {
+  if (historyTimer !== undefined) clearTimeout(historyTimer)
   delete document.documentElement.dataset.themePalette
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', updateViewport)
