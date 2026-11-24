@@ -235,7 +235,7 @@ describe('ShortcutGrid page cycling', () => {
       },
     })
 
-    expect(wrapper.findAll('.shortcut-page').length).toBeGreaterThan(100)
+    expect(wrapper.findAll('.shortcut-page')).toHaveLength(3)
     expect(wrapper.findAll('.shortcut-cell')).toHaveLength(6)
     wrapper.unmount()
   })
@@ -514,4 +514,18 @@ describe('ShortcutGrid folder previews', () => {
     expect(wrapper.findAll('.folder-preview-tile img')).toHaveLength(4)
     wrapper.unmount()
   })
+})
+
+it('keeps virtual slots bounded and the destination interactive across rapid wrap and reversal', async () => {
+  installAnimationEnvironment()
+  const wrapper = mount(ShortcutGrid, { props: { items, columns: 2, rows: 1, iconSize: 64, iconRadius: 24, showNames: true, currentPage: 0, transitionDirection: 1, transitionEffect: 'slide', transitionDuration: 300 } })
+  for (let i = 1; i <= 12; i++) {
+    await wrapper.setProps({ currentPage: i % 2, transitionDirection: i < 9 ? 1 : -1 })
+    expect(wrapper.get('.shortcut-page[aria-hidden="false"]').attributes('data-page-index')).toBe(String(i % 2))
+    expect(wrapper.findAll('.shortcut-page').length).toBeLessThanOrEqual(4)
+  }
+  await wrapper.setProps({ wheelOffset: .25 })
+  expect(wrapper.get('.shortcut-pages').classes()).toContain('continuous-slide')
+  await wrapper.setProps({ wheelOffset: 0 })
+  wrapper.unmount()
 })

@@ -45,6 +45,17 @@ function centeredPhysicalPage(pageIndex = props.currentPage) {
   return pages.value.length > 1 ? pages.value.length * centerCycle + pageIndex : pageIndex
 }
 const displayPages = computed(() => {
+  if (props.transitionEffect === 'slide' && pages.value.length > 1) {
+    // Keep only visible slots and the interactive destination. Virtual indices
+    // are unbounded, so crossing the cycle never needs a DOM reset.
+    const center = Math.round(slidePosition.value)
+    const indices = [...new Set([center - 1, center, center + 1, physicalPage.value])].sort((a, b) => a - b)
+    const count = pages.value.length
+    return indices.map(trackIndex => {
+      const pageIndex = ((trackIndex % count) + count) % count
+      return { items: pages.value[pageIndex]!, pageIndex, clone: trackIndex !== physicalPage.value, trackIndex }
+    })
+  }
   if (props.transitionEffect === 'particles') {
     const visiblePageIndexes = new Set([props.currentPage, outgoingPage.value?.index, incomingPage.value]
       .filter((index): index is number => typeof index === 'number'))
@@ -77,6 +88,46 @@ const { draggingId, dragPosition, draggedItem, onPointerDown, openItem } = useSh
 const outgoingPage = ref<{ index: number; effect: PageTransitionEffect; direction: number; duration: number }>()
 const incomingPage = ref<number>()
 const physicalPage = ref(props.transitionEffect === 'particles' ? props.currentPage : centeredPhysicalPage())
+const slidePosition = ref(physicalPage.value)
+let slideFrame = 0
+let previewOrigin: number | undefined
+function stopSlide() {
+  if (slideFrame) cancelAnimationFrame(slideFrame)
+  slideFrame = 0
+}
+function snapSlide() {
+  stopSlide()
+  const target = physicalPage.value
+  if (!props.transitionDuration || prefersReducedMotion() || Math.abs(target - slidePosition.value) < .001) {
+    slidePosition.value = target
+    return
+  }
+  let previous = performance.now()
+  // Exponential settling is based on elapsed time, not frame count.
+  const rate = 6 / Math.max(100, props.transitionDuration)
+  const tick = (now: number) => {
+    const dt = Math.max(0, Math.min(50, now - previous))
+    previous = now
+    const remaining = target - slidePosition.value
+    slidePosition.value += remaining * (1 - Math.exp(-rate * dt))
+    if (Math.abs(target - slidePosition.value) < .002) {
+      slidePosition.value = target
+          slideFrame = 0
+    } else slideFrame = requestAnimationFrame(tick)
+  }
+  slideFrame = requestAnimationFrame(tick)
+}
+watch(() => props.wheelOffset ?? 0, offset => {
+  if (props.transitionEffect !== 'slide') return
+  if (offset) {
+    stopSlide()
+    previewOrigin ??= slidePosition.value
+    slidePosition.value = previewOrigin - offset
+  } else {
+    previewOrigin = undefined
+    snapSlide()
+  }
+})
 const trackOffsetPx = ref(0)
 const resettingTrack = ref(false)
 let transitionTimer = 0
@@ -250,14 +301,14 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
   }
   const count = pages.value.length
   const distance = direction > 0 ? (pageIndex - previousPage + count) % count : (previousPage - pageIndex + count) % count
-  if (distance > 1 && props.transitionEffect === 'slide') {
-    resettingTrack.value = true
-    physicalPage.value = centeredPhysicalPage()
-    resetFrame = requestAnimationFrame(() => {
-      resettingTrack.value = false
-      resetFrame = 0
-      completeTrackTransition()
-    })
+  if (props.transitionEffect === 'slide') {
+    physicalPage.value += direction * distance
+    previewOrigin = undefined
+    // Direct distant page selections jump to the chosen page rather than
+    // animating past unrelated pages. Adjacent turns retain in-flight position.
+    if (distance > 1) slidePosition.value = physicalPage.value
+    snapSlide()
+    completeTrackTransition()
     return
   }
   physicalPage.value += direction * distance
@@ -267,6 +318,8 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
 
 watch(() => [pages.value.length, props.transitionEffect] as const, () => {
   cancelTransitionTimers()
+  stopSlide()
+  previewOrigin = undefined
   if (rebaseFrame) cancelAnimationFrame(rebaseFrame)
   rebaseFrame = 0
   trackTransitionPending = false
@@ -275,6 +328,7 @@ watch(() => [pages.value.length, props.transitionEffect] as const, () => {
   resettingTrack.value = true
   trackOffsetPx.value = 0
   physicalPage.value = props.transitionEffect === 'particles' ? props.currentPage : centeredPhysicalPage()
+  slidePosition.value = physicalPage.value
   if (resetFrame) cancelAnimationFrame(resetFrame)
   resetFrame = requestAnimationFrame(() => {
     resettingTrack.value = false
@@ -428,6 +482,7 @@ onMounted(() => {
   window.addEventListener('keydown', closeContextOnEscape)
 })
 onBeforeUnmount(() => {
+  stopSlide()
   cancelTransitionTimers()
   if (rebaseFrame) cancelAnimationFrame(rebaseFrame)
   window.removeEventListener('click', handleWindowClick)
@@ -461,9 +516,9 @@ onBeforeUnmount(() => {
           'motion-opt-in': transitionEffect !== 'slide',
           'particles-mode': transitionEffect === 'particles',
           'is-resetting': resettingTrack,
-          'is-wheel-tracking': Boolean(wheelOffset) && transitionEffect === 'slide',
+          'continuous-slide': transitionEffect === 'slide',
         }"
-        :style="{ transform: transitionEffect === 'particles' ? 'none' : `translate3d(calc(${(-physicalPage + (transitionEffect === 'slide' ? (wheelOffset ?? 0) : 0)) * 100}% + ${trackOffsetPx}px), 0, 0)` }"
+        :style="{ transform: transitionEffect === 'particles' ? 'none' : transitionEffect === 'slide' ? `translate3d(${(physicalPage - slidePosition) * 100}%, 0, 0)` : `translate3d(calc(${-physicalPage * 100}% + ${trackOffsetPx}px), 0, 0)` }"
         @transitionend="handleTrackTransitionEnd"
       >
           <section
@@ -483,6 +538,7 @@ onBeforeUnmount(() => {
           :aria-hidden="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderPage.trackIndex !== physicalPage"
           :inert="transitionEffect === 'particles' ? renderPage.pageIndex !== currentPage : renderPage.trackIndex !== physicalPage"
           :style="{
+            transform: transitionEffect === 'slide' ? `translateX(${(renderPage.trackIndex - physicalPage) * 100}%)` : undefined,
             '--grid-columns': columns,
             '--grid-rows': reservedRows,
             '--shortcut-size': `${iconSize}px`,

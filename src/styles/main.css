@@ -1208,3 +1208,17 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
   .home-dock:not(.magnification-off) .home-dock-track { padding-inline: clamp(16px, 4vw, 64px); }
 }
 @media (prefers-reduced-motion: reduce) { .shortcut-pages:not(.motion-opt-in) { transition-duration: 0ms !important; } }
+
+/* The continuous slide track renders only the currently visible virtual slots. */
+.shortcut-pages.continuous-slide { display: grid; transition: none !important; }
+.continuous-slide .shortcut-page { grid-area: 1 / 1; width: 100%; }
+.home-dock.dock-dragging .home-dock-icon { transition: none; }
+.home-dock-entry.dock-drag-source { opacity: .45; }
+.dock-drop-before::after, .dock-drop-after::after { content: ''; position: absolute; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: var(--ui-accent-text, #fff); pointer-events: none; }
+.dock-drop-before::after { left: -2px; }
+.dock-drop-after::after { right: -2px; }
+@media (hover: hover) and (pointer: fine) and (min-width: 781px) {
+  .home-dock.dock-auto-hide:not(:hover):not(:focus-within):not(.dock-menu-open):not(.dock-dragging) { transform: translate(-50%, calc(var(--dock-item-size) + 15px)); }
+  .home-dock.dock-auto-hide.dock-dragging { transform: translateX(-50%); }
+  .home-dock.dock-auto-hide::after { content: ''; position: absolute; top: 4px; left: 50%; width: 34px; height: 3px; border-radius: 99px; background: #ffffff80; transform: translateX(-50%); pointer-events: none; }
+}

@@ -251,3 +251,16 @@ test('clean default homepage preserves on-demand search and wheel wrap', async (
   await page.keyboard.press('Control+f')
   await expect(page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })).toBeFocused()
 })
+
+test('continuous slide retains visible slots during fast alternating wheel input', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ columns: 2, rows: 1, pageTransitionEffect: 'slide', pageTransitionMs: 300 })))
+  await page.goto('/')
+  const viewport = page.locator('.shortcut-grid-viewport')
+  await viewport.hover()
+  for (const delta of [100, 100, -100, 100, -100]) await page.mouse.wheel(0, delta)
+  await expect(page.locator('.shortcut-pages.continuous-slide')).toBeVisible()
+  await expect.poll(() => page.locator('.shortcut-page').count()).toBeLessThanOrEqual(4)
+  await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toHaveCount(1)
+  await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
+})
