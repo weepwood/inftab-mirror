@@ -203,3 +203,5 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 新候选将默认隐藏的 SearchBar 延迟加载，保留异步首次聚焦与错误重载；合并相关按需管理辅助模块；PWA 增加安装引导、缓存完整性诊断、联网检查和早期安装提示捕获。预算不变，需重新验证，正式版本尚未发布。
 
 - V1.7.0 候选版本统一 package/lock/MV3 manifest，新增 docs/releases/v1.7.0.md。完整发布验证在候选 PR 和 main 分别运行；main 推送验证成功后专用 publish-v17 job 仅发布 V1.7.0 的已验证网站/扩展 ZIP 和 SHA256SUMS，不覆盖既有 Release。不把候选提交或 Pages 持续预览当作正式 Release。
+
+- #24 首轮 52df0c6 实测首屏 JS 57.8/60.5 KiB、全部 JS 155.3/156 KiB，PWA bootstrap 515/512 B（超 3 B），总 PWA JS 10122/10240 B；676 单测通过、2 项首页搜索用例仍假定同步挂载。改为等待实际异步组件挂载并保留聚焦断言，缩短 bootstrap 重试反馈，补充 UI 风险触发路径；新 head 尚待验收。

@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'src/App.vue'
+      - 'src/components/SearchBar.vue'
+      - 'src/components/HomeDock.vue'
+      - 'vite.config.ts'
       - 'src/composables/overlayFocus.ts'
       - 'src/composables/useHomeNavigation.ts'
       - 'src/components/CommandPalette.vue'
