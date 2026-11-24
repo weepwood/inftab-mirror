@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Check, ChevronDown, LayoutGrid, MoreHorizontal, Plus, Search } from '@lucide/vue'
 import { defaultHomeWorkspaceId, maxHomeWorkspaces, maxHomeWorkspaceNameLength, type HomeWorkspace } from '../data/homeWorkspaces'
+import { resolveWorkspaceLayout, type WorkspaceLayout, type WorkspaceLayoutOverrides } from '../data/workspaceLayout'
 import { navigateMenu } from './menuNavigation'
 
 const props = defineProps<{
@@ -9,11 +10,14 @@ const props = defineProps<{
   activeId: string
   createWorkspace: (name: string) => boolean
   renameWorkspace: (id: string, name: string) => boolean
+  globalLayout?: WorkspaceLayout
+  saveLayout?: (id: string, layout?: WorkspaceLayoutOverrides) => boolean
 }>()
 const emit = defineEmits<{
   select: [id: string]
   move: [id: string, direction: -1 | 1]
   remove: [id: string]
+  editHomeLayout: []
 }>()
 
 const root = ref<HTMLElement>()
@@ -25,6 +29,9 @@ const query = ref('')
 const actionId = ref('')
 const editingId = ref<string | null>(null) // empty string means create
 const draft = ref('')
+const layoutId = ref('')
+const layoutDraft = ref<WorkspaceLayout>()
+const layoutWorkspace = computed(() => props.workspaces.find(item => item.id === layoutId.value))
 const error = ref('')
 const activeWorkspace = computed(() => props.workspaces.find((item) => item.id === props.activeId) ?? props.workspaces[0])
 const filtered = computed(() => {
@@ -45,6 +52,8 @@ function close(restoreFocus = false) {
   open.value = false
   actionId.value = ''
   editingId.value = null
+  layoutId.value = ''
+  layoutDraft.value = undefined
   query.value = ''
   error.value = ''
   if (restoreFocus) void nextTick(() => trigger.value?.focus())
@@ -122,12 +131,34 @@ function onListKeydown(event: KeyboardEvent) {
     : (index + (event.key === 'ArrowUp' ? -1 : 1) + buttons.length) % buttons.length
   buttons[next]?.focus()
 }
+function editLayout() {
+  if (!props.globalLayout || !activeWorkspace.value) return
+  layoutId.value = activeWorkspace.value.id
+  layoutDraft.value = resolveWorkspaceLayout(props.globalLayout, activeWorkspace.value.layout)
+  error.value = ''
+  void nextTick(() => root.value?.querySelector<HTMLInputElement>('.workspace-layout-form input')?.focus())
+}
+function cancelLayout() {
+  layoutId.value = ''
+  layoutDraft.value = undefined
+  error.value = ''
+  void nextTick(() => root.value?.querySelector<HTMLButtonElement>('.workspace-layout-edit')?.focus())
+}
+function applyLayout(reset = false) {
+  if (!layoutId.value || !layoutDraft.value || !props.saveLayout?.(layoutId.value, reset ? undefined : layoutDraft.value)) {
+    error.value = '保存失败，工作区可能已被删除。'
+    return
+  }
+  close(true)
+}
+watch(() => props.activeId, () => { if (layoutId.value) cancelLayout() })
 function onEscape(event: KeyboardEvent) {
   if (!open.value) return
   if (event.isComposing) { event.stopPropagation(); return }
   event.preventDefault()
   event.stopPropagation()
-  if (editingId.value !== null) cancelEdit()
+  if (layoutId.value) cancelLayout()
+  else if (editingId.value !== null) cancelEdit()
   else if (actionId.value) closeActions(true)
   else close(true)
 }
@@ -162,7 +193,17 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutsidePoint
 
     <div v-if="open" id="home-workspace-panel" class="workspace-panel">
       <div class="workspace-panel-heading"><strong>工作区</strong><span>{{ workspaces.length }} / {{ maxHomeWorkspaces }}</span></div>
-      <template v-if="editingId === null">
+      <form v-if="layoutDraft && layoutWorkspace" class="workspace-form workspace-layout-form" @submit.prevent="applyLayout()">
+        <p class="workspace-form-hint">仅调整「{{ layoutWorkspace.name }}」的网格；不改变全局设置。</p>
+        <label>每行图标 <output>{{ layoutDraft.columns }}</output><input v-model.number="layoutDraft.columns" type="range" min="2" max="12" /></label>
+        <label>每页行数 <output>{{ layoutDraft.rows }}</output><input v-model.number="layoutDraft.rows" type="range" min="1" max="8" /></label>
+        <label>图标大小 <output>{{ layoutDraft.iconSize }} px</output><input v-model.number="layoutDraft.iconSize" type="range" min="32" max="160" /></label>
+        <label>图标圆角 <output>{{ layoutDraft.iconRadius }} px</output><input v-model.number="layoutDraft.iconRadius" type="range" min="0" max="100" /></label>
+        <label class="workspace-layout-checkbox"><span>显示网站名称</span><input v-model="layoutDraft.showNames" type="checkbox" /></label>
+        <p v-if="error" class="workspace-form-error" role="alert">{{ error }}</p>
+        <div class="workspace-form-actions"><button type="button" @click="applyLayout(true)">跟随全局</button><button type="button" @click="cancelLayout">取消</button><button type="submit" class="workspace-submit">保存布局</button></div>
+      </form>
+      <template v-else-if="editingId === null">
         <label v-if="workspaces.length > 8" class="workspace-filter">
           <Search :size="16" aria-hidden="true" />
           <input v-model="query" type="search" placeholder="查找工作区" aria-label="查找工作区" />
@@ -187,6 +228,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutsidePoint
           </div>
           <p v-if="!filtered.length" class="workspace-no-results">没有找到匹配的工作区</p>
         </div>
+        <button type="button" class="workspace-editor-action" @click="close(true); emit('editHomeLayout')">首页布局与小组件</button>
+        <button v-if="globalLayout && saveLayout" type="button" class="workspace-editor-action workspace-layout-edit" @click="editLayout">编辑当前工作区布局</button>
         <button type="button" class="workspace-create" :disabled="workspaces.length >= maxHomeWorkspaces" @click="beginEdit('')"><Plus :size="17" aria-hidden="true" /> {{ workspaces.length >= maxHomeWorkspaces ? '已达到 20 个工作区上限' : '新建工作区' }}</button>
       </template>
       <form v-else class="workspace-form" @submit.prevent="saveEdit" @keydown.enter="preventCompositionSubmit">

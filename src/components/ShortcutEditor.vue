@@ -170,7 +170,7 @@ async function save() {
     saving.value = false
   }
   if (!active) return
-  emit('save', { id, title: cleanTitle, url: destination!, color: nextColor, mark: nextMark, icon: nextIcon || undefined }, destinationWorkspaceId)
+  emit('save', { id, title: cleanTitle, url: destination!, color: nextColor, mark: nextMark, icon: nextIcon || undefined, ...(props.shortcut?.tags ? { tags: props.shortcut.tags } : {}) }, destinationWorkspaceId)
 }
 </script>
 

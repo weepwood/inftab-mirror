@@ -4,6 +4,7 @@ import { maxWallpaperDataUrlLength } from './imageLimits'
 import { isValidCalendarDate } from './countdown'
 import { sanitizeHabits } from './habits'
 import { isValidCustomSearchTemplate } from './search'
+import { sanitizeShortcutTags } from './shortcutTags'
 import { normalizeWebUrl } from './urls'
 import { truncateCodePoints, truncateCodeUnits } from './text'
 import { availableHomeWidgetIds, maxDockItems, type CountdownItem, type CustomSearchEngine, type HomeWidgetId, type Note, type Preferences, type SearchMode, type Shortcut, type ShortcutFolder, type TodoItem } from '../types'
@@ -181,6 +182,7 @@ export function sanitizeShortcuts(value: unknown): Shortcut[] {
       color: sanitizePaletteColor(item.color, fallbackShortcutColor),
       mark: truncateCodePoints(item.mark.trim(), 12),
       icon: sanitizeShortcutIcon(item.icon),
+      ...(Array.isArray(item.tags) ? { tags: sanitizeShortcutTags(item.tags) } : {}),
     }
   })
 }

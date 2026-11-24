@@ -10,6 +10,8 @@ import { getOverlayFocusable, trapOverlayTab, isComposingKey } from './composabl
 import { useHomeNavigation } from './composables/useHomeNavigation'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent, storageWriteSuccessEvent } from './composables/useStoredState'
+import type { LayoutEditorDraft } from './data/layoutEditor'
+import { resolveWorkspaceLayout } from './data/workspaceLayout'
 import { launcherItems } from './data/defaults'
 import { buildSearchUrl } from './data/search'
 import { getPageNavigation } from './data/pagination'
@@ -62,6 +64,7 @@ const CommandPalette = lazyPluginComponent(
   '正在加载命令面板…',
   '命令面板暂时无法加载。',
 )
+const HomeLayoutEditor = lazyPluginComponent(() => import('./components/HomeLayoutEditor.vue'), '正在加载布局编辑器…', '布局编辑器加载失败。')
 const HomeWorkspaceTabs = lazyPluginComponent(
   () => import('./components/HomeWorkspaceTabs.vue'),
   '正在加载工作区…',
@@ -111,6 +114,9 @@ const {
   updateNote,
   removeNote,
   updatePreferences,
+  saveWorkspaceLayout,
+  saveHomeLayout,
+  applyShortcutBatch,
   addCustomSearchEngine,
   removeCustomSearchEngine,
   resetPreferences,
@@ -132,6 +138,7 @@ const effectiveTheme = computed(() => preferences.value.themeMode === 'system'
   : preferences.value.themeMode)
 watch(() => preferences.value.themePalette, (palette) => { document.documentElement.dataset.themePalette = palette }, { immediate: true })
 const commandPaletteOpen = ref(false)
+const layoutEditorOpen = ref(false)
 const currentPage = ref(0)
 const pageDirection = ref(1)
 const activePanel = ref<Panel>(null)
@@ -156,9 +163,10 @@ const shortcutWorkspaceId = ref('default')
 const shortcutSaveError = ref('')
 const viewport = ref({ width: window.innerWidth, height: window.innerHeight })
 // Keep the saved desktop grid preference while giving touch targets room on phones.
-const layoutColumns = computed(() => Math.min(preferences.value.columns, viewport.value.width <= 480 ? 4 : viewport.value.width <= 780 ? 5 : 12))
-const pageSize = computed(() => layoutColumns.value * preferences.value.rows)
 const activeHomeWorkspace = computed(() => homeWorkspaces.value.find((workspace) => workspace.id === activeHomeWorkspaceId.value) ?? homeWorkspaces.value[0]!)
+const layoutPreferences = computed(() => ({ ...preferences.value, ...resolveWorkspaceLayout(preferences.value, activeHomeWorkspace.value?.layout) }))
+const layoutColumns = computed(() => Math.min(layoutPreferences.value.columns, viewport.value.width <= 480 ? 4 : viewport.value.width <= 780 ? 5 : 12))
+const pageSize = computed(() => layoutColumns.value * layoutPreferences.value.rows)
 const activeHomeWorkspaceItemIds = computed(() => new Set(activeHomeWorkspace.value?.itemIds ?? []))
 const shortcutLimitReached = computed(() => !shortcutDraft.value?.id && shortcuts.value.length >= 500)
 const folderLimitReached = computed(() => !activeFolder.value && folders.value.length >= 500)
@@ -214,6 +222,24 @@ let systemThemeQuery: MediaQueryList | undefined
 function updateSystemTheme(event?: MediaQueryListEvent) {
   systemPrefersDark.value = event?.matches ?? systemThemeQuery?.matches ?? false
 }
+function importBookmarks(items: import('./types').BookmarkShortcutCandidate[]) {
+    if (shortcuts.value.length + items.length > 500) return { added: 0, error: '快捷入口已达到 500 个上限，请先删除一些再导入。' }
+    const newShortcuts: Shortcut[] = items.map(({ title, url }) => {
+      const cleanTitle = truncateCodePoints(title.trim(), 80) || url
+      return {
+        id: createLocalId(),
+        title: cleanTitle,
+        url,
+        color: '#3d82f6',
+        mark: Array.from(truncateCodePoints(cleanTitle, 2)).join(' ').toUpperCase(),
+      }
+    })
+    if (!addShortcutsData(newShortcuts, activeHomeWorkspaceId.value)) {
+      return { added: 0, error: '书签未能完整导入；请检查网址或快捷入口数量后重试。' }
+    }
+    return { added: newShortcuts.length }
+}
+
 const panelContext = computed<PanelPluginContext>(() => ({
   preferences: preferences.value,
   backupExportError: backupExportError.value,
@@ -233,23 +259,8 @@ const panelContext = computed<PanelPluginContext>(() => ({
     openShortcutDialog()
     shortcutDraft.value = { title, url }
   },
-  importBookmarks: (items) => {
-    if (shortcuts.value.length + items.length > 500) return { added: 0, error: '快捷入口已达到 500 个上限，请先删除一些再导入。' }
-    const newShortcuts: Shortcut[] = items.map(({ title, url }) => {
-      const cleanTitle = truncateCodePoints(title.trim(), 80) || url
-      return {
-        id: createLocalId(),
-        title: cleanTitle,
-        url,
-        color: '#3d82f6',
-        mark: Array.from(truncateCodePoints(cleanTitle, 2)).join(' ').toUpperCase(),
-      }
-    })
-    if (!addShortcutsData(newShortcuts, activeHomeWorkspaceId.value)) {
-      return { added: 0, error: '书签未能完整导入；请检查网址或快捷入口数量后重试。' }
-    }
-    return { added: newShortcuts.length }
-  },
+  importBookmarks,
+  workspaceTools: { shortcuts: shortcuts.value, workspaces: homeWorkspaces.value, activeId: activeHomeWorkspaceId.value, getBackup: createBackup, restore: restoreBackup, batch: applyShortcutBatch, importBookmarks },
   openFolder: () => openFolderEditor(),
   exportBackup: downloadBackup,
   importBackup: applyWorkspaceBackup,
@@ -286,8 +297,8 @@ const activePanelListeners = computed<Record<string, (...args: never[]) => void>
   ? panelRegistry.value.getPanelListeners(activePanel.value, panelContext.value)
   : {})
 const homeWidgetContext = computed(() => ({ preferences: preferences.value, todos: todos.value, addTodo, toggleTodo, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
-const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayout({ preferences, viewport, layoutColumns, allLauncherItems, homeDockItems, pageCount, minimalMode, localSearchMode })
-const overlayOpen = computed(() => Boolean(activePanel.value || shortcutDialog.value || folderDialogOpen.value || commandPaletteOpen.value || pendingDestructiveAction.value))
+const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayout({ preferences: layoutPreferences, viewport, layoutColumns, allLauncherItems, homeDockItems, pageCount, minimalMode, localSearchMode })
+const overlayOpen = computed(() => Boolean(activePanel.value || shortcutDialog.value || folderDialogOpen.value || commandPaletteOpen.value || layoutEditorOpen.value || pendingDestructiveAction.value))
 const { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen })
 watch(overlayOpen, (open) => { if (open) cancelHomeSwipe() }, { flush: 'sync' })
 
@@ -592,11 +603,27 @@ async function downloadBackup() {
 }
 
 function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode: 'merge' | 'replace') {
-  backupExportError.value = restoreBackup(backup, mode) ?? ''
+  if (!window.indexedDB) { backupExportError.value = restoreBackup(backup, mode) ?? ''; return }
+  const snapshot = createBackup()
+  const expected = JSON.stringify({ ...snapshot, exportedAt: '' })
+  void import('./data/backupHistory').then(async module => {
+    await module.captureHistory(snapshot, 'before-change')
+    if (JSON.stringify({ ...createBackup(), exportedAt: '' }) !== expected) throw new Error('备份期间数据已变化，请重新导入。')
+    backupExportError.value = restoreBackup(backup, mode) ?? ''
+  }).catch(error => { backupExportError.value = '导入已停止：' + (error instanceof Error ? error.message : '无法保存恢复点。') })
+}
+
+function openLayoutEditor() {
+  if (!overlayOpen.value) layoutEditorOpen.value = true
+}
+function applyHomeLayout(draft: LayoutEditorDraft) {
+  const error = saveHomeLayout(draft)
+  if (!error) layoutEditorOpen.value = false
+  return error
 }
 
 function openCommandPalette() {
-  if (!activePanel.value && !shortcutDialog.value && !folderDialogOpen.value && !pendingDestructiveAction.value) commandPaletteOpen.value = true
+  if (!overlayOpen.value) commandPaletteOpen.value = true
 }
 
 async function runCommand(id: string) {
@@ -604,6 +631,7 @@ async function runCommand(id: string) {
   await nextTick()
   if (id === 'find') setLocalSearch(true)
   else if (id === 'add') openShortcutDialog()
+  else if (id === 'layout') openLayoutEditor()
   else if (id === 'minimal') toggleMinimalMode()
   else if (id === 'light' || id === 'dark' || id === 'system') updatePreferences({ themeMode: id })
   else if (id === 'home') goToPage(0)
@@ -612,6 +640,10 @@ async function runCommand(id: string) {
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented || isComposingKey(event) || pendingDestructiveAction.value) return
+  if (layoutEditorOpen.value) {
+    if (event.key === 'Escape') layoutEditorOpen.value = false
+    return
+  }
   if (commandPaletteOpen.value) {
     if (event.key === 'Escape') commandPaletteOpen.value = false
     return
@@ -729,7 +761,9 @@ function handleStorageWriteSuccess(event: Event) {
   if (failedStorageWriteKeys.size === 0) storageError.value = backupExportError.value
 }
 
+let historyTimer: ReturnType<typeof setTimeout> | undefined
 onMounted(() => {
+  if (window.indexedDB) historyTimer = setTimeout(() => { void import('./data/backupHistory').then(module => module.captureHistory(createBackup(), 'daily')).catch(() => undefined) }, 2000)
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('resize', updateViewport)
   window.addEventListener(storageWriteErrorEvent, handleStorageWriteError)
@@ -746,6 +780,7 @@ onMounted(() => {
   }
 })
 onBeforeUnmount(() => {
+  if (historyTimer !== undefined) clearTimeout(historyTimer)
   delete document.documentElement.dataset.themePalette
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', updateViewport)
@@ -798,8 +833,11 @@ onBeforeUnmount(() => {
         @select="activeHomeWorkspaceId = $event"
         :create-workspace="addHomeWorkspace"
         :rename-workspace="renameHomeWorkspace"
+        :global-layout="preferences"
+        :save-layout="saveWorkspaceLayout"
         @move="moveHomeWorkspace"
         @remove="requestHomeWorkspaceRemoval"
+        @edit-home-layout="openLayoutEditor"
       />
       <SearchBar
         ref="searchBar"
@@ -837,10 +875,10 @@ onBeforeUnmount(() => {
         :folder-shortcuts="folderPreviewItems"
         :dock-item-ids="preferences.dockItemIds"
         :columns="layoutColumns"
-        :rows="preferences.rows"
-        :icon-size="preferences.iconSize"
-        :icon-radius="preferences.iconRadius"
-        :show-names="preferences.showNames"
+        :rows="layoutPreferences.rows"
+        :icon-size="layoutPreferences.iconSize"
+        :icon-radius="layoutPreferences.iconRadius"
+        :show-names="layoutPreferences.showNames"
         :current-page="currentPage"
         :transition-direction="pageDirection"
         :transition-effect="preferences.pageTransitionEffect"
@@ -862,7 +900,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? preferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" @open="openItem" @remove="toggleDockItem" />
+    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
       <span>{{ storageError }}</span>
@@ -887,6 +925,7 @@ onBeforeUnmount(() => {
       </aside>
     </div>
 
+    <HomeLayoutEditor v-if="layoutEditorOpen" :workspace="activeHomeWorkspace" :preferences="preferences" :save="applyHomeLayout" @close="layoutEditorOpen = false" />
     <CommandPalette v-if="commandPaletteOpen" @close="commandPaletteOpen = false" @run="runCommand" />
 
     <FolderDialog

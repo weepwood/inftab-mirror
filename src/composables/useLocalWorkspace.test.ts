@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { effectScope } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createLayoutDraft } from '../data/layoutEditor'
 import { parseWorkspaceBackup } from '../data/backup'
 import { defaultFocusTimerState, startFocusTimer } from '../data/focusTimer'
 import { getLocalDateKey, maxCompletionDatesPerHabit } from '../data/habits'
@@ -1001,4 +1002,45 @@ describe('workspace domain boundaries', () => {
     scope = effectScope()
     expect(scope.run(() => useLocalWorkspace())!.weatherCity.value).toBe('广州')
   })
+})
+
+
+it('persists independent workspace layouts, round-trips backups and resets to global', () => {
+  scope = effectScope()
+  const workspace = scope.run(() => useLocalWorkspace())!
+  const id = workspace.createHomeWorkspace('Independent grid')!
+  const original = workspace.preferences.value.columns
+  expect(workspace.saveWorkspaceLayout(id, { columns: 3, rows: 2, showNames: false })).toBe(true)
+  expect(workspace.preferences.value.columns).toBe(original)
+  expect(workspace.homeWorkspaces.value.find(item => item.id === id)?.layout).toEqual({ columns: 3, rows: 2, showNames: false })
+  const backup = parseWorkspaceBackup(workspace.createBackup())
+  expect(workspace.saveWorkspaceLayout(id)).toBe(true)
+  expect(workspace.homeWorkspaces.value.find(item => item.id === id)?.layout).toBeUndefined()
+  expect(workspace.restoreBackup(backup, 'replace')).toBeUndefined()
+  expect(workspace.homeWorkspaces.value.find(item => item.id === id)?.layout).toEqual({ columns: 3, rows: 2, showNames: false })
+  const legacy = workspace.createBackup()
+  legacy.homeWorkspaces = legacy.homeWorkspaces?.map(({ layout, ...item }) => item)
+  expect(workspace.restoreBackup(legacy, 'merge')).toBeUndefined()
+  expect(workspace.homeWorkspaces.value.find(item => item.id === id)?.layout?.columns).toBe(3)
+  expect(workspace.saveWorkspaceLayout('missing', { columns: 4 })).toBe(false)
+})
+
+
+it('rejects stale layout drafts and does not turn inherited fields into overrides when only widgets change', () => {
+  scope = effectScope()
+  const workspace = scope.run(() => useLocalWorkspace())!
+  const id = workspace.createHomeWorkspace('Draft workspace')!
+  workspace.saveWorkspaceLayout(id, { columns: 4 })
+  const current = () => workspace.homeWorkspaces.value.find(item => item.id === id)!
+  const draft = createLayoutDraft(current(), workspace.preferences.value)
+  draft.widgetIds = ['todo-summary']
+  expect(workspace.saveHomeLayout(draft)).toBeUndefined()
+  expect(current().layout).toEqual({ columns: 4 })
+  expect(workspace.preferences.value.homeWidgetIds).toEqual(['todo-summary'])
+  const stale = createLayoutDraft(current(), workspace.preferences.value)
+  workspace.updatePreferences({ columns: 8 })
+  stale.layout.columns = 2
+  expect(workspace.saveHomeLayout(stale)).toContain('发生变化')
+  expect(current().layout).toEqual({ columns: 4 })
+  expect(workspace.preferences.value.columns).toBe(8)
 })

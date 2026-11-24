@@ -1,7 +1,10 @@
+import { layoutSignature, getLayoutOverrides, type LayoutEditorDraft } from '../data/layoutEditor'
+import type { ShortcutBatch } from '../data/workspaceTools'
 import { useStoredState } from './useStoredState'
 import { computed, watch } from 'vue'
 import { watchDeferredReference } from './watchDeferredReference'
 import { defaultLauncherOrder, defaultPreferences, defaultShortcuts, launcherItems } from '../data/defaults'
+import { sanitizeWorkspaceLayout, type WorkspaceLayoutOverrides } from '../data/workspaceLayout'
 import { createProductivityActions } from './workspaceProductivity'
 import { createLauncherActions } from './workspaceLauncher'
 import { createBackupActions } from './workspaceBackup'
@@ -160,6 +163,30 @@ export function useLocalWorkspace() {
 
   const { addTodo, toggleTodo, updateTodo, removeTodo, clearCompletedTodos, addHabit, updateHabit, toggleHabitToday, removeHabit, addCountdown, updateCountdown, removeCountdown, addNote, updateNote, removeNote } = createProductivityActions({ todos, habits, countdowns, notes, activeNoteId })
 
+  function saveWorkspaceLayout(id: string, layout?: WorkspaceLayoutOverrides): boolean {
+    if (!homeWorkspaces.value.some(workspace => workspace.id === id)) return false
+    const clean = sanitizeWorkspaceLayout(layout)
+    if (layout !== undefined && !clean) return false
+    homeWorkspaces.value = homeWorkspaces.value.map(workspace => {
+      if (workspace.id !== id) return workspace
+      const { layout: _previous, ...rest } = workspace
+      return clean ? { ...rest, layout: clean } : rest
+    })
+    return true
+  }
+
+  function saveHomeLayout(draft: LayoutEditorDraft): string | undefined {
+    const workspace = homeWorkspaces.value.find(item => item.id === draft.workspaceId)
+    if (!workspace || activeHomeWorkspaceId.value !== draft.workspaceId || layoutSignature(workspace, preferences.value) !== draft.baseline) return '布局已在其他位置发生变化，请关闭后重新编辑。'
+    const clean = draft.inherit ? undefined : sanitizeWorkspaceLayout(draft.layout)
+    if (!draft.inherit && !clean) return '布局配置无效。'
+    const layout = getLayoutOverrides(workspace, preferences.value, draft)
+    const next = sanitizePreferences({ ...preferences.value, homeWidgetIds: draft.widgetIds, homeWidgetSizes: draft.widgetSizes })
+    if (!saveWorkspaceLayout(draft.workspaceId, layout)) return '工作区不存在。'
+    preferences.value = next
+    return undefined
+  }
+
   function updatePreferences(update: Partial<Preferences>) {
     preferences.value = sanitizePreferences({ ...preferences.value, ...update })
   }
@@ -186,7 +213,27 @@ export function useLocalWorkspace() {
 
   const { createBackup, restoreBackup } = createBackupActions({ preferences, shortcuts, folders, launcherOrder, homeWorkspaces, activeHomeWorkspaceId, builtInLauncherIds, todos, habits, countdowns, notes, customSearchEngines, focusTimer, activeNoteId, weatherCity })
 
+  async function applyShortcutBatch(action: ShortcutBatch, expected?: string): Promise<string | undefined> {
+    try {
+      const { planShortcutBatch } = await import('../data/shortcutBatch')
+      const snapshot = createBackup()
+      if (expected !== undefined && JSON.stringify({ ...snapshot, exportedAt: '' }) !== expected) return '备份后数据发生变化，请重新操作。'
+      const next = planShortcutBatch(snapshot, action)
+      if (action.kind !== 'move') shortcuts.value = next.shortcuts
+      if (action.kind === 'move' || action.kind === 'delete') {
+        folders.value = next.folders
+        homeWorkspaces.value = next.homeWorkspaces!
+      }
+      if (action.kind === 'delete') {
+        launcherOrder.value = next.launcherOrder
+        preferences.value = next.preferences
+      }
+      return undefined
+    } catch (error) { return error instanceof Error ? error.message : '批量操作失败。' }
+  }
+
   return {
+    applyShortcutBatch,
     preferences,
     shortcuts,
     folders,
@@ -228,6 +275,8 @@ export function useLocalWorkspace() {
     updateNote,
     removeNote,
     updatePreferences,
+    saveWorkspaceLayout,
+    saveHomeLayout,
     addCustomSearchEngine,
     removeCustomSearchEngine,
     resetPreferences,

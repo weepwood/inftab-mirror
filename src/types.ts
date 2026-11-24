@@ -44,6 +44,7 @@ export interface Shortcut {
   color: string
   mark: string
   icon?: string
+  tags?: string[]
 }
 
 export interface ShortcutFolder {
