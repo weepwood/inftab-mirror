@@ -1,3 +1,4 @@
+import { sanitizeCustomTheme, sanitizeThemePresets } from './customTheme'
 import { isRecord, isValidRecordId } from './validation'
 import { defaultLauncherOrder, defaultPreferences, launcherItems, wallpaperChoices } from './defaults'
 import { maxWallpaperDataUrlLength } from './imageLimits'
@@ -41,6 +42,8 @@ export function isValidLauncherColor(value: unknown): value is string {
 export function sanitizePreferences(value: unknown): Preferences {
   const raw = isRecord(value) ? value : {}
   const merged = { ...defaultPreferences, ...raw }
+  const booleanPreference = (key: { [K in keyof Preferences]-?: Preferences[K] extends boolean ? K : never }[keyof Preferences]) => typeof raw[key] === 'boolean' ? raw[key] : defaultPreferences[key]
+  const integerPreference = (key: 'dockIconSize' | 'dockIconGap' | 'columns' | 'rows', min: number, max: number) => Math.round(boundedNumber(raw[key], defaultPreferences[key], min, max))
   const manageableLauncherIds = new Set(launcherItems.filter((item) => item.action && item.id !== 'settings').map((item) => item.id))
   const hiddenLauncherIds = Array.isArray(raw.hiddenLauncherIds)
     ? [...new Set(raw.hiddenLauncherIds.filter((item): item is string => typeof item === 'string' && manageableLauncherIds.has(item)))]
@@ -88,16 +91,18 @@ export function sanitizePreferences(value: unknown): Preferences {
       : defaultPreferences.themeMode,
     themePalette: merged.themePalette === 'slate' || merged.themePalette === 'indigo' || merged.themePalette === 'sand'
       ? merged.themePalette : defaultPreferences.themePalette,
-    openShortcutsInNewTab: typeof raw.openShortcutsInNewTab === 'boolean' ? raw.openShortcutsInNewTab : defaultPreferences.openShortcutsInNewTab,
-    openSearchInNewTab: typeof raw.openSearchInNewTab === 'boolean' ? raw.openSearchInNewTab : defaultPreferences.openSearchInNewTab,
-    openBookmarksInNewTab: typeof raw.openBookmarksInNewTab === 'boolean' ? raw.openBookmarksInNewTab : defaultPreferences.openBookmarksInNewTab,
-    openHistoryInNewTab: typeof raw.openHistoryInNewTab === 'boolean' ? raw.openHistoryInNewTab : defaultPreferences.openHistoryInNewTab,
+    ...(raw.customTheme === undefined ? {} : { customTheme: sanitizeCustomTheme(raw.customTheme) ?? null }),
+    ...(raw.themePresets === undefined ? {} : { themePresets: sanitizeThemePresets(raw.themePresets) }),
+    openShortcutsInNewTab: booleanPreference('openShortcutsInNewTab'),
+    openSearchInNewTab: booleanPreference('openSearchInNewTab'),
+    openBookmarksInNewTab: booleanPreference('openBookmarksInNewTab'),
+    openHistoryInNewTab: booleanPreference('openHistoryInNewTab'),
     hiddenLauncherIds,
     dockItemIds,
-    dockMagnification: typeof merged.dockMagnification === 'boolean' ? merged.dockMagnification : defaultPreferences.dockMagnification,
-    dockFollowLauncherSize: typeof merged.dockFollowLauncherSize === 'boolean' ? merged.dockFollowLauncherSize : defaultPreferences.dockFollowLauncherSize,
-    dockIconSize: Math.round(boundedNumber(raw.dockIconSize, defaultPreferences.dockIconSize, 32, 60)),
-    dockIconGap: Math.round(boundedNumber(raw.dockIconGap, defaultPreferences.dockIconGap, 0, 16)),
+    dockMagnification: booleanPreference('dockMagnification'),
+    dockFollowLauncherSize: booleanPreference('dockFollowLauncherSize'),
+    dockIconSize: integerPreference('dockIconSize', 32, 60),
+    dockIconGap: integerPreference('dockIconGap', 0, 16),
     homeWidgetIds,
     homeWidgetSizes,
     engine: typeof merged.engine === 'string' && (engines.has(merged.engine) || /^custom:[\w-]{1,128}$/.test(merged.engine))
@@ -105,8 +110,8 @@ export function sanitizePreferences(value: unknown): Preferences {
       : defaultPreferences.engine,
     mode,
     visibleSearchModes,
-    showSearchBar: typeof merged.showSearchBar === 'boolean' ? merged.showSearchBar : defaultPreferences.showSearchBar,
-    showClock: typeof merged.showClock === 'boolean' ? merged.showClock : defaultPreferences.showClock,
+    showSearchBar: booleanPreference('showSearchBar'),
+    showClock: booleanPreference('showClock'),
     wallpaper,
     customWallpaper,
     wallpaperRotation: merged.wallpaperRotation === 'hourly' || merged.wallpaperRotation === 'daily'
@@ -115,8 +120,8 @@ export function sanitizePreferences(value: unknown): Preferences {
     wallpaperRotationLastAt: Math.min(Date.now(), boundedNumber(raw.wallpaperRotationLastAt, defaultPreferences.wallpaperRotationLastAt, 0, Number.MAX_SAFE_INTEGER)),
     shade: boundedNumber(raw.shade, defaultPreferences.shade, 0, 0.65),
     iconSize: boundedNumber(raw.iconSize, defaultPreferences.iconSize, 32, 160),
-    columns: Math.round(boundedNumber(raw.columns, defaultPreferences.columns, 2, 12)),
-    rows: Math.round(boundedNumber(raw.rows, defaultPreferences.rows, 1, 8)),
+    columns: integerPreference('columns', 2, 12),
+    rows: integerPreference('rows', 1, 8),
     gridGapX: boundedNumber(raw.gridGapX, defaultPreferences.gridGapX, 0, 80),
     gridGapY: boundedNumber(raw.gridGapY, defaultPreferences.gridGapY, 0, 100),
     searchWidth: boundedNumber(raw.searchWidth, defaultPreferences.searchWidth, 280, 1000),
@@ -127,7 +132,7 @@ export function sanitizePreferences(value: unknown): Preferences {
       ? merged.pageTransitionEffect as Preferences['pageTransitionEffect']
       : defaultPreferences.pageTransitionEffect,
     hoverGlow: boundedNumber(raw.hoverGlow, defaultPreferences.hoverGlow, 0, 100),
-    showNames: typeof merged.showNames === 'boolean' ? merged.showNames : defaultPreferences.showNames,
+    showNames: booleanPreference('showNames'),
     iconRadius: boundedNumber(raw.iconRadius, defaultPreferences.iconRadius, 0, 100),
   }
 }

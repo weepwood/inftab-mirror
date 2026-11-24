@@ -11,6 +11,7 @@ import { useHomeNavigation } from './composables/useHomeNavigation'
 import { useLocalWorkspace } from './composables/useLocalWorkspace'
 import { storageWriteErrorEvent, storageWriteSuccessEvent } from './composables/useStoredState'
 import type { LayoutEditorDraft } from './data/layoutEditor'
+import { applyCustomTheme } from './data/customTheme'
 import { resolveWorkspaceLayout } from './data/workspaceLayout'
 import { launcherItems } from './data/defaults'
 import { buildSearchUrl } from './data/search'
@@ -23,53 +24,22 @@ import type { PanelId, PanelPluginContext } from './plugins/registry'
 import { maxDockItems, type HomeWidgetId, type HomeWidgetSize, type LauncherItem, type Shortcut, type ShortcutFolder } from './types'
 
 type Panel = PanelId | null
+const lazyHome = (loader: Parameters<typeof lazyPluginComponent>[0], name: string, retry = false) => lazyPluginComponent(loader, '正在加载' + name + '…', name + (retry ? '暂时无法加载，请重试。' : '暂时无法加载。'))
 
-const LauncherSearchResults = lazyPluginComponent(
-  () => import('./components/LauncherSearchResults.vue'),
-  '正在加载入口查找…',
-  '入口查找暂时无法加载，请重试。',
-)
-const ShortcutGrid = lazyPluginComponent(
-  () => import('./components/ShortcutGrid.vue'),
-  '正在加载快捷入口…',
-  '快捷入口暂时无法加载，请重试。',
-)
-const HomeWidgetShelf = lazyPluginComponent(
-  () => import('./components/HomeWidgetShelf.vue'),
-  '正在加载首页组件…',
-  '首页组件暂时无法加载。',
-)
+const LauncherSearchResults = lazyHome(() => import('./components/LauncherSearchResults.vue'), '入口查找', true)
+const ShortcutGrid = lazyHome(() => import('./components/ShortcutGrid.vue'), '快捷入口', true)
+const HomeWidgetShelf = lazyHome(() => import('./components/HomeWidgetShelf.vue'), '首页组件')
 const HomeDock = lazyPluginComponent(
   () => import('./components/HomeDock.vue'),
   '正在加载常驻 Dock…',
   '常驻 Dock 暂时无法加载。',
 )
-const FolderDialog = lazyPluginComponent(
-  () => import('./components/FolderDialog.vue'),
-  '正在加载文件夹…',
-  '文件夹暂时无法加载，请重试。',
-)
-const ConfirmDialog = lazyPluginComponent(
-  () => import('./components/ConfirmDialog.vue'),
-  '正在加载确认对话框…',
-  '确认对话框暂时无法加载，请重试。',
-)
-const ShortcutEditor = lazyPluginComponent(
-  () => import('./components/ShortcutEditor.vue'),
-  '正在加载快捷入口表单…',
-  '快捷入口表单暂时无法加载，请重试。',
-)
-const CommandPalette = lazyPluginComponent(
-  () => import('./components/CommandPalette.vue'),
-  '正在加载命令面板…',
-  '命令面板暂时无法加载。',
-)
+const FolderDialog = lazyHome(() => import('./components/FolderDialog.vue'), '文件夹', true)
+const ConfirmDialog = lazyHome(() => import('./components/ConfirmDialog.vue'), '确认对话框', true)
+const ShortcutEditor = lazyHome(() => import('./components/ShortcutEditor.vue'), '快捷入口表单', true)
+const CommandPalette = lazyHome(() => import('./components/CommandPalette.vue'), '命令面板')
 const HomeLayoutEditor = lazyPluginComponent(() => import('./components/HomeLayoutEditor.vue'), '正在加载布局编辑器…', '布局编辑器加载失败。')
-const HomeWorkspaceTabs = lazyPluginComponent(
-  () => import('./components/HomeWorkspaceTabs.vue'),
-  '正在加载工作区…',
-  '工作区暂时无法加载。',
-)
+const HomeWorkspaceTabs = lazyHome(() => import('./components/HomeWorkspaceTabs.vue'), '工作区')
 
 const baseUrl = import.meta.env.BASE_URL
 const {
@@ -137,6 +107,7 @@ const effectiveTheme = computed(() => preferences.value.themeMode === 'system'
   ? (systemPrefersDark.value ? 'dark' : 'light')
   : preferences.value.themeMode)
 watch(() => preferences.value.themePalette, (palette) => { document.documentElement.dataset.themePalette = palette }, { immediate: true })
+watch(() => preferences.value.customTheme, theme => applyCustomTheme(document.documentElement, theme), { immediate: true })
 const commandPaletteOpen = ref(false)
 const layoutEditorOpen = ref(false)
 const currentPage = ref(0)
@@ -778,6 +749,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   historyDisposed = true
   if (historyTimer !== undefined) clearTimeout(historyTimer)
+  applyCustomTheme(document.documentElement)
   delete document.documentElement.dataset.themePalette
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', updateViewport)

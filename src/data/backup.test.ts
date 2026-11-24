@@ -363,3 +363,11 @@ it('preserves normalized shortcut tags through JSON backup', () => {
   const raw = backup({shortcuts:[{id:'custom',title:'Custom',url:'https://example.com/',color:'#abc',mark:'C',tags:[' Work ','work','学习',null]}]})
   expect(parseWorkspaceBackup(raw).shortcuts[0]?.tags).toEqual(['Work','学习'])
 })
+
+
+it('round-trips custom themes without adding a field to old backups and rejects injected colors', async () => {
+  const {defaultCustomTheme} = await import('./themeEditorData')
+  expect(parseWorkspaceBackup(backup()).preferences.customTheme).toBeUndefined()
+  expect(parseWorkspaceBackup(backup({preferences:{...defaultPreferences,customTheme:defaultCustomTheme}})).preferences.customTheme).toEqual(defaultCustomTheme)
+  expect(()=>parseWorkspaceBackup(backup({preferences:{...defaultPreferences,customTheme:{...defaultCustomTheme,light:{...defaultCustomTheme.light,text:'red; color:blue'}}}}))).toThrow(/页面设置无法识别/)
+})

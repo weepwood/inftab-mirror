@@ -11,6 +11,9 @@ on:
       - 'src/composables/workspaceBackup.ts'
       - 'src/components/ShortcutManager.vue'
       - 'src/data/layoutEditor.ts'
+      - 'src/data/configMigration.ts'
+      - 'src/components/ConfigMigration.vue'
+      - 'e2e/config-migration.spec.ts'
       - 'src/components/HomeLayoutEditor.vue'
       - 'e2e/layout-editor.spec.ts'
       - 'e2e/data-management.spec.ts'
@@ -33,7 +36,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- e2e/data-management.spec.ts e2e/layout-editor.spec.ts
+      - run: npm run test:e2e -- e2e/data-management.spec.ts e2e/layout-editor.spec.ts e2e/config-migration.spec.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

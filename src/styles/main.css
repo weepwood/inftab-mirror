@@ -1164,3 +1164,25 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
   .workspace-panel-heading, .workspace-list, .workspace-form { flex: none; }
   .workspace-list, .workspace-layout-form { overflow: visible; max-height: none; }
 }
+
+/* Custom theme opt-in only: keep the built-in workspace appearance unchanged. */
+:root[data-custom-theme] .workspace-panel { color: var(--ui-text); background: var(--ui-glass-widget); border-color: var(--ui-border); border-radius: var(--ui-radius-dialog); box-shadow: var(--ui-menu-shadow); }
+:root[data-custom-theme] .workspace-panel :is(.workspace-panel-heading span,.workspace-form-hint,.workspace-pinned-hint,.workspace-no-results) { color: var(--ui-muted); }
+:root[data-custom-theme] .workspace-panel :is(.workspace-filter,.workspace-form input) { background: var(--ui-field); border-color: var(--ui-border); color: var(--ui-text); border-radius: var(--ui-radius-control); }
+:root[data-custom-theme] .workspace-panel :is(.workspace-create,.workspace-editor-action,.workspace-form-actions button) { border-color: var(--ui-border); color: var(--ui-text); }
+:root[data-custom-theme] .workspace-panel :is(.workspace-row:hover,.workspace-row:focus-within,.workspace-row.is-active,.workspace-icon,.workspace-action:hover,.workspace-action[aria-expanded=true],.workspace-actions button:hover,.workspace-actions button:focus-visible) { background: var(--ui-accent-soft); color: var(--ui-text); }
+:root[data-custom-theme] .workspace-panel .workspace-submit { background: var(--ui-accent); color: white; border-color: var(--ui-accent); }
+:root[data-custom-theme] .workspace-panel :is(.workspace-actions .danger,.workspace-form-error) { color: var(--ui-danger); }
+
+/* Theme opt-in: keep legacy palettes intact while extending shared token coverage. */
+:root[data-custom-theme] :is(.button-primary,.button-secondary,.panel-close,.back-button,.engine-menu button) { border-radius: var(--ui-radius-control); }
+:root[data-custom-theme] .engine-menu { border-radius: var(--ui-radius-menu); }
+:root[data-custom-theme] .toggle-row input[type=checkbox]:not(:checked) { background: var(--ui-border); }
+:root[data-custom-theme] .shortcut-dialog :is(label,.folder-dialog-heading p,.folder-selection-label,.folder-empty), :root[data-custom-theme] .confirm-dialog > p { color: var(--ui-text); }
+:root[data-custom-theme] .folder-dialog.folder-view-mode { background: var(--ui-surface); border-radius: var(--ui-radius-dialog); }
+:root[data-custom-theme] .folder-dialog :is(.folder-choice-list,.folder-link-list,.folder-choice + .folder-choice,.folder-link + .folder-link) { border-color: var(--ui-border); }
+:root[data-custom-theme] .folder-dialog .folder-choice { color: var(--ui-text) !important; }
+:root[data-custom-theme] .folder-dialog .folder-choice.unavailable { color: var(--ui-muted) !important; }
+:root[data-custom-theme] .folder-dialog .folder-choice.unavailable small { color: var(--ui-muted); }
+:root[data-custom-theme] .folder-dialog :is(.folder-link:hover,.folder-choice:hover) { background: var(--ui-hover); }
+:root[data-custom-theme] .shortcut-editor { --editor-control-border: var(--ui-border); --editor-focus: var(--ui-accent-text); --editor-action-fill: var(--ui-accent); border-radius: var(--ui-radius-dialog); }

@@ -54,7 +54,7 @@ const exceeded = [
 
 if (exceeded.length > 0) {
   for (const [name, actual, limit] of exceeded) {
-    console.error(`${name} exceeds its budget: ${format(actual)} > ${format(limit)}`)
+    console.error(`${name} exceeds its budget: ${format(actual)} > ${format(limit)} (${actual} > ${limit} bytes)`)
   }
   process.exitCode = 1
 }

@@ -12,6 +12,12 @@ on:
       - 'src/data/launcherSearch.ts'
       - 'scripts/benchmark-launcher*'
       - 'src/styles/tokens.css'
+      - 'src/composables/concurrentState.ts'
+      - 'src/styles/main.css'
+      - 'src/data/customTheme.ts'
+      - 'src/data/themeExchange.ts'
+      - 'src/components/CustomThemeEditor.vue'
+      - 'e2e/custom-theme.spec.ts'
       - 'src/components/SettingsPanel.vue'
       - 'src/components/SelectField.vue'
       - 'src/components/HomeWorkspaceTabs.vue'
@@ -44,7 +50,7 @@ jobs:
       - name: Install only Chromium
         run: npx playwright install --with-deps chromium
       - name: Verify overlay and visual contracts
-        run: npm run test:e2e -- e2e/visual-system.spec.ts e2e/accessibility.spec.ts e2e/ui-refinements.spec.ts e2e/workspace-switcher.spec.ts
+        run: npm run test:e2e -- e2e/visual-system.spec.ts e2e/accessibility.spec.ts e2e/ui-refinements.spec.ts e2e/workspace-switcher.spec.ts e2e/custom-theme.spec.ts
       - name: Save failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

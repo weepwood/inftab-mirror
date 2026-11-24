@@ -4,6 +4,10 @@ import type { WorkspaceTools } from '../data/workspaceTools'
 import { lazyPluginComponent } from '../plugins/asyncComponent'
 const ShortcutManager = lazyPluginComponent(() => import('./ShortcutManager.vue'), '正在加载数据管理…', '数据管理加载失败。')
 const showManager = ref(false)
+const CustomThemeEditor = lazyPluginComponent(() => import('./CustomThemeEditor.vue'), '正在加载主题编辑器…', '主题编辑器加载失败。')
+const showThemeEditor = ref(false)
+const ConfigMigration = lazyPluginComponent(() => import('./ConfigMigration.vue'), '正在加载配置迁移…', '配置迁移加载失败。')
+const showMigration = ref(false)
 import { Check, Database, FolderPlus, House, LayoutGrid, Palette, Plus, Search, X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { launcherItems, searchModes, wallpaperChoices } from '../data/defaults'
@@ -307,6 +311,11 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
     </section>
 
     <section class="settings-section">
+      <div class="section-heading"><div><h3>自定义主题</h3><p>{{ preferences.customTheme ? '已启用自定义配色，关闭后恢复内置配色' : '独立编辑浅色和深色外观' }}</p></div></div>
+      <button class="button-secondary" type="button" :aria-expanded="showThemeEditor" @click="showThemeEditor = !showThemeEditor">{{ showThemeEditor ? '收起主题编辑器' : '打开主题编辑器' }}</button>
+      <CustomThemeEditor v-if="showThemeEditor" :theme="preferences.customTheme" :presets="preferences.themePresets" @apply="update('customTheme', $event)" @update-presets="update('themePresets', $event)" />
+    </section>
+    <section class="settings-section">
       <div class="section-heading">
         <div><h3>背景图库</h3><p>选择归档壁纸或本地背景主题</p></div>
       </div>
@@ -448,6 +457,11 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
     </div>
 
     <div class="settings-group" data-group="data">
+    <section v-if="workspaceTools" class="settings-section">
+      <div class="section-heading"><div><h3>选择性配置迁移</h3><p>从现有 JSON 备份中选择配置，保留其他数据。</p></div></div>
+      <button class="button-secondary" type="button" :aria-expanded="showMigration" @click="showMigration = !showMigration">{{ showMigration ? '收起配置迁移' : '打开配置迁移' }}</button>
+      <ConfigMigration v-if="showMigration" :tools="workspaceTools" />
+    </section>
     <section v-if="workspaceTools" class="settings-section">
       <div class="section-heading"><div><h3>快捷入口与备份历史</h3><p>批量管理、标签、HTML 书签与本地恢复点</p></div></div>
       <button class="button-secondary" type="button" :aria-expanded="showManager" @click="showManager = !showManager">{{ showManager ? '收起数据管理' : '打开数据管理' }}</button>

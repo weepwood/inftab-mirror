@@ -146,3 +146,44 @@
   --ui-glass-search: rgba(53,43,36,.92);
   --ui-glass-widget: rgba(59,47,39,.9);
 }
+
+/* Validated custom colors only; the selected built-in palette remains the fallback. */
+:root[data-custom-theme] {
+  --custom-accent: var(--custom-light-accent);
+  --custom-surface: var(--custom-light-surface);
+  --custom-text: var(--custom-light-text);
+}
+:root[data-custom-theme] .theme-dark {
+  --custom-accent: var(--custom-dark-accent);
+  --custom-surface: var(--custom-dark-surface);
+  --custom-text: var(--custom-dark-text);
+}
+:root[data-custom-theme], :root[data-custom-theme] .theme-dark {
+  --ui-accent: var(--custom-accent);
+  --ui-accent-text: var(--custom-text);
+  --ui-text: var(--custom-text);
+  --ui-surface: var(--custom-surface);
+  --ui-field: var(--custom-surface);
+  --ui-panel: var(--custom-surface);
+  --ui-radius-control: var(--custom-radius);
+  --ui-radius-menu: calc(var(--custom-radius) + 4px);
+  --ui-radius-card: calc(var(--custom-radius) + 8px);
+  --ui-radius-dialog: calc(var(--custom-radius) + 12px);
+  --ui-radius-panel: calc(var(--custom-radius) + 14px);
+  --ui-glass-search: var(--custom-surface);
+  --ui-glass-widget: var(--custom-surface);
+}
+@supports (color: color-mix(in srgb, black, white)) {
+  :root[data-custom-theme], :root[data-custom-theme] .theme-dark {
+    --ui-accent-hover: color-mix(in srgb, var(--custom-accent) 88%, black);
+    --ui-accent-soft: color-mix(in srgb, var(--custom-surface) 89%, var(--custom-accent));
+    --ui-muted: color-mix(in srgb, var(--custom-text) 88%, var(--custom-surface));
+    --ui-border: color-mix(in srgb, var(--custom-surface) 82%, var(--custom-text));
+    --ui-panel: color-mix(in srgb, var(--custom-surface) 96%, var(--custom-text));
+    --ui-hover: color-mix(in srgb, var(--custom-surface) 92%, var(--custom-text));
+    --ui-glass-search: color-mix(in srgb, var(--custom-surface) var(--custom-opacity), transparent);
+    --ui-glass-widget: var(--ui-glass-search);
+    --ui-glass-border: var(--ui-border);
+    --ui-widget-border: var(--ui-border);
+  }
+}
