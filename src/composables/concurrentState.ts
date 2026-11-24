@@ -106,7 +106,7 @@ function mergeConcurrentValue(current: unknown, previous: unknown, external: unk
         else delete merged[key]
       } else if (currentHasKey && previousHasKey && externalHasKey) {
         // Theme color pairs are validated as a unit; merging individual fields can invalidate them.
-        if (key === 'customTheme' || key === 'theme') continue
+        if (key === 'customTheme' || (key === 'theme' && isIdentifiedRecord(current) && isIdentifiedRecord(previous) && isIdentifiedRecord(external))) continue
         merged[key] = mergeConcurrentValue(current[key], previous[key], external[key])
       }
     }

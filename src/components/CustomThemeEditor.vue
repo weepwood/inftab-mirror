@@ -69,12 +69,14 @@ function reload() {
 function apply() {
   if (baseline.value !== JSON.stringify(props.theme ?? null)) { status.value = '主题已在其他位置修改，请重新加载草稿。'; return }
   if (!valid.value) return
+  readId++
   baseline.value = JSON.stringify(valid.value)
   emit('apply', valid.value)
   status.value = '主题已应用。'
 }
 function disable() {
   if (baseline.value !== JSON.stringify(props.theme ?? null)) { status.value = '主题已发生变化，请重新加载。'; return }
+  readId++
   baseline.value = 'null'
   emit('apply', null)
   status.value = '已恢复内置配色。'

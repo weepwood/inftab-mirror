@@ -4,7 +4,7 @@ test('selective migration preserves entries and creates a recovery point', async
     if (!localStorage.getItem('inftab.shortcuts.v1')) localStorage.setItem('inftab.shortcuts.v1', JSON.stringify([{id:'migration-local',title:'Local entry',url:'https://local.example/',color:'#abc',mark:'L'}]))
   })
   await page.goto('/')
-  await expect(page.getByRole('button',{name:'打开Local entry'})).toBeVisible()
+  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('inftab.shortcuts.v1')??'[]').map((item:{id:string})=>item.id))).toEqual(['migration-local'])
   const backup = {format:'inftab-workspace',version:1,exportedAt:'',preferences:{engine:'baidu',mode:'html',wallpaper:'wallpapers/forest.webp',customWallpaper:'',shade:.24,iconSize:72,columns:6,showNames:true,iconRadius:22,themePalette:'sand'},shortcuts:[],folders:[],launcherOrder:[],todos:[],notes:[],activeNoteId:'',weatherCity:'上海'}
   await page.locator('.home-actions').getByRole('button',{name:'打开设置',exact:true}).click()
   const panel = page.getByRole('dialog',{name:'设置'})

@@ -12,6 +12,8 @@ on:
       - 'src/data/launcherSearch.ts'
       - 'scripts/benchmark-launcher*'
       - 'src/styles/tokens.css'
+      - 'src/composables/concurrentState.ts'
+      - 'src/styles/main.css'
       - 'src/data/customTheme.ts'
       - 'src/data/themeExchange.ts'
       - 'src/components/CustomThemeEditor.vue'
