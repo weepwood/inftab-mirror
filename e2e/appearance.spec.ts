@@ -60,19 +60,22 @@ for (const viewport of [
 }
 
 test('tall calendar presets remain scrollable instead of clipping the mobile launcher', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
+  await page.setViewportSize({ width: 390, height: 640 })
   await page.addInitScript(() => {
-    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ homeWidgetIds: ['calendar-summary', 'todo-summary', 'notes-summary'] }))
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showClock: true, showSearchBar: true, homeWidgetIds: ['calendar-summary', 'todo-summary', 'notes-summary'] }))
   })
   await page.goto('/')
   await expect(page.locator('.home-widget-calendar')).toBeVisible()
   const home = page.locator('main.home')
   await expect(home).toHaveCSS('overflow-y', 'auto')
+  await expect(page.locator('.search-area')).toBeVisible()
+  await expect.poll(() => home.evaluate(element => element.scrollHeight - element.clientHeight)).toBeGreaterThan(0)
+  await home.evaluate(element => { element.scrollTop = element.scrollHeight })
+  await expect.poll(() => home.evaluate(element => element.scrollTop)).toBeGreaterThan(0)
   await page.locator('.page-dots').scrollIntoViewIfNeeded()
-  await expect.poll(() => home.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
   const pager = await page.locator('.page-dots').boundingBox()
   expect(pager!.y).toBeGreaterThanOrEqual(0)
-  expect(pager!.y + pager!.height).toBeLessThanOrEqual(844)
+  expect(pager!.y + pager!.height).toBeLessThanOrEqual(640)
 })
 
 test('responsive columns do not overwrite the saved desktop grid or icon preferences', async ({ page }) => {

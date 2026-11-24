@@ -10,6 +10,9 @@ on:
       - 'vite.config.ts'
       - 'src/composables/overlayFocus.ts'
       - 'src/composables/useHomeNavigation.ts'
+      - 'src/composables/useShortcutDrag.ts'
+      - 'e2e/appearance.spec.ts'
+      - 'e2e/new-tab.spec.ts'
       - 'src/components/CommandPalette.vue'
       - 'src/components/ShortcutGrid.vue'
       - 'src/composables/useShortcutParticles.ts'
@@ -55,6 +58,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Verify overlay and visual contracts
         run: npm run test:e2e -- e2e/visual-system.spec.ts e2e/accessibility.spec.ts e2e/ui-refinements.spec.ts e2e/workspace-switcher.spec.ts e2e/custom-theme.spec.ts
+      - name: Verify release regression cases
+        run: npm run test:e2e -- e2e/appearance.spec.ts e2e/new-tab.spec.ts --grep 'tall calendar presets|every built-in panel route|touch scrolling over shortcuts'
       - name: Save failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
