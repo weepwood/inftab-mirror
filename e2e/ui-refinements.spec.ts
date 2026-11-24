@@ -573,3 +573,40 @@ test('Swiper native touch slides and keeps virtual page count bounded', async ({
     } finally { await cdp.detach() }
   } finally { await context.close() }
 })
+
+test('first-row hover and keyboard focus are not clipped by the Swiper viewport', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ columns: 2, rows: 1, pageTransitionEffect: 'slide', pageTransitionMs: 320 })))
+  await page.goto('/')
+  const viewport = page.locator('.shortcut-grid-viewport')
+  const swiper = viewport.locator('.launcher-swiper')
+  const button = viewport.locator('.shortcut-page[aria-hidden="false"] .shortcut-open').first()
+  const icon = button.locator('.shortcut-icon')
+  await expect(swiper).toHaveClass(/swiper-initialized/)
+  await expect(swiper).toHaveCSS('overflow', 'visible')
+  const measure = () => icon.evaluate(el => {
+    const rect = el.getBoundingClientRect()
+    const bounds = el.closest('.launcher-swiper')!.getBoundingClientRect()
+    const x = rect.left + rect.width / 2, y = rect.top + 1
+    const hit = document.elementFromPoint(x, y)
+    return { lift: bounds.top - rect.top, visible: !!hit && el.contains(hit) }
+  })
+  await button.hover()
+  await expect.poll(async () => (await measure()).lift).toBeGreaterThan(4)
+  await expect.poll(async () => (await measure()).visible).toBe(true)
+  await testInfo.attach('swiper-first-row-hover', { body: await page.screenshot(), contentType: 'image/png' })
+  await page.mouse.move(10, 10)
+  await page.keyboard.press('Tab')
+  await button.focus()
+  await expect(button).toBeFocused()
+  await expect.poll(async () => (await measure()).lift).toBeGreaterThan(1)
+  await expect.poll(async () => (await measure()).visible).toBe(true)
+  // Outer clip still masks the adjacent virtual pages horizontally.
+  const clip = await viewport.evaluate(el => getComputedStyle(el).clipPath)
+  expect(clip).toMatch(/^inset\(-30px 0px/)
+  await page.mouse.move(10, 10)
+  await page.mouse.wheel(0, 100)
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
+  await expect.poll(() => viewport.locator('.shortcut-page[aria-hidden="false"]').evaluate(el => Math.abs(el.getBoundingClientRect().left - el.closest('.shortcut-grid-viewport')!.getBoundingClientRect().left))).toBeLessThan(2)
+})

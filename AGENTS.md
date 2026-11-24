@@ -266,3 +266,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 3adc83f GitHub实际：45427944180 688/688，构建181.6/156KiB超限；45427943918同一前置门禁阻断PWA/MV3；45427943925 Chromium UI43+3通过，原生滚轮39帧/8中间位移/P95 16.7ms/max33.4ms，连续反向诊断P95 33.5ms/max50ms；45427943859 120秒通过。Mac Edge生产额外6项键盘焦点、工作区隔离/排序、图标拖拽、粒子特效、短屏触摸均通过。
 - 用户明确允许Swiper独立预算。Rolldown仅匹配node_modules/swiper的高优先级swiper-vendor组，不递归吸入其他依赖；generateBundle按实际renderedLength验证Swiper模块不外溢、业务模块不混入、仅一个vendor；gzip检查仅排除这一命名资产，非Swiper仍156KiB，入口仍60.5KiB（包含任何实际入口vendor），CSS仍64KiB，总输出仍4MiB，新增Swiper上限30KiB，合计上限186KiB。保留原PWA 512/10240 B门禁。
 - 本机Node26正式npm run build:web通过：入口58.0/60.5KiB、非Swiper155.0/156KiB、Swiper26.4/30KiB、合计181.4/186KiB、CSS24.2/64KiB、output1492.5/4096KiB；MV3静态校验通过，PWA83资产/485/10132B、完整1555590B。GitHub Node24重跑和正式浏览器验收未完成前不合并。#29原四套通过但冻结，不得将旧引擎同步回main。
+
+## Swiper 首排 hover 裁切修复（2026-11-24）
+- #31 已合并并部署至 6fa9d7c，Pages 45430656029 成功；线上 Edge 实测零阈值内位移、41帧/10中间位置、P95 16.8ms，Swiper 资产200，无运行异常。四套CI均通过；120秒6000帧6慢帧，GC净增1117624B，2 detached根，Firefox本机缺动态库未启动、WebKit未验收。
+- 用户截图显示首排图标 hover 上缘被裁切；线上 Edge 实测首排图标 top221.05px，而Swiper top226.95px，计算样式 overflow:hidden，官方 .swiper 样式覆盖原 .launcher-swiper。提高局部选择器特异性，明确让内层Swiper overflow:visible，保留外层 viewport clip-path:inset(-30px 0 -30px) 横向裁切，不改轨道、动画、数据或其他功能。
+- 本机正式 build:web 与MV3静态检查、PWA预算通过：入口57.9/60.5、业务154.9/156、Swiper26.4/30、CSS24.3/64KiB；PWA485/10135B。Edge生产3项回归通过（首排hover/键盘焦点真实hit-test、连续反向、原生滚轮40帧/10中间位置/P95 16.8ms）；待PR常规及UI CI、合并部署后复验。保持原预算，冻结其他新增功能。
