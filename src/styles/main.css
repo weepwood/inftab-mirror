@@ -1204,7 +1204,8 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 }
 
 /* Swiper owns the wrapper transform and transition duration. */
-.launcher-swiper { overflow: visible; width: 100%; --swiper-wrapper-transition-timing-function: cubic-bezier(.25,.8,.25,1); }
+/* The outer viewport clips horizontal slide overflow; allow vertical hover lift and glow here. */
+.shortcut-grid-viewport > .launcher-swiper.swiper { overflow: visible; width: 100%; --swiper-wrapper-transition-timing-function: cubic-bezier(.25,.8,.25,1); }
 .launcher-swiper .swiper-wrapper { display: flex; align-items: flex-start; transition-property: transform; }
 .launcher-swiper .swiper-slide.shortcut-page { display: grid; flex: 0 0 100%; height: auto; }
 .home-dock.dock-dragging .home-dock-icon { transition: none; }
