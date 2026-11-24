@@ -96,7 +96,7 @@ onBeforeUnmount(() => { readId++ })
 <template>
   <div class="custom-theme-editor">
     <section class="theme-presets" aria-label="主题预设库">
-      <strong>主题预设库 · {{ presets?.length ?? 0 }} / 20</strong>
+      <strong>主题预设库 · {{ presets?.length ?? 0 }} / {{ maxThemePresets }}</strong>
       <label>选择预设<select v-model="presetId" aria-label="选择主题预设" @change="selectPreset"><option value="">新建预设</option><option v-for="item in presets ?? []" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
       <label>预设名称<input v-model="presetName" aria-label="预设名称" maxlength="40" placeholder="例如：午夜蓝" /></label>
       <div class="theme-actions"><button type="button" :disabled="!valid || !presetName.trim()" @click="savePreset()">{{ selectedPreset ? '更新预设' : '保存为预设' }}</button><button v-if="selectedPreset" type="button" :disabled="!valid || !presetName.trim()" @click="savePreset(true)">复制草稿为新预设</button><button v-if="selectedPreset" type="button" :disabled="!presetName.trim()" @click="renamePreset">重命名预设</button><button v-if="selectedPreset" type="button" @click="deletePreset">{{ pendingDelete === selectedPreset.id ? '确认删除预设' : '删除预设' }}</button><button v-if="pendingDelete" type="button" @click="pendingDelete = ''">取消删除</button></div>

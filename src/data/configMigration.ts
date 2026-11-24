@@ -18,8 +18,14 @@ export function planConfigMigration(current: WorkspaceBackup, source: WorkspaceB
   if (selected.includes('appearance')) {
     copy(appearanceKeys)
     // An older file has no custom theme or presets; retain local optional fields.
-    if (source.preferences.customTheme === undefined) preferences.customTheme = current.preferences.customTheme
-    if (source.preferences.themePresets === undefined) preferences.themePresets = current.preferences.themePresets
+    if (source.preferences.customTheme === undefined) {
+      if (current.preferences.customTheme === undefined) delete preferences.customTheme
+      else preferences.customTheme = current.preferences.customTheme
+    }
+    if (source.preferences.themePresets === undefined) {
+      if (current.preferences.themePresets === undefined) delete preferences.themePresets
+      else preferences.themePresets = current.preferences.themePresets
+    }
   }
   if (selected.includes('layout')) copy(layoutKeys)
   if (selected.includes('widgets')) copy(widgetKeys)
