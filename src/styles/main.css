@@ -166,7 +166,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 /* CSS viewport units naturally reduce the Dock under browser zoom and narrow display layouts. */
 .home-dock { --dock-icon-size: min(var(--dock-size-setting, 44px), clamp(36px, calc(3vw + 28px), 60px)); --dock-item-size: calc(var(--dock-icon-size) + 4px); position: fixed; z-index: 2; bottom: 26px; left: 50%; width: max-content; max-width: max(100px, calc(100vw - 380px)); transform: translateX(-50%); touch-action: pan-x pinch-zoom; }
 .home-dock::before { content: ''; position: absolute; z-index: -1; inset: 22px 10px 16px; border: 1px solid rgba(255, 255, 255, .4); border-radius: 20px; background: rgba(245, 252, 246, .18); box-shadow: 0 12px 32px rgba(8, 24, 16, .2), inset 0 1px 0 rgba(255, 255, 255, .16); backdrop-filter: blur(24px) saturate(140%); pointer-events: none; }
-.home-dock-track { display: flex; align-items: center; gap: min(var(--dock-gap-setting, 2px), clamp(0px, 1vw, 16px)); max-width: 100%; overflow-x: auto; padding: 32px 18px 24px; scrollbar-width: none; }
+.home-dock-track { position: relative; display: flex; align-items: center; gap: min(var(--dock-gap-setting, 2px), clamp(0px, 1vw, 16px)); max-width: 100%; overflow-x: auto; padding: 32px 18px 24px; scrollbar-width: none; }
 .home-dock-track::-webkit-scrollbar { display: none; }
 .home-dock-entry { position: relative; z-index: 0; width: var(--dock-item-size, 48px); flex: 0 0 var(--dock-item-size, 48px); --dock-scale: 1; }
 .home-dock-entry:hover, .home-dock-entry:focus-within { z-index: 2; }
@@ -1240,9 +1240,8 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .shortcut-icon { box-shadow: 0 3px 8px #08181012, 0 8px 22px #08181026, inset 0 1px 0 #ffffff40; }
 .shortcut-name { letter-spacing: .01em; text-shadow: 0 1px 3px #0009, 0 0 9px #0004; }
 .home-dock-icon { transition-timing-function: cubic-bezier(.2,1.12,.36,1); }
-.home-dock-entry { transition: transform 150ms cubic-bezier(.2,.8,.2,1); }
-.home-dock.dock-dragging .dock-drop-before { transform: translateX(5px); }
-.home-dock.dock-dragging .dock-drop-after { transform: translateX(-5px); }
+.home-dock.dock-dragging .dock-drop-before::after,
+.home-dock.dock-dragging .dock-drop-after::after { box-shadow: 0 0 0 2px #fff3, 0 1px 5px #0006; }
 @media (prefers-reduced-motion: reduce) {
   .home-dock.is-magnifying .home-dock-icon, .home-dock-entry { transition: none; }
 }
@@ -1255,3 +1254,10 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 @media (prefers-reduced-motion: reduce) {
   .home-dock::before, .home-dock:not(.is-magnifying) .home-dock-icon { transition: none; }
 }
+
+/* Keep touch preview local to the launcher, preserve vertical page scroll. */
+.shortcut-grid-viewport { touch-action: pan-y pinch-zoom; }
+.page-dot::after { box-shadow: 0 0 0 1px #0002, 0 1px 4px #0005; }
+.page-dot.active::after { box-shadow: 0 0 0 1px #0003, 0 1px 5px #0006; }
+@media (hover: none) { .shortcut-open:hover:not(:active) .shortcut-icon { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .page-dot::after { transition: none; } }

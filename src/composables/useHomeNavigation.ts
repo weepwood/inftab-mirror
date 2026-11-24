@@ -23,8 +23,11 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   }
   let wheelTimer: ReturnType<typeof setTimeout> | undefined
   function movePage(direction: number) {
-    if (pageCount.value < 2) return
     resetWheel()
+    commitPage(direction)
+  }
+  function commitPage(direction: number) {
+    if (pageCount.value < 2 || !direction) return
     pageDirection.value = direction < 0 ? -1 : 1
     currentPage.value = (currentPage.value + direction + pageCount.value) % pageCount.value
   }
@@ -37,17 +40,26 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   }
   
   function startHomeSwipe(event: PointerEvent) {
-    if (overlayOpen.value || minimalMode.value || event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf, .home-dock, .search-area'))) return
+    if (overlayOpen.value || minimalMode.value || pageCount.value < 2 || event.pointerType !== 'touch' || event.isPrimary === false || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf, .home-dock, .search-area, button, a, input'))) return
+    resetWheel()
     homeTouchStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
   }
   
+  function moveHomeSwipe(event: PointerEvent) {
+    if (!homeTouchStart || event.pointerId !== homeTouchStart.pointerId) return
+    const x = event.clientX - homeTouchStart.x
+    const y = event.clientY - homeTouchStart.y
+    wheelOffset.value = Math.abs(x) > Math.abs(y) * 1.25
+      ? Math.max(-.85, Math.min(.85, x / Math.max(160, window.innerWidth * .5)))
+      : 0
+  }
   function finishHomeSwipe(event: PointerEvent) {
     if (!homeTouchStart || event.pointerId !== homeTouchStart.pointerId) return
-    if (overlayOpen.value) { homeTouchStart = undefined; return }
+    if (overlayOpen.value || minimalMode.value) { cancelHomeSwipe(); return }
     const deltaX = event.clientX - homeTouchStart.x
     const deltaY = event.clientY - homeTouchStart.y
-    if (Math.abs(deltaX) > 52 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) movePage(deltaX < 0 ? 1 : -1)
-    homeTouchStart = undefined
+    cancelHomeSwipe()
+    if (Math.abs(deltaX) > 52 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) commitPage(deltaX < 0 ? 1 : -1)
   }
   
   function handleHomeWheel(event: WheelEvent) {
@@ -70,9 +82,8 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
     accumulated += delta
     if (Math.abs(accumulated) >= threshold) {
       const direction = Math.sign(accumulated)
-      const remainder = accumulated - direction * threshold
-      movePage(direction)
-      accumulated = remainder
+      accumulated -= direction * threshold
+      commitPage(direction)
     }
     if (!frame) frame = requestAnimationFrame(() => {
       frame = 0
@@ -85,8 +96,8 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
       else resetWheel()
     }, 100)
   }
-  function cancelHomeSwipe() { homeTouchStart = undefined }
-  watch([overlayOpen, minimalMode, pageCount], resetWheel, { flush: 'sync' })
-  onScopeDispose(resetWheel)
-  return { wheelOffset, movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe }
+  function cancelHomeSwipe() { homeTouchStart = undefined; resetWheel() }
+  watch([overlayOpen, minimalMode, pageCount], cancelHomeSwipe, { flush: 'sync' })
+  onScopeDispose(cancelHomeSwipe)
+  return { wheelOffset, movePage, goToPage, startHomeSwipe, moveHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe }
 }

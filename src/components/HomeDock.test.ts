@@ -194,3 +194,17 @@ it('animates keyed Dock reordering on the wrapper without moving the icon transf
   await nextTick()
   expect(animate).toHaveBeenCalledTimes(2)
 })
+
+it('uses layout geometry instead of a transformed slot for drag insertion', async () => {
+  wrapper = mount(HomeDock, { props: { items: [item, { ...item, id: 'mail', title: '邮件' }] } })
+  const track = wrapper.get('.home-dock-track').element as HTMLElement
+  const target = wrapper.findAll('.home-dock-entry')[1]!.element as HTMLElement
+  Object.defineProperties(target, { offsetParent: { value: track }, offsetLeft: { value: 50 }, offsetWidth: { value: 48 } })
+  vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ left: 100 } as DOMRect)
+  vi.spyOn(target, 'getBoundingClientRect').mockReturnValue({ left: 200, width: 48 } as DOMRect)
+  await wrapper.get('[data-dock-item-id="weather"]').trigger('dragstart')
+  await wrapper.findAll('.home-dock-entry')[1]!.trigger('dragover', { clientX: 180 })
+  expect(target.classList.contains('dock-drop-after')).toBe(true)
+  await wrapper.findAll('.home-dock-entry')[1]!.trigger('drop', { clientX: 180 })
+  expect(wrapper.emitted('reorder')).toEqual([['weather', 'mail', true]])
+})

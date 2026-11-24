@@ -40,17 +40,28 @@ const failedIcons = ref<Record<string, string>>({})
 // FLIP: capture the visible pre-reorder position, then invert the keyed move.
 // Animate only the entry wrapper, not the magnified inner icon.
 const entries = () => Array.from(dock.value?.querySelectorAll<HTMLElement>('.home-dock-entry') ?? [])
+// Offset geometry is independent of FLIP transforms and drop markers.
+function slotBounds(el: HTMLElement) {
+  const parent = el.offsetParent
+  if (!el.offsetWidth || !(parent instanceof HTMLElement)) return el.getBoundingClientRect()
+  const left = parent.getBoundingClientRect().left + parent.clientLeft + el.offsetLeft - parent.scrollLeft
+  return { left, right: left + el.offsetWidth, width: el.offsetWidth }
+}
 const flips = new Map<HTMLElement, Animation>()
-watch(() => props.items.map(item => item.id).join('|'), async () => {
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+watch(() => props.items.map(item => item.id).join('|'), async (_, __, onCleanup) => {
   const before = new Map(entries().map(el => [el, el.getBoundingClientRect().left]))
   flips.forEach(animation => animation.cancel())
   flips.clear()
+  clearDockMagnification()
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  let cancelled = false
+  onCleanup(() => { cancelled = true })
   await nextTick()
+  if (cancelled) return
   for (const el of entries()) {
     const old = before.get(el)
     if (old === undefined || !el.animate) continue
-    const dx = old - el.getBoundingClientRect().left
+    const dx = old - slotBounds(el).left
     if (Math.abs(dx) < 1) continue
     const animation = el.animate([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.2,.85,.25,1)' })
     flips.set(el, animation)
@@ -65,7 +76,7 @@ function startDrag(event: DragEvent, id: string) {
 function previewDrop(event: DragEvent, id: string) {
   if (!dragId.value || dragId.value === id) { dropTarget.value = undefined; return }
   event.preventDefault()
-  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const bounds = slotBounds(event.currentTarget as HTMLElement)
   dropTarget.value = { id, after: event.clientX > bounds.left + bounds.width / 2 }
 }
 function endDrag() { dragId.value = undefined; dropTarget.value = undefined }
@@ -73,7 +84,7 @@ function dropItem(event: DragEvent, targetId: string) {
   if (!dragId.value) return
   event.preventDefault()
   if (dragId.value !== targetId) {
-    const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
+    const bounds = slotBounds(event.currentTarget as HTMLElement)
     emit('reorder', dragId.value, targetId, event.clientX > bounds.left + bounds.width / 2)
   }
   endDrag()
@@ -165,8 +176,8 @@ function updateDockMagnification(event: PointerEvent) {
     magnificationFrame = 0
     const slots = entries()
     if (!slots.length) return
-    const first = slots[0]!.getBoundingClientRect()
-    const last = slots.at(-1)!.getBoundingClientRect()
+    const first = slotBounds(slots[0]!)
+    const last = slotBounds(slots.at(-1)!)
     const itemSize = first.width || 48
     const pitch = slots.length > 1 ? (last.left - first.left) / (slots.length - 1) : itemSize
     const influenceRadius = Math.max(itemSize, pitch) * 2.8

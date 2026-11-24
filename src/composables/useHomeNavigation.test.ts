@@ -63,3 +63,30 @@ it('uses the shortest cyclic path for explicit page selections', () => {
     expect([currentPage.value, pageDirection.value]).toEqual([1, 1])
   } finally { scope.stop() }
 })
+
+it('previews empty-area horizontal touch movement and cancels on mode changes', () => {
+  const scope = effectScope()
+  const currentPage = ref(0)
+  const minimalMode = ref(false)
+  const nav = scope.run(() => useHomeNavigation({ currentPage, pageDirection: ref(1), overlayOpen: ref(false), pageCount: ref(3), minimalMode, shortHomeScrollEnabled: ref(false) }))!
+  const touch = (x: number, y = 50) => ({ pointerType: 'touch', pointerId: 1, clientX: x, clientY: y } as PointerEvent)
+  try {
+    nav.startHomeSwipe(touch(200))
+    nav.moveHomeSwipe(touch(120))
+    expect(nav.wheelOffset.value).toBeLessThan(0)
+    expect(currentPage.value).toBe(0)
+    nav.finishHomeSwipe(touch(90))
+    expect(currentPage.value).toBe(1)
+    expect(nav.wheelOffset.value).toBe(0)
+    nav.startHomeSwipe(touch(200))
+    nav.moveHomeSwipe(touch(280))
+    minimalMode.value = true
+    minimalMode.value = false
+    nav.finishHomeSwipe(touch(300))
+    expect(currentPage.value).toBe(1)
+    expect(nav.wheelOffset.value).toBe(0)
+    nav.startHomeSwipe(touch(200))
+    nav.moveHomeSwipe(touch(180, 200))
+    expect(nav.wheelOffset.value).toBe(0)
+  } finally { scope.stop() }
+})
