@@ -100,7 +100,11 @@ function snapSlide(duration = props.transitionDuration) {
     return
   }
   const rate = 8 / Math.max(100, duration)
-  const initialVelocity = Math.max(-.008, Math.min(.008, velocity))
+  // A committed wheel page should settle monotonically, not overshoot and
+  // flash back. Preserve compatible momentum but discard opposite velocity.
+  const initialVelocity = Math.sign(velocity) === -Math.sign(distance)
+    ? Math.sign(velocity) * Math.min(.008, Math.abs(velocity), rate * Math.abs(distance))
+    : 0
   const slope = initialVelocity + rate * distance
   const start = performance.now()
   const tick = (now: number) => {

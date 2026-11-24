@@ -273,6 +273,8 @@ test('fine wheel input reverses without an extra page and settles the compositor
   await page.mouse.wheel(0, 60)
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
   await page.mouse.wheel(0, -30)
+  // Observe past the former idle prediction timeout as well as settling.
+  await page.waitForTimeout(250)
   await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
 })
@@ -540,6 +542,57 @@ test('fine wheel threshold commit does not teleport the icon track', async ({ pa
   await testInfo.attach('fine-wheel-continuity', { body: JSON.stringify(result), contentType: 'application/json' })
   expect(result.jump).toBeLessThan(.02)
   expect(result.reverseJump).toBeLessThan(.02)
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
+  await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
+})
+
+test('ordinary mouse wheel stays pixel-still below threshold and moves only for a committed page', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ columns: 2, rows: 1, pageTransitionEffect: 'slide', pageTransitionMs: 300 })))
+  await page.goto('/')
+  const viewport = page.locator('.shortcut-grid-viewport')
+  await expect(viewport).toBeVisible()
+  await viewport.hover()
+  const samples = await viewport.evaluate(async el => {
+    const read = () => {
+      const slot = el.querySelector<HTMLElement>('.shortcut-page')!
+      const rect = slot.getBoundingClientRect(), bounds = el.getBoundingClientRect()
+      return Number(slot.dataset.renderIndex) - (rect.left - bounds.left) / bounds.width
+    }
+    const send = (deltaY: number) => el.dispatchEvent(new WheelEvent('wheel', { deltaY, cancelable: true, bubbles: true }))
+    async function frames(count: number) {
+      const values: { position: number; t: number }[] = []
+      for (let i = 0; i < count; i++) await new Promise<void>(resolve => requestAnimationFrame(t => { values.push({ position: read(), t }); resolve() }))
+      return values
+    }
+    const start = read()
+    send(30); const a = await frames(2)
+    send(30); const b = await frames(2)
+    send(30); const c = await frames(22)
+    // Explicit idle separation prevents combining the preceding burst.
+    await new Promise(resolve => setTimeout(resolve, 250))
+    send(60); send(40)
+    const committed = await frames(30)
+    send(-30)
+    const smallReverse = await frames(24)
+    send(-100)
+    const reverse = await frames(30)
+    return { start, below: [...a,...b,...c], committed, smallReverse, reverse }
+  })
+  await testInfo.attach('ordinary-wheel-trajectory', { body: JSON.stringify(samples), contentType: 'application/json' })
+  const maxDrift = (values: typeof samples.below, target: number) => Math.max(...values.map(v => Math.abs(v.position - target)))
+  expect(maxDrift(samples.below, samples.start)).toBeLessThan(.005)
+  expect(samples.committed.at(-1)!.position).toBeCloseTo(samples.start + 1, 2)
+  expect(samples.committed.some(v => v.position > samples.start + .05 && v.position < samples.start + .95)).toBe(true)
+  for (let i = 1; i < samples.committed.length; i++) expect(samples.committed[i]!.position - samples.committed[i-1]!.position).toBeGreaterThanOrEqual(-.005)
+  expect(maxDrift(samples.smallReverse, samples.start + 1)).toBeLessThan(.005)
+  expect(samples.reverse.at(-1)!.position).toBeCloseTo(samples.start, 2)
+  for (let i = 1; i < samples.reverse.length; i++) expect(samples.reverse[i]!.position - samples.reverse[i-1]!.position).toBeLessThanOrEqual(.005)
+  // Also drive the real browser wheel path, not only synthetic small deltas.
+  await page.mouse.wheel(0, 30)
+  await page.waitForTimeout(300)
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第1页')
+  await page.mouse.wheel(0, 100)
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
   await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
 })
