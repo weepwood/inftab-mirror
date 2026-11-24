@@ -1,0 +1,6 @@
+.inftab-pwa-control{position:fixed;left:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:8;display:flex;align-items:flex-start;flex-wrap:wrap;gap:6px;max-width:min(360px,calc(100vw - 24px));font:12px/1.5 system-ui,sans-serif;color:#fff}
+.inftab-pwa-control button{border:1px solid rgba(255,255,255,.4);background:rgba(20,33,28,.82);color:white;border-radius:9px;padding:6px 9px;cursor:pointer;min-height:32px}
+.inftab-pwa-control button:disabled{opacity:.65;cursor:default}
+.inftab-pwa-control button:focus-visible{outline:2px solid white;outline-offset:2px}
+.inftab-pwa-control .pwa-status:not(:empty){padding:5px 8px;background:rgba(20,33,28,.85);border-radius:8px}
+@media(max-height:440px){.inftab-pwa-control{position:absolute;bottom:auto;top:4px;left:4px}}

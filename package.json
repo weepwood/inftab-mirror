@@ -14,7 +14,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build && node scripts/check-bundle-size.mjs && node scripts/check-extension-build.mjs",
+    "build": "vue-tsc --noEmit && vite build && node scripts/build-pwa.mjs && node scripts/check-bundle-size.mjs && node scripts/check-extension-build.mjs",
     "preview": "vite preview",
     "check": "vue-tsc --noEmit && tsc -p tsconfig.e2e-extension.json && vue-tsc -p tsconfig.plugin-tests.json",
     "verify": "npm run check && npm test && npm run build",

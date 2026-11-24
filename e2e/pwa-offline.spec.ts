@@ -1,0 +1,26 @@
+import { expect, test } from '@playwright/test'
+
+test('opt-in precaches a complete built shell and works offline without caching external URLs', async ({page,context})=>{
+  await page.goto('/')
+  await expect(page.locator('link[rel=manifest]')).toHaveAttribute('href',/app\.webmanifest$/)
+  expect(await page.evaluate(()=>navigator.serviceWorker.controller)).toBeNull()
+  await page.getByRole('button',{name:'启用离线工作台'}).click()
+  await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller),{timeout:30000}).toBe(true)
+  await expect(page.locator('.pwa-status')).toContainText('离线资源已就绪')
+  const keys=await page.evaluate(async()=>{
+    const owned=(await caches.keys()).filter(key=>key.startsWith('inftab-pwa:'))
+    const cache=await caches.open(owned[0]!)
+    return (await cache.keys()).map(request=>request.url)
+  })
+  expect(keys.some(url=>url.endsWith('/index.html'))).toBe(true)
+  expect(keys.some(url=>/\/assets\/.*\.js$/.test(url))).toBe(true)
+  expect(keys.every(url=>new URL(url).origin===new URL(page.url()).origin)).toBe(true)
+  expect(keys.some(url=>url.endsWith('/manifest.json'))).toBe(false)
+  await context.setOffline(true)
+  await page.reload()
+  await expect(page.locator('main.home')).toBeVisible()
+  await expect(page.locator('.pwa-status')).toContainText('离线模式')
+  await page.locator('.home-actions').getByRole('button',{name:'打开设置',exact:true}).click()
+  await expect(page.getByRole('dialog',{name:'设置'})).toBeVisible()
+  await context.setOffline(false)
+})
