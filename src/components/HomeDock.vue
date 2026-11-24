@@ -38,7 +38,20 @@ let lastFrame = 0
 let dirty = false
 let hovering = false
 let geometry: { slots: HTMLElement[]; left: number; right: number; size: number } | undefined
-const springs = new Map<HTMLElement, { scale: number; velocity: number; target: number }>()
+type Spring = { position: number; velocity: number; target: number }
+const springs = new Map<HTMLElement, Spring>()
+// Critical damping, exact integration; shared between magnification and reorder.
+function advanceSpring(s: Spring, dt: number, rate: number, epsilon: number) {
+  const distance = s.position - s.target, slope = s.velocity + rate * distance
+  const decay = Math.exp(-rate * dt)
+  s.position = s.target + (distance + slope * dt) * decay
+  s.velocity = (s.velocity - rate * slope * dt) * decay
+  if (Math.abs(s.position - s.target) > epsilon || Math.abs(s.velocity) > epsilon * rate) return true
+  s.position = s.target
+  s.velocity = 0
+  return false
+}
+const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 const dragId = ref<string>()
 const dropTarget = ref<{ id: string; after: boolean }>()
 const failedIcons = ref<Record<string, string>>({})
@@ -52,26 +65,49 @@ function slotBounds(el: HTMLElement) {
   const left = parent.getBoundingClientRect().left + parent.clientLeft + el.offsetLeft - parent.scrollLeft
   return { left, right: left + el.offsetWidth, width: el.offsetWidth }
 }
-const flips = new Map<HTMLElement, Animation>()
+const reorders = new Map<HTMLElement, Spring>()
+let reorderFrame = 0, reorderTime = 0
+function clearReorders() {
+  cancelAnimationFrame(reorderFrame)
+  reorderFrame = reorderTime = 0
+  reorders.forEach((_, el) => el.style.removeProperty('transform'))
+  reorders.clear()
+}
+function paintReorder(now: number) {
+  reorderFrame = 0
+  const dt = Math.min(64, Math.max(0, now - reorderTime))
+  reorderTime = now
+  reorders.forEach((s, el) => {
+    if (!reducedMotion() && advanceSpring(s, dt, .028, .05)) {
+      el.style.transform = `translateX(${s.position}px)`
+    } else {
+      el.style.removeProperty('transform')
+      reorders.delete(el)
+    }
+  })
+  if (reorders.size) reorderFrame = requestAnimationFrame(paintReorder)
+}
 watch(() => props.magnificationEnabled, enabled => { if (!enabled) clearDockMagnification() })
 watch(() => props.items.map(item => item.id).join('|'), async (_, __, onCleanup) => {
-  const before = new Map(entries().map(el => [el, el.getBoundingClientRect().left]))
-  flips.forEach(animation => animation.cancel())
-  flips.clear()
+  const before = new Map(entries().map(el => [el, { left: el.getBoundingClientRect().left, velocity: reorders.get(el)?.velocity ?? 0 }]))
+  clearReorders()
   clearDockMagnification()
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  if (reducedMotion()) return
   let cancelled = false
   onCleanup(() => { cancelled = true })
   await nextTick()
   if (cancelled) return
   for (const el of entries()) {
     const old = before.get(el)
-    if (old === undefined || !el.animate) continue
-    const dx = old - slotBounds(el).left
-    if (Math.abs(dx) < 1) continue
-    const animation = el.animate([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.2,.85,.25,1)' })
-    flips.set(el, animation)
-    animation.onfinish = () => { if (flips.get(el) === animation) flips.delete(el) }
+    if (!old) continue
+    const dx = old.left - slotBounds(el).left
+    if (Math.abs(dx) < .05 && Math.abs(old.velocity) < .001) continue
+    reorders.set(el, { position: dx, velocity: old.velocity, target: 0 })
+    el.style.transform = `translateX(${dx}px)`
+  }
+  if (reorders.size) {
+    reorderTime = performance.now()
+    reorderFrame = requestAnimationFrame(paintReorder)
   }
 })
 function startDrag(event: DragEvent, id: string) {
@@ -200,7 +236,7 @@ function paintMagnification(now: number) {
     geometry = { slots, size, left: bounds.width ? Math.max(0, first.left - bounds.left) : size * slots.length, right: bounds.width ? Math.max(0, bounds.right - last.right) : size * slots.length }
     slots.forEach((el, index) => {
       const p = Math.max(0, 1 - Math.abs(pointerX - first.left - size / 2 - index * pitch) / radius)
-      const state = springs.get(el) ?? { scale: 1, velocity: 0, target: 1 }
+      const state = springs.get(el) ?? { position: 1, velocity: 0, target: 1 }
       state.target = hovering ? 1 + .65 * p * p * (3 - 2 * p) : 1
       springs.set(el, state)
     })
@@ -210,18 +246,14 @@ function paintMagnification(now: number) {
   // Time is milliseconds; w = .028/ms. No frame-rate-dependent Euler integration.
   const dt = lastFrame ? Math.min(64, Math.max(0, now - lastFrame)) : 16
   lastFrame = now
-  const rate = .028, decay = Math.exp(-rate * dt)
-  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const reduced = reducedMotion()
   const { slots, left, right, size } = geometry
   let moving = false
   const scales = slots.map(el => {
     const s = springs.get(el)!
-    const distance = s.scale - s.target, slope = s.velocity + rate * distance
-    s.scale = reduced ? s.target : s.target + (distance + slope * dt) * decay
-    s.velocity = reduced ? 0 : (s.velocity - rate * slope * dt) * decay
-    if (Math.abs(s.scale - s.target) > .001 || Math.abs(s.velocity) > .00005) moving = true
-    else { s.scale = s.target; s.velocity = 0 }
-    return Math.max(1, Math.min(1.65, s.scale))
+    if (reduced) { s.position = s.target; s.velocity = 0 }
+    else if (advanceSpring(s, dt, .028, .001)) moving = true
+    return Math.max(1, Math.min(1.65, s.position))
   })
   const expansion = scales.map(scale => (scale - 1) * Math.max(0, size - 4))
   const total = expansion.reduce((sum, value) => sum + value, 0)
@@ -315,8 +347,7 @@ onBeforeUnmount(() => {
   cleanGestureListeners()
   clearSuppressedClick()
   clearDockMagnification()
-  flips.forEach(animation => animation.cancel())
-  flips.clear()
+  clearReorders()
 })
 </script>
 

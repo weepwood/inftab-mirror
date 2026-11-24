@@ -198,19 +198,42 @@ it('offers keyboard reordering without dragging', async () => {
   expect(wrapper.emitted('reorder')).toEqual([['weather', 'mail', true]])
 })
 
-it('animates keyed Dock reordering on the wrapper without moving the icon transform', async () => {
+it('retains the visible position and velocity across interrupted spring reordering', async () => {
   const mail = { ...item, id: 'mail', title: '邮件' }
   wrapper = mount(HomeDock, { props: { items: [item, mail] } })
-  const animate = vi.fn(() => ({ cancel: vi.fn(), onfinish: null }))
-  const entries = wrapper.findAll('.home-dock-entry')
-  entries.forEach(entry => {
-    const el = entry.element as HTMLElement
-    Object.defineProperty(el, 'animate', { value: animate })
-    vi.spyOn(el, 'getBoundingClientRect').mockImplementation(() => ({ left: Array.from(el.parentElement!.children).indexOf(el) * 50 } as DOMRect))
+  const frames: { current?: FrameRequestCallback } = {}
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => { frames.current = callback; return 1 })
+  vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => { frames.current = undefined })
+  let now = 0
+  vi.spyOn(performance, 'now').mockImplementation(() => now)
+  const advance = () => { now += 16; const cb = frames.current; frames.current = undefined; cb?.(now) }
+  const track = wrapper.get('.home-dock-track').element as HTMLElement
+  vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ left: 0 } as DOMRect)
+  const slots = wrapper.findAll('.home-dock-entry').map(entry => entry.element as HTMLElement)
+  const offset = (el: HTMLElement) => Array.from(track.children).indexOf(el) * 50
+  const translation = (el: HTMLElement) => Number(el.style.transform.match(/translateX\(([^p]+)px\)/)?.[1] ?? 0)
+  slots.forEach(el => {
+    Object.defineProperties(el, { offsetParent: { value: track }, offsetLeft: { get: () => offset(el) }, offsetWidth: { value: 48 } })
+    vi.spyOn(el, 'getBoundingClientRect').mockImplementation(() => ({ left: offset(el) + translation(el), width: 48 } as DOMRect))
   })
-  await wrapper.setProps({ items: [mail, item] })
-  await nextTick()
-  expect(animate).toHaveBeenCalledTimes(2)
+  try {
+    await wrapper.setProps({ items: [mail, item] })
+    await nextTick()
+    expect(translation(slots[0]!)).toBe(-50)
+    advance(); advance()
+    const before = offset(slots[0]!) + translation(slots[0]!)
+    expect(before).toBeGreaterThan(0)
+    await wrapper.setProps({ items: [item, mail] })
+    await nextTick()
+    expect(offset(slots[0]!) + translation(slots[0]!)).toBeCloseTo(before)
+    advance()
+    // The direction changed but the retained positive velocity initially
+    // still moves the item right, instead of restarting at zero velocity.
+    expect(offset(slots[0]!) + translation(slots[0]!)).toBeGreaterThan(before)
+    for (let i = 0; i < 60; i++) advance()
+    expect(slots.every(el => !el.style.transform)).toBe(true)
+    expect(frames.current).toBeUndefined()
+  } finally { wrapper.unmount(); wrapper = undefined; vi.restoreAllMocks() }
 })
 
 it('uses layout geometry instead of a transformed slot for drag insertion', async () => {
