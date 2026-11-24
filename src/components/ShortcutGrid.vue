@@ -58,6 +58,7 @@ const moveAnnouncement = ref('')
 const failedIconUrls = ref(new Map<string, string>())
 let contextMenuTrigger: HTMLElement | undefined
 const gridViewport = ref<HTMLElement>()
+const slideTrack = ref<HTMLElement>()
 const { draggingId, dragPosition, draggedItem, onPointerDown, openItem } = useShortcutDrag(props, emit, gridViewport, pages, moveAnnouncement)
 const outgoingPage = ref<{ index: number; effect: PageTransitionEffect; direction: number; duration: number }>()
 const incomingPage = ref<number>()
@@ -68,7 +69,7 @@ function paintSlide(position: number) {
   slidePosition = position
   visibleCenter.value = Math.round(position)
   // Keep fractional frame updates out of Vue's component render path.
-  gridViewport.value?.style.setProperty('--slide-x', `${(visibleCenter.value - position) * 100}%`)
+  slideTrack.value?.style.setProperty('--slide-x', `${(visibleCenter.value - position) * 100}%`)
 }
 let slideFrame = 0
 let transitionTimer = 0
@@ -378,6 +379,7 @@ onBeforeUnmount(() => {
     </div>
     <div ref="gridViewport" class="shortcut-grid-viewport">
       <div
+        ref="slideTrack"
         class="shortcut-pages"
         :class="{
           'motion-opt-in': transitionEffect !== 'slide',

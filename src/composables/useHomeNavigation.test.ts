@@ -90,3 +90,19 @@ it('previews empty-area horizontal touch movement and cancels on mode changes', 
     expect(nav.wheelOffset.value).toBe(0)
   } finally { scope.stop() }
 })
+
+it('decays touch release projection when the finger pauses before release', () => {
+  const scope = effectScope(), currentPage = ref(0)
+  let now = 0
+  const clock = vi.spyOn(performance, 'now').mockImplementation(() => now)
+  const nav = scope.run(() => useHomeNavigation({ currentPage, pageDirection: ref(1), pageCount: ref(3), minimalMode: ref(false), shortHomeScrollEnabled: ref(false), overlayOpen: ref(false) }))!
+  const touch = (x: number) => ({ pointerType: 'touch', pointerId: 1, clientX: x, clientY: 0 } as PointerEvent)
+  try {
+    nav.startHomeSwipe(touch(200)); now = 16; nav.moveHomeSwipe(touch(160))
+    now = 24; nav.finishHomeSwipe(touch(160))
+    expect(currentPage.value).toBe(1)
+    nav.startHomeSwipe(touch(200)); now = 40; nav.moveHomeSwipe(touch(160))
+    now = 180; nav.finishHomeSwipe(touch(160))
+    expect(currentPage.value).toBe(1)
+  } finally { scope.stop(); clock.mockRestore() }
+})

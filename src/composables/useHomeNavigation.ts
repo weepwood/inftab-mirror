@@ -62,7 +62,8 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
     if (overlayOpen.value || minimalMode.value) { cancelHomeSwipe(); return }
     const deltaX = event.clientX - homeTouchStart.x
     const deltaY = event.clientY - homeTouchStart.y
-    const projection = performance.now() - homeTouchStart.time < 80 ? Math.min(28, Math.max(0, Math.sign(deltaX) * speed * 24)) : 0
+    const elapsed = performance.now() - homeTouchStart.time
+    const projection = elapsed < 120 ? Math.min(28, Math.max(0, Math.sign(deltaX) * speed * 24 * Math.exp(-elapsed / 48))) : 0
     cancelHomeSwipe()
     if (Math.abs(deltaX) >= 32 && Math.abs(deltaX) + projection > 52 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) commitPage(deltaX < 0 ? 1 : -1)
   }
