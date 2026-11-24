@@ -73,8 +73,6 @@ function paintSlide(position: number) {
 }
 let slideFrame = 0
 let transitionTimer = 0
-let previewOrigin: number | undefined
-let previewTime = 0
 let velocity = 0
 const { playParticleTransition, cancelParticleTransition } = useShortcutParticles(gridViewport)
 function stopSlide() {
@@ -91,15 +89,22 @@ function prefersReducedMotion() {
 }
 function snapSlide(duration = props.transitionDuration) {
   stopSlide()
-  const target = physicalPage.value
+  const reduced = props.transitionEffect === 'slide' && prefersReducedMotion()
+  // Committed page plus its signed residual is one continuous input target.
+  // Never use the old rendered position as a new origin on every wheel event.
+  const target = physicalPage.value - (props.transitionEffect === 'slide' && !reduced ? props.wheelOffset ?? 0 : 0)
   const distance = slidePosition - target
-  if (!duration || (props.transitionEffect === 'slide' && prefersReducedMotion()) || (Math.abs(distance) < .002 && Math.abs(velocity) < .0001)) {
+  if (!duration || reduced || (Math.abs(distance) < .002 && Math.abs(velocity) < .0001)) {
     paintSlide(target)
     velocity = 0
     return
   }
   const rate = 8 / Math.max(100, duration)
-  const initialVelocity = Math.max(-.008, Math.min(.008, velocity))
+  // A committed wheel page should settle monotonically, not overshoot and
+  // flash back. Preserve compatible momentum but discard opposite velocity.
+  const initialVelocity = Math.sign(velocity) === -Math.sign(distance)
+    ? Math.sign(velocity) * Math.min(.008, Math.abs(velocity), rate * Math.abs(distance))
+    : 0
   const slope = initialVelocity + rate * distance
   const start = performance.now()
   const tick = (now: number) => {
@@ -116,23 +121,7 @@ function snapSlide(duration = props.transitionDuration) {
   slideFrame = requestAnimationFrame(tick)
 }
 watch(() => props.wheelOffset ?? 0, offset => {
-  if (props.transitionEffect !== 'slide' || prefersReducedMotion()) return
-  if (offset) {
-    stopSlide()
-    const now = performance.now()
-    if (previewOrigin === undefined) {
-      previewOrigin = slidePosition
-      previewTime = now - 16
-    }
-    const next = previewOrigin - offset
-    velocity = (next - slidePosition) / Math.max(8, now - previewTime)
-    previewTime = now
-    paintSlide(next)
-  } else {
-    previewOrigin = undefined
-    if (performance.now() - previewTime > 100) velocity = 0
-    snapSlide()
-  }
+  if (props.transitionEffect === 'slide' && !prefersReducedMotion()) snapSlide(offset ? 120 : props.transitionDuration)
 })
 
 watch(() => props.currentPage, (pageIndex, previousPage) => {
@@ -151,7 +140,7 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
       const targetButton = buttons
         .find((button) => button.closest<HTMLElement>('[data-item-id]')?.dataset.itemId === targetId
           && button.closest('.shortcut-page[aria-hidden="false"]'))
-      targetButton?.focus()
+      targetButton?.focus({ preventScroll: true })
     })
   }
   cancelTransitionTimers()
@@ -187,19 +176,14 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
   const count = pages.value.length
   const distance = direction > 0 ? (pageIndex - previousPage + count) % count : (previousPage - pageIndex + count) % count
   physicalPage.value += direction * distance
-  previewOrigin = undefined
-  if (props.transitionEffect === 'slide' && props.wheelOffset && !prefersReducedMotion()) {
-    previewOrigin = physicalPage.value
-    paintSlide(previewOrigin - props.wheelOffset)
-    return
-  }
+  // A commit retargets the same spring; it must not teleport the viewport.
+  // Explicit distant page-dot jumps still use the established instant path.
   if (distance > 1) paintSlide(physicalPage.value)
-  snapSlide(props.transitionEffect === 'trails' ? duration : props.transitionDuration)
+  snapSlide(props.transitionEffect === 'trails' ? duration : props.wheelOffset ? 120 : props.transitionDuration)
 })
 
 watch(() => [pages.value.length, props.transitionEffect] as const, () => {
   cancelTransitionTimers()
-  previewOrigin = undefined
   velocity = 0
   outgoingPage.value = undefined
   incomingPage.value = undefined

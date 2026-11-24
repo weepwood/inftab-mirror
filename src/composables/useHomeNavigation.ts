@@ -11,17 +11,14 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   let homeTouchStart: { x: number; y: number; pointerId: number; lastX: number; time: number } | undefined
   const wheelOffset = ref(0)
   let accumulated = 0
-  let lastWheelTime = 0
+  let lastWheelTime = -Infinity
   let speed = 0
-  let frame = 0
   const threshold = 100
   function resetWheel() {
-    clearTimeout(wheelTimer)
-    cancelAnimationFrame(frame)
-    frame = accumulated = speed = lastWheelTime = 0
+    accumulated = speed = 0
+    lastWheelTime = -Infinity
     wheelOffset.value = 0
   }
-  let wheelTimer: ReturnType<typeof setTimeout> | undefined
   function movePage(direction: number) {
     resetWheel()
     commitPage(direction)
@@ -76,32 +73,23 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
     const delta = (horizontal ? event.deltaX : event.deltaY) * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? threshold : 1)
     if (!Number.isFinite(delta) || !delta || !event.cancelable) return
     event.preventDefault()
-    // Discrete wheel notches remain one-page actions; preserve the fractional
-    // remainder of high-resolution input instead of discarding it at each turn.
+    // WheelEvent does not identify a physical mouse versus a trackpad.
+    // Treat all wheel input as discrete page navigation: below threshold,
+    // never touch the visual offset and never commit on an idle timer.
+    const now = performance.now()
+    if (now - lastWheelTime > 220 || Math.sign(accumulated) !== Math.sign(delta)) accumulated = 0
+    lastWheelTime = now
     if (Math.abs(delta) >= threshold) {
-      movePage(Math.sign(delta))
+      accumulated = 0
+      commitPage(Math.sign(delta))
       return
     }
-    const now = performance.now()
-    speed = lastWheelTime && now - lastWheelTime < 100 ? delta / Math.max(16, now - lastWheelTime) : 0
-    lastWheelTime = now
     accumulated += delta
     if (Math.abs(accumulated) >= threshold) {
       const direction = Math.sign(accumulated)
       accumulated -= direction * threshold
       commitPage(direction)
-      wheelOffset.value = -accumulated / threshold
     }
-    if (!frame) frame = requestAnimationFrame(() => {
-      frame = 0
-      wheelOffset.value = -accumulated / threshold
-    })
-    clearTimeout(wheelTimer)
-    wheelTimer = setTimeout(() => {
-      const direction = Math.sign(accumulated)
-      if (Math.abs(accumulated) >= 36 && Math.abs(accumulated) + Math.max(-20, Math.min(20, direction * speed * 24)) >= 40) movePage(direction)
-      else resetWheel()
-    }, 100)
   }
   function cancelHomeSwipe() { homeTouchStart = undefined; resetWheel() }
   watch([overlayOpen, minimalMode, pageCount], cancelHomeSwipe, { flush: 'sync' })
