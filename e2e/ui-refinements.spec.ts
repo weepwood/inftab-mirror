@@ -259,10 +259,10 @@ test('continuous slide retains visible slots during fast alternating wheel input
   const viewport = page.locator('.shortcut-grid-viewport')
   await viewport.hover()
   for (const delta of [100, 100, -100, 100, -100]) await page.mouse.wheel(0, delta)
-  await expect(page.locator('.shortcut-pages.continuous-slide')).toBeVisible()
+  await expect(page.locator('.launcher-swiper .swiper-wrapper')).toBeVisible()
   await expect.poll(() => page.locator('.shortcut-page').count()).toBeLessThanOrEqual(4)
   await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toHaveCount(1)
-  await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
+  await expect.poll(() => page.locator('.shortcut-page[aria-hidden="false"]').evaluate(el => Math.abs(el.getBoundingClientRect().left - el.closest('.shortcut-grid-viewport')!.getBoundingClientRect().left))).toBeLessThan(2)
 })
 
 test('fine wheel input reverses without an extra page and settles the compositor track', async ({ page }) => {
@@ -275,7 +275,7 @@ test('fine wheel input reverses without an extra page and settles the compositor
   await page.mouse.wheel(0, -30)
   // Observe past the former idle prediction timeout as well as settling.
   await page.waitForTimeout(250)
-  await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
+  await expect.poll(() => page.locator('.shortcut-page[aria-hidden="false"]').evaluate(el => Math.abs(el.getBoundingClientRect().left - el.closest('.shortcut-grid-viewport')!.getBoundingClientRect().left))).toBeLessThan(2)
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
 })
 
@@ -354,24 +354,6 @@ test('Dock keyboard reorder preserves focus and persisted order with bounded mag
   await expect.poll(() => dock.evaluate(el => Number((el as HTMLElement).style.getPropertyValue('--dock-lift')))).toBeGreaterThan(1)
 })
 
-test('empty launcher area follows touch movement and cancellation returns to its page', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'no-preference' })
-  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ columns: 2, rows: 1, pageTransitionEffect: 'slide' })))
-  await page.goto('/')
-  const grid = page.locator('.shortcut-grid-viewport')
-  await expect(grid).toBeVisible()
-  const touch = (type: string, x: number) => grid.dispatchEvent(type, { pointerType: 'touch', pointerId: 8, isPrimary: true, clientX: x, clientY: 100, bubbles: true })
-  await touch('pointerdown', 300)
-  await touch('pointermove', 180)
-  await expect.poll(() => grid.locator('.shortcut-pages').evaluate(el => Math.abs(parseFloat((el as HTMLElement).style.getPropertyValue('--slide-x')) || 0))).toBeGreaterThan(1)
-  await touch('pointercancel', 180)
-  await expect.poll(() => grid.locator('.shortcut-pages').evaluate(el => Math.abs(parseFloat((el as HTMLElement).style.getPropertyValue('--slide-x')) || 0))).toBeLessThan(1)
-  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第1页')
-  await touch('pointerdown', 300)
-  await touch('pointermove', 160)
-  await touch('pointerup', 160)
-  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
-})
 
 test('Dock spring retargets across icons and settles without leaving enlarged styles', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
@@ -448,7 +430,7 @@ test('launcher sustained input retains bounded DOM and reports heap and composit
       return { frames: intervals.length, p95: sorted[Math.floor((sorted.length-1)*.95)], maxFrame: sorted.at(-1), maxSlots, blank, slowFrames: intervals.filter(ms => ms > 25).length, longTasks }
     })
       await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toHaveCount(1)
-      await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
+      await expect.poll(() => page.locator('.shortcut-page[aria-hidden="false"]').evaluate(el => Math.abs(el.getBoundingClientRect().left - el.closest('.shortcut-grid-viewport')!.getBoundingClientRect().left))).toBeLessThan(2)
       await cdp.send('HeapProfiler.collectGarbage')
       return { ...stats, heap: (await cdp.send('Runtime.getHeapUsage')).usedSize }
     }
@@ -513,86 +495,81 @@ for (const mode of ['light', 'dark'] as const) test(`launcher controls remain vi
   await testInfo.attach(`launcher-${mode}-wallpaper`, { body: await page.screenshot(), contentType: 'image/png' })
 })
 
-test('fine wheel threshold commit does not teleport the icon track', async ({ page }, testInfo) => {
+test('Swiper uses a continuous native transition and remains static for partial wheel input', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
-  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ columns: 2, rows: 1, pageTransitionEffect: 'slide', pageTransitionMs: 300 })))
+  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ columns: 2, rows: 1, pageTransitionEffect: 'slide', pageTransitionMs: 320 })))
   await page.goto('/')
   const grid = page.locator('.shortcut-grid-viewport')
-  await expect(grid).toBeVisible()
-  const result = await grid.evaluate(async el => {
-    const sample = () => {
-      const slot = el.querySelector<HTMLElement>('.shortcut-page')!
-      const bounds = el.getBoundingClientRect(), rect = slot.getBoundingClientRect()
-      return Number(slot.dataset.renderIndex) - (rect.left - bounds.left) / bounds.width
-    }
-    const send = (deltaX: number) => el.dispatchEvent(new WheelEvent('wheel', { deltaX, bubbles: true, cancelable: true }))
-    const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-    send(70)
-    await frame(); await frame()
-    const before = sample()
-    send(60)
-    // The Vue patch is allowed to run, but no animation frame has run yet.
-    await Promise.resolve(); await Promise.resolve()
-    const after = sample()
-    send(-30)
-    await Promise.resolve(); await Promise.resolve()
-    const reversed = sample()
-    return { before, after, reversed, jump: Math.abs(after-before), reverseJump: Math.abs(reversed-after) }
-  })
-  await testInfo.attach('fine-wheel-continuity', { body: JSON.stringify(result), contentType: 'application/json' })
-  expect(result.jump).toBeLessThan(.02)
-  expect(result.reverseJump).toBeLessThan(.02)
-  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
-  await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
-})
-
-test('ordinary mouse wheel stays pixel-still below threshold and moves only for a committed page', async ({ page }, testInfo) => {
-  await page.emulateMedia({ reducedMotion: 'no-preference' })
-  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ columns: 2, rows: 1, pageTransitionEffect: 'slide', pageTransitionMs: 300 })))
-  await page.goto('/')
-  const viewport = page.locator('.shortcut-grid-viewport')
-  await expect(viewport).toBeVisible()
-  await viewport.hover()
-  const samples = await viewport.evaluate(async el => {
-    const read = () => {
-      const slot = el.querySelector<HTMLElement>('.shortcut-page')!
-      const rect = slot.getBoundingClientRect(), bounds = el.getBoundingClientRect()
-      return Number(slot.dataset.renderIndex) - (rect.left - bounds.left) / bounds.width
-    }
-    const send = (deltaY: number) => el.dispatchEvent(new WheelEvent('wheel', { deltaY, cancelable: true, bubbles: true }))
-    async function frames(count: number) {
-      const values: { position: number; t: number }[] = []
-      for (let i = 0; i < count; i++) await new Promise<void>(resolve => requestAnimationFrame(t => { values.push({ position: read(), t }); resolve() }))
-      return values
-    }
-    const start = read()
-    send(30); const a = await frames(2)
-    send(30); const b = await frames(2)
-    send(30); const c = await frames(22)
-    // Explicit idle separation prevents combining the preceding burst.
-    await new Promise(resolve => setTimeout(resolve, 250))
-    send(60); send(40)
-    const committed = await frames(30)
-    send(-30)
-    const smallReverse = await frames(24)
-    send(-100)
-    const reverse = await frames(30)
-    return { start, below: [...a,...b,...c], committed, smallReverse, reverse }
-  })
-  await testInfo.attach('ordinary-wheel-trajectory', { body: JSON.stringify(samples), contentType: 'application/json' })
-  const maxDrift = (values: typeof samples.below, target: number) => Math.max(...values.map(v => Math.abs(v.position - target)))
-  expect(maxDrift(samples.below, samples.start)).toBeLessThan(.005)
-  expect(samples.committed.at(-1)!.position).toBeCloseTo(samples.start + 1, 2)
-  expect(samples.committed.some(v => v.position > samples.start + .05 && v.position < samples.start + .95)).toBe(true)
-  for (let i = 1; i < samples.committed.length; i++) expect(samples.committed[i]!.position - samples.committed[i-1]!.position).toBeGreaterThanOrEqual(-.005)
-  expect(maxDrift(samples.smallReverse, samples.start + 1)).toBeLessThan(.005)
-  expect(samples.reverse.at(-1)!.position).toBeCloseTo(samples.start, 2)
-  for (let i = 1; i < samples.reverse.length; i++) expect(samples.reverse[i]!.position - samples.reverse[i-1]!.position).toBeLessThanOrEqual(.005)
-  // Also drive the real browser wheel path, not only synthetic small deltas.
+  const slider = grid.locator('.launcher-swiper')
+  await expect(slider).toHaveClass(/swiper-initialized/)
+  const active = () => grid.locator('.shortcut-page[aria-hidden="false"]')
+  const align = () => expect.poll(() => active().evaluate(el => Math.abs(el.getBoundingClientRect().left - el.closest('.shortcut-grid-viewport')!.getBoundingClientRect().left))).toBeLessThan(2)
+  await align()
+  await grid.hover()
+  const start = await active().boundingBox()
   await page.mouse.wheel(0, 30)
   await page.waitForTimeout(300)
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第1页')
+  expect((await active().boundingBox())!.x).toBeCloseTo(start!.x, 1)
+  // Capture the outgoing page position before the input, through actual rAF
+  // samples, not the library's target transform.
+  await grid.evaluate(el => {
+    const first = el.querySelector<HTMLElement>('.shortcut-page[aria-hidden="false"]')!
+    const samples: { t: number; x: number; width: number }[] = []
+    const state = { samples, done: false }
+    ;(el as HTMLElement & { motion?: typeof state }).motion = state
+    const began = performance.now()
+    function frame(t: number) {
+      const r = first.getBoundingClientRect()
+      samples.push({ t, x: (r.left - el.getBoundingClientRect().left) / r.width, width: r.width })
+      if (t - began < 650) requestAnimationFrame(frame)
+      else state.done = true
+    }
+    requestAnimationFrame(frame)
+  })
   await page.mouse.wheel(0, 100)
   await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第2页')
-  await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
+  await expect.poll(() => grid.evaluate(el => (el as HTMLElement & { motion?: { done: boolean } }).motion?.done)).toBe(true)
+  const samples = await grid.evaluate(el => (el as HTMLElement & { motion: { samples: { t: number; x: number; width: number }[] } }).motion.samples)
+  await testInfo.attach('swiper-native-wheel-trajectory', { body: JSON.stringify(samples), contentType: 'application/json' })
+  const during = samples.filter(s => s.x < -.05 && s.x > -.95)
+  const intervals = samples.slice(1).map((sample,i) => sample.t - samples[i]!.t).sort((a,b) => a-b)
+  console.log('Swiper native trajectory:', JSON.stringify({ total: samples.length, intermediate: during.length, p95Ms: intervals[Math.floor((intervals.length-1)*.95)], maxMs: intervals.at(-1), start: samples[0]?.x, end: samples.at(-1)?.x }))
+  expect(during.length).toBeGreaterThanOrEqual(3)
+  for (let i=1; i<during.length; i++) expect(during[i]!.x-during[i-1]!.x).toBeLessThanOrEqual(.02)
+  await align()
+  await page.mouse.wheel(0, -100)
+  await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label', '第1页')
+  await align()
+})
+
+test('Swiper native touch slides and keeps virtual page count bounded', async ({ browser }, testInfo) => {
+  const context = await browser.newContext({ hasTouch: true, viewport: { width: 390, height: 844 }, reducedMotion: 'no-preference' })
+  try {
+    const page = await context.newPage()
+    await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ columns: 2, rows: 1, pageTransitionEffect: 'slide', pageTransitionMs: 320 })))
+    await page.goto('/')
+    const slider = page.locator('.launcher-swiper')
+    await expect(slider).toHaveClass(/swiper-initialized/)
+    const rect = (await slider.boundingBox())!
+    // Find the actual gap between cells, because icon drag handles own their touch gestures.
+    const gap = await slider.evaluate(el => {
+      const cells = el.querySelectorAll('.shortcut-page[aria-hidden="false"] .shortcut-cell')
+      const a = cells[0]!.getBoundingClientRect(), b = cells[1]!.getBoundingClientRect()
+      return { x: (a.right+b.left)/2, y: a.top+10 }
+    })
+    const cdp = await context.newCDPSession(page)
+    try {
+      await cdp.send('Input.dispatchTouchEvent', { type:'touchStart', touchPoints:[{ x:gap.x, y:gap.y }] })
+      for(let i=1;i<=6;i++) {
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:gap.x-i*rect.width*.055,y:gap.y}]})
+        await page.waitForTimeout(16)
+      }
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
+      await expect(page.locator('.page-dot[aria-current="page"]')).toHaveAttribute('aria-label','第2页')
+      await expect.poll(() => page.locator('.shortcut-page[aria-hidden="false"]').evaluate(el=>Math.abs(el.getBoundingClientRect().left-el.closest('.shortcut-grid-viewport')!.getBoundingClientRect().left))).toBeLessThan(2)
+      expect(await page.locator('.shortcut-page').count()).toBeLessThanOrEqual(4)
+      await testInfo.attach('swiper-touch-page', {body: await page.screenshot(),contentType:'image/png'})
+    } finally { await cdp.detach() }
+  } finally { await context.close() }
 })

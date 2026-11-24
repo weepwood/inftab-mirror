@@ -262,7 +262,12 @@ const activePanelListeners = computed<Record<string, (...args: never[]) => void>
 const homeWidgetContext = computed(() => ({ preferences: preferences.value, todos: todos.value, addTodo, toggleTodo, habits: habits.value, countdowns: countdowns.value, notes: notes.value, activeNoteId: activeNoteId.value, weatherCity: weatherCity.value, focusTimer: focusTimer.value }))
 const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayout({ preferences: layoutPreferences, viewport, layoutColumns, allLauncherItems, homeDockItems, pageCount, minimalMode, localSearchMode })
 const overlayOpen = computed(() => Boolean(activePanel.value || shortcutDialog.value || folderDialogOpen.value || commandPaletteOpen.value || layoutEditorOpen.value || pendingDestructiveAction.value))
-const { wheelOffset, movePage, goToPage, startHomeSwipe, moveHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen })
+const launcherAnimating = ref(false)
+const { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen, launcherAnimating })
+function startLauncherSwipe(event: PointerEvent) {
+  if (preferences.value.pageTransitionEffect !== 'particles' && event.target instanceof Element && event.target.closest('.launcher-swiper')) return
+  startHomeSwipe(event)
+}
 
 watch(pageCount, (count) => { currentPage.value = Math.min(currentPage.value, count - 1) })
 watch(() => [preferences.value.wallpaperRotation, preferences.value.wallpaperRotationLastAt, preferences.value.wallpaper, preferences.value.customWallpaper] as const, () => { void scheduleWallpaperRotation() })
@@ -767,7 +772,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': !minimalMode && (showHomeWidgets || shortHomeScrollEnabled), 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode }" :style="backgroundStyle" @pointerdown="startHomeSwipe" @pointermove="moveHomeSwipe" @pointerup="finishHomeSwipe" @pointercancel="cancelHomeSwipe()" @wheel="handleHomeWheel">
+  <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': !minimalMode && (showHomeWidgets || shortHomeScrollEnabled), 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode }" :style="backgroundStyle" @pointerdown="startLauncherSwipe" @pointerup="finishHomeSwipe" @pointercancel="cancelHomeSwipe()" @wheel="handleHomeWheel">
     <a class="skip-link" href="#main-content">跳到快捷入口</a>
     <h1 class="visually-hidden">Infinity 新标签页</h1>
     <div class="background-shade"></div>
@@ -849,7 +854,6 @@ onBeforeUnmount(() => {
         :show-names="layoutPreferences.showNames"
         :current-page="currentPage"
         :transition-direction="pageDirection"
-        :wheel-offset="wheelOffset"
         :transition-effect="preferences.pageTransitionEffect"
         :transition-duration="preferences.pageTransitionMs"
         @open="openItem"
@@ -860,6 +864,8 @@ onBeforeUnmount(() => {
         @reorder="reorderItems"
         @move-by-keyboard="moveLauncherItemByKeyboard"
         @swipe="movePage"
+        @page-change="currentPage = $event"
+        @animation-state="launcherAnimating = $event"
       />
       <nav v-if="pageCount > 1 && !minimalMode" class="page-dots" aria-label="快捷入口页码" title="点击圆点或使用左右方向键、滑动切换">
         <template v-for="item in pageNavigation" :key="item.kind === 'page' ? `page-${item.page}` : item.id">

@@ -299,7 +299,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 
 .shortcut-grid-wrap { position: relative; z-index: 2; width: 100%; margin: var(--grid-top-gap, 50px) auto 0; }
 .shortcut-grid-viewport { width: 100%; clip-path: inset(-30px 0 -30px); }
-.shortcut-pages { display: flex; align-items: flex-start; transition: transform var(--page-transition-duration, 620ms) cubic-bezier(.22, .72, .22, 1); will-change: transform; }
+.shortcut-pages { display: flex; align-items: flex-start; transition-property: transform; }
 .shortcut-pages.is-resetting { transition: none !important; }
 .shortcut-pages.particles-mode { display: grid; transform: none !important; transition: none; will-change: opacity; }
 .shortcut-page { flex: 0 0 100%; min-width: 0; display: grid; grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr)); grid-template-rows: repeat(var(--grid-rows, 1), 1fr); justify-items: center; align-items: start; gap: var(--shortcut-gap-y, clamp(18px, 3.5vh, 30px)) var(--shortcut-gap-x, 18px); }
@@ -745,8 +745,6 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   /* The page-turn effect is an explicit choice in settings, so keep a gentle
      (shorter, capped) version instead of removing it entirely. */
-  .shortcut-pages { transition-duration: var(--page-transition-duration, 620ms) !important; }
-  .shortcut-pages.motion-opt-in { transition-duration: min(var(--page-transition-duration, 620ms), 1200ms) !important; }
   .shortcut-pages.motion-opt-in.is-resetting { transition-property: none !important; transition-duration: 0ms !important; transition-delay: 0ms !important; }
   .trails-out .shortcut-open::before, .trails-out .shortcut-icon { animation-duration: min(var(--outgoing-duration, 620ms), 1200ms) !important; animation-iteration-count: 1 !important; }
   .particles-mode .shortcut-page.particles-in .shortcut-cell { animation-duration: 780ms !important; animation-iteration-count: 1 !important; }
@@ -1204,12 +1202,11 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 @media (hover: hover) and (pointer: fine) and (min-width: 781px) {
   .home-dock:not(.magnification-off) .home-dock-track { padding-inline: clamp(16px, 4vw, 64px); }
 }
-@media (prefers-reduced-motion: reduce) { .shortcut-pages:not(.motion-opt-in) { transition-duration: 0ms !important; } }
 
-/* The continuous slide track renders only the currently visible virtual slots. */
-@property --slide-x { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
-.shortcut-pages.continuous-slide { display: grid; transform: translateX(var(--slide-x, 0%)); transition: none !important; will-change: auto; }
-.continuous-slide .shortcut-page { grid-area: 1 / 1; width: 100%; }
+/* Swiper owns the wrapper transform and transition duration. */
+.launcher-swiper { overflow: visible; width: 100%; --swiper-wrapper-transition-timing-function: cubic-bezier(.25,.8,.25,1); }
+.launcher-swiper .swiper-wrapper { display: flex; align-items: flex-start; transition-property: transform; }
+.launcher-swiper .swiper-slide.shortcut-page { display: grid; flex: 0 0 100%; height: auto; }
 .home-dock.dock-dragging .home-dock-icon { transition: none; }
 .home-dock-entry.dock-drag-source { opacity: .45; }
 .dock-drop-before::after, .dock-drop-after::after { content: ''; position: absolute; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: var(--ui-accent-text, #fff); pointer-events: none; }

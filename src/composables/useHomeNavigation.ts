@@ -1,23 +1,21 @@
-import { onScopeDispose, ref, watch, type Ref } from 'vue'
+import { onScopeDispose, watch, type Ref } from 'vue'
 
-export function useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen }: {
+export function useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen, launcherAnimating }: {
   currentPage: Ref<number>
   pageDirection: Ref<number>
   pageCount: Readonly<Ref<number>>
   minimalMode: Ref<boolean>
   shortHomeScrollEnabled: Readonly<Ref<boolean>>
   overlayOpen: Readonly<Ref<boolean>>
+  launcherAnimating?: Readonly<Ref<boolean>>
 }) {
-  let homeTouchStart: { x: number; y: number; pointerId: number; lastX: number; time: number } | undefined
-  const wheelOffset = ref(0)
+  let homeTouchStart: { x: number; y: number; pointerId: number } | undefined
   let accumulated = 0
   let lastWheelTime = -Infinity
-  let speed = 0
   const threshold = 100
   function resetWheel() {
-    accumulated = speed = 0
+    accumulated = 0
     lastWheelTime = -Infinity
-    wheelOffset.value = 0
   }
   function movePage(direction: number) {
     resetWheel()
@@ -39,30 +37,16 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   function startHomeSwipe(event: PointerEvent) {
     if (overlayOpen.value || minimalMode.value || pageCount.value < 2 || event.pointerType !== 'touch' || event.isPrimary === false || (event.target instanceof Element && event.target.closest('.shortcut-cell, .home-widget-shelf, .home-dock, .search-area, button, a, input'))) return
     resetWheel()
-    homeTouchStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId, lastX: event.clientX, time: performance.now() }
+    homeTouchStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
   }
   
-  function moveHomeSwipe(event: PointerEvent) {
-    if (!homeTouchStart || event.pointerId !== homeTouchStart.pointerId) return
-    const x = event.clientX - homeTouchStart.x
-    const y = event.clientY - homeTouchStart.y
-    const now = performance.now()
-    speed = (event.clientX - homeTouchStart.lastX) / Math.max(8, now - homeTouchStart.time)
-    homeTouchStart.lastX = event.clientX
-    homeTouchStart.time = now
-    wheelOffset.value = Math.abs(x) > Math.abs(y) * 1.25
-      ? Math.max(-.85, Math.min(.85, x / Math.max(160, window.innerWidth * .5)))
-      : 0
-  }
   function finishHomeSwipe(event: PointerEvent) {
     if (!homeTouchStart || event.pointerId !== homeTouchStart.pointerId) return
     if (overlayOpen.value || minimalMode.value) { cancelHomeSwipe(); return }
     const deltaX = event.clientX - homeTouchStart.x
     const deltaY = event.clientY - homeTouchStart.y
-    const elapsed = performance.now() - homeTouchStart.time
-    const projection = elapsed < 120 ? Math.min(28, Math.max(0, Math.sign(deltaX) * speed * 24 * Math.exp(-elapsed / 48))) : 0
     cancelHomeSwipe()
-    if (Math.abs(deltaX) >= 32 && Math.abs(deltaX) + projection > 52 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) commitPage(deltaX < 0 ? 1 : -1)
+    if (Math.abs(deltaX) > 52 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) commitPage(deltaX < 0 ? 1 : -1)
   }
   
   function handleHomeWheel(event: WheelEvent) {
@@ -73,6 +57,7 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
     const delta = (horizontal ? event.deltaX : event.deltaY) * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? threshold : 1)
     if (!Number.isFinite(delta) || !delta || !event.cancelable) return
     event.preventDefault()
+    if (launcherAnimating?.value) { resetWheel(); return }
     // WheelEvent does not identify a physical mouse versus a trackpad.
     // Treat all wheel input as discrete page navigation: below threshold,
     // never touch the visual offset and never commit on an idle timer.
@@ -94,5 +79,5 @@ export function useHomeNavigation({ currentPage, pageDirection, pageCount, minim
   function cancelHomeSwipe() { homeTouchStart = undefined; resetWheel() }
   watch([overlayOpen, minimalMode, pageCount], cancelHomeSwipe, { flush: 'sync' })
   onScopeDispose(cancelHomeSwipe)
-  return { wheelOffset, movePage, goToPage, startHomeSwipe, moveHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe }
+  return { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe }
 }

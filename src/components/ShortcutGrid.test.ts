@@ -13,6 +13,8 @@ const items: LauncherItem[] = Array.from({ length: 4 }, (_, index) => ({
 }))
 
 function installAnimationEnvironment() {
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000)
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(200)
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()), 0))
   vi.stubGlobal('cancelAnimationFrame', (handle: number) => window.clearTimeout(handle))
   vi.stubGlobal('matchMedia', () => ({ matches: false, addListener: () => {}, removeListener: () => {} }))
@@ -235,8 +237,8 @@ describe('ShortcutGrid page cycling', () => {
       },
     })
 
-    expect(wrapper.findAll('.shortcut-page')).toHaveLength(3)
-    expect(wrapper.findAll('.shortcut-cell')).toHaveLength(6)
+    expect(wrapper.findAll('.shortcut-page').length).toBeLessThanOrEqual(4)
+    expect(wrapper.findAll('.shortcut-cell').length).toBeLessThanOrEqual(8)
     wrapper.unmount()
   })
 
@@ -262,31 +264,15 @@ describe('ShortcutGrid page cycling', () => {
     wrapper.unmount()
   })
 
-  it('cancels pending slide frames when the grid unmounts', async () => {
-    vi.useFakeTimers()
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()), 16))
-    vi.stubGlobal('cancelAnimationFrame', (handle: number) => window.clearTimeout(handle))
-    vi.stubGlobal('matchMedia', () => ({ matches: false, addListener: () => {}, removeListener: () => {} }))
-    const wrapper = mount(ShortcutGrid, {
-      props: {
-        items,
-        columns: 2,
-        rows: 1,
-        iconSize: 64,
-        iconRadius: 24,
-        showNames: true,
-        currentPage: 0,
-        transitionDirection: 1,
-        transitionEffect: 'slide',
-        transitionDuration: 0,
-      },
-    })
-
-    await wrapper.setProps({ transitionDuration: 300, currentPage: 1 })
-    expect(vi.getTimerCount()).toBeGreaterThan(0)
+  it('destroys the Swiper instance when the grid unmounts', async () => {
+    installAnimationEnvironment()
+    const wrapper = mount(ShortcutGrid, { props: { items, columns: 2, rows: 1, iconSize: 64, iconRadius: 24, showNames: true, currentPage: 0, transitionDirection: 1, transitionEffect: 'slide', transitionDuration: 300 } })
+    const el = wrapper.get('.launcher-swiper').element as HTMLElement & { swiper?: import('swiper').Swiper }
+    const instance = el.swiper!
+    expect(instance).toBeDefined()
+    await wrapper.setProps({ currentPage: 1 })
     wrapper.unmount()
-
-    expect(vi.getTimerCount()).toBe(0)
+    expect(instance.destroyed).toBe(true)
   })
 
   it('cancels a running particle canvas when the transition effect changes', async () => {
@@ -524,36 +510,21 @@ it('keeps virtual slots bounded and the destination interactive across rapid wra
     expect(wrapper.get('.shortcut-page[aria-hidden="false"]').attributes('data-page-index')).toBe(String(i % 2))
     expect(wrapper.findAll('.shortcut-page').length).toBeLessThanOrEqual(4)
   }
-  await wrapper.setProps({ wheelOffset: .25 })
-  expect(wrapper.get('.shortcut-pages').classes()).toContain('continuous-slide')
-  await wrapper.setProps({ wheelOffset: 0 })
+  expect(wrapper.find('.launcher-swiper').exists()).toBe(true)
   wrapper.unmount()
 })
 
-it('keeps the painted position continuous when fine wheel input commits and reverses', async () => {
+it('uses the Swiper transform transition for committed pages', async () => {
   installAnimationEnvironment()
-  const frames: { current?: FrameRequestCallback } = {}
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.current = callback; return 1 })
-  vi.stubGlobal('cancelAnimationFrame', () => { frames.current = undefined })
-  let time = 0
-  vi.spyOn(performance, 'now').mockImplementation(() => time)
-  const advance = () => { time += 16; const callback = frames.current; frames.current = undefined; callback?.(time) }
-  const wrapper = mount(ShortcutGrid, { props: { items, columns: 2, rows: 1, iconSize: 64, iconRadius: 24, showNames: true, currentPage: 0, transitionDirection: 1, transitionEffect: 'slide', transitionDuration: 300, wheelOffset: 0 } })
-  const offset = () => parseFloat((wrapper.get('.shortcut-pages').element as HTMLElement).style.getPropertyValue('--slide-x')) || 0
+  const wrapper = mount(ShortcutGrid, { props: { items, columns: 2, rows: 1, iconSize: 64, iconRadius: 24, showNames: true, currentPage: 0, transitionDirection: 1, transitionEffect: 'slide', transitionDuration: 300 } })
   try {
-    await wrapper.setProps({ wheelOffset: -.7 })
-    advance()
-    const before = offset()
-    expect(before).toBeLessThan(0)
-    await wrapper.setProps({ currentPage: 1, wheelOffset: -.3 })
-    expect(offset()).toBe(before)
-    advance()
-    const after = offset()
-    expect(after).not.toBe(before)
-    await wrapper.setProps({ wheelOffset: 0 })
-    expect(offset()).toBe(after)
-    for (let i = 0; i < 30; i++) advance()
-    expect(offset()).toBeCloseTo(0)
-    expect(wrapper.get('.shortcut-page[aria-hidden="false"]').attributes('data-page-index')).toBe('1')
+    await wrapper.setProps({ currentPage: 1 })
+    const track = wrapper.get('.swiper-wrapper').element as HTMLElement
+    expect(track.style.transitionDuration).toBe('300ms')
+    expect(track.style.transform).toContain('translate3d')
+    expect(wrapper.emitted('animationState')?.some(args => args[0] === true)).toBe(true)
+    track.dispatchEvent(new Event('transitionend', { bubbles: true }))
+    await flushPromises()
+    expect(wrapper.emitted('animationState')?.at(-1)).toEqual([false])
   } finally { wrapper.unmount() }
 })
