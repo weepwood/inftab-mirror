@@ -18,6 +18,8 @@ test.afterEach(async ({ page }) => {
 })
 
 test('stable browsers load the homepage and quick translation flow', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true })))
+  await page.reload()
   await expect(page.getByRole('heading', { name: 'Infinity 新标签页' })).toBeVisible()
   await page.route('https://translate.google.com/**', (route) => route.fulfill({
     contentType: 'text/html',
@@ -29,6 +31,8 @@ test('stable browsers load the homepage and quick translation flow', async ({ pa
 })
 
 test('stable browsers ignore same-key storage events from sessionStorage', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showClock: true })))
+  await page.reload()
   await expect(page.locator('.home-clock')).toBeVisible()
   const originalPreferences = await page.evaluate(() => localStorage.getItem('inftab.preferences.v1'))
 
@@ -56,6 +60,8 @@ test('stable browsers ignore same-key storage events from sessionStorage', async
 })
 
 test('stable browsers preserve Tab focus when leaving the search engine menu', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true })))
+  await page.reload()
   const picker = page.getByRole('button', { name: '当前搜索引擎：Baidu' })
   const search = page.getByRole('searchbox', { name: '输入并搜索' })
 
@@ -72,6 +78,8 @@ test('stable browsers preserve Tab focus when leaving the search engine menu', a
 })
 
 test('stable browsers keep long search engine menus visible and scrollable', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true })))
+  await page.reload()
   await page.setViewportSize({ width: 800, height: 600 })
   await page.evaluate(() => {
     localStorage.setItem('inftab.custom-search-engines.v1', JSON.stringify(Array.from({ length: 20 }, (_, index) => ({

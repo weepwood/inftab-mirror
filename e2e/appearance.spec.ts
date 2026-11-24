@@ -19,6 +19,7 @@ for (const viewport of [
     await page.goto('/')
     await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toBeVisible()
 
+    await expect(page.locator('.home-clock')).toHaveCount(1)
     const geometry = await page.evaluate(() => {
       const bounds = (selector: string) => document.querySelector(selector)!.getBoundingClientRect()
       const search = bounds('.search-box')

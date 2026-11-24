@@ -1057,6 +1057,8 @@ test('selects a surviving note when its active note is deleted in another tab', 
 })
 
 test('simultaneous settings changes in separate tabs do not overwrite each other', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showClock: true })))
+  await page.reload()
   const secondTab = await page.context().newPage()
   await secondTab.goto('/')
   await Promise.all([
@@ -1895,6 +1897,8 @@ test('dock icons omit labels and use a context menu for removal', async ({ page 
   await expect(dock.locator('.home-dock-label, .home-dock-remove')).toHaveCount(0)
   await page.locator('.home-actions').getByRole('button', { name: '打开设置' }).click()
   const magnification = page.getByLabel('Dock 图标放大效果')
+  await expect(magnification).toBeChecked()
+  await magnification.uncheck()
   await expect(magnification).not.toBeChecked()
   await magnification.check()
   await expect(magnification).toBeChecked()
@@ -1918,7 +1922,11 @@ test('dock icons omit labels and use a context menu for removal', async ({ page 
   const responsiveIcon = await item.locator('.home-dock-icon').boundingBox()
   expect(responsiveIcon?.width).toBeCloseTo(40, 0)
   await item.hover()
-  await expect.poll(() => item.locator('.home-dock-icon').evaluate((icon) => getComputedStyle(icon).outlineStyle)).toBe('solid')
+  await expect.poll(() => item.locator('.home-dock-icon').evaluate((icon) => getComputedStyle(icon).outlineStyle)).toBe('none')
+  await item.focus()
+  await page.keyboard.press('Shift+Tab')
+  await page.keyboard.press('Tab')
+  await expect(item).toBeFocused()
   await item.click({ button: 'right' })
   const remove = page.getByRole('menuitem', { name: '从 Dock 移除京东商城' })
   await expect(remove).toBeVisible()

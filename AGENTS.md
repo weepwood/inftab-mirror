@@ -168,3 +168,5 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 保留工作区切换器与 Dock 的非重叠布局边界（窄屏优先可操作性）；补充默认首页/滚轮环绕/按需搜索的 Chromium 验收，旧搜索与时钟测试显式使用旧偏好。
 
 - #20 head a20a65d：[UI 专项 45394505966](https://github.com/weepwood/inftab-mirror/actions/runs/45394505966) 成功（包含 launcher benchmark）；[CI 45394505892](https://github.com/weepwood/inftab-mirror/actions/runs/45394505892) 83/83 文件、673/673 测试通过，首屏 JS gzip 62145/61952 B 超出 193 B。后续将默认关闭的时钟改为按需加载，保持预算不变，并补充生产 chunk 验证；新 head 需重新执行门禁。
+
+- #20 head c2360b5：[CI 45394911323](https://github.com/weepwood/inftab-mirror/actions/runs/45394911323) 83/83 文件、673/673 测试通过；首屏 JS 60.4/60.5 KiB、全部 JS 155.8/156 KiB、CSS 21.9/64 KiB、产物 1390.8/4096 KiB 均达标；[UI 45394911521](https://github.com/weepwood/inftab-mirror/actions/runs/45394911521) 成功。正式发布的稳定浏览器、MV3、跨标签并发与旧 Dock 交互测试更新显式配置，保留原有行为断言及新增默认布局断言；当前新提交尚未验收，不将前序绿灯冒充新 head 结果。
