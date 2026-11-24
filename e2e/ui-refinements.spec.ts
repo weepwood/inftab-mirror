@@ -407,37 +407,43 @@ test('Dock spring retargets across icons and settles without leaving enlarged st
 })
 
 test('launcher sustained input retains bounded DOM and reports heap and compositor layers', async ({ page, context }, testInfo) => {
+  test.setTimeout(90000)
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ columns: 2, rows: 1, pageTransitionEffect: 'slide', dockItemIds: ['weather','notes'], dockMagnification: true })))
   await page.goto('/')
   const grid = page.locator('.shortcut-grid-viewport')
   await expect(grid).toBeVisible()
   const cdp = await context.newCDPSession(page)
-  let maxLayers = 0, layerSamples = 0
+  let maxLayers = 0, layerSamples = 0, currentLayers = 0
   cdp.on('LayerTree.layerTreeDidChange', event => {
-    if (event.layers) { layerSamples++; maxLayers = Math.max(maxLayers, event.layers.length) }
+    if (event.layers) { layerSamples++; currentLayers = event.layers.length; maxLayers = Math.max(maxLayers, currentLayers) }
   })
   try {
     await cdp.send('LayerTree.enable')
+    await cdp.send('Performance.enable')
     await cdp.send('HeapProfiler.collectGarbage')
     async function exercise() {
       const stats = await grid.evaluate(async el => {
       let maxSlots = 0, blank = 0
-      const intervals: number[] = []
+      const intervals: number[] = [], longTasks: number[] = []
+      const observer = PerformanceObserver.supportedEntryTypes.includes('longtask') ? new PerformanceObserver(list => longTasks.push(...list.getEntries().map(entry => entry.duration))) : undefined
+      observer?.observe({ type: 'longtask' })
       let previous = performance.now()
       for (let i = 0; i < 80; i++) {
         await new Promise<void>(resolve => requestAnimationFrame(now => {
           intervals.push(now - previous); previous = now
-          el.dispatchEvent(new WheelEvent('wheel', { deltaX: i % 8 < 4 ? 100 : -100, bubbles: true, cancelable: true }))
           const bounds = el.getBoundingClientRect()
           const slots = [...el.querySelectorAll('.shortcut-page')]
           maxSlots = Math.max(maxSlots, slots.length)
           if (!slots.some(slot => { const r = slot.getBoundingClientRect(); return r.left < bounds.right && r.right > bounds.left && slot.querySelector('.shortcut-cell') })) blank++
+          el.dispatchEvent(new WheelEvent('wheel', { deltaX: i % 8 < 4 ? 100 : -100, bubbles: true, cancelable: true }))
           resolve()
         }))
       }
       const sorted = [...intervals].sort((a,b) => a-b)
-      return { frames: intervals.length, p95: sorted[Math.floor((sorted.length-1)*.95)], maxFrame: sorted.at(-1), maxSlots, blank }
+      longTasks.push(...(observer?.takeRecords().map(entry => entry.duration) ?? []))
+      observer?.disconnect()
+      return { frames: intervals.length, p95: sorted[Math.floor((sorted.length-1)*.95)], maxFrame: sorted.at(-1), maxSlots, blank, slowFrames: intervals.filter(ms => ms > 25).length, longTasks }
     })
       await expect(page.locator('.shortcut-page[aria-hidden="false"]')).toHaveCount(1)
       await expect.poll(() => page.locator('.shortcut-pages').evaluate(el => Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41))).toBeLessThan(2)
@@ -446,17 +452,61 @@ test('launcher sustained input retains bounded DOM and reports heap and composit
     }
     // First burst warms up the lazy chunks and JIT. Compare subsequent bursts.
     const warm = await exercise()
+    const idleBefore = currentLayers
+    const cpuBefore = await cdp.send('Performance.getMetrics')
     const rounds = []
-    for (let i = 0; i < 3; i++) rounds.push(await exercise())
+    for (let i = 0; i < 8; i++) rounds.push(await exercise())
+    const cpuAfter = await cdp.send('Performance.getMetrics')
+    const cpu = Object.fromEntries(cpuAfter.metrics.filter(m => /^(TaskDuration|ScriptDuration|LayoutDuration|RecalcStyleDuration)$/.test(m.name)).map(m => [m.name, m.value - (cpuBefore.metrics.find(x => x.name === m.name)?.value ?? 0)]))
     const stats = { frames: rounds.reduce((sum, r) => sum + r.frames, 0), maxSlots: Math.max(...rounds.map(r => r.maxSlots)), blank: rounds.reduce((sum, r) => sum + r.blank, 0) }
-    const result = { ...stats, maxLayers, layerSamples, warmHeap: warm.heap, rounds, heapDelta: rounds.at(-1)!.heap - warm.heap }
+    const result = { ...stats, maxLayers, layerSamples, idleBefore, idleAfter: currentLayers, cpu, warmHeap: warm.heap, rounds, heapDelta: rounds.at(-1)!.heap - warm.heap }
     await testInfo.attach('launcher-stress-diagnostics', { body: JSON.stringify(result), contentType: 'application/json' })
     console.log('Launcher stress diagnostics:', JSON.stringify(result))
-    expect(stats.frames).toBe(240)
+    expect(stats.frames).toBe(640)
     expect(stats.maxSlots).toBeLessThanOrEqual(4)
     expect(stats.blank).toBe(0)
   } finally {
+    await cdp.send('Performance.disable')
     await cdp.send('LayerTree.disable')
     await cdp.detach()
   }
+})
+
+test('Dock repeated keyboard reorders settle and preserve focus after interruptions', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ dockItemIds: ['weather','notes','calendar'], dockMagnification: true })))
+  await page.goto('/')
+  const dock = page.locator('.home-dock')
+  const item = dock.locator('[data-dock-item-id="weather"]')
+  await item.focus()
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press(i % 2 ? 'Shift+ArrowLeft' : 'Shift+ArrowRight')
+    await expect(item).toBeFocused()
+    await expect.poll(() => dock.locator('[data-dock-item-id]').evaluateAll(els => els.map(el => (el as HTMLElement).dataset.dockItemId))).toEqual(i % 2 ? ['weather','notes','calendar'] : ['notes','weather','calendar'])
+  }
+  await expect.poll(() => dock.locator('.home-dock-entry').evaluateAll(els => els.every(el => !(el as HTMLElement).style.transform))).toBe(true)
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').dockItemIds)).toEqual(['weather','notes','calendar'])
+  await testInfo.attach('launcher-dock-settled', { body: await page.screenshot(), contentType: 'image/png' })
+})
+
+for (const mode of ['light', 'dark'] as const) test(`launcher controls remain visible on a ${mode} wallpaper fixture`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.addInitScript(themeMode => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ themeMode, dockItemIds: ['weather','notes','calendar','calculator'] })), mode)
+  await page.goto('/')
+  const home = page.locator('.home')
+  await expect(home).toBeVisible()
+  await expect(page.locator('.home-dock')).toBeVisible()
+  // Controlled backgrounds are explicitly test fixtures, not a changed wallpaper preference.
+  await home.evaluate((el, mode) => (el as HTMLElement).style.backgroundImage = mode === 'light' ? 'linear-gradient(140deg,#e9e8e3,#b6c1bc)' : 'linear-gradient(140deg,#101820,#283a39)', mode)
+  const tools = page.locator('.home-actions')
+  const workspace = page.locator('.home-workspace-trigger')
+  await expect(tools).toBeVisible()
+  await expect(workspace).toBeVisible()
+  const search = tools.getByRole('button', { name: '查找快捷入口' })
+  await search.focus()
+  await expect(search).toBeFocused()
+  await expect(search).toHaveCSS('outline-style', 'solid')
+  const label = page.locator('.shortcut-page[aria-hidden="false"] .shortcut-name').first()
+  await expect(label).toBeVisible()
+  await testInfo.attach(`launcher-${mode}-wallpaper`, { body: await page.screenshot(), contentType: 'image/png' })
 })
