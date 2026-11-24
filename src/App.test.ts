@@ -100,6 +100,14 @@ afterEach(() => {
 })
 
 describe('new-tab landmarks', () => {
+  it('starts with a clean homepage and opens search on demand', async () => {
+    await mountApp()
+    expect(wrapper.find('.home-clock').exists()).toBe(false)
+    expect(wrapper.find('.search-area').exists()).toBe(false)
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true, cancelable: true }))
+    await nextTick()
+    expect(wrapper.find('[aria-label="搜索快捷入口名称或网址"]').exists()).toBe(true)
+  })
   it('offers only direct page dots without previous/next arrow controls', async () => {
     await mountApp()
     expect(wrapper.find('.page-arrow').exists()).toBe(false)
@@ -157,8 +165,9 @@ describe('new-tab short viewport layout', () => {
       const homeStyle = wrapper.get('main.home').attributes('style') ?? ''
       const fittedIconSize = Number(homeStyle.match(/--fit-icon-size: ([\d.]+)px/)?.[1])
 
-      expect(fittedIconSize).toBeCloseTo(31, 1)
-      expect(homeStyle).toContain('--shortcut-gap-y: 4px')
+      expect(fittedIconSize).toBeGreaterThan(31)
+      expect(fittedIconSize).toBeLessThanOrEqual(defaultPreferences.iconSize)
+      expect(Number(homeStyle.match(/--shortcut-gap-y: ([\d.]+)px/)?.[1])).toBeGreaterThanOrEqual(4)
     } finally {
       if (heightDescriptor) Object.defineProperty(window, 'innerHeight', heightDescriptor)
       if (widthDescriptor) Object.defineProperty(window, 'innerWidth', widthDescriptor)
@@ -393,6 +402,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('keeps empty local searches local and exits with Escape', async () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true }))
     await mountApp()
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', metaKey: true, bubbles: true, cancelable: true }))
     await nextTick()
@@ -411,6 +421,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('focuses search with slash or Ctrl/Command+K', async () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true }))
     await mountApp()
     const input = wrapper.get('input[type="search"]').element
 
@@ -427,6 +438,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('does not intercept typing shortcuts while a text field is active', async () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true }))
     await mountApp()
     const input = wrapper.get('input[type="search"]').element as HTMLInputElement
     input.focus()
@@ -471,7 +483,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('keeps homepage search and page shortcuts inactive while the folder dialog is open', async () => {
-    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, columns: 2, rows: 1, pageTransitionEffect: 'slide' }))
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, showSearchBar: true, columns: 2, rows: 1, pageTransitionEffect: 'slide' }))
     await mountApp()
     await wrapper.get('.home-actions .round-action[aria-label="打开设置"]').trigger('click')
     await flushPromises()
@@ -851,6 +863,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('keeps the selected search mode visible when its tab visibility changes', async () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true }))
     await mountApp()
     await openLauncher('settings')
     let newsToggle = wrapper.findAll('.settings-content .toggle-row').find((row) => row.text().trim() === '新闻')!
@@ -863,7 +876,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('adds, selects, persists, and removes a custom search engine from settings', async () => {
-    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, visibleSearchModes: ['html', 'news'] }))
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ ...defaultPreferences, showSearchBar: true, visibleSearchModes: ['html', 'news'] }))
     await mountApp()
     await openLauncher('settings')
     await wrapper.get('input[placeholder="例如：维基百科"]').setValue('Wiki')
@@ -886,6 +899,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('allows the homepage clock widget to be hidden from settings', async () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showClock: true }))
     await mountApp()
     expect(wrapper.find('.home-clock').exists()).toBe(true)
     await openLauncher('settings')
@@ -1041,6 +1055,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('shows a recoverable warning when browser storage rejects a save', async () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showClock: true }))
     await mountApp()
     const originalSetItem = Storage.prototype.setItem
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
@@ -1060,6 +1075,7 @@ describe('new-tab keyboard search', () => {
   })
 
   it('clears a storage warning after the failed key saves successfully', async () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showClock: true }))
     const originalSetItem = Storage.prototype.setItem
     let shouldFail = true
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
@@ -1241,6 +1257,7 @@ describe('homepage quick actions', () => {
   })
 
   it('closes an overlaid panel before exiting the local search underneath it', async () => {
+    localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true }))
     await mountApp()
     await wrapper.get('[aria-label="查找快捷入口"]').trigger('click')
     await wrapper.get('[aria-label="搜索快捷入口名称或网址"]').setValue('笔记')

@@ -210,7 +210,8 @@ describe('workspace backups', () => {
   it('keeps older backups compatible with the new clock preference', () => {
     const preferences = { ...defaultPreferences, showClock: undefined, themeMode: undefined, dockItemIds: undefined, homeWidgetIds: undefined }
 
-    expect(parseWorkspaceBackup(backup({ preferences })).preferences.showClock).toBe(true)
+    expect(parseWorkspaceBackup(backup({ preferences })).preferences.showClock).toBe(false)
+    expect(parseWorkspaceBackup(backup({ preferences: { ...preferences, showClock: true, dockAutoHide: true } })).preferences.dockAutoHide).toBe(true)
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.themeMode).toBe('light')
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.dockItemIds).toEqual([])
     expect(parseWorkspaceBackup(backup({ preferences })).preferences.homeWidgetIds).toEqual([])

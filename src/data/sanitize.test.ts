@@ -68,10 +68,10 @@ describe('local state sanitization', () => {
     expect(sanitizePreferences({}).dockItemIds).toEqual([])
   })
 
-  it('defaults dock magnification off and validates its toggle', () => {
-    expect(sanitizePreferences({}).dockMagnification).toBe(false)
+  it('defaults dock magnification on and validates its toggle', () => {
+    expect(sanitizePreferences({}).dockMagnification).toBe(true)
     expect(sanitizePreferences({ dockMagnification: false }).dockMagnification).toBe(false)
-    expect(sanitizePreferences({ dockMagnification: 'off' }).dockMagnification).toBe(false)
+    expect(sanitizePreferences({ dockMagnification: 'off' }).dockMagnification).toBe(true)
   })
 
   it('defaults Dock icon sizing to follow the launcher and validates its toggle', () => {
@@ -226,10 +226,13 @@ describe('local state sanitization', () => {
     expect(defaultPreferences.visibleSearchModes).toEqual([])
   })
 
-  it('defaults the optional clock setting on for older saved preferences', () => {
+  it('defaults the optional clock setting off and keeps explicit preferences', () => {
     const preferences = sanitizePreferences({ showSearchBar: false })
 
-    expect(preferences.showClock).toBe(true)
+    expect(preferences.showClock).toBe(false)
+    expect(sanitizePreferences({ showClock: true }).showClock).toBe(true)
+    expect(sanitizePreferences({ dockAutoHide: true }).dockAutoHide).toBe(true)
+    expect(sanitizePreferences({ dockAutoHide: 'true' }).dockAutoHide).toBe(false)
     expect(preferences.showSearchBar).toBe(false)
   })
 

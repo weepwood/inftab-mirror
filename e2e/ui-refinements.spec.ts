@@ -147,7 +147,7 @@ test('all opening choices survive reload and are included in the on-demand JSON 
 })
 
 test('opt-in third-party search opens a new tab without navigating the launcher', async ({ page, context }) => {
-  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ openSearchInNewTab: true, engine: 'google' })))
+  await page.addInitScript(() => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ showSearchBar: true, openSearchInNewTab: true, engine: 'google' })))
   await context.route('https://www.google.com/search*', (route) => route.fulfill({ contentType: 'text/html', body: '<title>Search result</title>' }))
   await page.goto('/')
   const homeUrl = page.url()

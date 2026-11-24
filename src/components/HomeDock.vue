@@ -143,13 +143,19 @@ function updateDockMagnification(event: PointerEvent) {
     const itemSize = centers.length > 1 ? Math.abs(centers[1]! - centers[0]!) : 48
     const influenceRadius = itemSize * 3
     dock.value?.classList.add('is-magnifying')
+    const scales = centers.map(center => {
+      const proximity = Math.max(0, 1 - Math.abs(pointerX - center) / influenceRadius)
+      return 1 + .65 * proximity * proximity * (3 - 2 * proximity)
+    })
+    const expansion = scales.map(scale => (scale - 1) * Math.max(0, itemSize - 4))
+    const total = expansion.reduce((sum, value) => sum + value, 0)
+    let offset = -total / 2
     entries.forEach((entry, index) => {
-      const distance = pointerX - centers[index]!
-      const proximity = Math.max(0, 1 - Math.abs(distance) / influenceRadius)
-      const influence = proximity * proximity * (3 - 2 * proximity)
-      entry.style.setProperty('--dock-scale', (1 + influence * .65).toFixed(3))
-      entry.style.setProperty('--dock-shift-x', `${(-Math.sign(distance) * influence * itemSize * .25).toFixed(2)}px`)
-      entry.style.zIndex = influence > .05 ? '2' : ''
+      const extra = expansion[index]!
+      entry.style.setProperty('--dock-scale', scales[index]!.toFixed(3))
+      entry.style.setProperty('--dock-shift-x', `${(offset + extra / 2).toFixed(2)}px`)
+      entry.style.zIndex = scales[index]! > 1.05 ? '2' : ''
+      offset += extra
     })
   })
 }

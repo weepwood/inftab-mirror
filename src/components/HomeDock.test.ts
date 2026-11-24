@@ -161,7 +161,7 @@ describe('HomeDock magnification', () => {
 
     expect((entries[0]!.element as HTMLElement).style.getPropertyValue('--dock-scale')).toBe('1.650')
     expect(Number((entries[1]!.element as HTMLElement).style.getPropertyValue('--dock-scale'))).toBeGreaterThan(1)
-    expect(parseFloat((entries[1]!.element as HTMLElement).style.getPropertyValue('--dock-shift-x'))).toBeGreaterThan(0)
+    expect(parseFloat((entries[2]!.element as HTMLElement).style.getPropertyValue('--dock-shift-x'))).toBeGreaterThan(parseFloat((entries[0]!.element as HTMLElement).style.getPropertyValue('--dock-shift-x')))
     expect((entries[1]!.element as HTMLElement).style.width).toBe('')
     expect(wrapper.get('.home-dock').classes()).toContain('is-magnifying')
 

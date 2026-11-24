@@ -60,7 +60,7 @@ const displayPages = computed(() => {
     return {
       // Keep every track slot to preserve seamless looping, but only mount
       // shortcut cells for the visible page and its immediate neighbors.
-      items: Math.abs(trackIndex - physicalPage.value) <= 2 ? items : [],
+      items: Math.abs(trackIndex - physicalPage.value) <= 1 ? items : [],
       pageIndex,
       clone: cycleIndex !== centerCycle,
       trackIndex,
@@ -250,6 +250,16 @@ watch(() => props.currentPage, (pageIndex, previousPage) => {
   }
   const count = pages.value.length
   const distance = direction > 0 ? (pageIndex - previousPage + count) % count : (previousPage - pageIndex + count) % count
+  if (distance > 1 && props.transitionEffect === 'slide') {
+    resettingTrack.value = true
+    physicalPage.value = centeredPhysicalPage()
+    resetFrame = requestAnimationFrame(() => {
+      resettingTrack.value = false
+      resetFrame = 0
+      completeTrackTransition()
+    })
+    return
+  }
   physicalPage.value += direction * distance
   rebaseTrackIfNeeded()
   scheduleTrackSettleFallback()

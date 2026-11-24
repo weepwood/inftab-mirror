@@ -1203,3 +1203,8 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 }
 @media (max-width: 780px) { .home-dock { bottom: 36px; } }
 @media (prefers-reduced-motion: reduce) { .home-dock.dock-auto-hide, .home-dock-icon { transition: none; } }
+
+@media (hover: hover) and (pointer: fine) and (min-width: 781px) {
+  .home-dock:not(.magnification-off) .home-dock-track { padding-inline: 64px; }
+}
+@media (prefers-reduced-motion: reduce) { .shortcut-pages:not(.motion-opt-in) { transition-duration: 0ms !important; } }
