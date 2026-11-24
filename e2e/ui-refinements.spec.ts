@@ -432,11 +432,11 @@ test('launcher sustained input retains bounded DOM and reports heap and composit
       for (let i = 0; i < 80; i++) {
         await new Promise<void>(resolve => requestAnimationFrame(now => {
           intervals.push(now - previous); previous = now
-          el.dispatchEvent(new WheelEvent('wheel', { deltaX: i % 8 < 4 ? 100 : -100, bubbles: true, cancelable: true }))
           const bounds = el.getBoundingClientRect()
           const slots = [...el.querySelectorAll('.shortcut-page')]
           maxSlots = Math.max(maxSlots, slots.length)
           if (!slots.some(slot => { const r = slot.getBoundingClientRect(); return r.left < bounds.right && r.right > bounds.left && slot.querySelector('.shortcut-cell') })) blank++
+          el.dispatchEvent(new WheelEvent('wheel', { deltaX: i % 8 < 4 ? 100 : -100, bubbles: true, cancelable: true }))
           resolve()
         }))
       }
@@ -479,9 +479,34 @@ test('Dock repeated keyboard reorders settle and preserve focus after interrupti
   const dock = page.locator('.home-dock')
   const item = dock.locator('[data-dock-item-id="weather"]')
   await item.focus()
-  for (let i = 0; i < 12; i++) await item.press(i % 2 ? 'Shift+ArrowLeft' : 'Shift+ArrowRight')
-  await expect(item).toBeFocused()
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press(i % 2 ? 'Shift+ArrowLeft' : 'Shift+ArrowRight')
+    await expect(item).toBeFocused()
+    await expect.poll(() => dock.locator('[data-dock-item-id]').evaluateAll(els => els.map(el => (el as HTMLElement).dataset.dockItemId))).toEqual(i % 2 ? ['weather','notes','calendar'] : ['notes','weather','calendar'])
+  }
   await expect.poll(() => dock.locator('.home-dock-entry').evaluateAll(els => els.every(el => !(el as HTMLElement).style.transform))).toBe(true)
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('inftab.preferences.v1') ?? '{}').dockItemIds)).toEqual(['weather','notes','calendar'])
   await testInfo.attach('launcher-dock-settled', { body: await page.screenshot(), contentType: 'image/png' })
+})
+
+for (const mode of ['light', 'dark'] as const) test(`launcher controls remain visible on a ${mode} wallpaper fixture`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.addInitScript(themeMode => localStorage.setItem('inftab.preferences.v1', JSON.stringify({ themeMode, dockItemIds: ['weather','notes','calendar','calculator'] })), mode)
+  await page.goto('/')
+  const home = page.locator('.home')
+  await expect(home).toBeVisible()
+  await expect(page.locator('.home-dock')).toBeVisible()
+  // Controlled backgrounds are explicitly test fixtures, not a changed wallpaper preference.
+  await home.evaluate((el, mode) => (el as HTMLElement).style.backgroundImage = mode === 'light' ? 'linear-gradient(140deg,#e9e8e3,#b6c1bc)' : 'linear-gradient(140deg,#101820,#283a39)', mode)
+  const tools = page.locator('.home-actions')
+  const workspace = page.locator('.home-workspace-trigger')
+  await expect(tools).toBeVisible()
+  await expect(workspace).toBeVisible()
+  const search = tools.getByRole('button', { name: '查找快捷入口' })
+  await search.focus()
+  await expect(search).toBeFocused()
+  await expect(search).toHaveCSS('outline-style', 'solid')
+  const label = page.locator('.shortcut-page[aria-hidden="false"] .shortcut-name').first()
+  await expect(label).toBeVisible()
+  await testInfo.attach(`launcher-${mode}-wallpaper`, { body: await page.screenshot(), contentType: 'image/png' })
 })

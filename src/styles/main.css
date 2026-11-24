@@ -1291,3 +1291,8 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .shortcut-name { color: #fff; font-weight: 500; text-shadow: 0 1px 2px #000e, 0 1px 6px #000b, 0 0 12px #0007; }
 .home-actions { background: linear-gradient(180deg,#333d3c38,#222d2c42); }
 .home-actions .round-action:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+
+/* Give the workspace and toolbar the same restrained neutral glass tint. */
+.home-workspace-trigger { background: linear-gradient(180deg,#34413de0,#202b29e0); }
+.theme-dark .home-actions { background: linear-gradient(180deg,#222b31ad,#171e24bd); }
+.shortcut-name { text-shadow: 0 1px 2px #000f, 0 1px 5px #000c, 0 0 10px #0008; }

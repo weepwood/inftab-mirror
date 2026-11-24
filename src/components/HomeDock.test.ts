@@ -249,3 +249,17 @@ it('uses layout geometry instead of a transformed slot for drag insertion', asyn
   await wrapper.findAll('.home-dock-entry')[1]!.trigger('drop', { clientX: 180 })
   expect(wrapper.emitted('reorder')).toEqual([['weather', 'mail', true]])
 })
+
+it('restores focus lost during a keyed move even with reduced motion', async () => {
+  const mail = { ...item, id: 'mail', title: '邮件' }
+  vi.stubGlobal('matchMedia', () => ({ matches: true }))
+  wrapper = mount(HomeDock, { attachTo: document.body, props: { items: [item, mail] } })
+  const button = wrapper.get('[data-dock-item-id="weather"]').element as HTMLButtonElement
+  button.focus()
+  const pending = wrapper.setProps({ items: [mail, item] })
+  await pending
+  await nextTick()
+  expect(document.activeElement).toBe(button)
+  expect(wrapper.findAll('.home-dock-entry').every(entry => !(entry.element as HTMLElement).style.transform)).toBe(true)
+  vi.unstubAllGlobals()
+})

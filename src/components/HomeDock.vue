@@ -77,8 +77,9 @@ function paintReorder(now: number) {
   reorderFrame = 0
   const dt = Math.min(64, Math.max(0, now - reorderTime))
   reorderTime = now
+  const reduced = reducedMotion()
   reorders.forEach((s, el) => {
-    if (!reducedMotion() && advanceSpring(s, dt, .028, .05)) {
+    if (!reduced && advanceSpring(s, dt, .028, .05)) {
       el.style.transform = `translateX(${s.position}px)`
     } else {
       el.style.removeProperty('transform')
@@ -89,14 +90,17 @@ function paintReorder(now: number) {
 }
 watch(() => props.magnificationEnabled, enabled => { if (!enabled) clearDockMagnification() })
 watch(() => props.items.map(item => item.id).join('|'), async (_, __, onCleanup) => {
+  const active = document.activeElement
+  const focused = active instanceof HTMLElement && dock.value?.contains(active) ? active : undefined
   const before = new Map(entries().map(el => [el, { left: el.getBoundingClientRect().left, velocity: reorders.get(el)?.velocity ?? 0 }]))
   clearReorders()
   clearDockMagnification()
-  if (reducedMotion()) return
   let cancelled = false
   onCleanup(() => { cancelled = true })
   await nextTick()
   if (cancelled) return
+  if (focused?.isConnected && document.activeElement === document.body) focused.focus({ preventScroll: true })
+  if (reducedMotion()) return
   for (const el of entries()) {
     const old = before.get(el)
     if (!old) continue
@@ -339,11 +343,13 @@ function removeContextItem() {
 onMounted(() => {
   window.addEventListener('pointerdown', clearSuppressedClick, true)
   window.addEventListener('click', closeOnOutsideClick)
+  window.addEventListener('resize', clearDockMagnification)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', clearSuppressedClick, true)
   window.removeEventListener('click', closeOnOutsideClick)
+  window.removeEventListener('resize', clearDockMagnification)
   cleanGestureListeners()
   clearSuppressedClick()
   clearDockMagnification()
@@ -353,7 +359,7 @@ onBeforeUnmount(() => {
 
 <template>
   <nav v-if="items.length" ref="dock" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled, 'dock-auto-hide': props.autoHide, 'dock-menu-open': Boolean(contextItem), 'dock-dragging': Boolean(dragId) }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px` }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="releaseDockMagnification" @click.capture="preventGestureClick">
-    <div class="home-dock-track">
+    <div class="home-dock-track" @scroll.passive="clearDockMagnification">
       <div v-for="item in items" :key="item.id" class="home-dock-entry" :data-title="item.title" :class="{ 'dock-drag-source': dragId === item.id, 'dock-drop-before': dropTarget?.id === item.id && !dropTarget.after, 'dock-drop-after': dropTarget?.id === item.id && dropTarget.after }" @dragover="previewDrop($event, item.id)" @drop="dropItem($event, item.id)">
         <button
           type="button"
