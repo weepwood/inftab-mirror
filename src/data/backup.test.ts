@@ -366,7 +366,7 @@ it('preserves normalized shortcut tags through JSON backup', () => {
 
 
 it('round-trips custom themes without adding a field to old backups and rejects injected colors', async () => {
-  const {defaultCustomTheme} = await import('./customTheme')
+  const {defaultCustomTheme} = await import('./themeEditorData')
   expect(parseWorkspaceBackup(backup()).preferences.customTheme).toBeUndefined()
   expect(parseWorkspaceBackup(backup({preferences:{...defaultPreferences,customTheme:defaultCustomTheme}})).preferences.customTheme).toEqual(defaultCustomTheme)
   expect(()=>parseWorkspaceBackup(backup({preferences:{...defaultPreferences,customTheme:{...defaultCustomTheme,light:{...defaultCustomTheme.light,text:'red; color:blue'}}}}))).toThrow(/页面设置无法识别/)
