@@ -11,7 +11,7 @@ describe('desktop layout', () => {
   it('handles narrow surfaces',()=>expect(defaultPoint(2,50)).toEqual({x:0,y:192}))
 })
 
-import { resolvePoints, createOccupancy } from './layout'
+import { resolvePoints, createOccupancy, createRectOccupancy, rectsOverlap } from './layout'
 describe('desktop collision resolution', () => {
   it('preserves non-overlapping free coordinates even when spatial buckets intersect',()=>{
     const saved={a:{x:5,y:5},b:{x:102,y:5},c:{x:5,y:101}}
@@ -79,5 +79,36 @@ describe('desktop drag occupancy',()=>{
   expect(Object.values(safe).some(overlaps)).toBe(false)
   const blocked=translateGroup(moving,{x:288,y:0},960,480,true)
   expect(Object.values(blocked).some(overlaps)).toBe(true)
+ })
+})
+
+describe('mixed canvas collision foundation',()=>{
+ it('uses real width and height, preserving edge contact',()=>{
+  const widget={x:23,y:47,width:275,height:151}
+  const index=createRectOccupancy([widget])
+  expect(index.overlaps({x:298,y:47,width:96,height:96})).toBe(false)
+  expect(index.overlaps({x:297,y:47,width:96,height:96})).toBe(true)
+  expect(index.overlaps({x:0,y:198,width:96,height:96})).toBe(false)
+  expect(index.overlaps({x:0,y:197,width:96,height:96})).toBe(true)
+  index.add({x:-100,y:-100,width:100,height:100})
+  expect(index.overlaps({x:-1,y:-1,width:1,height:1})).toBe(true)
+ })
+ it('allocates icons around reserved rectangles without changing persisted positions',()=>{
+  const widget={x:0,y:0,width:288,height:192}
+  const saved={a:{x:0,y:0},b:{x:384,y:0}}
+  const result=resolvePoints(['a','b','c'],saved,480,480,[widget])
+  expect(result.b).toEqual(saved.b)
+  expect(saved.a).toEqual({x:0,y:0})
+  expect(Object.values(result).every(p=>!rectsOverlap({...p,width:96,height:96},widget))).toBe(true)
+ })
+ it('matches a brute force oracle on deterministic variable rectangles',()=>{
+  let seed=54321
+  const rnd=(n:number)=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed%n}
+  const rect=()=>({x:rnd(1100)-100,y:rnd(1100)-100,width:1+rnd(360),height:1+rnd(260)})
+  const items=Array.from({length:60},rect),index=createRectOccupancy(items)
+  for(let i=0;i<500;i++){
+   const q=rect()
+   expect(index.overlaps(q)).toBe(items.some(p=>rectsOverlap(p,q)))
+  }
  })
 })

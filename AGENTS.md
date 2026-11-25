@@ -528,3 +528,9 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 基于 c368573 完善窗口概览当前空间筛选、数量和空状态，打开时默认全部；Finder/Tool共用frameProps，清理被覆盖的旧行式CSS。第一轮生产Edge四项两轮8/8。
 - 按需分包合并 useOptionalBrowserResource 至 browser-widgets，operationHistory 至 desktop-transactions，themeEditorData/mergeById 至 workspace-recovery；保持原预算及经典启动边界。Mac最终build:web通过，首屏60.0/60.5、非Swiper198.9/200、CSS36.3/64 KiB，PWA预缓存84资源、额外10137/16384 B、全站1760700/4194304 B。备份/操作历史/小组件/并发单测50/50，最终生产分包16/16。Linux差异仍须正式CI确认。
 - 本阶段累计候选从main 7d40dea出发，仅纳入多图标碰撞、切换焦点及关闭动效、小组件独立二维网格和概览筛选；不冒充全桌面混合排布、空间切换动画或布局预设已实现。保留#37/#29及正式Tag；通过远端全套CI与审查后才允许合并。当前未进行本候选实际线上或移动端验收。
+
+## 统一桌面画布基础与空间切换（2026-11-26）
+- #49 1942cf9 冻结，verify/data-smoke/PWA通过，UI及跨浏览器仍待结果；独立 feat/desktop-canvas-unification 基于该提交，不改变候选PR。
+- layout.ts 增加 DesktopRect、rectsOverlap、createRectOccupancy，将原96px固定图标空间索引复用为任意正宽高矩形索引，保留旧createOccupancy接口；resolvePoints可接收显式保留区并绕开，不修改原始坐标，保留图标默认排布及群组逻辑。保留区只接收内部有界合法矩形，尚未接入实际小组件视图，不接受任意外部输入；后续统一画布需处理测量/尺寸边界、滚动、工作区持久化、移动及缩放、碰撞提交。未实现图标与小组件实际混排。
+- DesktopShell 按工作区key重建时增加140ms opacity入场（首次桌面进入也执行），不改变几何/transform，不保留上一空间交互DOM，减少动效模式禁用；非跨空间滑动/双层转场。
+- Mac build:web通过，首屏60.0/60.5、非Swiper199.0/200、CSS36.3/64 KiB，PWA额外10136/16384 B、全站1761051/4194304 B；布局单测19/19（含500个确定性随机矩形查询与暴力对照），生产Edge空间切换、自由图标拖动、组移动、小组件原独立排布四项两轮8/8。尚未验收新分支Linux、跨浏览器及实际帧耗时；不提高预算，不新开PR，不修改正式主线和Tag。

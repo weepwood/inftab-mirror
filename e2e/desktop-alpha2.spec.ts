@@ -1964,3 +1964,27 @@ test('desktop widget slots reject collisions and preserve classic mode',async({p
  await expect(shelf).not.toHaveClass(/widget-free/)
  await expect(shelf.getByRole('button',{name:'拖动待办概览排序'})).toBeVisible()
 })
+
+
+test('desktop space entry uses paint-only motion without changing icon geometry',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000})
+ await page.emulateMedia({reducedMotion:'no-preference'})
+ await page.addInitScript(()=>{
+  localStorage.setItem('inftab.desktop-mode.v1','true')
+  localStorage.setItem('inftab.preferences.v1',JSON.stringify({showSearchBar:false}))
+  localStorage.setItem('inftab.home-workspaces.v1',JSON.stringify([{id:'default',name:'主页',itemIds:['todos'],desktop:{version:1,snap:false,positions:{todos:{x:100,y:200}}}},{id:'work',name:'工作',itemIds:['todos'],desktop:{version:1,snap:false,positions:{todos:{x:200,y:300}}}}]))
+ })
+ await page.goto('/')
+ const shell=page.locator('.desktop-shell'),icon=shell.locator('[data-item-id="todos"]')
+ await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 100, 200)')
+ await page.getByRole('button',{name:'切换工作区，当前：主页'}).click()
+ await page.getByRole('button',{name:'工作',exact:true}).click()
+ await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 200, 300)')
+ await expect(shell).toHaveCSS('animation-name',/^desktop-space-in/)
+ await expect(shell).toHaveCSS('transform','none')
+ await page.emulateMedia({reducedMotion:'reduce'})
+ await page.getByRole('button',{name:'切换工作区，当前：工作'}).click()
+ await page.getByRole('button',{name:'主页',exact:true}).click()
+ await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 100, 200)')
+ await expect(shell).toHaveCSS('animation-name','none')
+})

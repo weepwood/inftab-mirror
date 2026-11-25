@@ -1,4 +1,5 @@
 export interface Point { x: number; y: number }
+export interface DesktopRect extends Point { width: number; height: number }
 export interface DesktopLayout { version: 1; snap: boolean; positions: Record<string, Point> }
 export const cell = 96
 export const freshLayout = (): DesktopLayout => ({ version: 1, snap: true, positions: Object.create(null) })
@@ -23,28 +24,36 @@ export function defaultPoint(index: number, width: number): Point {
   return { x: index % columns * cell, y: Math.floor(index/columns)*cell }
 }
 
-/** Spatial index for actual 96px hit rectangles; sharing buckets alone is not overlap. */
-export function createOccupancy(points: Point[] = []) {
-  const occupied = new Map<string,Point[]>()
-  const key = (x: number, y: number) => x + ':' + y
-  function cells(p: Point) {
-    const keys: string[] = []
-    for (let y=Math.floor(p.y/cell); y<=Math.ceil((p.y+cell)/cell)-1; y++)
-      for (let x=Math.floor(p.x/cell); x<=Math.ceil((p.x+cell)/cell)-1; x++) keys.push(key(x,y))
-    return keys
-  }
-  const overlaps=(p:Point)=>cells(p).some(k=>occupied.get(k)?.some(q=>Math.abs(p.x-q.x)<cell&&Math.abs(p.y-q.y)<cell))
-  function add(p:Point){
-    for(const k of cells(p)){const bucket=occupied.get(k);if(bucket)bucket.push(p);else occupied.set(k,[p])}
-  }
-  points.forEach(add)
-  return {add,overlaps}
+/** Exact rectangle intersection, including non-grid widget sizes. */
+export function rectsOverlap(a:DesktopRect,b:DesktopRect){
+ return a.x<b.x+b.width&&b.x<a.x+a.width&&a.y<b.y+b.height&&b.y<a.y+a.height
+}
+export function createRectOccupancy(rects:DesktopRect[]=[]){
+ const occupied=new Map<string,DesktopRect[]>()
+ function cells(p:DesktopRect){
+  const keys:string[]=[]
+  for(let y=Math.floor(p.y/cell);y<Math.ceil((p.y+p.height)/cell);y++)
+   for(let x=Math.floor(p.x/cell);x<Math.ceil((p.x+p.width)/cell);x++)keys.push(x+':'+y)
+  return keys
+ }
+ function add(p:DesktopRect){
+  for(const k of cells(p)){const bucket=occupied.get(k);if(bucket)bucket.push(p);else occupied.set(k,[p])}
+ }
+ const overlaps=(p:DesktopRect)=>cells(p).some(k=>occupied.get(k)?.some(q=>rectsOverlap(p,q)))
+ rects.forEach(add)
+ return {add,overlaps}
+}
+const iconRect=(p:Point):DesktopRect=>({...p,width:cell,height:cell})
+export function createOccupancy(points:Point[]=[]){
+ const index=createRectOccupancy(points.map(iconRect))
+ return {add:(p:Point)=>index.add(iconRect(p)),overlaps:(p:Point)=>index.overlaps(iconRect(p))}
 }
 
 // Resolve visible collisions without altering the canonical coordinates.
-export function resolvePoints(ids: string[], saved: Record<string, Point>, width: number, height: number): Record<string, Point> {
+export function resolvePoints(ids: string[], saved: Record<string, Point>, width: number, height: number, reserved:DesktopRect[]=[]): Record<string, Point> {
   const result: Record<string, Point> = Object.create(null)
-  const {add,overlaps}=createOccupancy()
+  const index=createRectOccupancy(reserved)
+  const add=(p:Point)=>index.add(iconRect(p)),overlaps=(p:Point)=>index.overlaps(iconRect(p))
   const columns = Math.max(1, Math.floor(width / cell))
   let cursor=0
   for (const id of [...ids.filter(id=>Object.hasOwn(saved,id)), ...ids.filter(id=>!Object.hasOwn(saved,id))]) {
