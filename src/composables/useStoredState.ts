@@ -5,6 +5,9 @@ import { sanitizeStoredValue } from '../data/sanitize'
 export const storageWriteErrorEvent = 'inftab:storage-write-error'
 export const storageWriteSuccessEvent = 'inftab:storage-write-success'
 const flushers = new WeakMap<object, () => boolean>()
+const discarders = new WeakMap<object, () => void>()
+/** Only used after explicit recovery has replaced the persisted value, before reload. */
+export function discardStoredWrite(ref:object){discarders.get(ref)?.()}
 /** For guarded multi-record operations only; normal editing keeps debounce. */
 export function flushStoredState(ref: object): boolean {
   return flushers.get(ref)?.() ?? false
@@ -84,6 +87,7 @@ export function useStoredState<T>(
     return !needsWrite
   }
   flushers.set(value, flushPendingWrite)
+  discarders.set(value,()=>{clearTimeout(persistTimer);persistTimer=undefined;needsWrite=false})
   function scheduleWrite() {
     needsWrite = true
     if (isDisposed) {
@@ -197,6 +201,7 @@ export function useStoredState<T>(
   if (targetWindow && getCurrentScope()) onScopeDispose(() => {
     isDisposed = true
     flushers.delete(value)
+    discarders.delete(value)
     targetWindow.removeEventListener('storage', queueStorageEvent)
     targetWindow.removeEventListener('pagehide', flushPendingWrite)
     targetDocument?.removeEventListener('visibilitychange', handleVisibilityChange)

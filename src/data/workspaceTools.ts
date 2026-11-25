@@ -12,7 +12,7 @@ export interface WorkspaceTools {
   workspaces: HomeWorkspace[]
   activeId: string
   getBackup: () => WorkspaceBackup
-  restore: (backup: WorkspaceBackup, mode: 'merge' | 'replace') => string | undefined
+  restore: (backup: WorkspaceBackup, mode: 'merge' | 'replace') => Promise<string | undefined>
   batch: (action: ShortcutBatch, expected?: string) => Promise<string | undefined>
   importBookmarks: (items: BookmarkShortcutCandidate[]) => BookmarkShortcutImportResult
 }

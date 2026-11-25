@@ -1,61 +1,21 @@
 import type { Ref } from 'vue'
 import type { WorkspaceBackup } from '../data/backup'
-import type { CountdownItem, CustomSearchEngine, Habit, Note, Preferences, Shortcut, ShortcutFolder, TodoItem } from '../types'
 import { defaultPreferences } from '../data/defaults'
-import { defaultHomeWorkspace, maxHomeWorkspaces, sanitizeActiveHomeWorkspaceId, sanitizeHomeWorkspaces, type HomeWorkspace } from '../data/homeWorkspaces'
+import { defaultHomeWorkspace, maxHomeWorkspaces, sanitizeActiveHomeWorkspaceId, sanitizeHomeWorkspaces } from '../data/homeWorkspaces'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeHabits, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
-import { defaultFocusTimerState, sanitizeFocusTimerState, type FocusTimerState } from '../data/focusTimerState'
+import { defaultFocusTimerState, sanitizeFocusTimerState } from '../data/focusTimerState'
 import { maxHabits } from '../data/habits'
 import { mergeById } from '../data/mergeById'
 
 /** Backup snapshot and validated import orchestration. The public format remains v1. */
-export function createBackupActions(state: {
-  preferences: Ref<Preferences>
-  shortcuts: Ref<Shortcut[]>
-  folders: Ref<ShortcutFolder[]>
-  launcherOrder: Ref<string[]>
-  homeWorkspaces: Ref<HomeWorkspace[]>
-  activeHomeWorkspaceId: Ref<string>
-  builtInLauncherIds: string[]
-  todos: Ref<TodoItem[]>
-  habits: Ref<Habit[]>
-  countdowns: Ref<CountdownItem[]>
-  notes: Ref<Note[]>
-  customSearchEngines: Ref<CustomSearchEngine[]>
-  focusTimer: Ref<FocusTimerState>
-  activeNoteId: Ref<string>
-  weatherCity: Ref<string>
-}, detached = false) {
+import type { BackupCells } from './workspaceSnapshot'
+export function restoreWorkspaceBackup(state:BackupCells,backup:WorkspaceBackup,mode:'merge'|'replace',detached=false):string|undefined {
   const { preferences, shortcuts, folders, launcherOrder, homeWorkspaces, activeHomeWorkspaceId, todos, habits, countdowns, notes, customSearchEngines, focusTimer, activeNoteId, weatherCity, builtInLauncherIds } = state
-  function createBackup(): WorkspaceBackup {
-    const snapshot: WorkspaceBackup = {
-      format: 'inftab-workspace',
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      preferences: preferences.value,
-      shortcuts: shortcuts.value,
-      folders: folders.value,
-      launcherOrder: [...launcherOrder.value],
-      todos: todos.value,
-      habits: habits.value,
-      countdowns: countdowns.value,
-      notes: notes.value,
-      customSearchEngines: customSearchEngines.value,
-      focusTimer: focusTimer.value,
-      activeNoteId: activeNoteId.value,
-      weatherCity: weatherCity.value,
-      homeWorkspaces: homeWorkspaces.value,
-      activeHomeWorkspaceId: activeHomeWorkspaceId.value,
-    }
-    return JSON.parse(JSON.stringify(snapshot)) as WorkspaceBackup
-  }
-
-  function restoreBackup(backup: WorkspaceBackup, mode: 'merge' | 'replace'): string | undefined {
     if (!detached) {
       const { builtInLauncherIds, ...live } = state
       const staged = Object.fromEntries(Object.entries(live).map(([key, cell]) => [key, { value: JSON.parse(JSON.stringify(cell.value)) }])) as typeof live
       try {
-        const error = createBackupActions({ ...staged, builtInLauncherIds }, true).restoreBackup(backup, mode)
+        const error = restoreWorkspaceBackup({ ...staged, builtInLauncherIds },backup,mode,true)
         if (error) return error
       } catch {
         return '导入失败：备份数据无效，未修改当前工作区。'
@@ -188,7 +148,4 @@ export function createBackupActions(state: {
     weatherCity.value = sanitizeWeatherCity(backup.weatherCity || weatherCity.value)
     if (backup.focusTimer) focusTimer.value = sanitizeFocusTimerState(backup.focusTimer)
     return undefined
-  }
-
-  return { createBackup, restoreBackup }
 }

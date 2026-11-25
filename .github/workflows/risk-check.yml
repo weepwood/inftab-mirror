@@ -8,6 +8,7 @@ on:
       - 'src/desktop/**'
       - 'e2e/desktop-alpha.spec.ts'
       - 'e2e/desktop-alpha2.spec.ts'
+      - 'e2e/desktop-storage.spec.ts'
       - 'src/components/SearchBar.vue'
       - 'src/components/HomeDock.vue'
       - 'vite.config.ts'

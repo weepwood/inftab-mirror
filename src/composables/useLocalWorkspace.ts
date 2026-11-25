@@ -7,7 +7,7 @@ import { defaultLauncherOrder, defaultPreferences, defaultShortcuts, launcherIte
 import { sanitizeWorkspaceLayout, type WorkspaceLayoutOverrides } from '../data/workspaceLayout'
 import { createProductivityActions } from './workspaceProductivity'
 import { createLauncherActions } from './workspaceLauncher'
-import { createBackupActions } from './workspaceBackup'
+import { createBackupActions } from './workspaceSnapshot'
 import { migrateLegacyShortcuts } from '../data/legacyShortcutMigration'
 import { localStorageAdapter } from '../data/storageAdapter'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeHabits, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'

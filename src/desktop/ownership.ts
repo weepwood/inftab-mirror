@@ -71,7 +71,7 @@ export function planFolderMembership(state: State, ids: readonly string[], targe
 }
 
 export interface FinderClipboard { mode:'cut'|'copy'; ids:string[]; workspaceId:string; folderId:string|null }
-export type DesktopMutation = {kind:'reparent';ids:string[];workspaceId:string;folderId:string|null}|{kind:'undo'|'redo'}|{kind:'move';ids:string[];workspaceId:string}|{kind:'membership';ids:string[];folderId:string|null}|{kind:'paste';clipboard:FinderClipboard;workspaceId:string;folderId:string|null}
+export type DesktopMutation = {kind:'recover';id:string;direction:'rollback'|'complete'|'keep'}|{kind:'reparent';ids:string[];workspaceId:string;folderId:string|null}|{kind:'undo'|'redo'}|{kind:'move';ids:string[];workspaceId:string}|{kind:'membership';ids:string[];folderId:string|null}|{kind:'paste';clipboard:FinderClipboard;workspaceId:string;folderId:string|null}
 export function planPaste(state:State,clipboard:FinderClipboard,workspaceId:string,folderId:string|null,copyIds:string[]=[]):MovePlan|undefined {
  const ids=[...new Set(clipboard.ids)]
  const owners=getOwners(state.workspaces)

@@ -107,7 +107,7 @@ function applyRestore(mode: 'merge' | 'replace') {
   void execute(async () => {
     const target = restore.value!
     await safeguard()
-    const error = props.tools.restore(target, mode)
+    const error = await props.tools.restore(target, mode)
     if (error) throw new Error(error)
     restore.value = undefined
     selected.value = []

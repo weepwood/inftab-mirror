@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { Folder, Layers } from '@lucide/vue'
 import FinderWindow from './FinderWindow.vue'
 import { defineAsyncComponent } from 'vue'
@@ -9,6 +9,7 @@ import type { PanelPluginContext } from '../plugins/registry'
 const ToolWindow=defineAsyncComponent(()=>import('./ToolWindow.vue'))
 import type { LauncherItem } from '../types'
 import type { HomeWorkspace } from '../data/homeWorkspaces'
+import { readIntent,readTransactionValues,canReplay,type TransactionIntent } from './transactionIntent'
 import { folderParents } from '../data/folderTree'
 import { readWindowSession, saveWindowSession } from './windowSession'
 import { activeWindow, activateWindow, closeWindow, openWindow, updateWindow, maxWindows, reconcileWindowSpaces } from './windowManager'
@@ -18,6 +19,20 @@ const emit = defineEmits<{ open:[item:LauncherItem,event?:MouseEvent]; edit:[ite
 const state=ref(readWindowSession(props.workspaces,props.items.filter(i=>i.folder).map(i=>i.id))), overview=ref(false), limit=ref(false)
 watch(state,value=>saveWindowSession(value))
 const clipboard=ref<FinderClipboard>(),pasting=ref(false)
+const pending=ref<TransactionIntent>(),replayable=ref(false),recovering=ref(false)
+async function refreshIntent(){
+ try{pending.value=await readIntent();replayable.value=!!pending.value&&canReplay(pending.value,readTransactionValues())}catch{/* mutation reports storage errors */}
+}
+onMounted(refreshIntent)
+watch(()=>props.operationError,()=>void refreshIntent())
+async function recover(direction:'rollback'|'complete'|'keep'){
+ if(!pending.value||recovering.value)return
+ const question=direction==='keep'?'结束事务记录并保留已写入的数据？这会刷新页面并丢弃四类入口数据尚未写入的修改。请先导出备份，并关闭其他编辑中的标签页。':'恢复将刷新页面，丢弃尚未写入的入口、文件夹、排序和工作区修改。请关闭其他编辑中的标签页。是否继续？'
+ if(!window.confirm(question))return
+ recovering.value=true
+ try{await props.mutate({kind:'recover',id:pending.value.id,direction});await refreshIntent()}
+ finally{recovering.value=false}
+}
 const active=computed(()=>activeWindow(state.value,props.workspaceId))
 const minimized=computed(()=>state.value.windows.filter(w=>w.minimized&&w.spaceId===props.workspaceId))
 function previewItems(space:HomeWorkspace){
@@ -84,7 +99,12 @@ async function paste(workspaceId:string,folderId:string|null){
    <p v-if="!state.windows.length">没有运行中的窗口。</p>
    <div v-for="window in [...state.windows].reverse()" :key="window.id" class="overview-window"><button type="button" @click="activate(window.id)"><Folder :size="20"/><span>{{window.title}}<small>{{spaceName(window.spaceId)}} · {{window.minimized?'已最小化':window.id===active?'当前窗口':'打开中'}}</small></span></button><select :aria-label="'移动窗口 '+window.title" :value="window.spaceId" @change="moveWindow(window.id,$event)"><option v-for="space in workspaces" :key="space.id" :value="space.id">{{space.name}}</option></select></div>
   </section>
-  <div v-if="operationError" class="window-limit" role="alert">{{operationError}} <button type="button" @click="emit('dismissError')">关闭</button></div>
+  <section v-if="pending" class="window-limit recovery-panel" aria-label="桌面事务恢复">
+   <strong>发现未完成的桌面事务</strong><p>{{replayable?'可以继续写入或回退到操作前。':'检测到其他修改，禁止自动回放，请先导出备份。'}}</p>
+   <div><button :disabled="recovering||!replayable" @click="recover('complete')">完成写入</button><button :disabled="recovering||!replayable" @click="recover('rollback')">回退事务</button><button :disabled="recovering" @click="recover('keep')">保留当前数据</button></div>
+   <p v-if="operationError" role="alert">{{operationError}}</p>
+  </section>
+  <div v-else-if="operationError" class="window-limit" role="alert">{{operationError}} <button type="button" @click="emit('dismissError')">关闭</button></div>
   <p v-else-if="limit" role="status" class="window-limit">最多打开 {{maxWindows}} 个窗口，请先关闭一个。</p>
  </div>
 </template>
@@ -97,5 +117,6 @@ async function paste(workspaceId:string,folderId:string|null){
 .window-overview{left:12px;bottom:130px;width:min(390px,calc(100vw - 24px));padding:10px;max-height:55vh;overflow:auto}.window-overview header{display:flex;align-items:center;justify-content:space-between;padding:4px 6px}.window-overview>button{width:100%;text-align:left}.window-overview>button span{flex:1;overflow:hidden;text-overflow:ellipsis}.window-overview small{opacity:.7}
 .space-list{display:flex;gap:5px;flex-wrap:wrap;border-block:1px solid var(--ui-border);padding:8px 0;margin:5px 0}.space-list small{flex-basis:100%;padding:2px 6px;opacity:.7}.space-list button[aria-pressed=true]{background:var(--ui-accent-soft);color:var(--ui-accent-text)}
 .space-list button{display:flex;flex-direction:column;align-items:stretch;width:calc(50% - 3px);white-space:normal;text-align:left;border:1px solid var(--ui-border)}.space-list button>span:last-child{font-size:10px;opacity:.7}.space-preview{min-height:64px;position:relative;overflow:hidden;background:linear-gradient(135deg,#7894a5,#415e71);border-radius:6px;padding:7px}.space-preview i{position:absolute;width:6%;height:9%;background:#ffffffa0;border-radius:2px}.overview-window{display:flex;align-items:center;gap:4px}.overview-window>button{flex:1;min-width:0;text-align:left}.overview-window>button>span{min-width:0;overflow:hidden;text-overflow:ellipsis}.overview-window small{display:block;font-size:10px}.overview-window select{max-width:100px;border:1px solid var(--ui-border);background:var(--ui-surface);color:inherit;border-radius:6px;padding:5px}
+.recovery-panel{width:min(400px,calc(100vw - 24px));box-sizing:border-box;font-size:13px}.recovery-panel p{margin:6px 0;line-height:1.5}.recovery-panel>div{display:flex;gap:6px;flex-wrap:wrap}.recovery-panel button{border:1px solid var(--ui-border);background:var(--ui-panel);color:inherit;padding:6px 8px;border-radius:6px;cursor:pointer}.recovery-panel button:disabled{opacity:.4;cursor:default}
 .window-limit{left:12px;bottom:130px;padding:10px;max-width:calc(100vw - 24px)}
 </style>

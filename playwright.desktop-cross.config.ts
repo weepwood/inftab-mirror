@@ -6,5 +6,5 @@ export default defineConfig({
   {name:'firefox',use:{...devices['Desktop Firefox']}},
   {name:'webkit',use:{...devices['Desktop Safari']}},
  ],
- testMatch:'**/desktop-alpha2.spec.ts',
+ testMatch:['**/desktop-alpha2.spec.ts','**/desktop-storage.spec.ts'],
 })
