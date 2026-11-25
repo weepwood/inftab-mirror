@@ -439,3 +439,15 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - #44 远程4项全绿（737单测，Linux非Swiper199.7/200KiB），合并160b9b1。新批在独立本地分支feat/desktop-form-density开发，确认#44候选与main源码树一致后更新基线。
 - 设置分组、标题、辅助文字、桌面编辑器头部/正文/底部和文件夹选择列表统一语义表面；mac-field-line独立字段边界令牌，保留44px操作目标和小屏输入字号。自定义搜索引擎错误焦点、必填、aria-invalid/aria-describedby及IME保护；错误色使用ui-danger。保留经典与自定义主题边界、原数据格式和业务规则。
 - 初次构建Vue模板if解析失败，已改布尔短路表达式。最终check/build:web、28/28相关单测、7/7定向、76/76生产Edge宽范围通过。320×360浅深主题实际文本/字段对比度与保存可达性通过。真实截图见docs/screenshots/macos-desktop/forms。Mac首屏59.8/60.5、非Swiper199.0/200、CSS33.8/64KiB；PWA额外10702/16384 B、全站1739903/4194304 B。无新依赖/放宽预算。远程CI需核验Linux预算；未全面覆盖所有表单对比度、强制颜色组合或真机。不提交临时playwright.local-window41.config.ts。保持#37与V2.0.0 Tag不变。
+
+## 内置业务窗口视觉归一（2026-11-25）
+- #45 远程3项全绿（737单测/95文件），Linux非Swiper显示200.0/200KiB仍通过原门禁，合并8de2601，Pages 45632674751成功，95/95文件逐字节一致。基于该main建立feat/desktop-app-visual，隔离worktree /private/tmp/inftab-window41。保持#37与V2.0.0 Tag。
+- 运行时仅desktop.css改动：待办、笔记、日历、计算器语义表面/控件/列表/空状态统一；默认深色业务强调文字提高可读性，保留自定义主题；窗口容器查询、笔记双栏滚动及窄宽度、计算器分层、日历日期格紧凑。无业务/数据格式变化，无新JS源码或依赖。真实浅深截图8张；笔记缩放偶有文本选择痕迹待后续手势专项。
+- check/build:web、双主题业务专项2/2，宽范围73/74，旧停靠还原用例读取中间坐标，等待提交sessionStorage几何与实际布局一致后原精确断言保留，最终两并发三轮9/9。未重跑全量。Mac首屏59.8/60.5、非Swiper199.1/200、CSS34.7/64KiB；PWA额外10705/16384 B、全站1746365/4194304 B。Linux预算接近上限，构建hash可能影响压缩大小，远程CI待核验，不放宽预算。未全面覆盖其它业务应用/强制颜色/真机。临时playwright.local-window41.config.ts不提交。下一轮先收口新PR，再精简运行时资源并继续其他应用与桌面视觉。
+
+## #46 资源预算与窗口手势收口
+- 8eb4104 的 verify 139272400284、cross 139272400092 都因 Linux gzip 204831 > 204800 B（超31 B）构建失败，UI通过。未放宽预算。保留desktop-shell合并菜单/画布及workspace-recovery合并备份解析/恢复，撤销会使桌面窗口静态加载settings-tools的事务合并实验。保持Swiper独立、经典首屏及桌面外壳按需加载契约。
+- WindowFrame 标题栏和缩放手柄 user-select:none，正文保持可选择，双主题笔记缩放新增DOM无误选断言；生产分包新增经典/设置不加载desktop-shell、桌面仅加载一次且可往返验证。首次新测试同名设置按钮定位歧义已修正。最终check/build:web、生产Edge 71/71（desktop-alpha2、production-chunks、desktop-storage、config-migration）通过。Mac首屏59.8/60.5、非Swiper198.4/200、CSS34.4/64KiB，PWA额外10666/16384 B、全站1746653/4194304 B。Linux待CI，未重复全量单测或真机。追加现有#46，不创建新PR；#45线上8de2601保持不变，#37与正式Tag保持。通过后合并部署，再继续其他业务应用视觉。
+
+## #46 WebKit 缩放选择回归
+- 779c71a 常规737/737、PWA、UI通过，Linux非Swiper199.4/200KiB；cross 139280374918 实际106通过/2跳过/2失败，两个WebKit笔记缩放用例仍选中页脚文字，CSS user-select单独不足。缩放手柄新增mousedown.prevent阻止原生鼠标文本选择起始，保留原选择断言及正文编辑，不改其他行为。本机build:web、四项核心缩放专项4/4通过，Mac非Swiper198.5/200KiB。对应Playwright WebKit 2370未安装，远程复验待核验。#47独立视觉提交c66dc28，基于本PR分支，合并#46后再转main，保留6张截图与84/84本机回归记录，不提前合并。

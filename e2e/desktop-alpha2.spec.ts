@@ -1260,6 +1260,14 @@ test('window snap can be cancelled, dragged out and maximized at the top edge',a
  await dragTo(800,180);await page.mouse.up()
  await expect(left).toHaveAttribute('aria-pressed','false')
  await expect.poll(async()=>Math.round((await finder.boundingBox())!.width)).toBe(Math.round(free.width))
+ // InteractJS commits preferred geometry on drag end. Wait for the actual
+ // rendered frame to catch up with that committed state before comparing.
+ await expect.poll(()=>finder.evaluate(el=>{
+  const saved=JSON.parse(sessionStorage.getItem('inftab.window-geometry.v1')??'{}')
+  const g=Object.entries(saved).find(([key])=>key.startsWith('finder:'))?.[1] as {x:number;y:number;width:number;height:number}|undefined
+  const r=el.getBoundingClientRect()
+  return !!g&&Math.abs(r.x-g.x)<.1&&Math.abs(r.y-g.y)<.1&&Math.abs(r.width-g.width)<.1&&Math.abs(r.height-g.height)<.1
+ })).toBe(true)
  const restored=(await finder.boundingBox())!
  await dragTo(700,43)
  await expect(page.locator('.window-snap-preview')).toBeVisible()
@@ -1370,5 +1378,66 @@ for(const theme of ['light','dark']){
   await page.screenshot({path:info.outputPath('editor-error.png'),animations:'disabled'})
   await page.keyboard.press('Escape')
   await expect(editor).toHaveCount(0)
+ })
+}
+
+for(const theme of ['light','dark']){
+ test('built-in desktop apps use consistent surfaces and adapt to window width '+theme,async({page},info)=>{
+  await page.setViewportSize({width:1280,height:900})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.addInitScript(theme=>{
+   localStorage.setItem('inftab.desktop-mode.v1','true')
+   localStorage.setItem('inftab.preferences.v1',JSON.stringify({themeMode:theme}))
+  },theme)
+  await page.goto('/')
+  async function open(title:string){
+   await page.getByRole('button',{name:'打开命令面板'}).click()
+   const search=page.getByRole('combobox',{name:'搜索命令'})
+   await search.fill(title);await search.press('Enter')
+   const win=page.getByRole('dialog',{name:title,exact:true})
+   await expect(win).toBeVisible()
+   return win
+  }
+  const todo=await open('待办事项')
+  await todo.getByRole('textbox',{name:'添加一项待办'}).fill('Review desktop controls')
+  await todo.getByRole('button',{name:'添加',exact:true}).click()
+  await expect(todo.getByText('Review desktop controls')).toBeVisible()
+  await todo.getByRole('button',{name:'标记为完成'}).click()
+  await expect(todo.getByRole('button',{name:'标记为未完成'})).toHaveAttribute('aria-pressed','true')
+  await page.screenshot({path:info.outputPath('todo.png'),animations:'disabled'})
+  await todo.getByRole('button',{name:'关闭窗口'}).click()
+  const notes=await open('笔记')
+  await notes.getByRole('button',{name:'新建笔记'}).click()
+  await notes.getByRole('textbox',{name:'笔记标题'}).fill('Design notes')
+  await notes.getByRole('textbox',{name:'笔记内容'}).fill('One consistent workspace.')
+  await expect(notes.locator('.note-list-item.active')).toContainText('Design notes')
+  const before=(await notes.boundingBox())!,edge=(await notes.locator('.resize-e').boundingBox())!
+  await page.mouse.move(edge.x+2,edge.y+edge.height/2);await page.mouse.down()
+  await page.mouse.move(edge.x+2-(before.width-360),edge.y+edge.height/2,{steps:10});await page.mouse.up()
+  await expect.poll(async()=>Math.round((await notes.boundingBox())!.width)).toBe(360)
+  await expect(notes.getByRole('textbox',{name:'笔记内容'})).toBeInViewport()
+  expect(await page.evaluate(()=>window.getSelection()?.toString()??'')).toBe('')
+  expect(await notes.locator('.tool-content').evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1)
+  await page.screenshot({path:info.outputPath('notes-narrow.png'),animations:'disabled'})
+  await notes.getByRole('button',{name:'关闭窗口'}).click()
+  const calendar=await open('日历')
+  const month=calendar.locator('.calendar-month-nav h3'),previous=await month.textContent()
+  await calendar.getByRole('button',{name:'下个月'}).click()
+  await expect(month).not.toHaveText(previous!)
+  await calendar.locator('.calendar-day:not(.outside-month)').first().click()
+  await expect(calendar.locator('.calendar-day[aria-pressed=true]')).toHaveCount(1)
+  await page.screenshot({path:info.outputPath('calendar.png'),animations:'disabled'})
+  await calendar.getByRole('button',{name:'关闭窗口'}).click()
+  const calc=await open('计算器')
+  await calc.getByRole('textbox',{name:'计算表达式'}).fill('6*7')
+  await calc.getByRole('textbox',{name:'计算表达式'}).press('Enter')
+  await expect(calc.locator('output')).toContainText('42')
+  const contrast=await calc.locator('output').evaluate(el=>{
+   const lum=(value:string)=>value.match(/[\d.]+/g)!.slice(0,3).map(Number).map(x=>x/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((v,x,i)=>v+x*[.2126,.7152,.0722][i]!,0)
+   const a=lum(getComputedStyle(el).color),b=lum(getComputedStyle(el.parentElement!).backgroundColor)
+   return (Math.max(a,b)+.05)/(Math.min(a,b)+.05)
+  })
+  expect(contrast).toBeGreaterThanOrEqual(4.5)
+  await page.screenshot({path:info.outputPath('calculator.png'),animations:'disabled'})
  })
 }

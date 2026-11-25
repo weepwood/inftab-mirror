@@ -308,3 +308,26 @@ test('default launcher only fetches the search component when requested', async 
   await expect(page.getByRole('searchbox', { name: '搜索快捷入口名称或网址' })).toBeFocused()
   expect(requests).toHaveLength(1)
 })
+
+test('desktop shell shares one lazy chunk and remains absent in classic mode',async({page})=>{
+ const requests:string[]=[]
+ page.on('request',request=>{
+  if(/\/assets\/desktop-shell-[^/]+\.js(?:\?|$)/.test(request.url()))requests.push(request.url())
+ })
+ await page.reload()
+ await expect(page.locator('.shortcut-grid-wrap')).toBeVisible()
+ expect(requests).toEqual([])
+ await page.locator('.home-actions').getByRole('button',{name:'打开设置',exact:true}).click()
+ await expect(page.getByRole('dialog',{name:'设置'})).toBeVisible()
+ expect(requests).toEqual([])
+ await page.getByRole('dialog',{name:'设置'}).getByRole('button',{name:'关闭',exact:true}).click()
+ await page.getByRole('button',{name:'桌面模式',exact:true}).click()
+ await expect(page.locator('.desktop-surface')).toBeVisible()
+ await expect(page.getByRole('navigation',{name:'桌面功能菜单'})).toBeVisible()
+ expect(requests).toHaveLength(1)
+ await page.getByRole('button',{name:'经典模式',exact:true}).click()
+ await expect(page.locator('.shortcut-grid-wrap')).toBeVisible()
+ await page.getByRole('button',{name:'桌面模式',exact:true}).click()
+ await expect(page.locator('.desktop-surface')).toBeVisible()
+ expect(requests).toHaveLength(1)
+})
