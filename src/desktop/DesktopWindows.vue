@@ -132,5 +132,5 @@ async function paste(workspaceId:string,folderId:string|null){
 .overview-preview-body{flex:1;display:grid;place-items:center;color:var(--mac-muted)}
 .overview-caption{font-weight:600;line-height:1.4}.overview-caption small{font-weight:400;margin-top:3px}
 .overview-window select{max-width:none;width:100%;font-size:11px}
-@media(max-width:460px){.overview-grid{grid-template-columns:repeat(auto-fill,minmax(125px,1fr))}.overview-preview{height:72px}}
+@media(max-width:460px){.desktop-windows:has(.window-frame.active:not([aria-hidden=true])) .window-shelf{visibility:hidden}.overview-grid{grid-template-columns:repeat(auto-fill,minmax(125px,1fr))}.overview-preview{height:72px}}
 </style>

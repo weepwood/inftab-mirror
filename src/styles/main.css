@@ -1373,3 +1373,13 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
  .desktop-mode.theme-dark .mac-settings-panel .toggle-row input[type=checkbox]:not(:checked){background:#55555c}
  .desktop-mode .mac-settings-panel .toggle-row input[type=checkbox]:checked{background:var(--mac-selection)}
 }
+
+/* Release polish: compact desktop control rhythm, no new data behavior. */
+.desktop-mode .spotlight-group-heading{padding:9px 10px 3px;font:600 11px/1.4 var(--mac-font);color:var(--mac-muted)}
+.desktop-mode .command-option small{max-width:35%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.desktop-mode .mac-settings-panel .toggle-row{min-height:36px;border-radius:6px;color:var(--mac-ink);font-size:13px}
+.desktop-mode .mac-settings-panel .toggle-row+.toggle-row{border-top:1px solid var(--mac-line)}
+.desktop-mode .mac-settings-panel .toggle-row .select-field{--select-height:28px}
+.desktop-mode .mac-settings-panel .settings-section input[type=range]{accent-color:var(--mac-selection)}
+.desktop-mode .tool-window .tool-content{font-family:var(--mac-font)}
+@media(prefers-reduced-motion:reduce){.desktop-mode .command-option,.desktop-mode .toggle-row,.desktop-mode .toggle-row input[type=checkbox],.desktop-mode .toggle-row input[type=checkbox]::after{transition:none}}
