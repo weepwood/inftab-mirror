@@ -374,3 +374,9 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 用户调整优先级：下一阶段以macOS桌面接近一致为重点，冻结#37存储扩展；#37独立保留Draft，不将实验性权威存储合入main。视觉分支基于已发布4eb27a6，独立集中PR；未来与#37合并需处理AGENTS/设计文档及共享组件冲突。
 - 新增docs/macos-desktop-design.md：Apple HIG/用户指南参考、字体/材质/语义规范和完整专项验收。首批桌面专属令牌、菜单栏、窗口交通灯、Finder、桌面标签及菜单、Dock、Spotlight与窗口概览视觉调整。保留经典模式、现有数据与窗口引擎，不引入依赖和受限字体文件；自定义应用内容色保留。新增Finder浅深色CSS断言，未本机运行，待新CI与真实截图审查。
 - 本轮使用GitHub连接器，保留Desktop Commander额度供真实Mac浏览器截图与视觉验收。完成上述专项后集中合并部署，保持V2.0.0正式Tag不变。后续优先真实界面差异，不扩大存储迁移。
+
+## macOS 视觉专项第二批（2026-11-25）
+- #38 初始64cb00e四项CI全部成功。独立worktree /private/tmp/inftab-macos38（detached），从该head推进；本机npm ci及build:web通过。#37继续冻结Draft，不混入迁移功能。
+- 复用ClockWidget移入菜单栏，窄屏日期/时间收纳；桌面紧凑搜索和操作条、更多画布空间、原创CSS文件夹图标、Finder紧凑列表及路径/窗口层级、顶部居中Mission Control概览、Spotlight位置、工作区和Dock材质。保留经典模式、用户偏好与保存坐标，不改数据格式，不新增依赖/字体资产。
+- 真实Mac Edge截图发现Dock底座悬空，修复旧height与inset冲突，新增底座包围图标几何门禁。已审核最终桌面/Finder/Spotlight/概览截图，压缩JPG及说明放docs/screenshots/macos-desktop；深色Finder另有既有真实截图。未完成Apple系统同分辨率逐像素对照，仍存在菜单栏真实功能、默认排列、原生控件/动效与设置差距。
+- 本机首次宽范围生产Edge 50/50（desktop-alpha、alpha2、storage、production-chunks），Dock修复后最终相关4/4；build:web首屏59.3/60.5、非Swiper195.1/200、Swiper26.4/30、CSS29.9/64 KiB，PWA额外JS10712/16384 B、1699262/4194304 B。未放宽预算。新的远程CI待验收。临时playwright.local-macos.config.ts不提交。继续集中在#38，下一轮优先菜单栏、图标与设置实际视觉，而不是数据迁移。

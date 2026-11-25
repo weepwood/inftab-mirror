@@ -1302,7 +1302,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 
 /* macOS-inspired desktop-only surfaces. No layout changes to classic mode. */
 .desktop-mode .home-dock {bottom:12px;max-width:max(100px,calc(100vw - 380px));}
-.desktop-mode .home-dock::before {inset:24px 9px 14px;border-radius:18px;background:var(--mac-dock);border-color:rgba(255,255,255,.32);box-shadow:0 9px 26px #0003,inset 0 1px 0 #fff4;backdrop-filter:blur(22px) saturate(150%);}
+.desktop-mode .home-dock::before {inset:auto 8px 12px;height:calc(var(--dock-item-size) + 22px);border-radius:18px;background:var(--mac-dock);border-color:rgba(255,255,255,.32);box-shadow:0 9px 26px #0003,inset 0 1px 0 #fff4;backdrop-filter:blur(22px) saturate(150%);}
 .desktop-mode .home-dock-track {padding:30px 16px 22px;}
 .desktop-mode .home-dock-icon {border-radius:calc(var(--dock-icon-size,44px) * .23);box-shadow:0 3px 8px #0003,inset 0 1px 0 #fff5;}
 .desktop-mode .command-palette {width:min(620px,calc(100% - 24px));border-radius:14px;background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line);box-shadow:var(--mac-shadow-active);font-family:var(--mac-font);}
@@ -1314,3 +1314,17 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .desktop-mode .command-option[aria-selected="true"] small {color:#fff;}
 @media(max-width:780px){.desktop-mode .home-dock{bottom:30px;max-width:max(90px,calc(100vw - 202px));}}
 @media(forced-colors:active){.desktop-mode .command-option[aria-selected="true"]{background:Highlight;color:HighlightText}.desktop-mode .command-option[aria-selected="true"] small{color:HighlightText}}
+
+/* Original, CSS-rendered folder glyph, shared by Finder and free desktop.
+   No external SVG, Apple image or font assets. */
+.mac-folder-icon{position:relative;display:block;width:var(--folder-size,44px);height:calc(var(--folder-size,44px)*.83);filter:drop-shadow(0 2px 2px #0002)}
+.mac-folder-icon::before,.mac-folder-icon::after{content:"";position:absolute;box-sizing:border-box}
+.mac-folder-icon::before{inset:0 2% 14%;border-radius:12% 12% 9% 9%;background:linear-gradient(180deg,#a2d9ff,#43a5e7);clip-path:polygon(0 0,40% 0,50% 19%,100% 19%,100% 100%,0 100%);border:1px solid #438ecf}
+.mac-folder-icon::after{inset:23% 0 0;border:1px solid #4294d3;border-top-color:#c3eaff;border-radius:7% 9% 10% 10%;background:linear-gradient(180deg,#92dbff 0%,#66c2fc 21%,#52b5f6 86%,#4caaf1);box-shadow:inset 0 1px 0 #fff8}
+.desktop-mode .home-workspace-trigger{min-height:36px;padding:0 10px;border-radius:8px;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);box-shadow:0 4px 15px #0002}
+.desktop-mode .home-workspace-trigger:hover,.desktop-mode .home-workspace-trigger[aria-expanded=true]{background:var(--mac-menu)}
+.desktop-mode .home-dock-entry::before{background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line);font-size:12px}
+.desktop-mode .dock-running-dot{background:var(--mac-ink)}
+.desktop-mode .command-palette{margin:min(17vh,120px) auto auto;max-height:min(480px,calc(100dvh - min(17vh,120px) - 16px))}
+.desktop-mode .command-palette .command-shell input{color:var(--mac-ink)}
+@media(forced-colors:active){.mac-folder-icon{forced-color-adjust:none}.desktop-mode .home-workspace-trigger{border-color:ButtonText}}

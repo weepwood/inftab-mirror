@@ -858,10 +858,11 @@ onBeforeUnmount(() => {
       <button type="button" class="round-action minimal-mode-toggle" :aria-label="minimalMode ? '退出极简模式' : '进入极简模式'" :aria-pressed="minimalMode" :title="minimalMode ? '退出极简模式' : '进入极简模式'" @click="toggleMinimalMode"><X v-if="minimalMode" :size="18" /><span v-else class="minimal-mode-symbol" aria-hidden="true"></span></button>
       <button type="button" class="round-action" aria-label="回到首页" title="回到首页" @click="goToPage(0)"><House :size="19" /></button>
       <button type="button" class="round-action" aria-label="打开设置" title="打开设置" @click="openPanel('settings')"><Menu :size="21" /></button>
+      <ClockWidget v-if="desktopMode && !minimalMode && preferences.showClock" />
     </header>
 
     <section id="main-content" class="home-content" :class="{ 'home-content-minimal': minimalMode }" tabindex="-1">
-      <ClockWidget v-if="preferences.showClock" />
+      <ClockWidget v-if="preferences.showClock && (!desktopMode || minimalMode)" />
       <HomeWidgetShelf
         v-if="showHomeWidgets && !minimalMode"
         :widget-ids="preferences.homeWidgetIds"
@@ -1010,18 +1011,25 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.desktop-mode .home-content{width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;padding-top:82px;padding-bottom:84px}
-.desktop-mode .desktop-shell{min-height:320px}
+.desktop-mode .home-content{width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;padding-top:54px;padding-bottom:84px}
+.desktop-mode .desktop-shell{min-height:240px}
 .desktop-mode .storage-error-toast{position:fixed;z-index:9;bottom:14px}
 .desktop-mode-toggle{font-size:22px}
 .desktop-mode .home-brand{display:none}
 .desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:42px;padding:2px 14px;gap:5px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);backdrop-filter:blur(24px) saturate(140%);box-shadow:0 1px 0 var(--mac-line);z-index:8}
-.desktop-mode .home-actions .round-action{width:32px;height:32px;border-radius:6px;color:var(--mac-ink);background:transparent}
+.desktop-mode .home-actions .round-action{width:30px;height:30px;border-radius:6px;color:var(--mac-ink);background:transparent}
 .desktop-mode .home-actions .round-action:hover{background:var(--ui-accent-soft)}
 .desktop-menu-label{border:0;background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:500;padding:6px 10px;border-radius:5px;cursor:pointer}
 .desktop-menu-label:hover{background:var(--ui-accent-soft)}
 .desktop-menu-label:first-child{margin-right:2px;font-weight:650}
 .desktop-mode .desktop-mode-toggle{margin-left:auto}
+.desktop-mode .home-content{justify-content:flex-start;gap:8px}
+.desktop-mode .home-content :deep(.search-area){width:min(420px,100%);margin:0 auto 4px}
+.desktop-mode .home-content :deep(.search-box){height:40px;border-radius:10px;background:var(--mac-bar);border-color:var(--mac-line);box-shadow:0 4px 18px #0002}
+.desktop-mode .home-actions :deep(.home-clock){display:flex;flex-direction:row-reverse;align-items:center;gap:7px;margin:0 0 0 6px;color:var(--mac-ink);text-shadow:none;white-space:nowrap}
+.desktop-mode .home-actions :deep(.clock-time),.desktop-mode .home-actions :deep(.clock-date){font:500 12px/1.3 var(--mac-font);color:inherit;letter-spacing:0;text-shadow:none}
+@media(max-width:760px){.desktop-mode .home-actions :deep(.clock-date){display:none}}
+@media(max-width:460px){.desktop-mode .home-actions :deep(.home-clock){display:none}}
 .desktop-mode .home-actions .round-action:focus-visible,.desktop-menu-label:focus-visible{outline:2px solid var(--ui-focus);outline-offset:1px}
 @media(max-width:480px){.desktop-mode .home-actions{padding-inline:5px;gap:2px}.desktop-menu-label{padding:4px 5px;font-size:12px}.desktop-mode .home-actions .round-action{width:29px;height:29px}}
 

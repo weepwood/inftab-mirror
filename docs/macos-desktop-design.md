@@ -22,3 +22,21 @@
 5. Spotlight、Mission Control、设置与小组件：完整独立视觉层级，键盘操作、双主题、reduced-motion、forced-colors、窗口焦点。
 6. 复用成熟组件而非重写窗口引擎；在视觉差异和实际浏览器交互均通过后，合并并核验 Pages，独立于 #37 后续迁移。当前首批代码尚未完成新 CI/截图核验，不宣称 1:1。
 
+
+## 第二批：实际桌面构图和截图验收
+
+- 将用户已启用的时钟移入顶部菜单栏，保留日期、时间及原显示偏好；窄屏隐藏日期，极窄屏隐藏时钟以避免挤压操作。经典模式保持原布局。
+- 桌面搜索（用户已启用时）缩为 420×40px 的紧凑表面；桌面操作条缩至右侧，不再横跨整个桌面，增加可用画布空间；不改变存储坐标、网格算法或默认启动模式。
+- Finder 与桌面共用原创 CSS 文件夹字形，避免 Apple 私有资源；列表图标 24px、紧凑行高。窗口概览移到顶部中央，空间预览采用三列结构（非实时缩略图）。Spotlight 上移至常用搜索位置；不改变键盘交互。
+- 实际 1440×900 Mac Edge 截图发现 Dock 底座与图标错位（原 CSS inset 与固定 height 冲突）；改为底部锚定，新增底座包围图标几何断言。截图复核确认底座已正确包围图标。
+- 本机生产 Edge 宽范围 50/50，修复 Dock 后针对 Finder 双主题、运行状态与新视觉契约 4/4；构建门禁不变。Linux 新提交 CI 尚未验收；截图是当前实现证据，并非与 Apple 系统逐像素对照。
+
+### 实际截图（Mac Edge，压缩 JPG，仅文档，不进入发布包）
+
+- [桌面（1440×900）](screenshots/macos-desktop/desktop.jpg)
+- [Finder 列表](screenshots/macos-desktop/finder.jpg)
+- [Finder 深色（1280×900）](screenshots/macos-desktop/finder-dark.jpg)
+- [Spotlight](screenshots/macos-desktop/spotlight.jpg)
+- [窗口概览](screenshots/macos-desktop/overview.jpg)
+
+下一批优先补齐真正的应用菜单、图标默认排列可选策略、Dock/窗口交互与 Spotlight 分类层级；不改变用户已保存位置。系统设置窗口及完整多分辨率/同环境视觉对照仍待完成。
