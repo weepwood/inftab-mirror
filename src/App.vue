@@ -31,9 +31,9 @@ const SearchBar = defineAsyncComponent({
 })
 const ClockWidget = lazyHome(() => import('./components/ClockWidget.vue'), '时钟')
 const LauncherSearchResults = lazyHome(() => import('./components/LauncherSearchResults.vue'), '入口查找', true)
-const FinderWindow = lazyHome(() => import('./desktop/FinderWindow.vue'), 'Finder', true)
-const finderOpen = ref(false)
-const finderFolderId = ref<string>()
+const DesktopWindows = lazyHome(() => import('./desktop/DesktopWindows.vue'), '桌面窗口', true)
+const finderRequest = shallowRef<{ sequence: number; workspaceId: string; folderId?: string }>()
+let finderSequence = 0
 const DesktopShell = lazyHome(() => import('./desktop/DesktopShell.vue'), '自由桌面', true)
 const desktopMode = useStoredState('inftab.desktop-mode.v1', false, value => value === true)
 const ShortcutGrid = lazyHome(() => import('./components/ShortcutGrid.vue'), '快捷入口', true)
@@ -377,10 +377,9 @@ function openPanel(id: PanelId) {
   loadPanelRegistry()
 }
 
-watch(desktopMode, value => { if(!value) finderOpen.value=false })
+watch(desktopMode, value => { if(!value) finderRequest.value=undefined })
 function openFinder(folderId?: string) {
-  finderFolderId.value = folderId
-  finderOpen.value = true
+  finderRequest.value = { sequence: ++finderSequence, workspaceId: activeHomeWorkspaceId.value, folderId }
 }
 function desktopOpen(item: LauncherItem, event?: MouseEvent) {
   if (item.folder) openFinder(item.id)
@@ -924,7 +923,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <FinderWindow v-if="finderOpen && desktopMode && !minimalMode" :key="finderFolderId ?? 'root'" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :folder-id="finderFolderId" :dark="effectiveTheme==='dark'" @close="finderOpen=false" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembership" @create="openFinderFolderEditor" />
+    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembership" @create="openFinderFolderEditor" />
     <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
