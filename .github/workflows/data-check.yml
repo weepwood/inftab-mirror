@@ -8,6 +8,7 @@ on:
       - 'src/data/shortcutBatch.ts'
       - 'src/data/workspaceLayout.ts'
       - 'src/desktop/ownership.ts'
+      - 'src/desktop/desktopOperations.ts'
       - 'src/data/workspaceOwnership.ts'
       - 'src/data/shortcutTags.ts'
       - 'src/composables/workspaceBackup.ts'

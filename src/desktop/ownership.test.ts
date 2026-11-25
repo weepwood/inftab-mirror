@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { HomeWorkspace } from '../data/homeWorkspaces'
-import { planWorkspaceMove, planFolderMembership } from './ownership'
+import { planWorkspaceMove, planFolderMembership, planPaste } from './ownership'
 function fixture() {
  const workspaces: HomeWorkspace[] = [
   { id:'a',name:'A',itemIds:['folder','one','two','other'],desktop:{version:1,snap:true,positions:{one:{x:0,y:0},other:{x:96,y:0}}}},
@@ -35,4 +35,16 @@ describe('desktop ownership plans',()=>{
   expect(planFolderMembership(state,['other','one'],'folder')?.[0]?.shortcutIds).toEqual(['one','two','other'])
   expect(planFolderMembership(state,['one','two'],null)?.[0]?.shortcutIds).toEqual([])
  })
+})
+
+it('cuts and copies across folders with a validated source location',()=>{
+ const state=fixture()
+ const source={mode:'cut' as const,ids:['one'],workspaceId:'a',folderId:'folder'}
+ const moved=planPaste(state,source,'b','second')!
+ expect(moved.folders[0]?.shortcutIds).toEqual(['two'])
+ expect(moved.folders[1]?.shortcutIds).toEqual(['three','one'])
+ expect(planPaste({...state,...moved},source,'a',null)).toBeUndefined()
+ const copied=planPaste(state,{...source,mode:'copy'},'b','second',['copy-one'])!
+ expect(copied.folders[0]?.shortcutIds).toEqual(['one','two'])
+ expect(copied.folders[1]?.shortcutIds).toEqual(['three','copy-one'])
 })

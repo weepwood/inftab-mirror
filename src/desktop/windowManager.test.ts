@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeWindow, activateWindow, closeWindow, emptyWindows, maxWindows, openWindow, updateWindow } from './windowManager'
+import { activeWindow, activateWindow, closeWindow, emptyWindows, maxWindows, openWindow, updateWindow, reconcileWindowSpaces } from './windowManager'
 describe('desktop window manager', () => {
   it('opens independent locations and reactivates without duplicating windows', () => {
     let s = openWindow(emptyWindows(), { workspaceId: 'default' })
@@ -34,4 +34,15 @@ it('keeps tools separate from Finder and reuses singleton tool windows across wo
  state=openWindow(state,{workspaceId:'b',panelId:'notes'})
  expect(state.windows).toHaveLength(2)
  expect(state.windows.at(-1)?.panelId).toBe('notes')
+})
+
+it('isolates active windows by space and rehomes removed spaces',()=>{
+ let state=openWindow(emptyWindows(),{workspaceId:'a'})
+ state=openWindow(state,{workspaceId:'b',panelId:'notes'})
+ expect(activeWindow(state,'a')).toBe(1)
+ expect(activeWindow(state,'b')).toBe(2)
+ state=updateWindow(state,2,{spaceId:'a'})
+ expect(activeWindow(state,'b')).toBeUndefined()
+ expect(activeWindow(state,'a')).toBe(2)
+ expect(reconcileWindowSpaces(state,['b'],'b').windows.every(w=>w.spaceId==='b')).toBe(true)
 })

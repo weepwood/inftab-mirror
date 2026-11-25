@@ -59,3 +59,25 @@ export function planFolderMembership(state: State, ids: readonly string[], targe
     return { ...folder, shortcutIds }
   })
 }
+
+export interface FinderClipboard { mode:'cut'|'copy'; ids:string[]; workspaceId:string; folderId:string|null }
+export type DesktopMutation = {kind:'move';ids:string[];workspaceId:string}|{kind:'membership';ids:string[];folderId:string|null}|{kind:'paste';clipboard:FinderClipboard;workspaceId:string;folderId:string|null}
+export function planPaste(state:State,clipboard:FinderClipboard,workspaceId:string,folderId:string|null,copyIds:string[]=[]):MovePlan|undefined {
+ const ids=[...new Set(clipboard.ids)]
+ const owners=getOwners(state.workspaces)
+ const source=state.workspaces.find(w=>w.id===clipboard.workspaceId)
+ const target=state.workspaces.find(w=>w.id===workspaceId)
+ if(!source||!target||!ids.length||ids.length!==clipboard.ids.length)return
+ if(ids.some(id=>!state.shortcutIds.includes(id)||owners.get(id)!==source.id||((state.folders.find(f=>f.shortcutIds.includes(id))?.id??null)!==clipboard.folderId)))return
+ if(folderId!==null&&(!target.itemIds.includes(folderId)||!state.folders.some(f=>f.id===folderId)))return
+ if(clipboard.mode==='copy'){
+  if(copyIds.length!==ids.length||new Set(copyIds).size!==copyIds.length||copyIds.some(id=>owners.has(id)||state.shortcutIds.includes(id)))return
+  const workspaces=state.workspaces.map(w=>w.id===workspaceId?{...w,itemIds:[...w.itemIds,...copyIds]}:w)
+  const folders=planFolderMembership({...state,workspaces,shortcutIds:[...state.shortcutIds,...copyIds]},copyIds,folderId)
+  return folders?{workspaces,folders}:undefined
+ }
+ const moved=planWorkspaceMove(state,ids,workspaceId)
+ if(!moved)return
+ const folders=planFolderMembership({...state,...moved},ids,folderId)
+ return folders?{...moved,folders}:undefined
+}

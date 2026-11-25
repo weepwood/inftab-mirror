@@ -395,27 +395,15 @@ function desktopOpen(item: LauncherItem, event?: MouseEvent) {
   if (item.folder) openFinder(item.id)
   else openItem(item,event)
 }
-async function finderMove(ids: string[], workspaceId: string) {
+async function desktopMutation(action: import('./desktop/ownership').DesktopMutation) {
   try {
-    const { planWorkspaceMove } = await import('./desktop/ownership')
-    const plan = planWorkspaceMove({workspaces:homeWorkspaces.value,folders:folders.value,shortcutIds:shortcuts.value.map(s=>s.id)},ids,workspaceId)
-    if(!plan){finderOperationError.value='入口或工作区已变化，无法完成移动，请重新选择。';return}
-    folders.value=plan.folders
-    homeWorkspaces.value=plan.workspaces
-    finderOperationError.value=''
-  }catch{finderOperationError.value='桌面操作暂时无法加载，请重试。'}
-}
-async function finderMembershipBatch(ids: string[], folderId: string | null) {
-  try {
-    const { planFolderMembership } = await import('./desktop/ownership')
-    const next = planFolderMembership({workspaces:homeWorkspaces.value,folders:folders.value,shortcutIds:shortcuts.value.map(s=>s.id)},ids,folderId)
-    if(!next){finderOperationError.value='入口或文件夹归属已变化，请重新选择。';return}
-    folders.value=next
-    finderOperationError.value=''
-  }catch{finderOperationError.value='桌面操作暂时无法加载，请重试。'}
+    const { applyDesktopMutation } = await import('./desktop/desktopOperations')
+    finderOperationError.value=(await applyDesktopMutation(action,{workspaces:homeWorkspaces,folders,shortcuts,addShortcuts:addShortcutsData,createBackup}))??''
+    return !finderOperationError.value
+  }catch{finderOperationError.value='桌面操作暂时无法加载，请重试。';return false}
 }
 function finderMembership(item: LauncherItem, folderId: string | null) {
-  if(item.shortcut)void finderMembershipBatch([item.id],folderId)
+  if(item.shortcut)void desktopMutation({kind:'membership',ids:[item.id],folderId})
 }
 function openItem(item: LauncherItem, event?: MouseEvent) {
   if (item.folder) openFolder(item.folder)
@@ -956,7 +944,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembershipBatch" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="runningDesktopPanels=$event" @create="openFinderFolderEditor" />
+    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="runningDesktopPanels=$event" @create="openFinderFolderEditor" />
     <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :running-panels="runningDesktopPanels" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
