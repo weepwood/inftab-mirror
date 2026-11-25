@@ -183,3 +183,73 @@
  .desktop-mode .shortcut-editor>header,.desktop-mode .shortcut-editor-body,.desktop-mode .shortcut-editor .shortcut-editor-footer{padding-inline:14px}
  .desktop-mode .mac-settings-panel .settings-section{padding:12px}
 }
+
+/* Built-in desktop apps: shared control rhythm, neutral surfaces, and
+   container-relative layout. Keep classic side panels unchanged. */
+.desktop-mode .tool-content{container-type:inline-size}
+:root:not([data-custom-theme]) .desktop-mode.theme-dark .tool-content{--ui-accent-text:#9fc9ff}
+.desktop-mode .tool-content :is(.todo-content,.calendar-content,.calculator-content){padding:16px;min-width:0}
+.desktop-mode .tool-content :is(.collection-filters,.calculator-display){background:var(--ui-panel);border-color:var(--ui-border);border-radius:var(--ui-radius-card)}
+.desktop-mode .tool-content :is(.inline-add input,.collection-search,.todo-edit-form input,.notes-tools .ui-select){background:var(--ui-field);color:var(--ui-text);border-radius:var(--ui-radius-control);border-color:var(--mac-field-line)}
+.desktop-mode .tool-content .collection-search input:focus-visible{outline:none}
+.desktop-mode .tool-content .collection-filters button{border-radius:var(--ui-radius-control);min-width:0;gap:4px}
+.desktop-mode .tool-content .collection-filters button[aria-pressed=true]{background:var(--ui-accent-soft);color:var(--ui-accent-text)}
+.desktop-mode .tool-content .inline-add button{border-radius:var(--ui-radius-control)}
+.desktop-mode .tool-content .todo-list{gap:0;margin-top:12px}
+.desktop-mode .tool-content .todo-list li{color:var(--ui-text);padding:6px 4px;gap:8px}
+.desktop-mode .tool-content .todo-list li.done span{color:var(--ui-muted)}
+.desktop-mode .tool-content .todo-check{border-color:var(--mac-field-line);background:var(--ui-field)}
+.desktop-mode .tool-content .todo-list li.done .todo-check{background:var(--ui-accent);border-color:var(--ui-accent);color:white}
+.desktop-mode .tool-content .todo-edit-form{min-width:0}
+.desktop-mode .tool-content .todo-edit-form button{background:var(--ui-accent-soft);color:var(--ui-accent-text)}
+.desktop-mode .tool-content .icon-action{opacity:1;color:var(--ui-muted)}
+.desktop-mode .tool-content .icon-action:hover{background:var(--ui-danger-soft);color:var(--ui-danger)}
+.desktop-mode .tool-content .todo-edit-trigger:hover{background:var(--ui-hover);color:var(--ui-text)}
+.desktop-mode .tool-content :is(.empty-state,.note-blank,.notes-empty,.collection-empty,.panel-footnote,.calculator-footnote){color:var(--ui-muted)}
+.desktop-mode .tool-content .empty-state{padding:36px 12px}
+.desktop-mode .tool-content .empty-state p{color:var(--ui-text)}
+.desktop-mode .tool-content :is(.empty-state,.note-blank)>svg{color:var(--ui-muted);opacity:1}
+.desktop-mode .tool-content .notes-layout{height:100%;min-height:260px;grid-template-columns:minmax(128px,32%) minmax(0,1fr)}
+.desktop-mode .tool-content .notes-list{background:var(--ui-panel);border-color:var(--ui-border);padding:10px 8px}
+.desktop-mode .tool-content .notes-tools{margin:-10px 0 4px;padding:10px 0 8px}
+.desktop-mode .tool-content .note-add{border-radius:var(--ui-radius-control);justify-content:center}
+.desktop-mode .tool-content .note-list-item{color:var(--ui-text);border-radius:var(--ui-radius-control);min-height:58px}
+.desktop-mode .tool-content .note-list-item span{color:var(--ui-muted)}
+.desktop-mode .tool-content .note-list-item.active{background:var(--ui-accent-soft)}
+.desktop-mode .tool-content .note-editor{padding:16px;gap:10px;background:var(--ui-surface)}
+.desktop-mode .tool-content .note-title{flex:none;color:var(--ui-text);font-size:18px}
+.desktop-mode .tool-content .note-editor textarea{min-height:80px;color:var(--ui-text);line-height:1.7}
+.desktop-mode .tool-content .note-editor-footer{border-top:1px solid var(--ui-border);padding-top:8px}
+.desktop-mode .tool-content .note-delete{color:var(--ui-muted)}
+.desktop-mode .tool-content .note-delete:hover{color:var(--ui-danger)}
+.desktop-mode .tool-content .calendar-toolbar{grid-template-columns:auto minmax(0,1fr) auto;margin-bottom:10px}
+.desktop-mode .tool-content .calendar-month-nav{gap:4px;min-width:0}
+.desktop-mode .tool-content .calendar-month-nav h3{color:var(--ui-text);min-width:0;font-size:14px;white-space:nowrap}
+.desktop-mode .tool-content :is(.calendar-weekday,.calendar-nav-button,.calendar-heading-icon){color:var(--ui-muted)}
+.desktop-mode .tool-content .calendar-nav-button:hover,.desktop-mode .tool-content .calendar-day:hover{background:var(--ui-hover)}
+.desktop-mode .tool-content .calendar-day{color:var(--ui-text);border-radius:var(--ui-radius-control);aspect-ratio:auto;min-height:34px}
+.desktop-mode .tool-content .calendar-day.outside-month{color:var(--ui-muted)}
+.desktop-mode .tool-content .calendar-day.today{border-color:var(--ui-accent);color:var(--ui-accent-text)}
+.desktop-mode .tool-content .calendar-day[aria-pressed=true]{background:var(--ui-accent);border-color:var(--ui-accent);color:white}
+.desktop-mode .tool-content .calendar-selected{background:var(--ui-panel);color:var(--ui-muted);border-radius:var(--ui-radius-control);margin-top:12px}
+.desktop-mode .tool-content .calculator-content{max-width:480px;margin-inline:auto;gap:12px}
+.desktop-mode .tool-content .calculator-display>span{color:var(--ui-muted)}
+.desktop-mode .tool-content .calculator-display input{color:var(--ui-text);font-variant-numeric:tabular-nums}
+.desktop-mode .tool-content .calculator-display output{color:var(--ui-accent-text)}
+.desktop-mode .tool-content .calculator-keys button{background:var(--ui-surface);color:var(--ui-text);border-color:var(--ui-border);border-radius:var(--ui-radius-control);font-variant-numeric:tabular-nums}
+.desktop-mode .tool-content .calculator-keys button:hover{background:var(--ui-hover)}
+.desktop-mode .tool-content .calculator-keys .calculator-key-utility{background:var(--ui-panel);color:var(--ui-muted)}
+.desktop-mode .tool-content .calculator-keys .calculator-key-operator{background:var(--ui-accent-soft);color:var(--ui-accent-text)}
+.desktop-mode .tool-content .calculator-keys .calculator-key-equals{background:var(--ui-accent);border-color:var(--ui-accent);color:white}
+@container(max-width:420px){
+ .desktop-mode .tool-content :is(.todo-content,.calendar-content,.calculator-content){padding:12px}
+ .desktop-mode .tool-content .notes-layout{grid-template-columns:minmax(108px,38%) minmax(0,1fr)}
+ .desktop-mode .tool-content .note-editor{padding:10px}
+ .desktop-mode .tool-content .calendar-heading-icon{display:none}
+ .desktop-mode .tool-content .calendar-toolbar{grid-template-columns:auto minmax(0,1fr)}
+ .desktop-mode .tool-content .collection-filters button{font-size:11px;padding-inline:2px}
+}
+@media(pointer:coarse){
+ .desktop-mode .tool-content :is(.icon-action,.todo-edit-form button,.calendar-nav-button){min-width:36px;min-height:36px}
+ .desktop-mode .tool-content .collection-filters button{min-height:40px}
+}
