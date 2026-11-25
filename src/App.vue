@@ -417,6 +417,10 @@ function openFolder(folder: ShortcutFolder) {
   openFolderEditor(folder)
 }
 
+function openFinderFolderEditor(workspaceId: string) {
+  openFolderEditor(undefined, workspaceId)
+}
+
 function openFolderEditor(folder?: ShortcutFolder, workspaceId = activeHomeWorkspaceId.value) {
   folderWorkspaceId.value = (folder && homeWorkspaces.value.find(w => w.itemIds.includes(folder.id))?.id) || workspaceId
   folderSaveError.value = ''
@@ -920,7 +924,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <FinderWindow v-if="finderOpen && desktopMode && !minimalMode" :key="finderFolderId ?? 'root'" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :folder-id="finderFolderId" :dark="effectiveTheme==='dark'" @close="finderOpen=false" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembership" @create="id => openFolderEditor(undefined, id)" />
+    <FinderWindow v-if="finderOpen && desktopMode && !minimalMode" :key="finderFolderId ?? 'root'" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :folder-id="finderFolderId" :dark="effectiveTheme==='dark'" @close="finderOpen=false" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembership" @create="openFinderFolderEditor" />
     <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
