@@ -6,12 +6,12 @@ import type { LauncherItem } from '../types'
 import type { HomeWorkspace } from '../data/homeWorkspaces'
 import { activeWindow, activateWindow, closeWindow, emptyWindows, openWindow, updateWindow, maxWindows } from './windowManager'
 
-const props = defineProps<{ request?: { sequence:number; workspaceId:string; folderId?:string }; overviewRequest?:number; items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; dark?:boolean }>()
-const emit = defineEmits<{ open:[item:LauncherItem,event?:MouseEvent]; edit:[item:LauncherItem]; remove:[item:LauncherItem]; move:[item:LauncherItem,id:string]; membership:[item:LauncherItem,folderId:string|null]; create:[workspaceId:string] }>()
+const props = defineProps<{ request?: { sequence:number; workspaceId:string; folderId?:string }; overviewRequest?:number; operationError?:string; items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; dark?:boolean }>()
+const emit = defineEmits<{ open:[item:LauncherItem,event?:MouseEvent]; edit:[item:LauncherItem]; remove:[item:LauncherItem]; move:[ids:string[],id:string]; membership:[ids:string[],folderId:string|null]; create:[workspaceId:string]; dismissError:[] }>()
 const state=ref(emptyWindows()), overview=ref(false), limit=ref(false)
 const active=computed(()=>activeWindow(state.value))
 const minimized=computed(()=>state.value.windows.filter(w=>w.minimized))
-watch(()=>props.overviewRequest,()=>{overview.value=true})
+watch(()=>props.overviewRequest,value=>{if(value)overview.value=true},{immediate:true})
 watch(()=>props.request, request=>{
  if(!request)return
  const next=openWindow(state.value,request)
@@ -24,8 +24,8 @@ function minimize(id:number){state.value=updateWindow(state.value,id,{minimized:
 function maximize(id:number){const w=state.value.windows.find(w=>w.id===id);if(w)state.value=updateWindow(state.value,id,{maximized:!w.maximized})}
 function title(id:number,value:string){state.value=updateWindow(state.value,id,{title:value})}
 function forwardOpen(item:LauncherItem,event?:MouseEvent){emit('open',item,event)}
-function forwardMove(item:LauncherItem,id:string){emit('move',item,id)}
-function forwardMembership(item:LauncherItem,id:string|null){emit('membership',item,id)}
+function forwardMove(ids:string[],id:string){emit('move',ids,id)}
+function forwardMembership(ids:string[],id:string|null){emit('membership',ids,id)}
 </script>
 <template>
  <div class="desktop-windows" :class="{dark}">
@@ -39,7 +39,8 @@ function forwardMembership(item:LauncherItem,id:string|null){emit('membership',i
    <p v-if="!state.windows.length">没有运行中的窗口。</p>
    <button v-for="window in [...state.windows].reverse()" :key="window.id" type="button" @click="activate(window.id)"><Folder :size="20"/><span>{{window.title}}</span><small>{{window.minimized?'已最小化':window.id===active?'当前窗口':'打开中'}}</small></button>
   </section>
-  <p v-if="limit" role="status" class="window-limit">最多打开 {{maxWindows}} 个 Finder 窗口，请先关闭一个。</p>
+  <div v-if="operationError" class="window-limit" role="alert">{{operationError}} <button type="button" @click="emit('dismissError')">关闭</button></div>
+  <p v-else-if="limit" role="status" class="window-limit">最多打开 {{maxWindows}} 个 Finder 窗口，请先关闭一个。</p>
  </div>
 </template>
 <style scoped>

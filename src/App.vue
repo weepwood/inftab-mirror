@@ -35,6 +35,7 @@ const DesktopWindows = lazyHome(() => import('./desktop/DesktopWindows.vue'), '�
 const finderRequest = shallowRef<{ sequence: number; workspaceId: string; folderId?: string }>()
 let finderSequence = 0
 const overviewRequest = ref(0)
+const finderOperationError = ref('')
 const DesktopShell = lazyHome(() => import('./desktop/DesktopShell.vue'), '自由桌面', true)
 const desktopMode = useStoredState('inftab.desktop-mode.v1', false, value => value === true)
 const ShortcutGrid = lazyHome(() => import('./components/ShortcutGrid.vue'), '快捷入口', true)
@@ -378,7 +379,7 @@ function openPanel(id: PanelId) {
   loadPanelRegistry()
 }
 
-watch(desktopMode, value => { if(!value) finderRequest.value=undefined })
+watch(desktopMode, value => { if(!value){finderRequest.value=undefined;overviewRequest.value=0;finderOperationError.value=''} })
 function openFinder(folderId?: string) {
   finderRequest.value = { sequence: ++finderSequence, workspaceId: activeHomeWorkspaceId.value, folderId }
 }
@@ -386,22 +387,27 @@ function desktopOpen(item: LauncherItem, event?: MouseEvent) {
   if (item.folder) openFinder(item.id)
   else openItem(item,event)
 }
-function finderMove(item: LauncherItem, workspaceId: string) {
-  if (!homeWorkspaces.value.some(w=>w.id===workspaceId)) return
-  if (item.shortcut) saveShortcutData(item.shortcut,workspaceId)
-  else if(item.folder && homeWorkspaces.value.some(w=>w.id===workspaceId)) {
-    const current=folders.value.find(f=>f.id===item.id)
-    if(!current)return
-    const ids=new Set([current.id,...current.shortcutIds])
-    homeWorkspaces.value=homeWorkspaces.value.map(w=>({...w,itemIds:w.id===workspaceId?[...new Set([...w.itemIds,...ids])]:w.itemIds.filter(id=>!ids.has(id))}))
-  }
+async function finderMove(ids: string[], workspaceId: string) {
+  try {
+    const { planWorkspaceMove } = await import('./desktop/ownership')
+    const plan = planWorkspaceMove({workspaces:homeWorkspaces.value,folders:folders.value,shortcutIds:shortcuts.value.map(s=>s.id)},ids,workspaceId)
+    if(!plan){finderOperationError.value='入口或工作区已变化，无法完成移动，请重新选择。';return}
+    folders.value=plan.folders
+    homeWorkspaces.value=plan.workspaces
+    finderOperationError.value=''
+  }catch{finderOperationError.value='桌面操作暂时无法加载，请重试。'}
+}
+async function finderMembershipBatch(ids: string[], folderId: string | null) {
+  try {
+    const { planFolderMembership } = await import('./desktop/ownership')
+    const next = planFolderMembership({workspaces:homeWorkspaces.value,folders:folders.value,shortcutIds:shortcuts.value.map(s=>s.id)},ids,folderId)
+    if(!next){finderOperationError.value='入口或文件夹归属已变化，请重新选择。';return}
+    folders.value=next
+    finderOperationError.value=''
+  }catch{finderOperationError.value='桌面操作暂时无法加载，请重试。'}
 }
 function finderMembership(item: LauncherItem, folderId: string | null) {
-  if (!shortcuts.value.some(s=>s.id===item.id) || (folderId && !folders.value.some(f=>f.id===folderId))) return
-  if (!item.shortcut) return
-  const owner=homeWorkspaces.value.find(w=>w.itemIds.includes(item.id))
-  if (!owner || (folderId && !owner.itemIds.includes(folderId))) return
-  folders.value=folders.value.map(f=>({...f,shortcutIds:f.id===folderId?[...new Set([...f.shortcutIds,item.id])]:f.shortcutIds.filter(id=>id!==item.id)}))
+  if(item.shortcut)void finderMembershipBatch([item.id],folderId)
 }
 function openItem(item: LauncherItem, event?: MouseEvent) {
   if (item.folder) openFolder(item.folder)
@@ -927,7 +933,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :overview-request="overviewRequest" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembership" @create="openFinderFolderEditor" />
+    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :overview-request="overviewRequest" :operation-error="finderOperationError" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembershipBatch" @dismiss-error="finderOperationError=''" @create="openFinderFolderEditor" />
     <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
