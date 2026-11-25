@@ -1,9 +1,9 @@
 /* Desktop-specific visual overrides. Loaded after the shared application stylesheet. */
 /* macOS-inspired desktop-only surfaces. No layout changes to classic mode. */
-.desktop-mode .home-dock {bottom:12px;max-width:calc(100vw - 36px)}
-.desktop-mode .home-dock::before {inset:auto 5px 7px;height:calc(var(--dock-item-size) + 14px);border-radius:26px;background:var(--mac-glass-sheen) var(--mac-dock);border-color:var(--mac-dock-edge);box-shadow:var(--mac-dock-shadow);-webkit-backdrop-filter:var(--mac-dock-filter);backdrop-filter:var(--mac-dock-filter)}
-.desktop-mode .home-dock-track {padding:calc(var(--dock-item-size) * .7 + 12px) 14px 14px;align-items:flex-end}
-.desktop-mode .home-dock-icon {corner-shape:squircle;border-radius:24%;border:1px solid var(--mac-icon-edge);box-sizing:border-box;box-shadow:var(--mac-icon-shadow)}
+.desktop-mode .home-dock {bottom:8px;max-width:calc(100vw - 24px);--desktop-dock-padding:max(8px,calc(var(--dock-icon-size)*.12))}
+.desktop-mode .home-dock::before {inset:auto 2px 2px;height:calc(var(--dock-item-size) + var(--desktop-dock-padding)*2);border-radius:max(12px,calc(var(--dock-icon-size)*.4));background:var(--mac-dock);border-color:var(--mac-dock-edge);box-shadow:var(--mac-dock-shadow);-webkit-backdrop-filter:var(--mac-dock-filter);backdrop-filter:var(--mac-dock-filter)}
+.desktop-mode .home-dock-track {padding:calc(var(--dock-item-size) * .8 + 12px) calc(var(--desktop-dock-padding) + 6px) calc(var(--desktop-dock-padding) + 2px);align-items:flex-end}
+.desktop-mode .home-dock-icon {corner-shape:squircle;border-radius:max(10px,22.5%);border:0;box-sizing:border-box;box-shadow:0 2px 4px #0005}
 @media(max-width:780px){
  .desktop-mode .home-dock{left:50%;bottom:max(52px,calc(44px + env(safe-area-inset-bottom)));max-width:calc(100vw - 20px);transform:translateX(-50%)}
  .desktop-mode .home-dock.dock-auto-hide:not(:hover):not(:focus-within):not(.dock-menu-open){transform:translateX(-50%)}
@@ -70,8 +70,8 @@
 .desktop-mode .spotlight-label>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .desktop-mode .command-option[aria-selected=true] .spotlight-icon:not(.builtin){background:#ffffff26;color:#fff}
 
-.desktop-mode .home-dock-entry.dock-divider{border-left:1px solid var(--mac-line);padding-left:3px;margin-left:6px}
-.desktop-mode .dock-running-dot{bottom:-4px;width:4px;height:4px;box-shadow:0 0 1px #0004}
+.desktop-mode .home-dock-entry.dock-divider{border-left:1px solid #ffffff30;padding-left:6px;margin-left:6px}
+.desktop-mode .dock-running-dot{bottom:-4px;width:4px;height:4px;box-shadow:0 0 1px 1px #0005}
 .desktop-mode :is(.home-dock-entry,.home-dock-system-entry)::before{border-radius:6px;box-shadow:0 5px 16px #0003}
 .desktop-mode .home-dock.dock-menu-open :is(.home-dock-entry,.home-dock-system-entry)::before{opacity:0!important}
 .desktop-mode .home-dock.dock-menu-open .home-dock-icon{transform:none;transition:none}

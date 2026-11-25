@@ -43,7 +43,7 @@ let pointerX = 0
 let lastFrame = 0
 let dirty = false
 let hovering = false
-let geometry: { slots: HTMLElement[]; left: number; right: number; size: number; centers: number[]; radius: number } | undefined
+let geometry: { slots: HTMLElement[]; left: number; right: number; size: number; centers: number[]; radius: number; maxScale:number } | undefined
 type Spring = { position: number; velocity: number; target: number }
 const springs = new Map<HTMLElement, Spring>()
 // Critical damping, exact integration; shared between magnification and reorder.
@@ -244,13 +244,18 @@ function paintMagnification(now: number) {
       const size = first.width || 48
       const pitch = (last.left - first.left) / Math.max(1, slots.length - 1)
       const bounds = dock.value.getBoundingClientRect()
-      geometry = { slots, size, centers:rects.map(r=>r.left+r.width/2), radius: Math.max(size, pitch) * 2.8, left: bounds.width ? Math.max(0, first.left - bounds.left) : size * slots.length, right: bounds.width ? Math.max(0, bounds.right - last.right) : size * slots.length }
+      // ThanasOS Dock.tsx: responsive cosine kernel, adapted to measured slots.
+      // Preserve the user's configured base icon size and existing spring integration.
+      const d=Math.min(innerWidth,innerHeight),desktop=props.desktop
+      const radius=desktop?(d<480?d*.2:d<768?d*.175:d<1024?d*.15:150):Math.max(size,pitch)*2.8
+      const maxScale=desktop?(d<480?1.4:d<768?1.5:d<1024?1.6:1.8):1.65
+      geometry = { slots, size, centers:rects.map(r=>r.left+r.width/2), radius, maxScale, left: bounds.width ? Math.max(0, first.left - bounds.left) : size * slots.length, right: bounds.width ? Math.max(0, bounds.right - last.right) : size * slots.length }
     }
-    const { slots, centers, radius } = geometry
+    const { slots, centers, radius, maxScale } = geometry
     slots.forEach((el, index) => {
       const p = Math.max(0, 1 - Math.abs(pointerX - centers[index]!) / radius)
       const state = springs.get(el) ?? { position: 1, velocity: 0, target: 1 }
-      state.target = hovering ? 1 + .65 * p * p * (3 - 2 * p) : 1
+      state.target = hovering ? 1 + (maxScale-1) * (props.desktop?(1-Math.cos(Math.PI*p))/2:p*p*(3-2*p)) : 1
       springs.set(el, state)
     })
   }
@@ -266,7 +271,7 @@ function paintMagnification(now: number) {
     const s = springs.get(el)!
     if (reduced) { s.position = s.target; s.velocity = 0 }
     else if (advanceSpring(s, dt, .028, .001)) moving = true
-    return Math.max(1, Math.min(1.65, s.position))
+    return Math.max(1, Math.min(geometry!.maxScale, s.position))
   })
   const expansion = scales.map(scale => (scale - 1) * Math.max(0, size - 4))
   const total = expansion.reduce((sum, value) => sum + value, 0)
@@ -286,6 +291,16 @@ function paintMagnification(now: number) {
   else lastFrame = 0
 }
 
+// Port ThanasOS launch bounce to WAAPI, on the independent translate channel.
+function launchBounce(e:MouseEvent){
+ if(!props.desktop||reducedMotion()||props.blocked)return
+ const el=(e.currentTarget as HTMLElement).querySelector<HTMLElement>('.home-dock-icon')
+ if(!el?.animate)return
+ el.getAnimations().find(a=>a.id==='dock-launch')?.cancel()
+ const h=Math.max(4,Math.min(12,el.offsetHeight*.15))
+ const animation=el.animate([{translate:'0 0'},{translate:'0 -'+h+'px',offset:.45},{translate:'0 0'}],{duration:300,easing:'cubic-bezier(.2,.8,.2,1)'})
+ animation.id='dock-launch'
+}
 function releaseDockMagnification() {
   hovering = false
   if (geometry) { dirty = true; queueMagnification() }
@@ -380,7 +395,7 @@ onBeforeUnmount(() => {
   <nav v-if="items.length || props.desktop" ref="dock" :inert="(props.blocked)||undefined" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled, 'dock-auto-hide': props.autoHide, 'dock-menu-open': Boolean(contextItem), 'dock-dragging': Boolean(dragId) }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px` }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="releaseDockMagnification" @click.capture="preventGestureClick">
     <div class="home-dock-track" @scroll.passive="clearDockMagnification">
       <div v-if="props.desktop" class="home-dock-system-entry" data-title="Finder">
-        <button type="button" class="home-dock-finder" aria-label="Finder" :data-running="finderRunning||undefined" data-system-finder @click="emit('finder')">
+        <button type="button" class="home-dock-finder" aria-label="Finder" :data-running="finderRunning||undefined" data-system-finder @click="launchBounce($event);emit('finder')">
           <span class="home-dock-icon mac-finder-glyph" aria-hidden="true"><i/><b/></span>
           <span v-if="finderRunning" class="dock-running-dot" aria-hidden="true"/>
         </button>
@@ -396,7 +411,7 @@ onBeforeUnmount(() => {
           @dragstart="startDrag($event, item.id)"
           @dragend="endDrag"
           aria-keyshortcuts="Shift+ArrowLeft Shift+ArrowRight"
-          @click="emit('open', item, $event)"
+          @click="launchBounce($event);emit('open', item, $event)"
           @auxclick.middle.prevent="emit('open', item, $event)"
           @contextmenu="showContextMenu($event, item, $event.clientX, $event.clientY)"
           @keydown="handleItemKeydown($event, item)"

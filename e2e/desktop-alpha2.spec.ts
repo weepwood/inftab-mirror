@@ -2016,6 +2016,7 @@ test('mixed desktop canvas reserves actual widget rectangles and restores separa
  await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 500, 60)')
  await shelf.getByRole('button',{name:'放入桌面画布'}).click()
  await expect(canvas.locator('.home-widget-shelf')).toBeVisible()
+ await expect.poll(async()=>shelf.locator('[data-widget-id="todo-summary"]').evaluate(el=>Math.round(el.getBoundingClientRect().left-el.closest('.desktop-canvas')!.getBoundingClientRect().left))).toBe(0)
  const noOverlap=()=>canvas.evaluate(el=>{
   const cards=Array.from(el.querySelectorAll('.home-widget-card')).map(c=>c.getBoundingClientRect())
   return Array.from(el.querySelectorAll('.desktop-icon')).every(i=>{const r=i.getBoundingClientRect();return cards.every(c=>r.right<=c.left||r.left>=c.right||r.bottom<=c.top||r.top>=c.bottom)})
@@ -2209,10 +2210,19 @@ test('fixed Finder shares Dock magnification and real window lifecycle without c
  await expect.poll(()=>slot.evaluate(el=>Number(getComputedStyle(el).getPropertyValue('--dock-scale')))).toBeGreaterThan(1.04)
  await page.mouse.move(600,400)
  await expect.poll(()=>slot.evaluate(el=>Number(getComputedStyle(el).getPropertyValue('--dock-scale')))).toBe(1)
- await finder.click()
+ const bounce=await finder.evaluate(el=>{
+  ;(el as HTMLButtonElement).click()
+  return el.querySelector('.home-dock-icon')!.getAnimations().some(a=>a.id==='dock-launch')
+ })
+ expect(bounce).toBe(true)
  const win=page.getByRole('dialog',{name:'Finder 入口管理'})
  await expect(win).toBeVisible()
  await expect(finder).toHaveAttribute('data-running','true')
+ const header=win.locator('.window-title')
+ await expect(header).toHaveCSS('height','40px')
+ await expect(win.locator('.window-description')).toHaveCount(0)
+ const box=(await header.boundingBox())!,title=(await header.locator('strong').boundingBox())!
+ expect(Math.abs(box.x+box.width/2-title.x-title.width/2)).toBeLessThan(3)
  await expect.poll(()=>win.evaluate(el=>el.getAnimations().filter(a=>a.playState==='running').length)).toBe(0)
  await win.getByRole('button',{name:'最小化 Finder'}).click()
  await expect(finder).toHaveAttribute('data-running','true')

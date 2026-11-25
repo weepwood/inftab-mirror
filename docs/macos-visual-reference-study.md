@@ -37,3 +37,6 @@
 
 ## ThanasOS 单一复刻基准（2026-11-26）
 用户指定 https://github.com/Thanas-R/Thanas-OS 为后续唯一视觉与交互主参考，锁定已检查提交5a430db1abf4c4545c88c717b9eaebb1d789a0ae，MIT许可证完整保留于docs/licenses/Thanas-OS-MIT.txt。GitHub连接器核对package.json：React18.3.1、Vite5.4.19、TS5.8.3、Tailwind3.4.17、Framer Motion12.38.0、Radix/shadcn。现有inftab为Vue3.5.43、Vite8.3.4、TS5.9.3、Interact.js1.10.29、Swiper14.4.0、Lucide Vue；不擅自迁移框架。首批直接转换ControlCenter.tsx的360px外壳、左侧连接状态栈、右侧突出模块及外观区布局；绑定真实网页搜索/时钟/Dock放大/名称显示与外观设置，不复制模拟硬件。保留经典双栏Spotlight、用户数据、原MIT通知和既有材质，浅深适配及窄屏单列。后续以ThanasOS实际源码为基准逐模块替换旧视觉，而非继续拼接其他项目。当前仍非整站复刻。
+
+## ThanasOS Dock、窗口与桌面构图移植
+- 对照锁定的 ThanasOS 5a430db 的 Dock.tsx、Window.tsx、Desktop.tsx。Dock 移植分视口余弦放大曲线、1.4–1.8 的放大上限、相对图标尺寸的内边距/圆角、深灰半透明底座和启动弹跳；保留既有用户图标尺寸、真实槽位置测量、空间约束、弹簧积分及可滚动的 Dock，不引入 GSAP/React。实际放大幅度受可用空间限制，不能称为逐像素等价。WAAPI 独立 translate 启动弹跳避免覆盖原缩放和 FLIP。窗口采用 40px 独立标题栏、三列真正居中标题、移除重复副标题、交通灯与停靠操作左右分布；保留现有窗口几何、正文实色及窄屏触控。混合画布默认网格模块改靠左，显式像素坐标保持，退出按钮仍靠右，防止遮挡工作区。未迁移上游模拟应用、硬件、外部图标与素材。

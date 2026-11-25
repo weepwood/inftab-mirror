@@ -191,7 +191,7 @@ function widgetSizeButtonText(size: HomeWidgetSize) {
 .widget-layout-toggle,.widget-canvas-toggle{grid-column:1/-1;justify-self:start;font:inherit;font-size:12px;border:1px solid var(--mac-line);border-radius:6px;padding:5px 10px;background:var(--mac-window);color:var(--mac-ink);cursor:pointer}
 .widget-free{grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(112px,auto);position:relative;padding-top:36px;align-items:stretch}
 .widget-free .widget-layout-toggle,.widget-free .widget-canvas-toggle{position:absolute;top:0;left:0}.widget-free .widget-canvas-toggle{left:130px}
-.widget-canvas{grid-template-columns:repeat(3,minmax(0,calc((min(960px,100%) - 24px)/3)));justify-content:end}.widget-canvas .widget-layout-toggle{left:auto;right:0}.widget-canvas .home-widget-card.dragging{transform:none}
+.widget-canvas{grid-template-columns:repeat(3,minmax(0,calc((min(960px,100%) - 24px)/3)));justify-content:start}.widget-canvas .widget-layout-toggle{left:auto;right:0}.widget-canvas .home-widget-card.dragging{transform:none}
 .widget-drop-slot{min-height:112px;border:1px dashed transparent;border-radius:var(--ui-radius-card)}
 .widget-drop-slot.ready{border-color:var(--mac-selection);background:var(--mac-selection-soft)}
 </style>

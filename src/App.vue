@@ -1070,7 +1070,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.home.desktop-mode .home-content:not(.home-content-minimal){width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;justify-content:flex-start;gap:8px;padding-top:42px;padding-bottom:96px}
+.home.desktop-mode .home-content:not(.home-content-minimal){width:calc(100% - 48px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;justify-content:flex-start;gap:8px;padding-top:42px;padding-bottom:96px}
 .home.desktop-mode .home-content.desktop-search-reserved{padding-top:104px}
 @media(min-width:781px){.home.desktop-mode .home-content:not(.desktop-search-reserved):has(>.home-widget-shelf){padding-top:70px}}
 .home.desktop-mode{overflow-y:auto;overscroll-behavior-y:contain}

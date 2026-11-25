@@ -268,35 +268,35 @@
 @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
   .desktop-mode,.mac-dock-context {
     --mac-menu: rgba(250, 250, 252, 0.82);
-    --mac-dock: rgba(255, 255, 255, 0.26);
+    --mac-dock: rgba(45,45,45,.2);
     --mac-glass-widget: rgba(250, 250, 252, 0.82);
     --mac-glass-control: rgba(247,248,251,.78);
     --mac-glass-filter: blur(44px) saturate(230%);
     --mac-dock-filter: blur(38px) saturate(210%);
     --mac-bar-filter: blur(24px) saturate(190%);
     --mac-glass-edge: rgba(255, 255, 255, 0.5);
-    --mac-dock-edge: rgba(255, 255, 255, 0.34);
+    --mac-dock-edge: rgba(255,255,255,.15);
     --mac-glass-sheen: linear-gradient(155deg,rgba(255, 255, 255, 0.52),transparent 38%);
     --mac-glass-shadow: 0 18px 50px rgba(15, 23, 42, 0.18), 0 44px 110px rgba(15, 23, 42, 0.24), inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
     --mac-glass-focus-shadow: 0 18px 50px rgba(15, 23, 42, 0.18), 0 44px 110px rgba(15, 23, 42, 0.24), inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
-    --mac-dock-shadow: 0 22px 70px rgba(15, 23, 42, 0.24), inset 0 1px 0 0 rgba(255, 255, 255, 0.52);
+    --mac-dock-shadow: 0 5px 18px #0006,0 2px 8px #0005,inset 0 1px 0 #ffffff26,inset 0 -1px 0 #0003;
     --mac-bar: rgba(247,248,251,.72);
     --mac-glass-control-shadow: 0 2px 9px #0002, inset 0 1px 1px #fff9;
   }
   .desktop-mode.theme-dark,.mac-dock-context.theme-dark {
     --mac-menu: rgba(40, 40, 42, 0.82);
-    --mac-dock: rgba(54, 54, 56, 0.28);
+    --mac-dock: rgba(45,45,45,.2);
     --mac-glass-widget: rgba(40, 40, 42, 0.82);
     --mac-glass-control: rgba(57,58,64,.82);
     --mac-glass-filter: blur(46px) saturate(220%);
     --mac-dock-filter: blur(42px) saturate(205%);
     --mac-bar-filter: blur(24px) saturate(185%);
     --mac-glass-edge: rgba(255, 255, 255, 0.18);
-    --mac-dock-edge: rgba(255, 255, 255, 0.13);
+    --mac-dock-edge: rgba(255,255,255,.15);
     --mac-glass-sheen: linear-gradient(155deg,rgba(255, 255, 255, 0.14),transparent 38%);
     --mac-glass-shadow: 0 18px 58px rgba(0, 0, 0, 0.46), 0 48px 120px rgba(0, 0, 0, 0.56), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
     --mac-glass-focus-shadow: 0 18px 58px rgba(0, 0, 0, 0.46), 0 48px 120px rgba(0, 0, 0, 0.56), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
-    --mac-dock-shadow: 0 24px 86px rgba(0, 0, 0, 0.46), inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
+    --mac-dock-shadow: 0 5px 18px #0006,0 2px 8px #0005,inset 0 1px 0 #ffffff26,inset 0 -1px 0 #0003;
     --mac-bar: rgba(28,29,34,.76);
     --mac-glass-control-shadow: 0 2px 9px #0005, inset 0 1px 1px #ffffff30;
   }
