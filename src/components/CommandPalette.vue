@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Search, Folder, Grid2X2, ArrowUpRight, StickyNote, ListTodo, Command } from '@lucide/vue'
-import { launcherIcons } from './launcherIcons'
+import { desktopHabitIcon, launcherIcons } from './launcherIcons'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { trapOverlayTab, isComposingKey } from '../composables/overlayFocus'
 import { filterCommands } from '../data/commands'
@@ -40,7 +40,7 @@ function groupHeading(index:number){
 }
 function resultIcon(id:string,detail:string){
  const key=id.startsWith('panel:')?id.slice(6):''
- return launcherIcons[key]??(detail==='文件夹'||id==='desktop:finder'?Folder:detail==='笔记'?StickyNote:detail.includes('待办')?ListTodo:detail==='工作区'||id==='desktop:overview'?Grid2X2:detail==='快捷入口'?ArrowUpRight:Command)
+ return (key==='habits'?desktopHabitIcon:launcherIcons[key])??(detail==='文件夹'||id==='desktop:finder'?Folder:detail==='笔记'?StickyNote:detail.includes('待办')?ListTodo:detail==='工作区'||id==='desktop:overview'?Grid2X2:detail==='快捷入口'?ArrowUpRight:Command)
 }
 watch(commands, items => { selected.value = Math.max(0,Math.min(selected.value,items.length-1)) })
 let returnFocus: HTMLElement | undefined

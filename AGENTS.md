@@ -455,3 +455,7 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 
 ## #46 WebKit 缩放选择回归
 - 779c71a 常规737/737、PWA、UI通过，Linux非Swiper199.4/200KiB；cross 139280374918 实际106通过/2跳过/2失败，两个WebKit笔记缩放用例仍选中页脚文字，CSS user-select单独不足。缩放手柄新增mousedown.prevent阻止原生鼠标文本选择起始，保留原选择断言及正文编辑，不改其他行为。本机build:web、四项核心缩放专项4/4通过，Mac非Swiper198.5/200KiB。对应Playwright WebKit 2370未安装，远程复验待核验。#47独立视觉提交c66dc28，基于本PR分支，合并#46后再转main，保留6张截图与84/84本机回归记录，不提前合并。
+
+## #47 应用图标与桌面空间深化
+- 保留#47作为集中视觉PR，同步#46 da76a3d（仅AGENTS.md冲突，双方记录均保留）。桌面/Dock/Spotlight材质前景按应用归一，纸白/黄页眉/红页眉/深灰/银灰等独立身份；复用现有Lucide CalendarCheck区分习惯打卡，经典ListTodo不变，Dock文件夹共用原CSS文件夹。顶部操作分组及窄屏取消额外间距，系统强制颜色回退。无新增依赖、外部图标、业务数据或坐标变更。
+- Mac check/build:web、最终定向生产Edge10/10通过，含双主题三处计算材质和习惯图标、经典切换、既有320/360窄屏几何。五张截图 docs/screenshots/macos-desktop/icon-materials。首屏59.8/60.5、非Swiper198.6/200、CSS35.2/64KiB；PWA额外10671/16384 B、全站1751375/4194304 B。此前84/84是图标改动前，未重跑全量。保留预算，远程Linux与WebKit待验收；未完成所有图标对比度、真机或其他壁纸、个性化密度。保持#37与正式Tag，临时playwright.local-window41.config.ts不提交。

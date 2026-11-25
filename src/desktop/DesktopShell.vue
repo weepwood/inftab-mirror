@@ -2,7 +2,7 @@
 import { computed, ref, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import type { LauncherItem } from '../types'
 import { navigateMenu } from '../components/menuNavigation'
-import { launcherIcons } from '../components/launcherIcons'
+import { desktopHabitIcon, launcherIcons } from '../components/launcherIcons'
 import { folderParents } from '../data/folderTree'
 import { cell, arrangeFromRight, resolvePoints, fitPoint, freshLayout, normalizeLayout, translateGroup, type Point, type DesktopLayout } from './layout'
 const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout; folderShortcuts?: LauncherItem[]; dark?: boolean; blocked?:boolean; searchActive?:boolean}>()
@@ -291,7 +291,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
         <button v-for="{item,point} in positions" :key="item.id" type="button" class="desktop-icon" :class="{selected:selected.includes(item.id)}" :data-item-id="item.id" :style="{transform:'translate('+point.x+'px,'+point.y+'px)'}" :aria-label="item.title" :aria-pressed="selected.includes(item.id)" @pointerdown="pointerStart($event,item)" @pointermove="pointerMove" @pointerup="pointerEnd" @pointercancel="pointerCancel" @lostpointercapture="pointerCancel" @click="activate(item,$event)" @auxclick.middle.prevent="activate(item,$event)" @auxclick.right.prevent @contextmenu.stop.prevent @keydown="keyMove($event,item.id)">
           <span class="desktop-symbol" :class="{builtin:item.action}" :data-action="item.action" :style="{background:item.action ? undefined : item.color}">
             <span v-if="item.folder" class="mac-folder mac-folder-icon" aria-hidden="true"></span>
-            <component v-else-if="item.action && launcherIcons[item.action]" :is="launcherIcons[item.action]" :size="30" :stroke-width="1.8"/>
+            <component v-else-if="item.action && launcherIcons[item.action]" :is="item.action==='habits'?desktopHabitIcon:launcherIcons[item.action]" :size="30" :stroke-width="1.8"/>
             <img v-else-if="item.icon && failedIcons[item.id]!==item.icon" :src="item.icon" alt="" draggable="false" @error="failedIcons[item.id]=item.icon!"/>
             <span v-else>{{item.mark}}</span>
           </span>

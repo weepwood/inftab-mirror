@@ -1493,3 +1493,36 @@ for(const [width,height,theme] of [[1440,900,'light'],[1280,800,'dark'],[360,740
   }
  })
 }
+
+for(const theme of ['light','dark']){
+ test('desktop app icon identities agree across launcher Dock and Spotlight '+theme,async({page},info)=>{
+  await page.setViewportSize({width:1440,height:900})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.addInitScript(theme=>{
+   localStorage.setItem('inftab.desktop-mode.v1','true')
+   localStorage.setItem('inftab.preferences.v1',JSON.stringify({themeMode:theme,showSearchBar:false,dockItemIds:['todos','notes','calendar','habits','audit-folder']}))
+   localStorage.setItem('inftab.folders.v1',JSON.stringify([{id:'audit-folder',title:'Projects',shortcutIds:[],mark:'F',color:'#4176e8'}]))
+  },theme)
+  await page.goto('/')
+  const desktop=page.locator('.desktop-icon[data-item-id="habits"] .desktop-symbol'),dock=page.locator('.home-dock-item[data-dock-item-id="habits"] .home-dock-icon')
+  await expect(desktop).toBeVisible()
+  await expect(dock.locator('svg')).toHaveClass(/lucide-calendar-check/)
+  await expect(desktop.locator('svg')).toHaveClass(/lucide-calendar-check/)
+  await expect(page.locator('.desktop-icon[data-item-id="todos"] svg')).toHaveClass(/lucide-list-todo/)
+  const material=(el:Element)=>{const s=getComputedStyle(el);return [s.backgroundImage,s.color,s.boxShadow]}
+  const expected=await desktop.evaluate(material)
+  expect(await dock.evaluate(material)).toEqual(expected)
+  await expect(page.locator('[data-dock-item-id="audit-folder"] .mac-folder-icon')).toBeVisible()
+  await page.screenshot({path:info.outputPath('icon-materials.png'),animations:'disabled'})
+  await page.getByRole('button',{name:'打开命令面板'}).click()
+  const search=page.getByRole('combobox',{name:'搜索命令'})
+  await search.fill('习惯')
+  const spotlight=page.locator('.spotlight-icon[data-action="habits"]')
+  await expect(spotlight).toBeVisible()
+  expect(await spotlight.evaluate(material)).toEqual(expected)
+  await expect(spotlight.locator('svg')).toHaveClass(/lucide-calendar-check/)
+  await page.keyboard.press('Escape')
+  await page.getByRole('button',{name:'经典模式',exact:true}).click()
+  await expect(page.locator('.home-dock-item[data-dock-item-id="habits"] svg')).toHaveClass(/lucide-list-todo/)
+ })
+}

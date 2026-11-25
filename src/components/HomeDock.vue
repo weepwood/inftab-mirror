@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { X } from '@lucide/vue'
-import { launcherIcons } from './launcherIcons'
+import { desktopHabitIcon, launcherIcons } from './launcherIcons'
 import { closeMenuOnFocusout, navigateMenu } from './menuNavigation'
 import type { LauncherItem } from '../types'
 import { launcherPanelRoutes, shortcutPanelRoutes } from '../plugins/routes'
@@ -395,7 +395,8 @@ onBeforeUnmount(() => {
           @keydown="handleItemKeydown($event, item)"
         >
           <span class="home-dock-icon" :class="{ builtin: item.action }" :data-action="item.action" :style="{ backgroundColor: item.action ? undefined : item.color, '--dock-glow-color': item.color }">
-            <component v-if="item.action && launcherIcons[item.action]" :is="launcherIcons[item.action]" :size="24" :stroke-width="1.8" />
+            <span v-if="props.desktop && item.folder" class="mac-folder-icon" aria-hidden="true"/>
+            <component v-else-if="item.action && launcherIcons[item.action]" :is="props.desktop&&item.action==='habits'?desktopHabitIcon:launcherIcons[item.action]" :size="24" :stroke-width="1.8" />
             <img v-else-if="item.icon && failedIcons[item.id] !== item.icon" :src="item.icon" decoding="async" alt="" draggable="false" @error="failedIcons[item.id] = item.icon!" />
             <span v-else>{{ item.mark }}</span>
           </span>
