@@ -82,7 +82,7 @@ function scrollToGroup(id: SettingsGroupId) {
 function syncActiveGroup() {
   const panel = panelScrollElement
   if (!panel) return
-  const navHeight = settingsNav.value?.offsetHeight ?? 0
+  const navHeight = panel.classList.contains('mac-settings-panel') && matchMedia('(min-width: 760px)').matches ? 0 : settingsNav.value?.offsetHeight ?? 0
   const headerHeight = panel.querySelector<HTMLElement>('.panel-header')?.offsetHeight ?? 0
   const threshold = panel.getBoundingClientRect().top + headerHeight + navHeight + 16
   let current: SettingsGroupId = settingsGroups[0].id

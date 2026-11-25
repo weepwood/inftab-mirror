@@ -16,3 +16,6 @@
 
 .inftab-pwa-control .pwa-details{box-shadow:0 8px 24px #0003;backdrop-filter:blur(16px)}
 .inftab-pwa-control .pwa-status{max-width:100%;overflow-wrap:anywhere}
+
+/* Modal controls take priority over the optional offline entry on desktop. */
+body:has(.desktop-mode .panel-backdrop) .inftab-pwa-control{visibility:hidden}

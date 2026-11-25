@@ -1299,3 +1299,87 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .shortcut-name { text-shadow: 0 1px 2px #000f, 0 1px 5px #000c, 0 0 10px #0008; }
 
 .dock-running-dot{position:absolute;left:50%;bottom:-6px;width:4px;height:4px;border-radius:50%;transform:translateX(-50%);background:currentColor;box-shadow:0 0 2px #0004;pointer-events:none}
+
+/* macOS-inspired desktop-only surfaces. No layout changes to classic mode. */
+.desktop-mode .home-dock {bottom:12px;max-width:max(100px,calc(100vw - 380px));}
+.desktop-mode .home-dock::before {inset:auto 8px 12px;height:calc(var(--dock-item-size) + 22px);border-radius:18px;background:var(--mac-dock);border-color:rgba(255,255,255,.32);box-shadow:0 9px 26px #0003,inset 0 1px 0 #fff4;backdrop-filter:blur(22px) saturate(150%);}
+.desktop-mode .home-dock-track {padding:30px 16px 22px;}
+.desktop-mode .home-dock-icon {border-radius:calc(var(--dock-icon-size,44px) * .23);box-shadow:0 3px 8px #0003,inset 0 1px 0 #fff5;}
+.desktop-mode .command-palette {width:min(620px,calc(100% - 24px));border-radius:14px;background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line);box-shadow:var(--mac-shadow-active);font-family:var(--mac-font);}
+.desktop-mode .command-palette::backdrop {background:#0002;backdrop-filter:none;}
+.desktop-mode .command-shell header {padding:14px 16px;}
+.desktop-mode .command-shell input {font-size:22px;letter-spacing:-.025em;}
+.desktop-mode .command-option {min-height:36px;border-radius:7px;padding:6px 10px;}
+.desktop-mode .command-option[aria-selected="true"] {background:var(--mac-selection);color:white;}
+.desktop-mode .command-option[aria-selected="true"] small {color:#fff;}
+@media(max-width:780px){.desktop-mode .home-dock{bottom:30px;max-width:max(90px,calc(100vw - 202px));}}
+@media(forced-colors:active){.desktop-mode .command-option[aria-selected="true"]{background:Highlight;color:HighlightText}.desktop-mode .command-option[aria-selected="true"] small{color:HighlightText}}
+
+/* Original, CSS-rendered folder glyph, shared by Finder and free desktop.
+   No external SVG, Apple image or font assets. */
+.mac-folder-icon{position:relative;display:block;width:var(--folder-size,44px);height:calc(var(--folder-size,44px)*.83);filter:drop-shadow(0 2px 2px #0002)}
+.mac-folder-icon::before,.mac-folder-icon::after{content:"";position:absolute;box-sizing:border-box}
+.mac-folder-icon::before{inset:0 2% 14%;border-radius:12% 12% 9% 9%;background:linear-gradient(180deg,#a2d9ff,#43a5e7);clip-path:polygon(0 0,40% 0,50% 19%,100% 19%,100% 100%,0 100%);border:1px solid #438ecf}
+.mac-folder-icon::after{inset:23% 0 0;border:1px solid #4294d3;border-top-color:#c3eaff;border-radius:7% 9% 10% 10%;background:linear-gradient(180deg,#92dbff 0%,#66c2fc 21%,#52b5f6 86%,#4caaf1);box-shadow:inset 0 1px 0 #fff8}
+.desktop-mode .home-workspace-trigger{min-height:36px;padding:0 10px;border-radius:8px;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);box-shadow:0 4px 15px #0002}
+.desktop-mode .home-workspace-trigger:hover,.desktop-mode .home-workspace-trigger[aria-expanded=true]{background:var(--mac-menu)}
+.desktop-mode .home-dock-entry::before{background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line);font-size:12px}
+.desktop-mode .dock-running-dot{background:var(--mac-ink)}
+.desktop-mode .command-palette{margin:min(17vh,120px) auto auto;max-height:min(480px,calc(100dvh - min(17vh,120px) - 16px))}
+.desktop-mode .command-palette .command-shell input{color:var(--mac-ink)}
+@media(forced-colors:active){.mac-folder-icon{forced-color-adjust:none}.desktop-mode .home-workspace-trigger{border-color:ButtonText}}
+
+/* Settings has the same scroll container and focus trap as classic mode;
+   desktop appearance switches only its spatial composition. */
+.desktop-mode .panel-backdrop:has(.mac-settings-panel){align-items:center;justify-content:center;background:#0003;backdrop-filter:none}
+.desktop-mode .mac-settings-panel{width:min(800px,100%);height:min(700px,100%);background:var(--mac-window);border:1px solid var(--mac-line);box-shadow:var(--mac-shadow-active);border-radius:12px;scrollbar-color:var(--mac-muted) transparent;animation:none;--panel-header-height:60px}
+.desktop-mode .mac-settings-panel .panel-header{background:var(--mac-toolbar);padding:10px 18px}
+.desktop-mode .mac-settings-panel .panel-header h2{font-size:17px;font-weight:600}
+.desktop-mode .mac-settings-panel .panel-header p{margin-top:2px}
+.desktop-mode .mac-settings-panel .panel-close{width:26px;height:26px;border-radius:50%;border:0;background:var(--mac-line)}
+.desktop-mode .mac-settings-panel .settings-section{margin:10px 0;padding:12px 14px;border-radius:8px;box-shadow:none}
+.desktop-mode .mac-settings-panel .section-heading{margin-bottom:10px}
+.desktop-mode .mac-settings-panel .section-heading h3{letter-spacing:0;font-weight:600}
+@media(min-width:760px){
+ .desktop-mode .mac-settings-panel .settings-content{position:relative;display:grid;grid-template-columns:174px minmax(0,1fr);column-gap:16px;padding:0 16px 20px 0;align-items:start;background:linear-gradient(90deg,var(--mac-sidebar) 174px,var(--mac-window) 174px)}
+ .desktop-mode .mac-settings-panel .settings-nav{grid-column:1;grid-row:1/span 5;display:flex;flex-direction:column;align-self:start;gap:3px;margin:0;padding:14px 8px;top:var(--panel-header-height);background:var(--mac-sidebar);border:0}
+ .desktop-mode .mac-settings-panel .settings-nav-button{min-height:34px;flex-direction:row;justify-content:flex-start;gap:8px;padding:5px 9px;font-size:13px;color:var(--mac-ink);border-radius:6px;box-shadow:none}
+ .desktop-mode .mac-settings-panel .settings-nav-button.active{background:var(--mac-selection);color:#fff;border-color:transparent}
+ .desktop-mode .mac-settings-panel .settings-group{grid-column:2;min-width:0;scroll-margin-top:calc(var(--panel-header-height) + 8px)}
+}
+
+.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin{color:#fff;background:linear-gradient(150deg,#ffffff38,transparent 75%),var(--app-icon,#677587);border-color:#ffffff55;box-shadow:0 4px 10px #0003,inset 0 1px 0 #fff8}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="weather"]{--app-icon:#208bd7}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="todos"]{--app-icon:#3479db}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="notes"]{--app-icon:#cb931b}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="calendar"]{--app-icon:#d64c55}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="habits"]{--app-icon:#26956d}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="focus-timer"]{--app-icon:#7a62c3}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="countdowns"]{--app-icon:#c27a37}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="calculator"]{--app-icon:#4b626f}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="bookmarks"]{--app-icon:#258b9a}
+
+.desktop-mode .spotlight-icon{width:26px;height:26px;flex:0 0 26px;display:grid;place-items:center;border-radius:6px;background:var(--mac-toolbar);color:var(--mac-muted)}
+.desktop-mode .spotlight-label{display:flex;align-items:center;gap:10px;min-width:0}
+.desktop-mode .spotlight-label>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.desktop-mode .command-option[aria-selected=true] .spotlight-icon:not(.builtin){background:#ffffff26;color:#fff}
+.desktop-mode .command-option small{flex:none}
+.desktop-mode .command-shell header:focus-within{box-shadow:inset 0 -2px 0 var(--mac-selection)}
+.desktop-mode .command-shell input:focus-visible{outline:none}
+.desktop-mode .command-shell header .spotlight-search-icon{color:var(--mac-muted);flex:none}
+
+.desktop-mode .home-dock-entry.dock-divider{border-left:1px solid var(--mac-muted);padding-left:2px;margin-left:4px}
+.desktop-mode .dock-running-dot{bottom:-6px;width:4px;height:4px;box-shadow:0 0 1px #0004}
+.desktop-mode .home-dock-entry::before{border-radius:6px;box-shadow:0 5px 16px #0003}
+.desktop-mode .home-dock.dock-menu-open .home-dock-entry::before{opacity:0!important}
+.desktop-mode .home-dock.dock-menu-open .home-dock-icon{transform:none;transition:none}
+.mac-dock-context .dock-context-menu{background:rgba(250,250,252,.96);color:#242426;border:1px solid #0002;border-radius:8px;padding:5px;box-shadow:0 12px 36px #0004;backdrop-filter:blur(20px)}
+.mac-dock-context.theme-dark .dock-context-menu{background:rgba(37,37,41,.97);color:#f1f1f4;border-color:#fff2}
+.mac-dock-context .dock-context-menu button{color:inherit;border-radius:5px;font-size:12px}
+.mac-dock-context .dock-context-menu button:hover,.mac-dock-context .dock-context-menu button:focus-visible{background:#0063cc;color:white}
+@media(not (forced-colors:active)){
+ .desktop-mode .mac-settings-panel .toggle-row input[type=checkbox]:not(:checked){background:#b9b9bf}
+ .desktop-mode.theme-dark .mac-settings-panel .toggle-row input[type=checkbox]:not(:checked){background:#55555c}
+ .desktop-mode .mac-settings-panel .toggle-row input[type=checkbox]:checked{background:var(--mac-selection)}
+}
+
+/* Release polish: compact desktop control rhythm, no new data behavior. */
+.desktop-mode .spotlight-group-heading{padding:9px 10px 3px;font:600 11px/1.4 var(--mac-font);color:var(--mac-muted)}
+.desktop-mode .command-option small{max-width:35%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.desktop-mode .mac-settings-panel .toggle-row{min-height:36px;border-radius:6px;color:var(--mac-ink);font-size:13px}
+.desktop-mode .mac-settings-panel .toggle-row+.toggle-row{border-top:1px solid var(--mac-line)}
+.desktop-mode .mac-settings-panel .toggle-row .select-field{--select-height:28px}
+.desktop-mode .mac-settings-panel .settings-section input[type=range]{accent-color:var(--mac-selection)}
+.desktop-mode .tool-window .tool-content{font-family:var(--mac-font)}
+@media(prefers-reduced-motion:reduce){.desktop-mode .command-option,.desktop-mode .toggle-row,.desktop-mode .toggle-row input[type=checkbox],.desktop-mode .toggle-row input[type=checkbox]::after{transition:none}}

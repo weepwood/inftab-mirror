@@ -77,6 +77,8 @@ test('visible local search works with a hidden search bar and supports a keyboar
 
   await toggle.click()
   await search.fill('计算器')
+  // The lazy result view intentionally ignores Enter until a visible result exists.
+  await expect(result).toBeVisible()
   await search.press('Enter')
   const panel = page.getByRole('dialog', { name: '计算器', exact: true })
   await expect(panel).toBeVisible()

@@ -369,3 +369,29 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - #36 8ab5c0a 六项专项CI通过，完整Release validation 45548634139/job/138984196222 在 Chromium全量E2E阶段 216通过、1失败、1既有跳过；手机320px品牌右边42.109375大于工具栏左边42，三次复现，已审核下载的实际失败截图。后续稳定浏览器、生产预览和扩展验收被跳过，不能宣称通过。
 - 仅调整<=360px经典模式品牌左距与工具栏右距为12px、工具栏间距1px，保留按钮尺寸和桌面模式。原不重叠断言保留，增加至少8px安全间距断言。初次边距修复本机间距5.609375不足，增加间距压缩后生产Edge productivity全部6/6通过；build:web通过（首屏59.3/60.5、非Swiper195.2/200、Swiper26.4/30、CSS28.4/64 KiB；PWA bootstrap485/512 B、额外JS10716/16384 B、全站1691668/4194304 B）。未改变门禁、依赖或业务功能。
 - main无强制状态检查，因此继续保留Draft，不能用自动合并绕过完整验收。最新修复提交CI全绿后才审查合并并核实main发布及Pages；v1.8.0保留原tag f486d393，v2.0.0此前不存在。不要重复扩大功能或创建其他PR。
+
+## V2 macOS 桌面视觉专项（2026-11-25）
+- 用户调整优先级：下一阶段以macOS桌面接近一致为重点，冻结#37存储扩展；#37独立保留Draft，不将实验性权威存储合入main。视觉分支基于已发布4eb27a6，独立集中PR；未来与#37合并需处理AGENTS/设计文档及共享组件冲突。
+- 新增docs/macos-desktop-design.md：Apple HIG/用户指南参考、字体/材质/语义规范和完整专项验收。首批桌面专属令牌、菜单栏、窗口交通灯、Finder、桌面标签及菜单、Dock、Spotlight与窗口概览视觉调整。保留经典模式、现有数据与窗口引擎，不引入依赖和受限字体文件；自定义应用内容色保留。新增Finder浅深色CSS断言，未本机运行，待新CI与真实截图审查。
+- 本轮使用GitHub连接器，保留Desktop Commander额度供真实Mac浏览器截图与视觉验收。完成上述专项后集中合并部署，保持V2.0.0正式Tag不变。后续优先真实界面差异，不扩大存储迁移。
+
+## macOS 视觉专项第二批（2026-11-25）
+- #38 初始64cb00e四项CI全部成功。独立worktree /private/tmp/inftab-macos38（detached），从该head推进；本机npm ci及build:web通过。#37继续冻结Draft，不混入迁移功能。
+- 复用ClockWidget移入菜单栏，窄屏日期/时间收纳；桌面紧凑搜索和操作条、更多画布空间、原创CSS文件夹图标、Finder紧凑列表及路径/窗口层级、顶部居中Mission Control概览、Spotlight位置、工作区和Dock材质。保留经典模式、用户偏好与保存坐标，不改数据格式，不新增依赖/字体资产。
+- 真实Mac Edge截图发现Dock底座悬空，修复旧height与inset冲突，新增底座包围图标几何门禁。已审核最终桌面/Finder/Spotlight/概览截图，压缩JPG及说明放docs/screenshots/macos-desktop；深色Finder另有既有真实截图。未完成Apple系统同分辨率逐像素对照，仍存在菜单栏真实功能、默认排列、原生控件/动效与设置差距。
+- 本机首次宽范围生产Edge 50/50（desktop-alpha、alpha2、storage、production-chunks），Dock修复后最终相关4/4；build:web首屏59.3/60.5、非Swiper195.1/200、Swiper26.4/30、CSS29.9/64 KiB，PWA额外JS10712/16384 B、1699262/4194304 B。未放宽预算。新的远程CI待验收。临时playwright.local-macos.config.ts不提交。继续集中在#38，下一轮优先菜单栏、图标与设置实际视觉，而不是数据迁移。
+
+## macOS 视觉专项第三批（2026-11-25）
+- #38 上一提交1327490四项CI全部通过。继续独立worktree /private/tmp/inftab-macos38；#37冻结Draft。新增按需DesktopMenus.vue文件/显示/设置真实菜单，复用runCommand及navigateMenu；外部点击、键盘导航/Escape焦点恢复。窄屏隐藏扩展菜单，保留现有操作。桌面右键显式右上排列（arrangeFromRight），不自动改已有位置，保留原网格、隐藏项坐标和备份格式。
+- 桌面/Dock/Spotlight共享彩色内置应用图标、现有Lucide注册表；Spotlight图标/文本与搜索焦点精修，保留排序，未做分组。系统设置为居中模态双栏窗口（宽屏粘性侧栏、窄屏横向导航），复用已有滚动/焦点及业务逻辑。不是独立可拖动系统窗口。经典模式不改样式。
+- 最终本机check、布局单测12/12、生产Edge 52/52（desktop-alpha、alpha2、storage、production-chunks），含真实菜单动作、键盘、设置浅深色/滚动/窄屏、经典模式、右上排列持久化及Spotlight图标。实际截图审查菜单、设置浅深、Spotlight；更新docs/screenshots/macos-desktop。最终build:web首屏59.5/60.5、非Swiper196.9/200、Swiper26.4/30、CSS31.0/64 KiB，PWA额外JS10824/16384 B、全站1708488/4194304 B。未新增依赖、不提高预算。新远程CI待验收。
+- 后续集中Finder导航工具栏、Dock区域和可中断动效、Mission Control真实有窗状态及多分辨率视觉收口，保留#38 Draft直至通过实际验收；不改main/tag。临时playwright.local-macos.config.ts不提交。
+
+## macOS 视觉专项第四批（2026-11-25）
+- #38 05f8108 verify/UI/PWA通过；desktop-cross-browser 45582577208/job/139096033842 Firefox/WebKit均失败：新增设置用例getByRole打开设置匹配两个入口。定位到.home-actions内exact按钮，保留功能断言；新CI待核验。
+- Finder Lucide导航与视图分段控件、搜索框、根路径及列表表头、侧栏/状态栏精修；Dock分隔、真实打开/恢复窗口菜单（复用原激活路径）、菜单与放大/提示互斥。实际截图发现遮挡，首次几何门禁收到-9px重叠，最终锚定图标/停止放大/隐藏提示并保留几何断言通过。Mission Control真实窗口状态生成示意网格（非实时内容截图），保留移动与激活，窗口恢复140ms透明度动效且支持reduced-motion；设置关闭开关中性灰。无新依赖或数据格式变更。
+- 本机check通过，修复前宽范围生产Edge 53/53；最终Dock锚点及CI定位修复后相关4/4通过。最终build:web首屏59.5/60.5、非Swiper197.6/200、Swiper26.4/30、CSS31.8/64 KiB，PWA额外JS10808/16384 B、全站1716315/4194304 B。新增3张真实Mac截图并审核；不宣称完整逐像素macOS还原。保持#38 Draft，#37冻结，main/tag不变。临时playwright.local-macos.config.ts不提交。下一轮复核CI，集中完成余下多分辨率/双主题视觉和窗口动效、必要控件精修，收口发布。
+
+## macOS 视觉发布候选收口（2026-11-25）
+- #38 4c9f2eb五项远程CI全绿，含之前失败的Firefox/WebKit。最终集中视觉收口：Spotlight连续分类标题保留排序、设置控件密度、窗口透明度进入/隐藏及inert/aria-hidden、reduced-motion。多分辨率1280×800深/1440×900浅/1920×1080深/360×740浅真实Finder/Spotlight/设置12张截图。窄屏发现窗口栏遮挡底部、PWA按钮覆盖设置，修复并加断言。窄屏活动窗口期间隐藏窗口栏但顶部窗口菜单仍可用。
+- 宽范围生产Edge 62通过/1失败（经典搜索结果未就绪即Enter；既有安全合同忽略此事件），修正旧测试等待真实可见结果，不改搜索行为。最终专项7/7；build:web首屏59.5/60.5、非Swiper197.7/200、Swiper26.4/30、CSS32.0/64 KiB，PWA额外10815/16384、全站1718163/4194304 B。最新远程CI待验收；通过后核对main/head并合并、验证Pages。保持既有v2.0.0 Tag/Release，Web视觉更新，不另发扩展安装包。#37冻结，不混入数据迁移。没有1:1对照、实时窗口截图或Genie动画，不为此继续扩大本次范围。更新CHANGELOG及设计文档。
