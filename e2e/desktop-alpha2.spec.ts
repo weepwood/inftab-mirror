@@ -186,6 +186,7 @@ test('desktop tool windows share lifecycle without replacing Finder',async({page
  await command('待办事项')
  const todos=page.getByRole('dialog',{name:'待办事项',exact:true})
  await expect(todos).toBeVisible()
+ await expect.poll(async()=>(await todos.boundingBox())!.width).toBe(640)
  await todos.getByRole('button',{name:'最小化窗口'}).click()
  await expect(todos).toBeHidden()
  await page.getByRole('button',{name:'恢复 待办事项'}).click()
@@ -252,8 +253,12 @@ test('tool resize changes real geometry and stays within the viewport',async({pa
  await page.getByRole('combobox',{name:'搜索命令'}).press('Enter')
  const tool=page.getByRole('dialog',{name:'待办事项',exact:true})
  await expect(tool).toBeVisible()
+ // Fresh windows keep real hit geometry even during the opacity transition.
+ await expect.poll(async()=>(await tool.boundingBox())!.width).toBe(640)
  const before=(await tool.boundingBox())!,handle=(await tool.locator('.resize-handle').boundingBox())!
- await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);await page.mouse.down()
+ const hit={x:handle.x+handle.width/2,y:handle.y+handle.height/2}
+ await expect.poll(()=>tool.locator('.resize-handle').evaluate((el,p)=>el===document.elementFromPoint(p.x,p.y),hit)).toBe(true)
+ await page.mouse.move(hit.x,hit.y);await page.mouse.down()
  await page.mouse.move(handle.x+handle.width/2+90,handle.y+handle.height/2+50,{steps:8});await page.mouse.up()
  await expect.poll(async()=>Math.round((await tool.boundingBox())!.width)).toBeGreaterThan(Math.round(before.width)+40)
  await page.setViewportSize({width:420,height:560})

@@ -31,8 +31,9 @@ function dockTransition(el:Element){
  const r=target&&target.getBoundingClientRect(),g=fitted.value
  const usable=dockMotion&&!props.hidden&&r&&r.width&&r.height&&getComputedStyle(target).visibility!=='hidden'&&r.top<innerHeight&&r.bottom>0
  frame.style.setProperty('--window-end-x',usable?(r.x+r.width/2-g.x-g.width/2)+'px':'0px')
- frame.style.setProperty('--window-end-y',usable?(r.y+r.height/2-g.y-g.height/2)+'px':'8px')
- frame.style.setProperty('--window-end-scale',usable?'.09':'.97')
+ frame.style.setProperty('--window-end-y',usable?(r.y+r.height/2-g.y-g.height/2)+'px':'0px')
+ frame.style.setProperty('--window-end-scale',usable?'.09':'1')
+ frame.classList.toggle('dock-motion',!!usable)
 }
 watch(()=>props.minimized,()=>{dockMotion=true},{flush:'sync'})
 function stopMotion(){motionId++;motion?.cancel();motion=undefined}
@@ -142,7 +143,7 @@ onBeforeUnmount(()=>{stopMotion();drag?.unset();resize?.unset();window.removeEve
 @media(prefers-reduced-motion:no-preference){
  .mac-window-enter-active,.mac-window-leave-active{transition:opacity .18s ease,filter .18s ease,scale .18s cubic-bezier(.2,.8,.2,1),translate .18s cubic-bezier(.2,.8,.2,1);filter:brightness(1);scale:1;translate:0 0;transform-origin:50% 50%}
  .mac-window-enter-from,.mac-window-leave-to{opacity:0;filter:brightness(.97);scale:var(--window-end-scale,.97);translate:var(--window-end-x,0px) var(--window-end-y,8px)}
- .mac-window-leave-active{pointer-events:none}
+ .mac-window-leave-active,.mac-window-enter-active.dock-motion{pointer-events:none}
  .window-snap-preview{animation:preview-in .12s ease-out}
  @keyframes preview-in{from{opacity:0}}
 }
