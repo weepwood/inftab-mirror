@@ -395,3 +395,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 ## macOS 视觉发布候选收口（2026-11-25）
 - #38 4c9f2eb五项远程CI全绿，含之前失败的Firefox/WebKit。最终集中视觉收口：Spotlight连续分类标题保留排序、设置控件密度、窗口透明度进入/隐藏及inert/aria-hidden、reduced-motion。多分辨率1280×800深/1440×900浅/1920×1080深/360×740浅真实Finder/Spotlight/设置12张截图。窄屏发现窗口栏遮挡底部、PWA按钮覆盖设置，修复并加断言。窄屏活动窗口期间隐藏窗口栏但顶部窗口菜单仍可用。
 - 宽范围生产Edge 62通过/1失败（经典搜索结果未就绪即Enter；既有安全合同忽略此事件），修正旧测试等待真实可见结果，不改搜索行为。最终专项7/7；build:web首屏59.5/60.5、非Swiper197.7/200、Swiper26.4/30、CSS32.0/64 KiB，PWA额外10815/16384、全站1718163/4194304 B。最新远程CI待验收；通过后核对main/head并合并、验证Pages。保持既有v2.0.0 Tag/Release，Web视觉更新，不另发扩展安装包。#37冻结，不混入数据迁移。没有1:1对照、实时窗口截图或Genie动画，不为此继续扩大本次范围。更新CHANGELOG及设计文档。
+
+## 桌面交互稳定性专项（2026-11-25）
+- 以正式Pages f3a3d03为基线，独立worktree /private/tmp/inftab-interaction39；用户要求左键单击打开、右键长按拖动、搜索浮层不移动图标。独立分支feat/desktop-interaction-stability，不混入#37。DesktopShell显式Pointer Events（180ms+5px阈值），普通点击/多选/菜单/移动/取消分离；复用layout与Finder归属事务，保留窗口InteractJS及经典模式。右键菜单焦点与外部关闭、模态互斥、触屏轻点与滚动；未实现触屏长按移动。
+- 移动前物化所有可见坐标，未移动图标不补位；一次提交，保留隐藏坐标。桌面搜索脱离文档流，常驻固定保留空间，临时覆盖层不影响画布；点击桌面或打开图标退出临时搜索，文件夹搜索结果打开Finder；选择标签固定高度。详细契约见docs/desktop-interaction.md。
+- 本机check、build:web通过；最终宽范围66/67，唯一新增组移动用例预期仅三项而实际包含默认内置入口，修正为目标坐标和全体未移动图标矩阵检查，最终核心4/4。首次URL断言已修正规范化斜线。50/200/1000项P95 16.8/16.8/16.7ms，拖动期间0写入、松开1次。首屏59.5/60.5、非Swiper198.0/200、Swiper26.4/30、CSS32.1/64 KiB；原预算不变。远程CI待验收，仍需Firefox/WebKit实际右键手势与完整UI回归，之后合并并验证Pages。临时playwright.local-interaction.config.ts不提交。

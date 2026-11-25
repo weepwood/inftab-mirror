@@ -357,7 +357,8 @@ function openLocalSearchResult(match: LauncherSearchMatch, event?: MouseEvent) {
   localSearchMode.value = false
   query.value = ''
   document.querySelector<HTMLButtonElement>('.home-search-toggle')?.focus()
-  openItem(match.item, event)
+  if(desktopMode.value)desktopOpen(match.item,event)
+  else openItem(match.item, event)
 }
 
 function createFromSearch(folder = false) {
@@ -393,7 +394,11 @@ function switchDesktopWorkspace(id: string) {
 function openFinder(folderId?: string) {
   finderRequest.value = { sequence: ++finderSequence, workspaceId: activeHomeWorkspaceId.value, folderId }
 }
+function dismissDesktopSearch(){
+  if(localSearchMode.value){localSearchMode.value=false;query.value=''}
+}
 function desktopOpen(item: LauncherItem, event?: MouseEvent) {
+  dismissDesktopSearch()
   if (item.folder) openFinder(item.id)
   else openItem(item,event)
 }
@@ -863,7 +868,7 @@ onBeforeUnmount(() => {
       <ClockWidget v-if="desktopMode && !minimalMode && preferences.showClock" />
     </header>
 
-    <section id="main-content" class="home-content" :class="{ 'home-content-minimal': minimalMode }" tabindex="-1">
+    <section id="main-content" class="home-content" :class="{ 'home-content-minimal': minimalMode, 'desktop-search-reserved': desktopMode&&!minimalMode&&preferences.showSearchBar }" tabindex="-1">
       <ClockWidget v-if="preferences.showClock && (!desktopMode || minimalMode)" />
       <HomeWidgetShelf
         v-if="showHomeWidgets && !minimalMode"
@@ -919,7 +924,7 @@ onBeforeUnmount(() => {
           />
         </template>
       </SearchBar>
-      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" :folder-shortcuts="folderPreviewItems" :dark="effectiveTheme==='dark'" @layout="saveDesktopLayout" @open="desktopOpen" @edit="editLauncherItem" @finder="openFinder()" @create="openFolderEditor()" @remove="removeLauncherItem" @membership="finderMembership" />
+      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" :folder-shortcuts="folderPreviewItems" :dark="effectiveTheme==='dark'" :blocked="overlayOpen" :search-active="localSearchMode" @dismiss-search="dismissDesktopSearch" @layout="saveDesktopLayout" @open="desktopOpen" @edit="editLauncherItem" @finder="openFinder()" @create="openFolderEditor()" @remove="removeLauncherItem" @membership="finderMembership" />
       <ShortcutGrid
         v-if="!minimalMode && !desktopMode"
         :items="allLauncherItems"
@@ -1013,7 +1018,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.desktop-mode .home-content{width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;padding-top:54px;padding-bottom:84px}
+.home.desktop-mode .home-content:not(.home-content-minimal){width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;justify-content:flex-start;gap:8px;padding-top:54px;padding-bottom:84px}
+.home.desktop-mode .home-content.desktop-search-reserved{padding-top:142px}
 .desktop-mode .desktop-shell{min-height:240px}
 .desktop-mode .storage-error-toast{position:fixed;z-index:9;bottom:14px}
 .desktop-mode-toggle{font-size:22px}
@@ -1025,8 +1031,7 @@ onBeforeUnmount(() => {
 .desktop-menu-label:hover{background:var(--ui-accent-soft)}
 .desktop-menu-label:first-child{margin-right:2px;font-weight:650}
 .desktop-mode .desktop-mode-toggle{margin-left:auto}
-.desktop-mode .home-content{justify-content:flex-start;gap:8px}
-.desktop-mode .home-content :deep(.search-area){width:min(420px,100%);margin:0 auto 4px}
+.desktop-mode .home-content :deep(.search-area){position:absolute;z-index:5;top:54px;left:50%;transform:translateX(-50%);width:min(420px,100%);margin:0}
 .desktop-mode .home-content :deep(.search-box){height:40px;border-radius:10px;background:var(--mac-bar);border-color:var(--mac-line);box-shadow:0 4px 18px #0002}
 .desktop-mode .home-actions :deep(.home-clock){display:flex;flex-direction:row-reverse;align-items:center;gap:7px;margin:0 0 0 6px;color:var(--mac-ink);text-shadow:none;white-space:nowrap}
 .desktop-mode .home-actions :deep(.clock-time),.desktop-mode .home-actions :deep(.clock-date){font:500 12px/1.3 var(--mac-font);color:inherit;letter-spacing:0;text-shadow:none}

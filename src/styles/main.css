@@ -1233,7 +1233,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 
 /* Clean launcher: center the visual mass without changing stored grid settings. */
 @media (min-width: 781px) and (min-height: 680px) {
-  .home:not(.home-scrollable) .home-content:not(.home-content-minimal):not(:has(.home-clock,.search-area,.home-widget-shelf,.panel-loading)) {
+  .home:not(.desktop-mode):not(.home-scrollable) .home-content:not(.home-content-minimal):not(:has(.home-clock,.search-area,.home-widget-shelf,.panel-loading)) {
     display: flex; flex-direction: column; justify-content: center;
     min-height: calc(100vh - 100px); padding-bottom: 60px;
   }
@@ -1270,12 +1270,12 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .shortcut-open:focus-visible .shortcut-icon { outline: 2px solid #fff; outline-offset: 3px; }
 .shortcut-icon { corner-shape: squircle; }
 @media (min-width: 781px) and (min-height: 680px) {
-  .home.home-with-dock:not(.home-scrollable) .home-content:not(.home-content-minimal):not(:has(.home-clock,.search-area,.home-widget-shelf,.panel-loading)) { padding-bottom: 88px; }
+  .home.home-with-dock:not(.desktop-mode):not(.home-scrollable) .home-content:not(.home-content-minimal):not(:has(.home-clock,.search-area,.home-widget-shelf,.panel-loading)) { padding-bottom: 88px; }
 }
 
 /* Wide clean launcher: visually group the icons without changing stored spacing or mobile layout. */
 @media (min-width: 1100px) and (min-height: 680px) {
-  .home:not(.home-scrollable) .home-content:not(.home-content-minimal):not(:has(.home-clock,.search-area,.home-widget-shelf,.panel-loading)) .shortcut-grid-wrap {
+  .home:not(.desktop-mode):not(.home-scrollable) .home-content:not(.home-content-minimal):not(:has(.home-clock,.search-area,.home-widget-shelf,.panel-loading)) .shortcut-grid-wrap {
     max-width: min(100%, calc(var(--grid-columns) * (var(--shortcut-size) + var(--shortcut-gap-x) + 48px)));
   }
   .home-actions { padding: 4px; gap: 3px; border-radius: 16px; }
