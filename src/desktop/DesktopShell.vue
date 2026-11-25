@@ -5,7 +5,7 @@ import { navigateMenu } from '../components/menuNavigation'
 import { desktopHabitIcon, launcherIcons } from '../components/launcherIcons'
 import { folderParents } from '../data/folderTree'
 import { cell, arrangeFromRight, resolvePoints, fitPoint, freshLayout, normalizeLayout, translateGroup, type Point, type DesktopLayout } from './layout'
-const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout; folderShortcuts?: LauncherItem[]; dark?: boolean; blocked?:boolean; searchActive?:boolean}>()
+const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout; folderShortcuts?: LauncherItem[]; dark?: boolean; blocked?:boolean; searchActive?:boolean; showNames?:boolean}>()
 const emit = defineEmits<{open: [item: LauncherItem, event?: MouseEvent]; edit: [item: LauncherItem]; layout: [layout: DesktopLayout]; finder:[]; create:[]; remove:[item:LauncherItem]; membership:[item:LauncherItem,folderId:string]; dismissSearch:[]}>()
 const surface = ref<HTMLElement>()
 const selected = ref<string[]>([])
@@ -280,7 +280,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 })
 </script>
 <template>
-  <section class="desktop-shell" :class="{'is-moving':moving}" aria-label="自由桌面">
+  <section class="desktop-shell" :class="{'is-moving':moving,'hide-names':showNames===false}" aria-label="自由桌面">
     <div class="desktop-toolbar" @pointerdown="emit('dismissSearch')">
       <span>{{selected.length?selected.length+' 项已选':'桌面'}}</span>
       <button type="button" @click="emit('finder')">Finder</button>
@@ -296,7 +296,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
             <img v-else-if="item.icon && failedIcons[item.id]!==item.icon" :src="item.icon" alt="" draggable="false" @error="failedIcons[item.id]=item.icon!"/>
             <span v-else>{{item.mark}}</span>
           </span>
-          <span class="desktop-label">{{item.title}}</span>
+          <span v-if="showNames!==false" class="desktop-label">{{item.title}}</span>
         </button>
         <div v-if="marquee" class="desktop-marquee" :style="{left:Math.min(marquee.x,marquee.endX)+'px',top:Math.min(marquee.y,marquee.endY)+'px',width:Math.abs(marquee.endX-marquee.x)+'px',height:Math.abs(marquee.endY-marquee.y)+'px'}"/>
       </div>
@@ -320,11 +320,13 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 .desktop-icon{position:absolute;top:0;left:0;width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:5px 0 0;gap:4px;border:0;background:none;color:white;touch-action:pan-y;user-select:none;-webkit-touch-callout:none;cursor:pointer}
 .desktop-shell.is-moving,.desktop-shell.is-moving .desktop-icon{cursor:grabbing}
 .desktop-icon:focus-visible{outline:2px solid white;outline-offset:-3px;border-radius:8px}
-.desktop-symbol{width:56px;height:56px;flex:none;border-radius:var(--mac-icon-radius);border:1px solid var(--mac-icon-edge);display:grid;place-items:center;overflow:hidden;color:white;box-shadow:var(--mac-icon-shadow);font-size:24px}
+.desktop-shell{--desktop-symbol-size:clamp(32px,calc(var(--shortcut-size,72px) * .75 + 2px),56px)}.desktop-shell.hide-names{--desktop-symbol-size:clamp(32px,calc(var(--shortcut-size,72px) * .75 + 2px),80px)}
+.desktop-shell.hide-names .desktop-icon{justify-content:center;padding:0}
+.desktop-symbol{width:var(--desktop-symbol-size);height:var(--desktop-symbol-size);flex:none;border-radius:var(--mac-icon-radius);border:1px solid var(--mac-icon-edge);display:grid;place-items:center;overflow:hidden;color:white;box-shadow:var(--mac-icon-shadow);font-size:24px}
 
 .desktop-symbol img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .desktop-label{max-width:90px;padding:1px 5px;border-radius:5px;box-sizing:border-box;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;white-space:normal;font-size:12px;font-weight:500;line-height:14px;text-align:center;color:var(--mac-desktop-label-ink);background:var(--mac-desktop-label)}
-.desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon:focus-visible .desktop-symbol{outline:2px solid #fff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection)}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:56px}.desktop-menu{position:fixed;z-index:10;background:var(--mac-menu);color:var(--mac-ink);padding:var(--mac-menu-padding);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);box-shadow:var(--mac-shadow);width:170px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);overflow:auto;overscroll-behavior:contain;backdrop-filter:blur(18px)}.desktop-menu button{display:block;width:100%;text-align:left;padding:7px 9px;background:none;border:0;border-radius:var(--mac-radius-menu-item);color:inherit;cursor:pointer}.desktop-menu button:hover,.desktop-menu button:focus-visible{background:var(--mac-selection);color:var(--mac-selection-ink)}
+.desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon:focus-visible .desktop-symbol{outline:2px solid #fff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection)}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:var(--desktop-symbol-size)}.desktop-menu{position:fixed;z-index:10;background:var(--mac-menu);color:var(--mac-ink);padding:var(--mac-menu-padding);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);box-shadow:var(--mac-shadow);width:170px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);overflow:auto;overscroll-behavior:contain;backdrop-filter:blur(18px)}.desktop-menu button{display:block;width:100%;text-align:left;padding:7px 9px;background:none;border:0;border-radius:var(--mac-radius-menu-item);color:inherit;cursor:pointer}.desktop-menu button:hover,.desktop-menu button:focus-visible{background:var(--mac-selection);color:var(--mac-selection-ink)}
 .desktop-marquee{position:absolute;pointer-events:none;border:1px solid #93c9ff;background:#559aff30;z-index:4}@media(prefers-reduced-motion:no-preference){.desktop-icon.selected .desktop-symbol{transition:outline-color .12s}.finder{animation:finder-appear .15s ease-out}}
 .desktop-menu.dark{background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line)}
 @media(forced-colors:active){.desktop-label{color:CanvasText;background:Canvas}.desktop-icon.selected .desktop-label{color:HighlightText;background:Highlight}.desktop-icon:focus-visible{outline-color:Highlight}}

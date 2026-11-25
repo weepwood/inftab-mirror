@@ -473,3 +473,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - #47 c0ce84f 四项正式 CI 全绿（verify、ui-smoke、desktop-cross-browser、soak），已转 Ready for review；合并接口 GraphQL 错误及 REST 超时，复查仍 OPEN、main 7600b50，未绕过 PR。独立 worktree `/Volumes/data/AI-Development/worktrees/inftab-mirror/desktop-gesture-lifecycle` 基于已验收 c0ce84f，后续待 #47 合并后同步 main，不混入已验收 PR。
 - 桌面尺寸变化统一取消图标拖动、框选与菜单；第二指针取消框选；菜单依据实际尺寸限制视口边缘 4px，删除固定 180/260px 预裁切。保留现有单击打开、右键拖动、坐标格式与选择语义。无新依赖或资源预算放宽。
 - Mac build:web 通过：首屏 59.8/60.5 KiB，非 Swiper 198.8/200 KiB，CSS 35.6/64 KiB，PWA 10665/16384 B。首次生产 Edge 定向 3/4，新增测试在恢复视口后 ResizeObserver 尚未处理即打开菜单；加入两帧等待（保留真实鼠标、几何及持久化断言），定向复测三轮 3/3。未再次运行完整宽范围、Linux CI 或真机。临时配置与 node_modules 链接不提交。先保留独立分支，后续集中合并开发，保持 #37、#29 及正式 Tag 不变。
+
+## 最大化拖出恢复与桌面图标显示专项（2026-11-25）
+- 继续独立分支 feat/desktop-gesture-lifecycle（e87dab6），#47 c0ce84f 四项 CI 仍全绿、Ready、CLEAN，但合并接口再次失败，复查仍 OPEN。不直接推 main，不改 #37/#29/正式 Tag。
+- WindowFrame 复用 InteractJS 和原 fitWindow：最大化标题栏拖出时仅临时解除显示态，取消还原最大化且不写 sessionStorage；正常结束提交自由几何，边缘停靠或顶部最大化保留原自由尺寸。桌面复用已有 iconSize/showNames，固定 96px 命中与布局坐标，默认 72 对应图标 56px，名称可见时图标限制 32–56px，隐藏时 32–80px，保留 aria-label、经典模式与存储格式。暂不实现可变网格步长、独立密度或触屏直接拖动。
+- Mac build:web 通过（首屏 59.8/60.5、非Swiper 198.9/200、CSS 35.7/64 KiB，PWA额外 10665/16384 B，全站 1755380/4194304 B）。首次定向 1/4，定位到空白坐标搜索范围、设置同名数值控件定位与最大化几何时序；改为真实命中检查、精确控件名称及实际尺寸等待，保留全部操作及持久化断言。最终四项生产 Edge 连续两轮 8/8。未完成跨浏览器、全面宽范围、真机验收。保留原预算，无新增依赖。将集中批次推送独立分支，不追加到 #47 已验收提交，不创建碎片 PR。

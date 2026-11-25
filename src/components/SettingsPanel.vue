@@ -435,7 +435,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
     </section>
 
     <section class="settings-section">
-      <div class="section-heading"><div><h3>图标与网格</h3><p>调整每页排布与图标外观</p></div></div>
+      <div class="section-heading"><div><h3>图标与网格</h3><p>经典模式调整网格；桌面模式共用图标大小和名称显示，保持固定坐标。</p></div></div>
       <RangeField label="每行图标" :min="2" :max="12" :step="1" :model-value="preferences.columns" unit="" @update:model-value="update('columns',$event)" />
       <RangeField label="每页行数" :min="1" :max="8" :step="1" :model-value="preferences.rows" unit="" @update:model-value="update('rows',$event)" />
       <RangeField label="图标大小" :min="32" :max="160" :step="2" :model-value="preferences.iconSize" unit="px" @update:model-value="update('iconSize',$event)" />

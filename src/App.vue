@@ -961,7 +961,7 @@ onBeforeUnmount(() => {
           />
         </template>
       </SearchBar>
-      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" :folder-shortcuts="folderPreviewItems" :dark="effectiveTheme==='dark'" :blocked="overlayOpen" :search-active="localSearchMode" @dismiss-search="dismissDesktopSearch" @layout="saveDesktopLayout" @open="desktopOpen" @edit="editLauncherItem" @finder="openFinder()" @create="openFolderEditor()" @remove="removeLauncherItem" @membership="finderMembership" />
+      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" :folder-shortcuts="folderPreviewItems" :show-names="preferences.showNames" :dark="effectiveTheme==='dark'" :blocked="overlayOpen" :search-active="localSearchMode" @dismiss-search="dismissDesktopSearch" @layout="saveDesktopLayout" @open="desktopOpen" @edit="editLauncherItem" @finder="openFinder()" @create="openFolderEditor()" @remove="removeLauncherItem" @membership="finderMembership" />
       <ShortcutGrid
         v-if="!minimalMode && !desktopMode"
         :items="allLauncherItems"

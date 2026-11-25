@@ -12,7 +12,9 @@ const root=ref<HTMLElement>(),bar=ref<HTMLElement>(),snap=ref<WindowSnap>(null)
 const preferred=ref<WindowGeometry>({x:12,y:64,width:props.kind==='finder'?850:640,height:props.kind==='finder'?570:530})
 const preview=ref<WindowSnap|'top'>(null)
 const viewport=ref({w:innerWidth,h:innerHeight})
-const fitted=computed(()=>props.maximized?fitWindow({x:12,y:48,width:viewport.value.w-24,height:viewport.value.h-96},viewport.value.w,viewport.value.h):snap.value?dockWindow(snap.value,viewport.value.w,viewport.value.h):fitWindow(preferred.value,viewport.value.w,viewport.value.h))
+const dragFromMax=ref(false)
+const isMaximized=computed(()=>props.maximized&&!dragFromMax.value)
+const fitted=computed(()=>isMaximized.value?fitWindow({x:12,y:48,width:viewport.value.w-24,height:viewport.value.h-96},viewport.value.w,viewport.value.h):snap.value?dockWindow(snap.value,viewport.value.w,viewport.value.h):fitWindow(preferred.value,viewport.value.w,viewport.value.h))
 const previewStyle=computed(()=>{const {w,h}=viewport.value;const g=preview.value==='top'?fitWindow({x:12,y:48,width:w-24,height:h-96},w,h):dockWindow(preview.value??'left',w,h);return {left:g.x+'px',top:g.y+'px',width:g.width+'px',height:g.height+'px',zIndex:props.layer}})
 const style=computed(()=>({left:fitted.value.x+'px',top:fitted.value.y+'px',width:fitted.value.width+'px',height:fitted.value.height+'px',zIndex:props.layer}))
 let drag:ReturnType<typeof interact>|undefined,resize:ReturnType<typeof interact>|undefined
@@ -21,13 +23,14 @@ let originalSnap:WindowSnap=null
 let delta={left:0,right:0,top:0,bottom:0}
 function onResize(){cancel();viewport.value={w:innerWidth,h:innerHeight}}
 function start(x?:number,y?:number){
- if(!props.active||props.minimized||props.hidden||props.maximized||root.value?.closest('[inert]'))return
- if(snap.value&&x===undefined)return
+ if(!props.active||props.minimized||props.hidden||root.value?.closest('[inert]'))return
+ if((snap.value||props.maximized)&&x===undefined)return
  original={...preferred.value};originalSnap=snap.value
  const current=fitted.value,{w,h}=viewport.value
- if(snap.value&&x!==undefined&&y!==undefined){
+ if((snap.value||props.maximized)&&x!==undefined&&y!==undefined){
   const free=fitWindow(preferred.value,w,h)
   const ratio=Math.max(0,Math.min(1,(x-current.x)/current.width))
+  dragFromMax.value=props.maximized
   snap.value=null
   preferred.value=fitWindow({...free,x:x-ratio*free.width,y:current.y},w,h)
  }
@@ -49,11 +52,11 @@ function resizing(change:typeof delta,edges:ResizeEdges){
 function end(){
  if(!gesture)return
  if(root.value?.closest('[inert]'))return cancel()
- if(preview.value){if(original)preferred.value=original;if(preview.value==='top'){snap.value=null;emit('maximize')}else snap.value=preview.value}
- else try{saveGeometry(props.geometryKey,preferred.value,sessionStorage)}catch{/* denied storage */}
- gesture=undefined;original=undefined;originalSnap=null;preview.value=null
+ if(preview.value){if(original)preferred.value=original;if(preview.value==='top'){snap.value=null;if(!props.maximized)emit('maximize')}else{snap.value=preview.value;if(dragFromMax.value)emit('maximize')}}
+ else {if(dragFromMax.value)emit('maximize');try{saveGeometry(props.geometryKey,preferred.value,sessionStorage)}catch{/* denied storage */}}
+ gesture=undefined;original=undefined;originalSnap=null;preview.value=null;dragFromMax.value=false
 }
-function cancel(){if(original){preferred.value=original;snap.value=originalSnap}gesture=undefined;original=undefined;originalSnap=null;preview.value=null}
+function cancel(){if(original){preferred.value=original;snap.value=originalSnap}gesture=undefined;original=undefined;originalSnap=null;preview.value=null;dragFromMax.value=false}
 function toggleSnap(side:Exclude<WindowSnap,null>){cancel();if(props.maximized)emit('maximize');snap.value=snap.value===side?null:side}
 function maximize(){cancel();snap.value=null;emit('maximize')}
 function titleDoubleClick(e:MouseEvent){
@@ -82,7 +85,7 @@ onBeforeUnmount(()=>{drag?.unset();resize?.unset();window.removeEventListener('r
 <template>
  <div v-if="preview" class="window-snap-preview" aria-hidden="true" :style="previewStyle"/>
  <Transition name="mac-window" appear>
- <section v-show="!minimized&&!hidden" ref="root" class="window-frame" :class="[kind==='finder'?'finder':'tool-window',{active,maximized,dark,snapped:!!snap}]" :style="style" role="dialog" :aria-label="label" :aria-hidden="minimized||hidden||undefined" :inert="(minimized||hidden)||undefined" tabindex="-1" @pointerdown="emit('activate')" @focusin="emit('activate')" @keydown="handleKey">
+ <section v-show="!minimized&&!hidden" ref="root" class="window-frame" :class="[kind==='finder'?'finder':'tool-window',{active,maximized:isMaximized,dark,snapped:!!snap}]" :style="style" role="dialog" :aria-label="label" :aria-hidden="minimized||hidden||undefined" :inert="(minimized||hidden)||undefined" tabindex="-1" @pointerdown="emit('activate')" @focusin="emit('activate')" @keydown="handleKey">
   <header ref="bar" @dblclick="titleDoubleClick" class="window-title" :class="kind==='finder'?'finder-title':'tool-title'">
    <div class="traffic"><button type="button" :aria-label="kind==='finder'?'关闭 Finder':'关闭窗口'" class="close" @click="emit('close')"/><button type="button" :aria-label="kind==='finder'?'最小化 Finder':'最小化窗口'" class="minimize" @click="emit('minimize')"/><button type="button" :aria-label="(maximized?'还原':'最大化')+(kind==='finder'?' Finder':'窗口')" class="maximize" @click="maximize"/></div>
    <strong>{{title}}</strong><span class="window-description">{{description}}</span>
