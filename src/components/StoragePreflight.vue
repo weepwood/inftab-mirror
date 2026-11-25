@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref, shallowRef } from 'vue'
+import { exportRehearsalDraft, previewRehearsalDraft } from '../data/rehearsalDraft'
 import { downloadText } from '../data/downloadBackup'
 import { inspectGeneration, prepareGeneration, transitionGeneration, type GenerationState } from '../data/workspaceGeneration'
 import type { WorkspaceTools } from '../data/workspaceTools'
 import { discardMigrationCandidate, isCandidateCurrent, migrationCandidateLimit, prepareMigration, readMigrationCandidate, stageMigration, type MigrationCandidate, type MigrationReport } from '../data/storagePreflight'
 const props=defineProps<{tools:WorkspaceTools}>()
 const candidate=shallowRef<MigrationCandidate>(),saved=shallowRef<MigrationCandidate>(),report=shallowRef<MigrationReport>()
-const generation=shallowRef<GenerationState>(),drift=ref(false)
+const generation=shallowRef<GenerationState>(),drift=ref(false),preview=shallowRef<ReturnType<typeof previewRehearsalDraft>>()
 const busy=ref(false),status=ref(''),current=ref(false)
 async function run(action:()=>Promise<void>){
  if(busy.value)return
@@ -35,18 +36,27 @@ function transition(kind:'start'|'rollback'|'retire'){return run(async()=>{
  await refreshGeneration();status.value='演练状态已更新，原数据未修改。'
 })}
 function importDraft(event:Event){return run(async()=>{
- const input=event.target as HTMLInputElement,file=input.files?.[0],expected=generation.value
+ const input=event.target as HTMLInputElement,file=input.files?.[0]
  input.value=''
- if(!file||!expected)return
+ if(!file)return
+ preview.value=undefined
  if(file.size>migrationCandidateLimit)throw new Error('草稿超过 8 MiB。')
  const content=await file.text()
- if(!window.confirm('将此 JSON 提交至独立演练，不修改原数据？'))return
- generation.value=await transitionGeneration(expected,{kind:'commit',content})
+ await refreshGeneration()
+ if(!generation.value||generation.value.phase!=='rehearsal'||drift.value)throw new Error('当前演练不可写入。')
+ preview.value=previewRehearsalDraft(content,generation.value)
+ status.value=preview.value.conflicts.length?'存在冲突，保留原草稿。':'预览完成，确认后提交。'
+})}
+function applyDraft(){return run(async()=>{
+ const p=preview.value
+ if(!p?.merged||p.conflicts.length)return
+ generation.value=await transitionGeneration(p.expected,{kind:'commit',content:JSON.stringify(p.merged)})
+ preview.value=undefined
  await refreshGeneration();status.value='独立草稿已提交，原数据未修改。'
 })}
 function exportDraft(all=false){
  const g=generation.value
- if(g)downloadText(all?JSON.stringify(g):g.head,'application/json',all?'inftab-rehearsal-record.json':'inftab-rehearsal-draft.json')
+ if(g)downloadText(all?JSON.stringify(g):exportRehearsalDraft(g),'application/json',all?'inftab-rehearsal-record.json':'inftab-rehearsal-draft.json')
 }
 function inspect(){return run(async()=>{
  candidate.value=undefined;report.value=undefined
@@ -86,7 +96,7 @@ function remove(){return run(async()=>{
   </div>
   <div class="preflight-report">
    <strong>独立存储演练</strong>
-   <p>演练仅修改独立快照，不能作为生产数据源。可导出 JSON 草稿供外部编辑后提交。</p>
+   <p>演练仅修改独立快照，不能作为生产数据源。导出带世代与版本的 JSON，编辑 draft 字段后预览提交。</p>
    <button v-if="saved&&(!generation||generation.phase==='retired')" type="button" :disabled="!current" @click="prepare">准备演练世代</button>
    <template v-if="generation">
     <p>{{ {prepared:'已准备',rehearsal:'演练中',retired:'已退役'}[generation.phase] }} · Revision {{generation.revision}}</p>
@@ -99,6 +109,13 @@ function remove(){return run(async()=>{
      <button type="button" @click="exportDraft(true)">导出完整演练记录</button>
     </div>
     <label v-if="generation.phase==='rehearsal'">提交独立 JSON 草稿<input type="file" aria-label="提交独立 JSON 草稿" accept=".json,application/json" :disabled="drift" @change="importDraft"/></label>
+    <div v-if="preview" class="preflight-report">
+     <p>基础 Revision {{preview.baseRevision}} → 当前 {{preview.expected.revision}}</p>
+     <p v-for="c in preview.conflicts.slice(0,20)" :key="c.path">{{c.path}} · {{ { 'concurrent-edit':'同字段修改','delete-edit':'删除与修改','order':'顺序冲突','reference':'引用冲突' }[c.reason] }}</p>
+     <p v-if="preview.conflicts.length">共 {{preview.conflicts.length}} 项冲突，原文件保留，请手动处理后重新导入。</p>
+     <button v-else type="button" :disabled="drift||generation.phase!=='rehearsal'" @click="applyDraft">确认提交预览</button>
+     <button type="button" @click="downloadText(JSON.stringify({format:'inftab-rehearsal',version:1,generation:preview.expected.generation,revision:preview.baseRevision,draft:preview.local}),'application/json','inftab-local-draft-backup.json')">导出未提交内容</button>
+    </div>
    </template>
   </div>
   <p v-if="status" role="status">{{status}}</p>

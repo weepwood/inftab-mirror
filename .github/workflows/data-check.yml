@@ -24,6 +24,7 @@ on:
       - 'src/data/workspaceGeneration.ts'
       - 'src/data/snapshotStore.ts'
       - 'src/data/workspaceConflict.ts'
+      - 'src/data/rehearsalDraft.ts'
       - 'src/data/workspaceConflict.test.ts'
       - 'e2e/workspace-generation.spec.ts'
       - 'src/data/storagePreflight.ts'

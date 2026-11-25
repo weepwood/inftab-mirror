@@ -71,7 +71,7 @@ export default defineConfig({
             // overhead without pulling them into the homepage startup graph.
             {
               name: 'settings-tools',
-              test: /\/src\/components\/(?:CustomThemeEditor|ConfigMigration|ShortcutManager|HomeLayoutEditor|StoragePreflight)\.vue|\/src\/data\/(?:backupHistory|shortcutBatch|downloadBackup|storagePreflight|workspaceGeneration|backup|layoutEditor)\.ts/,
+              test: /\/src\/components\/(?:SettingsPanel|CustomThemeEditor|ConfigMigration|ShortcutManager|HomeLayoutEditor|StoragePreflight)\.vue|\/src\/data\/(?:backupHistory|shortcutBatch|downloadBackup|storagePreflight|workspaceGeneration|workspaceConflict|rehearsalDraft|backup|layoutEditor|themeEditorData)\.ts/,
               includeDependenciesRecursively: false,
             },
             // Small offline tools share Vue/icon imports and repeated form markup.

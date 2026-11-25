@@ -41,7 +41,7 @@ function canonical(value: unknown): string {
   return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
     ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item)
 }
-function same(a: unknown, b: unknown) { return canonical(a) === canonical(b) }
+export function same(a: unknown, b: unknown) { return canonical(a) === canonical(b) }
 export function readMigrationSource(storage: Storage = localStorage): Raw {
   const known = [...Object.keys(keys), ...extraKeys]
   // Legacy position keys are retained verbatim, even when no current workspace references them.

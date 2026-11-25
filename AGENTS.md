@@ -388,3 +388,9 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 复用snapshotStore.ts，桌面意图、预检及世代三个库沿用原数据库/存储名及数据格式。按需设置资源合并StoragePreflight、storagePreflight、workspaceGeneration、backup、layoutEditor等；桌面合并试验触发实际桌面加载失败，已停止试验并撤销，保留原分包。最终build:web首屏59.3/60.5、非Swiper198.8/200、Swiper26.4/30、CSS28.5/64 KiB；PWA额外JS10655/16384 B，完整1706266/4194304 B。Linux预算待新CI，门禁不变。
 - 预检界面接入实际实时getBackup初始化、显式接受规范化、替换退役记录确认、开始/回退/结束、JSON文件独立提交、当前草稿及含原始候选与previous的完整记录导出、重载读回。来源漂移限制写入，不修改旧数据，不切换权威存储。完整记录含用户数据，仅本地下载。
 - 最终npm run check通过；冲突规划与桌面意图单测8/8；生产Edge 51/51（desktop-alpha2、desktop-storage、config-migration、storage-preflight、workspace-generation、production-chunks）；实际下载与读回断言已验证。尚未完成Linux重新验收、冲突交互、正式权威适配器及真实跨版本隔离，仍保留#37 Draft。下一轮复查CI，特别关注非Swiper预算；继续集中开发。临时playwright.local-v21.config.ts不提交。
+
+## V2.1 版本化独立草稿与冲突预览（2026-11-25）
+- #37 上轮1e640b5五项远程CI通过；Linux 736单测、非Swiper199.9/200 KiB，预算临界。新功能初次本机非Swiper204844 >204800 bytes，合并设置面板、主题验证及相关按需工具并复用规范比较后build:web通过，首屏59.3/60.5、非Swiper198.7/200、Swiper26.4/30、CSS28.5/64 KiB；PWA额外JS10555/16384 B、完整1709177/4194304 B。未提高预算或新增依赖，Linux仍需核验。
+- 新增rehearsalDraft.ts：inftab-rehearsal v1信封generation/revision/draft，当前及上一保留版本的三方预览，明确确认后CAS提交；缺世代、旧世代、过旧版本、同字段/删除/排序/引用冲突拒绝。冲突展示路径和原因（前20项及总数），保留原文件且可导出原版本未提交内容，手工修正后重导。不是完整逐字段冲突编辑器；不修改生产数据源。原始完整演练记录下载仍保留。
+- 实际check、专项单测8/8、生产Edge宽范围22项通过，另1项UI测试在测试模块回读阶段失败（inspection undefined）；改为实际界面下载完整记录检验合并结果及拒绝旧版本，最终独立世代/预览4/4通过。最终build:web通过。现有首次宽范围其余22项通过的事实不等于最终全量重跑；远程data-smoke等仍需新CI。增加CI路径。更新docs/workspace-transaction-design.md。
+- 仍保留#37 Draft；下一轮核验Linux预算与CI，治理实际权威适配器、跨版本隔离方案及冲突恢复，不将隔离演练宣称为正式迁移。Desktop Commander本月约90%，优先使用GitHub连接器检查远程CI。临时playwright.local-v21.config.ts不提交。

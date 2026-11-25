@@ -3,10 +3,7 @@ import { isRecord } from './validation'
 
 export interface WorkspaceConflict { path: string; reason: 'concurrent-edit' | 'delete-edit' | 'order' | 'reference' }
 export type WorkspaceMergePlan = { conflicts: WorkspaceConflict[]; merged?: WorkspaceBackup }
-function canonical(value:unknown):string|undefined{
- return JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v)
-}
-const same=(a:unknown,b:unknown)=>canonical(a)===canonical(b)
+import { same } from './storagePreflight'
 function pathAt(path:string,key:string){return path+'/'+key.replaceAll('~','~0').replaceAll('/','~1')}
 function identified(value:unknown[]):value is (Record<string,unknown>&{id:string})[]{
  return value.every(v=>isRecord(v)&&typeof v.id==='string'&&!!v.id)&&new Set(value.map(v=>(v as {id:string}).id)).size===value.length

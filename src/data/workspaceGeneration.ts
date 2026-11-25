@@ -5,7 +5,7 @@
 import { accessSnapshot } from './snapshotStore'
 import { parseWorkspaceBackup, type WorkspaceBackup } from './backup'
 import { createLocalId } from './createId'
-import { isCandidateCurrent, readMigrationSource, validateMigrationCandidate, type MigrationCandidate } from './storagePreflight'
+import { isCandidateCurrent, readMigrationSource, validateMigrationCandidate, same, type MigrationCandidate } from './storagePreflight'
 import { readIntent } from '../desktop/transactionIntent'
 
 export const generationDatabase = 'inftab-workspace-generation'
@@ -20,12 +20,7 @@ export interface GenerationState extends GenerationToken {
   head: string
   previous?: string
 }
-function canonical(value: unknown): string {
-  return JSON.stringify(value, (_, v) => v && typeof v === 'object' && !Array.isArray(v)
-    ? Object.fromEntries(Object.keys(v).sort().map(key => [key,v[key]])) : v)
-}
-function same(a: unknown,b: unknown){return canonical(a)===canonical(b)}
-function strictSnapshot(content:string): WorkspaceBackup {
+export function strictSnapshot(content:string): WorkspaceBackup {
   if(typeof content!=='string'||new Blob([content]).size>limit)throw new Error('工作区快照无效或超过 8 MiB。')
   const input=JSON.parse(content)
   const parsed=parseWorkspaceBackup(input)
