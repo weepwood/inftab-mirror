@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SelectField from "./SelectField.vue"
 import { computed, onBeforeUnmount, ref } from 'vue'
 import type { CustomTheme, ThemePreset } from '../types'
 import { createLocalId } from '../data/createId'
@@ -108,7 +109,7 @@ onBeforeUnmount(() => { readId++ })
     <section class="theme-presets" aria-label="主题预设库">
       <p v-if="presetsConflict" role="alert">预设库已在其他标签页修改，请重新加载草稿后操作。</p>
       <strong>主题预设库 · {{ presets?.length ?? 0 }} / {{ maxThemePresets }}</strong>
-      <label>选择预设<select v-model="presetId" aria-label="选择主题预设" @change="selectPreset"><option value="">新建预设</option><option v-for="item in presets ?? []" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
+      <label>选择预设<SelectField v-model="presetId" aria-label="选择主题预设" @change="selectPreset"><option value="">新建预设</option><option v-for="item in presets ?? []" :key="item.id" :value="item.id">{{ item.name }}</option></SelectField></label>
       <label>预设名称<input v-model="presetName" aria-label="预设名称" maxlength="40" placeholder="例如：午夜蓝" /></label>
       <div class="theme-actions"><button type="button" :disabled="presetsConflict || !valid || !presetName.trim()" @click="savePreset()">{{ selectedPreset ? '更新预设' : '保存为预设' }}</button><button v-if="selectedPreset" type="button" :disabled="presetsConflict || !valid || !presetName.trim()" @click="savePreset(true)">复制草稿为新预设</button><button v-if="selectedPreset" type="button" :disabled="presetsConflict || !presetName.trim()" @click="renamePreset">重命名预设</button><button v-if="selectedPreset" type="button" :disabled="presetsConflict" @click="deletePreset">{{ pendingDelete === selectedPreset.id ? '确认删除预设' : '删除预设' }}</button><button v-if="pendingDelete" type="button" @click="pendingDelete = ''">取消删除</button></div>
       <button type="button" class="theme-default" @click="readId++; draft = clone(defaultCustomTheme); status = '默认主题已载入草稿。'">载入默认主题草稿</button>
@@ -137,7 +138,7 @@ onBeforeUnmount(() => { readId++ })
 .custom-theme-editor { display: grid; gap: 10px; margin-top: 12px; font-size: 12px; color: var(--ui-text); }
 .theme-presets { display: grid; gap: 8px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-card); padding: 10px; }
 .theme-presets label { display: grid; gap: 4px; }
-.theme-presets input, .theme-presets select, .theme-default { width: 100%; min-width: 0; padding: 7px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); color: var(--ui-text); background: var(--ui-field); }
+.theme-presets input, .theme-default { width: 100%; min-width: 0; padding: 7px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); color: var(--ui-text); background: var(--ui-field); }
 .theme-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .theme-actions button { border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); background: var(--ui-field); color: var(--ui-text); min-height: 34px; padding: 5px 9px; cursor: pointer; }
 .theme-actions button[aria-pressed=true] { background: var(--ui-accent-soft); color: var(--ui-accent-text); }

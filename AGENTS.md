@@ -411,3 +411,7 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 
 ## HCI 第四批窄屏收口（2026-11-25）
 - #39 4c507dc verify 732/732（94文件）、UI/PWA/soak通过，跨浏览器尚在运行。本机最终宽范围74/75，唯一失败是此前偶发320px经典品牌/工具栏边界重叠断言。极窄屏品牌明确32px占位，测试同一布局时刻测边界，保留8px合同并反复320/360/480/320px切换，最终5/5（2并发）通过；build:web首屏59.8/60.5、非Swiper198.7/200、CSS32.3/64 KiB。仅CSS+测试，不新增运行时JS或依赖。新远程CI待核验，通过后合并部署，保持#37冻结及V2.0.0 Tag。
+
+## 桌面公共控件与窗口操作专项（2026-11-25）
+- #39 已合并9609e14，Pages 45591580676成功，线上96/96文件逐字节一致。基于该main独立worktree /private/tmp/inftab-controls40，分支feat/desktop-controls-polish。复用SelectField统一Finder/概览/主题预设/快捷入口管理原生选择器；设置range稳定标签、百分比及等宽数值；桌面中性浅深轨道、粗指针与forced-colors回退；WindowFrame标题双击最大化还原、仅左键几何操作、非活动取消未提交手势。保持经典和存储格式，不新增依赖。设置工具分块合并，可能增加初次进入设置下载内容，但保留首页按需加载合同。
+- 最终本机check/build:web、96/96定向单测、64/64生产Edge回归通过；真实截图两张及说明docs/desktop-controls-design.md。额外ui-refinements 73通过/2失败/21未运行，Mac Edge原生选择器ArrowDown回退和forced-colors失败，在旧4c507dc工作树同样复现，不修改/放宽原测试，不宣称全量通过。最终首屏59.8/60.5、非Swiper197.9/200、CSS32.8/64 KiB，PWA额外10702/16384 B、全站1730103/4194304 B；不放宽预算。新远程CI待验收，保持#37冻结、V2.0.0标签不变。临时playwright.local-controls.config.ts不提交。下一批先收口本PR，再继续公共控件与多窗口/触屏实机，不做无界改动。

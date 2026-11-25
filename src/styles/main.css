@@ -1396,3 +1396,40 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .desktop-mode .workspace-panel :is(.workspace-row,.workspace-action,.workspace-create,.workspace-form-actions button){border-radius:6px}
 .desktop-mode .window-frame :is(button,input,select,textarea):focus-visible{outline:2px solid var(--ui-focus);outline-offset:1px}
 .desktop-mode .window-frame :is(button,select):disabled{cursor:default}
+
+/* Shared desktop controls: native inputs, semantic surfaces and stable geometry. */
+.desktop-mode :is(.window-frame,.mac-settings-panel,.workspace-panel,.shortcut-dialog) .select-field{color:var(--mac-muted)}
+.desktop-mode :is(.window-frame,.mac-settings-panel,.workspace-panel,.shortcut-dialog) .ui-select{padding-inline:9px 26px;background:var(--mac-window);border-color:var(--mac-line);border-radius:6px;color:var(--mac-ink)}
+.desktop-mode .select-chevron{right:7px}
+.desktop-mode .ui-select:hover:not(:disabled){border-color:var(--mac-selection)}
+.desktop-mode .ui-select:focus-visible{outline-color:var(--mac-selection)}
+.desktop-mode :is(.window-frame,.mac-settings-panel,.workspace-panel,.shortcut-dialog) :is(input:not([type]),input[type=text],input[type=search],input[type=number],textarea){caret-color:var(--mac-selection)}
+.desktop-mode .mac-settings-panel .range-label{margin:12px 0;gap:6px;color:var(--mac-ink);font-size:13px}
+.desktop-mode :is(.range-label strong,.theme-range output,.workspace-layout-form output,.editor-controls output){min-width:52px;text-align:right;padding:3px 7px;background:var(--mac-toolbar);color:var(--mac-muted);border-radius:5px;font-size:12px;font-weight:500;font-variant-numeric:tabular-nums}
+.desktop-mode :is(.range-label,.theme-range,.workspace-layout-form,.editor-controls) input[type=range]{height:24px;min-width:0;accent-color:var(--mac-selection);cursor:pointer}
+.desktop-mode input[type=range]:disabled{cursor:default;opacity:.5}
+.desktop-mode .toggle-row:has(input:disabled){cursor:default}
+.desktop-mode .mac-settings-panel .toggle-row input[type=checkbox]{flex-shrink:0}
+.desktop-mode :is(.window-frame,.mac-settings-panel,.workspace-panel) :is(button,input,select,textarea):disabled{opacity:.55;cursor:default}
+.desktop-mode :is(.window-frame,.mac-settings-panel,.workspace-panel) button:disabled:hover{filter:none;transform:none}
+@media(pointer:coarse){
+ .desktop-mode :is(.mac-settings-panel,.workspace-panel) .toggle-row{min-height:44px}
+ .desktop-mode :is(.mac-settings-panel,.workspace-panel,.window-frame) .ui-select{min-height:34px}
+}
+@media(prefers-reduced-motion:reduce){.desktop-mode :is(.ui-select,.select-chevron){transition:none}}
+/* Browser-native sliders retain keyboard, pointer and form semantics; only the
+   track and thumb are drawn consistently. Forced colors use the system control. */
+@media(forced-colors:none){
+ .desktop-mode{--mac-range-track:#c6c6cc}
+ .desktop-mode.theme-dark{--mac-range-track:#57575f}
+ .desktop-mode :is(.range-label,.theme-range,.workspace-layout-form,.editor-controls) input[type=range]{appearance:none;background:transparent;border:0;padding:0;}
+ .desktop-mode input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--mac-range-track);border-radius:4px}
+ .desktop-mode input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;margin-top:-5.5px;border:1px solid #0002;border-radius:50%;background:var(--mac-selection);box-shadow:0 1px 3px #0003}
+ .desktop-mode input[type=range]::-moz-range-track{height:4px;background:var(--mac-range-track);border-radius:4px}
+ .desktop-mode input[type=range]::-moz-range-thumb{width:13px;height:13px;border:1px solid #0002;border-radius:50%;background:var(--mac-selection);box-shadow:0 1px 3px #0003}
+ .desktop-mode input[type=range]:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px;border-radius:6px}
+}
+@media(pointer:coarse) and (forced-colors:none){
+ .desktop-mode input[type=range]::-webkit-slider-thumb{width:20px;height:20px;margin-top:-8px}
+ .desktop-mode input[type=range]::-moz-range-thumb{width:18px;height:18px}
+}
