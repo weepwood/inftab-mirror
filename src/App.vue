@@ -32,7 +32,7 @@ const SearchBar = defineAsyncComponent({
 const ClockWidget = lazyHome(() => import('./components/ClockWidget.vue'), '时钟')
 const LauncherSearchResults = lazyHome(() => import('./components/LauncherSearchResults.vue'), '入口查找', true)
 const DesktopWindows = lazyHome(() => import('./desktop/DesktopWindows.vue'), '桌面窗口', true)
-const finderRequest = shallowRef<{ sequence: number; workspaceId: string; folderId?: string; panelId?: PanelId }>()
+const finderRequest = shallowRef<{ sequence: number; workspaceId: string; folderId?: string; panelId?: PanelId; targetId?:string }>()
 let finderSequence = 0
 const overviewRequest = ref(0)
 const runningDesktopPanels = ref<PanelId[]>([])
@@ -632,8 +632,8 @@ function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode:
 function openLayoutEditor() {
   if (!overlayOpen.value) layoutEditorOpen.value = true
 }
-function applyHomeLayout(draft: LayoutEditorDraft) {
-  const error = saveHomeLayout(draft)
+async function applyHomeLayout(draft: LayoutEditorDraft) {
+  const error = await saveHomeLayout(draft)
   if (!error) layoutEditorOpen.value = false
   return error
 }
@@ -667,7 +667,7 @@ function openDesktopRecord(command:string) {
     const item=launcherById.value.get(id),owner=homeWorkspaces.value.find(w=>w.itemIds.includes(id))
     if(item&&owner){if(item.folder){finderRequest.value={sequence:++finderSequence,workspaceId:owner.id,folderId:id}}else openItem(item)}
   }else if(match[1]==='note'&&notes.value.some(n=>n.id===id)){activeNoteId.value=id;openPanel('notes')}
-  else if(match[1]==='todo'&&todos.value.some(t=>t.id===id))openPanel('todos')
+  else if(match[1]==='todo'&&todos.value.some(t=>t.id===id)){finderRequest.value={sequence:++finderSequence,workspaceId:activeHomeWorkspaceId.value,panelId:'todos',targetId:id}}
 }
 
 function handleKeydown(event: KeyboardEvent) {

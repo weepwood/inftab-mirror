@@ -5,10 +5,10 @@ import type { PanelId } from '../plugins/ids'
 import type { PanelPluginContext } from '../plugins/registry'
 import { panelPlugins, getPanelProps, getPanelListeners } from '../plugins/registry'
 
-const props=defineProps<{panelId:PanelId; context:PanelPluginContext; active:boolean; minimized:boolean; maximized:boolean; cascade:number; layer:number; dark?:boolean; hidden?:boolean}>()
+const props=defineProps<{panelId:PanelId; context:PanelPluginContext; active:boolean; minimized:boolean; maximized:boolean; cascade:number; layer:number; dark?:boolean; hidden?:boolean;targetId?:string;targetSequence?:number}>()
 const emit=defineEmits<{activate:[];close:[];minimize:[];maximize:[];title:[title:string]}>()
 const plugin=computed(()=>panelPlugins[props.panelId])
-const panelProps=computed(()=>getPanelProps(props.panelId,props.context))
+const panelProps=computed(()=>({...getPanelProps(props.panelId,props.context),...(props.panelId==='todos'?{targetId:props.targetId,targetSequence:props.targetSequence}:{} )}))
 const listeners=computed(()=>getPanelListeners(props.panelId,props.context))
 watch(()=>plugin.value.title,title=>emit('title',title),{immediate:true})
 </script>

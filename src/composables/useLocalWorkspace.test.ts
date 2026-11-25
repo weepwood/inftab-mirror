@@ -1026,7 +1026,7 @@ it('persists independent workspace layouts, round-trips backups and resets to gl
 })
 
 
-it('rejects stale layout drafts and does not turn inherited fields into overrides when only widgets change', () => {
+it('rejects stale layout drafts and does not turn inherited fields into overrides when only widgets change', async () => {
   scope = effectScope()
   const workspace = scope.run(() => useLocalWorkspace())!
   const id = workspace.createHomeWorkspace('Draft workspace')!
@@ -1034,13 +1034,13 @@ it('rejects stale layout drafts and does not turn inherited fields into override
   const current = () => workspace.homeWorkspaces.value.find(item => item.id === id)!
   const draft = createLayoutDraft(current(), workspace.preferences.value)
   draft.widgetIds = ['todo-summary']
-  expect(workspace.saveHomeLayout(draft)).toBeUndefined()
+  expect(await workspace.saveHomeLayout(draft)).toBeUndefined()
   expect(current().layout).toEqual({ columns: 4 })
   expect(workspace.preferences.value.homeWidgetIds).toEqual(['todo-summary'])
   const stale = createLayoutDraft(current(), workspace.preferences.value)
   workspace.updatePreferences({ columns: 8 })
   stale.layout.columns = 2
-  expect(workspace.saveHomeLayout(stale)).toContain('发生变化')
+  expect(await workspace.saveHomeLayout(stale)).toContain('发生变化')
   expect(current().layout).toEqual({ columns: 4 })
   expect(workspace.preferences.value.columns).toBe(8)
 })

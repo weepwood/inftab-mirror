@@ -1,4 +1,4 @@
-import { layoutSignature, getLayoutOverrides, type LayoutEditorDraft } from '../data/layoutEditor'
+import type { LayoutEditorDraft } from '../data/layoutEditor'
 import type { ShortcutBatch } from '../data/workspaceTools'
 import { useStoredState } from './useStoredState'
 import { computed, watch } from 'vue'
@@ -175,7 +175,8 @@ export function useLocalWorkspace() {
     return true
   }
 
-  function saveHomeLayout(draft: LayoutEditorDraft): string | undefined {
+  async function saveHomeLayout(draft: LayoutEditorDraft): Promise<string | undefined> {
+    const { layoutSignature, getLayoutOverrides } = await import('../data/layoutEditor')
     const workspace = homeWorkspaces.value.find(item => item.id === draft.workspaceId)
     if (!workspace || activeHomeWorkspaceId.value !== draft.workspaceId || layoutSignature(workspace, preferences.value) !== draft.baseline) return '布局已在其他位置发生变化，请关闭后重新编辑。'
     const clean = draft.inherit ? undefined : sanitizeWorkspaceLayout(draft.layout)

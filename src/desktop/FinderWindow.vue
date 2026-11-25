@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import {computed,ref,watch} from 'vue'
+import {computed,nextTick,ref,watch} from 'vue'
 import WindowFrame from './WindowFrame.vue'
 import { Folder, Grid2X2, List, Search, ArrowUpRight } from '@lucide/vue'
 import type {LauncherItem} from '../types'
 import type {FinderClipboard} from './ownership'
 import type {HomeWorkspace} from '../data/homeWorkspaces'
-const props=defineProps<{items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; folderId?:string; dark?:boolean; active:boolean; minimized:boolean; maximized:boolean; cascade:number; layer:number; hidden?:boolean; clipboard?:FinderClipboard; pasting?:boolean}>()
-const emit=defineEmits<{close:[];open:[item:LauncherItem,event?:MouseEvent];edit:[item:LauncherItem];remove:[item:LauncherItem];move:[ids:string[],id:string];membership:[ids:string[],folderId:string|null];create:[workspaceId:string];activate:[];minimize:[];maximize:[];title:[title:string]; clipboard:[value:FinderClipboard]; paste:[workspaceId:string,folderId:string|null]}>()
+const props=defineProps<{items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; folderId?:string; dark?:boolean; active:boolean; minimized:boolean; maximized:boolean; cascade:number; layer:number; hidden?:boolean; clipboard?:FinderClipboard; pasting?:boolean; browseWorkspaceId?:string; browseFolderId?:string}>()
+const emit=defineEmits<{close:[];open:[item:LauncherItem,event?:MouseEvent];edit:[item:LauncherItem];remove:[item:LauncherItem];move:[ids:string[],id:string];membership:[ids:string[],folderId:string|null];create:[workspaceId:string];activate:[];minimize:[];maximize:[];title:[title:string]; clipboard:[value:FinderClipboard]; paste:[workspaceId:string,folderId:string|null]; location:[workspaceId:string,folderId:string|undefined]}>()
 const search=ref('')
-const currentSpace=ref(props.workspaceId), currentFolder=ref(props.folderId??'')
+const itemGrid=ref<HTMLElement>(), focusId=ref<string>()
+const currentSpace=ref(props.browseWorkspaceId??props.workspaceId), currentFolder=ref((props.browseWorkspaceId?props.browseFolderId:props.folderId)??'')
 const list=ref(false), selected=ref<string[]>([])
 const back=ref<{workspaceId:string;folderId:string}[]>([])
 const forward=ref<{workspaceId:string;folderId:string}[]>([])
@@ -28,7 +29,7 @@ const visible=computed(()=>{
  return matches
 })
 function location(){return {workspaceId:currentSpace.value,folderId:currentFolder.value}}
-function applyLocation(id:string,folderId=''){currentSpace.value=id;currentFolder.value=folderId;selected.value=[];anchor.value=undefined;search.value=''}
+function applyLocation(id:string,folderId=''){currentSpace.value=id;currentFolder.value=folderId;selected.value=[];anchor.value=undefined;focusId.value=undefined;search.value=''}
 function navigate(id:string,folderId=''){
  if(id===currentSpace.value&&folderId===currentFolder.value)return
  back.value=[...back.value.slice(-49),location()];forward.value=[];applyLocation(id,folderId)
@@ -43,6 +44,7 @@ function traverse(direction:'back'|'forward'){
  }
 }
 function select(item:LauncherItem,event:MouseEvent){
+ focusId.value=item.id
  const from=visible.value.findIndex(i=>i.id===anchor.value),to=visible.value.findIndex(i=>i.id===item.id)
  if(event.shiftKey&&from>=0&&to>=0){selected.value=visible.value.slice(Math.min(from,to),Math.max(from,to)+1).map(i=>i.id);return}
  selected.value=event.metaKey||event.ctrlKey?selected.value.includes(item.id)?selected.value.filter(id=>id!==item.id):[...selected.value,item.id]:[item.id]
@@ -70,8 +72,9 @@ function drop(id:string,event:DragEvent){
 function clearDrop(){dropTarget.value=undefined}
 function open(item:LauncherItem,event?:MouseEvent){if(item.folder)navigate(currentSpace.value,item.id);else emit('open',item,event)}
 const selectedItems=computed(()=>visible.value.filter(i=>selected.value.includes(i.id)))
+watch([currentSpace,currentFolder],([id,folderId])=>emit('location',id,folderId||undefined))
 watch(()=>folder.value?.title??space.value?.name??'Finder', title=>emit('title',title),{immediate:true})
-watch(visible,items=>{selected.value=selected.value.filter(id=>items.some(i=>i.id===id))})
+watch(visible,items=>{selected.value=selected.value.filter(id=>items.some(i=>i.id===id));if(!items.some(i=>i.id===focusId.value))focusId.value=items[0]?.id},{immediate:true})
 watch([space,folder],([workspace,current])=>{
  if(!workspace)navigate(props.workspaces.find(w=>w.id===props.workspaceId)?.id??props.workspaces[0]?.id??'')
  else if(currentFolder.value&&!current)applyLocation(workspace.id)
@@ -81,6 +84,26 @@ function copySelection(mode:'cut'|'copy'){
  emit('clipboard',{mode,ids:selectedItems.value.map(i=>i.id),workspaceId:currentSpace.value,folderId:currentFolder.value||null})
 }
 function pasteSelection(){if(props.clipboard&&!props.pasting)emit('paste',currentSpace.value,currentFolder.value||null)}
+async function navigateKey(e:KeyboardEvent){
+ const key=e.key
+ if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End',' '].includes(key))return
+ const items=visible.value
+ if(!items.length)return
+ e.preventDefault();e.stopPropagation()
+ const index=Math.max(0,items.findIndex(i=>i.id===focusId.value))
+ if(key===' '){const id=items[index]!.id;selected.value=selected.value.includes(id)?selected.value.filter(i=>i!==id):[...selected.value,id];anchor.value=id;return}
+ const buttons=[...(itemGrid.value?.querySelectorAll<HTMLButtonElement>('button[data-finder-id]')??[])]
+ const first=buttons[0]
+ const cols=list.value?1:Math.max(1,buttons.findIndex(b=>b.offsetTop!==first?.offsetTop)===-1?buttons.length:buttons.findIndex(b=>b.offsetTop!==first?.offsetTop))
+ const delta=key==='ArrowLeft'?-1:key==='ArrowRight'?1:key==='ArrowUp'?-cols:cols
+ const next=key==='Home'?0:key==='End'?items.length-1:Math.max(0,Math.min(items.length-1,index+delta))
+ const item=items[next]!
+ if(e.shiftKey){const start=Math.max(0,items.findIndex(i=>i.id===(anchor.value??items[index]?.id)));anchor.value=items[start]?.id;selected.value=items.slice(Math.min(start,next),Math.max(start,next)+1).map(i=>i.id)}
+ else if(!e.ctrlKey&&!e.metaKey){selected.value=[item.id];anchor.value=item.id}
+ focusId.value=item.id
+ await nextTick()
+ buttons[next]?.focus()
+}
 function keys(e:KeyboardEvent){
  if(e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement)return
  if(e.ctrlKey||e.metaKey){
@@ -97,7 +120,7 @@ function keys(e:KeyboardEvent){
   <div class="finder-body">
    <aside><small>工作区</small><button v-for="w in workspaces" :key="w.id" :class="{active:currentSpace===w.id&&!currentFolder}" @click="navigate(w.id)"><Grid2X2 :size="16"/>{{w.name}}</button><small>文件夹</small><button v-for="f in folders" :key="f.id" :class="{active:currentFolder===f.id,'drop-target':dropTarget===f.id}" @dragover="dragOver(f.id,$event)" @dragleave="clearDrop" @drop="drop(f.id,$event)" @click="navigate(currentSpace,f.id)"><Folder :size="17"/>{{f.title}}</button></aside>
    <main><nav><button aria-label="返回" :disabled="!back.length" @click="traverse('back')">‹</button><button aria-label="前进" :disabled="!forward.length" @click="traverse('forward')">›</button><button @click="emit('create',currentSpace)">新建文件夹</button><button :aria-pressed="!list" aria-label="图标视图" @click="list=false"><Grid2X2 :size="17"/></button><button :aria-pressed="list" aria-label="列表视图" @click="list=true"><List :size="17"/></button><select v-model="order" aria-label="排序入口"><option value="default">默认顺序</option><option value="name">名称</option><option value="type">类型</option></select><label><Search :size="15"/><input v-model="search" placeholder="搜索入口" aria-label="搜索 Finder"/></label></nav>
-    <div class="finder-items" :class="{list}"><button v-for="item in visible" :key="item.id" :aria-pressed="selected.includes(item.id)" :draggable="!!item.shortcut" :class="{'drop-target':dropTarget===item.id}" @dragstart="startDrag(item,$event)" @dragend="clearDrop" @dragover="item.folder&&dragOver(item.id,$event)" @dragleave="clearDrop" @drop="item.folder&&drop(item.id,$event)" @click="select(item,$event)" @dblclick="open(item,$event)" @keydown.enter.stop="open(item)"><Folder v-if="item.folder" :size="40" fill="#65baf0" color="#258acb"/><img v-else-if="item.icon" :src="item.icon" alt=""/><span v-else class="mark" :style="{background:item.color}">{{item.mark}}</span><span>{{item.title}}</span><span v-if="list" class="finder-type">{{item.folder?'文件夹':'快捷入口'}}</span></button><p v-if="!visible.length">没有入口</p></div>
+    <div ref="itemGrid" class="finder-items" :class="{list}" @keydown="navigateKey"><button v-for="item in visible" :key="item.id" :data-finder-id="item.id" :tabindex="focusId===item.id?0:-1" @focus="focusId=item.id" :aria-pressed="selected.includes(item.id)" :draggable="!!item.shortcut" :class="{'drop-target':dropTarget===item.id}" @dragstart="startDrag(item,$event)" @dragend="clearDrop" @dragover="item.folder&&dragOver(item.id,$event)" @dragleave="clearDrop" @drop="item.folder&&drop(item.id,$event)" @click="select(item,$event)" @dblclick="open(item,$event)" @keydown.enter.stop.prevent="open(item)"><Folder v-if="item.folder" :size="40" fill="#65baf0" color="#258acb"/><img v-else-if="item.icon" :src="item.icon" alt=""/><span v-else class="mark" :style="{background:item.color}">{{item.mark}}</span><span>{{item.title}}</span><span v-if="list" class="finder-type">{{item.folder?'文件夹':'快捷入口'}}</span></button><p v-if="!visible.length">没有入口</p></div>
     <section v-if="inspector&&selectedItems.length===1" class="finder-inspector" aria-label="入口详情">
      <strong>{{selectedItems[0]?.title}}</strong><span>{{selectedItems[0]?.shortcut?.url??((selectedItems[0]?.folder?.shortcutIds.length??0)+' 个入口')}}</span>
     </section>

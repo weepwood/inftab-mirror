@@ -1,8 +1,10 @@
 import type { PanelId } from '../plugins/ids'
-export interface WindowLocation { workspaceId: string; folderId?: string; panelId?: PanelId }
+export interface WindowLocation { workspaceId: string; folderId?: string; panelId?: PanelId; targetId?:string; sequence?:number }
 export interface DesktopWindow extends WindowLocation {
   id: number
   spaceId: string
+  browseWorkspaceId?:string
+  browseFolderId?:string
   minimized: boolean
   maximized: boolean
   cascade: number
@@ -25,7 +27,10 @@ export function activateWindow(state: WindowState, id: number): WindowState {
 }
 export function openWindow(state: WindowState, location: WindowLocation): WindowState {
   const existing = state.windows.find(w => location.panelId ? w.panelId === location.panelId : !w.panelId && w.workspaceId === location.workspaceId && w.folderId === location.folderId)
-  if (existing) return activateWindow(state, existing.id)
+  if (existing) {
+    const updated=location.targetId?{...state,windows:state.windows.map(w=>w.id===existing.id?{...w,targetId:location.targetId,sequence:location.sequence}:w)}:state
+    return activateWindow(updated, existing.id)
+  }
   if (state.windows.length >= maxWindows) return state
   return {
     nextId: state.nextId + 1,
@@ -35,7 +40,7 @@ export function openWindow(state: WindowState, location: WindowLocation): Window
 export function closeWindow(state: WindowState, id: number): WindowState {
   return { ...state, windows: state.windows.filter(w => w.id !== id) }
 }
-export function updateWindow(state: WindowState, id: number, patch: Partial<Pick<DesktopWindow, 'minimized' | 'maximized' | 'title' | 'spaceId'>>): WindowState {
+export function updateWindow(state: WindowState, id: number, patch: Partial<Pick<DesktopWindow, 'minimized' | 'maximized' | 'title' | 'spaceId' | 'browseWorkspaceId' | 'browseFolderId'>>): WindowState {
   return { ...state, windows: state.windows.map(w => w.id === id ? { ...w, ...patch } : w) }
 }
 
