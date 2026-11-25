@@ -23,6 +23,18 @@ let originalSnap:WindowSnap=null
 let delta={left:0,right:0,top:0,bottom:0}
 let motion:Animation|undefined
 let motionId=0
+let dockMotion=props.minimized
+function dockTransition(el:Element){
+ const frame=el as HTMLElement
+ const id=props.kind==='tool'?props.geometryKey.slice(5):''
+ const target=(id&&document.querySelector<HTMLElement>('.home-dock [data-dock-item-id="'+CSS.escape(id)+'"]'))||document.querySelector<HTMLElement>('.window-shelf button')
+ const r=target&&target.getBoundingClientRect(),g=fitted.value
+ const usable=dockMotion&&!props.hidden&&r&&r.width&&r.height&&getComputedStyle(target).visibility!=='hidden'&&r.top<innerHeight&&r.bottom>0
+ frame.style.setProperty('--window-end-x',usable?(r.x+r.width/2-g.x-g.width/2)+'px':'0px')
+ frame.style.setProperty('--window-end-y',usable?(r.y+r.height/2-g.y-g.height/2)+'px':'8px')
+ frame.style.setProperty('--window-end-scale',usable?'.09':'.97')
+}
+watch(()=>props.minimized,()=>{dockMotion=true},{flush:'sync'})
 function stopMotion(){motionId++;motion?.cancel();motion=undefined}
 function animateGeometry(){
  const el=root.value
@@ -101,7 +113,7 @@ onBeforeUnmount(()=>{stopMotion();drag?.unset();resize?.unset();window.removeEve
 </script>
 <template>
  <div v-if="preview" class="window-snap-preview" aria-hidden="true" :style="previewStyle"/>
- <Transition name="mac-window" appear>
+ <Transition name="mac-window" appear @before-enter="dockTransition" @before-leave="dockTransition" @after-enter="dockMotion=false">
  <section v-show="!minimized&&!hidden" ref="root" class="window-frame" :class="[kind==='finder'?'finder':'tool-window',{active,maximized:isMaximized,dark,snapped:!!snap}]" :style="style" role="dialog" :aria-label="label" :aria-hidden="minimized||hidden||undefined" :inert="(minimized||hidden)||undefined" tabindex="-1" @pointerdown="emit('activate')" @focusin="emit('activate')" @keydown="handleKey">
   <header ref="bar" @dblclick="titleDoubleClick" class="window-title" :class="kind==='finder'?'finder-title':'tool-title'">
    <div class="traffic"><button type="button" :aria-label="kind==='finder'?'关闭 Finder':'关闭窗口'" class="close" @click="emit('close')"/><button type="button" :aria-label="kind==='finder'?'最小化 Finder':'最小化窗口'" class="minimize" @click="emit('minimize')"/><button type="button" :aria-label="(maximized?'还原':'最大化')+(kind==='finder'?' Finder':'窗口')" class="maximize" @click="maximize"/></div>
@@ -128,8 +140,8 @@ onBeforeUnmount(()=>{stopMotion();drag?.unset();resize?.unset();window.removeEve
 @media(max-width:600px){.window-description{display:none}.window-title{padding-inline:8px;gap:8px}}
 
 @media(prefers-reduced-motion:no-preference){
- .mac-window-enter-active,.mac-window-leave-active{transition:opacity .18s ease,filter .18s ease,scale .18s cubic-bezier(.2,.8,.2,1),translate .18s cubic-bezier(.2,.8,.2,1);filter:brightness(1);scale:1;translate:0 0;transform-origin:50% 100%}
- .mac-window-enter-from,.mac-window-leave-to{opacity:0;filter:brightness(.97);scale:.97;translate:0 8px}
+ .mac-window-enter-active,.mac-window-leave-active{transition:opacity .18s ease,filter .18s ease,scale .18s cubic-bezier(.2,.8,.2,1),translate .18s cubic-bezier(.2,.8,.2,1);filter:brightness(1);scale:1;translate:0 0;transform-origin:50% 50%}
+ .mac-window-enter-from,.mac-window-leave-to{opacity:0;filter:brightness(.97);scale:var(--window-end-scale,.97);translate:var(--window-end-x,0px) var(--window-end-y,8px)}
  .mac-window-leave-active{pointer-events:none}
  .window-snap-preview{animation:preview-in .12s ease-out}
  @keyframes preview-in{from{opacity:0}}
