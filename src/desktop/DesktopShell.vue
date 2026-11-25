@@ -4,7 +4,7 @@ import type { LauncherItem } from '../types'
 import { navigateMenu } from '../components/menuNavigation'
 import { desktopHabitIcon, launcherIcons } from '../components/launcherIcons'
 import { folderParents } from '../data/folderTree'
-import { cell, arrangeFromRight, resolvePoints, fitPoint, freshLayout, normalizeLayout, translateGroup, type Point, type DesktopLayout } from './layout'
+import { cell, arrangeFromRight, resolvePoints, fitPoint, freshLayout, normalizeLayout, translateGroup, createOccupancy, type Point, type DesktopLayout } from './layout'
 const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout; folderShortcuts?: LauncherItem[]; dark?: boolean; blocked?:boolean; searchActive?:boolean; showNames?:boolean}>()
 const emit = defineEmits<{open: [item: LauncherItem, event?: MouseEvent]; edit: [item: LauncherItem]; layout: [layout: DesktopLayout]; finder:[]; create:[]; remove:[item:LauncherItem]; membership:[item:LauncherItem,folderId:string]; dismissSearch:[]}>()
 const surface = ref<HTMLElement>()
@@ -56,7 +56,7 @@ const positions = computed(() => visibleItems.value.map(item => ({item,point:res
 const renderedHeight = computed(() => Math.max(canvasHeight.value,...positions.value.map(p=>p.point.y+cell)))
 let observer: ResizeObserver | undefined
 type DragMember = { id:string; el:HTMLElement; point:Point }
-let dragging: {id:string; x:number; y:number; dx:number; dy:number; members:DragMember[]} | undefined
+let dragging: {id:string; x:number; y:number; dx:number; dy:number; members:DragMember[]; source:Record<string,Point>; overlaps:(p:Point)=>boolean} | undefined
 const holdMs=180,touchHoldMs=450,moveThreshold=5
 type Press={pointer:number;button:number;item:LauncherItem;el:HTMLElement;x:number;y:number;at:number;travelled:boolean;touch?:boolean;timer?:ReturnType<typeof setTimeout>}
 let press:Press|undefined
@@ -148,21 +148,22 @@ function pointerMove(event:PointerEvent){
       return el&&point?[{id,el,point}]:[]
     })
     if(!members.length)return cancelDrag()
-    dragging={id:p.item.id,x:point.x,y:point.y,dx:0,dy:0,members}
+    const source=Object.fromEntries(members.map(m=>[m.id,m.point]))
+    const {overlaps}=createOccupancy(positions.value.filter(q=>!Object.hasOwn(source,q.item.id)).map(q=>q.point))
+    dragging={id:p.item.id,x:point.x,y:point.y,dx:0,dy:0,members,source,overlaps}
     moving.value=true
     for(const member of members)member.el.style.zIndex='2'
   }
   const d=dragging,point=d.members[0]!.point
   d.x=point.x+dx;d.y=point.y+dy;d.dx=dx;d.dy=dy
-  const preview=d.members.length===1?{[d.id]:fitPoint(d,width.value,renderedHeight.value)}:translateGroup(Object.fromEntries(d.members.map(m=>[m.id,m.point])),{x:dx,y:dy},width.value,renderedHeight.value)
+  const target=(snap=false)=>d.members.length===1?{[d.id]:fitPoint(d,width.value,renderedHeight.value,snap)}:translateGroup(d.source,{x:dx,y:dy},width.value,renderedHeight.value,snap)
+  const preview=target()
+  const feedback=p.button===0||d.members.length>1
+  const blocked=feedback&&Object.values(layout.value.snap?target(true):preview).some(d.overlaps)
   for(const member of d.members){
     const pos=preview[member.id];if(!pos)continue
     member.el.style.transform='translate('+pos.x+'px,'+pos.y+'px)'
-    if(d.members.length===1&&p.button===0){
-      const landing=fitPoint(d,width.value,renderedHeight.value,layout.value.snap)
-      const blocked=positions.value.some(q=>q.item.id!==d.id&&Math.abs(q.point.x-landing.x)<cell&&Math.abs(q.point.y-landing.y)<cell)
-      member.el.dataset.drop=blocked?'blocked':'ready'
-    }
+    if(feedback)member.el.dataset.drop=blocked?'blocked':'ready'
   }
 }
 function releasePress(p:Press){
