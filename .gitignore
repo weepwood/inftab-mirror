@@ -22,3 +22,5 @@ dist-web/
 playwright-report/
 test-results/
 live_preview.png
+
+dist-migration/

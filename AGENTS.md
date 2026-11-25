@@ -400,3 +400,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 新增 workspaceAuthority.ts，独立origin权威适配器候选：独立IDB单槽、显式迁移候选、prepared/active/archived、异步读取与CAS提交/回退/归档、原始候选保留，目标任意inftab.*旧键阻塞写入；不同origin检查，旧源不双写。拒绝覆盖既有记录，拒绝自动回落。未接生产bootstrap，不改变现有localStorage权威性。
 - 旧客户端同源无法强制锁定；独立origin是可实现的部署隔离，但源origin是调用者声明，无法验证导出后修改；目标不应部署旧应用。不同Pages路径不算origin隔离。后续需要真实候选传输界面、独立部署决策、全应用异步适配与故障验收；归档不等于安全回迁旧存储。详见架构文档。
 - 新增真实浏览器双origin测试，覆盖同源拒绝、初始化配额中止、重载、竞争CAS、回退、旧键阻塞与归档；新增data-smoke路径及用例。使用GitHub连接器原子提交，未在本机执行新测试，待远程CI核验。保持#37 Draft，V2.0.0 main/tag不变，无新依赖/生产分包变化。
+
+## V2.1 独立迁移控制台（2026-11-25）
+- #37 e4a2302 五项远程CI全绿（data-smoke 45575612698），权威适配器双origin用例通过。
+- 新增 workspaceTransfer.ts、migration/index.html、src/migrationConsole.ts、vite.migration.config.ts；npm run build:migration 独立产物 dist-migration，保持正式站/PWA/MV3资源预算及原启动不变。源端检查已保存候选、原始键和未完成意图，显式下载绑定双origin/版本/SHA256的文件。目标端预览、二次验证、确认初始化、状态读取、独立启用/归档、记录导出，不允许覆盖既有记录。校验不是签名，文件含私人数据，不能检测源站未落盘编辑及导出后的变化；需先保存候选并关闭其他编辑标签。不得将控制台启用视为正式应用迁移。
+- 新增实际独立构建的浏览器文件传输回归：错误目标、篡改、重载、重复初始化、源字节保留及漂移。data-smoke 增加独立构建步骤。通过GitHub连接器原子提交，未本机运行，待新CI；尚未选定或部署独立域名，尚未全应用异步接线及进程终止验收。继续保留#37 Draft，不修改V2.0 main/tag。
