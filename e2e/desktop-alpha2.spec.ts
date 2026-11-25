@@ -1416,6 +1416,7 @@ for(const theme of ['light','dark']){
   await page.mouse.move(edge.x+2-(before.width-360),edge.y+edge.height/2,{steps:10});await page.mouse.up()
   await expect.poll(async()=>Math.round((await notes.boundingBox())!.width)).toBe(360)
   await expect(notes.getByRole('textbox',{name:'笔记内容'})).toBeInViewport()
+  expect(await page.evaluate(()=>window.getSelection()?.toString()??'')).toBe('')
   expect(await notes.locator('.tool-content').evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1)
   await page.screenshot({path:info.outputPath('notes-narrow.png'),animations:'disabled'})
   await notes.getByRole('button',{name:'关闭窗口'}).click()
