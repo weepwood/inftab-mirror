@@ -429,3 +429,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - #42 远程3项全绿，737单测/95文件，Linux非Swiper199.6/200KiB；已合并c3cb6ae，Pages 45626881731成功，线上95/95文件逐字节一致。以此main在隔离worktree /private/tmp/inftab-window41 建立 feat/desktop-window-motion，保留#37冻结与V2.0.0 Tag。
 - WindowFrame支持左右停靠标题栏拖出恢复自由尺寸、指针水平锚定、Escape/失焦取消恢复原停靠；宽屏顶部44px最大化预览与松开提交，解除最大化恢复自由几何。140ms透明度/亮度过渡、120ms预览淡入，保留全局减少动效0.01ms，动画不插值实际窗口几何。实验clip-path可能遮住缩放手柄，已撤销。未实现从最大化直接拖出、原生Genie动画、触屏图标直接拖动或真实移动设备覆盖。
 - 初次宽范围49通过/2失败/1中断/20未运行；修正裁切命中、停靠实际几何等待后两项6/6，新增减少动效断言改按既有0.01ms合同。最终两并发三轮三项9/9通过，check/build:web通过。未重复完整宽范围；新CI待验收。首屏59.8/60.5、非Swiper198.8/200、Swiper26.4/30、CSS33.3/64 KiB；PWA额外10701/16384 B、全站1734486/4194304 B。无新增依赖/存储格式或预算放宽。临时playwright.local-window41.config.ts不提交。后续优先收口本PR，再实施视觉令牌、历史CSS及公共表单；不将局部验收宣称全量通过。
+
+## 桌面视觉令牌与样式职责治理（2026-11-25）
+- #43 远程3项全绿（737单测/95文件，Linux非Swiper199.8/200KiB），合并c9361cb，Pages 45629460195成功。首次线上比对94/95、单个资源HTTP503，重试该文件精确匹配，累计95/95。基于此main建立feat/desktop-visual-system（隔离worktree /private/tmp/inftab-window41）。
+- 桌面样式从main.css抽离desktop.css并在共享样式后导入；RangeField共享样式保留，清理废弃与重复规则。tokens.css集中桌面菜单/菜单项/窗口/浮层圆角、菜单间距、选择前景及range/toggle轨道。Teleport Dock菜单在body独立主题作用域复用同一套mac令牌，forced-colors系统色回退。经典与自定义主题边界保留，不改业务/存储，不引入依赖。
+- check/build:web、定向视觉7/7、最终生产Edge宽范围58/58通过，包含双主题计算样式一致性、经典/自定义主题、窗口、触控模拟、键盘、响应式；真实截图两张docs/screenshots/macos-desktop/visual-system。Mac首屏59.8/60.5、非Swiper198.7/200、Swiper26.4/30、CSS33.3/64 KiB；PWA额外10707/16384 B、全站1735077/4194304 B。预算保留。新远程CI待核验，未做全面经典CSS、forced-colors Dock专项或真机验收。临时playwright.local-window41.config.ts不提交。保持#37冻结与V2.0.0 Tag。优先收口本PR，后续视觉密度/对齐、公共表单与真实设备验证。

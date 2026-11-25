@@ -58,8 +58,8 @@ onBeforeUnmount(()=>document.removeEventListener('pointerdown',outside,true))
 .desktop-menu-anchor{position:relative}
 button{border:0;background:transparent;color:inherit;cursor:pointer;border-radius:5px;padding:5px 9px;white-space:nowrap}
 button:hover,button[aria-expanded=true]{background:var(--mac-selection-soft)}
-.desktop-dropdown{position:absolute;top:calc(100% + 6px);left:0;z-index:2;min-width:200px;padding:5px;background:var(--mac-menu);border:1px solid var(--mac-line);border-radius:8px;box-shadow:var(--mac-shadow);backdrop-filter:blur(22px)}
+.desktop-dropdown{position:absolute;top:calc(100% + 6px);left:0;z-index:2;min-width:200px;padding:var(--mac-menu-padding);background:var(--mac-menu);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);box-shadow:var(--mac-shadow);backdrop-filter:blur(22px)}
 .desktop-dropdown button{display:block;text-align:left;width:100%;padding:6px 10px}
-.desktop-dropdown button:hover,.desktop-dropdown button:focus-visible{background:var(--mac-selection);color:#fff;outline:0}
+.desktop-dropdown button:hover,.desktop-dropdown button:focus-visible{background:var(--mac-selection);color:var(--mac-selection-ink);outline:0}
 @media(max-width:800px){.desktop-menus{display:none}}
 </style>
