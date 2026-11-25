@@ -22,6 +22,8 @@ on:
       - 'src/data/storageAdapter.ts'
       - 'src/data/workspaceJournal.ts'
       - 'src/data/workspaceGeneration.ts'
+      - 'src/data/workspaceAuthority.ts'
+      - 'e2e/workspace-authority.spec.ts'
       - 'src/data/snapshotStore.ts'
       - 'src/data/workspaceConflict.ts'
       - 'src/data/rehearsalDraft.ts'
@@ -58,7 +60,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- e2e/data-management.spec.ts e2e/layout-editor.spec.ts e2e/config-migration.spec.ts e2e/workspace-journal.spec.ts e2e/desktop-storage.spec.ts e2e/storage-preflight.spec.ts e2e/workspace-generation.spec.ts
+      - run: npm run test:e2e -- e2e/data-management.spec.ts e2e/layout-editor.spec.ts e2e/config-migration.spec.ts e2e/workspace-journal.spec.ts e2e/desktop-storage.spec.ts e2e/storage-preflight.spec.ts e2e/workspace-generation.spec.ts e2e/workspace-authority.spec.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

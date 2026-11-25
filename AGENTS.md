@@ -394,3 +394,9 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 新增rehearsalDraft.ts：inftab-rehearsal v1信封generation/revision/draft，当前及上一保留版本的三方预览，明确确认后CAS提交；缺世代、旧世代、过旧版本、同字段/删除/排序/引用冲突拒绝。冲突展示路径和原因（前20项及总数），保留原文件且可导出原版本未提交内容，手工修正后重导。不是完整逐字段冲突编辑器；不修改生产数据源。原始完整演练记录下载仍保留。
 - 实际check、专项单测8/8、生产Edge宽范围22项通过，另1项UI测试在测试模块回读阶段失败（inspection undefined）；改为实际界面下载完整记录检验合并结果及拒绝旧版本，最终独立世代/预览4/4通过。最终build:web通过。现有首次宽范围其余22项通过的事实不等于最终全量重跑；远程data-smoke等仍需新CI。增加CI路径。更新docs/workspace-transaction-design.md。
 - 仍保留#37 Draft；下一轮核验Linux预算与CI，治理实际权威适配器、跨版本隔离方案及冲突恢复，不将隔离演练宣称为正式迁移。Desktop Commander本月约90%，优先使用GitHub连接器检查远程CI。临时playwright.local-v21.config.ts不提交。
+
+## V2.1 独立 origin 权威适配器候选（2026-11-25）
+- #37 32a2f0d 五项远程CI全部成功；Linux 736单测，首屏59.4/60.5、非Swiper199.8/200 KiB。资源余量紧，保持预算。
+- 新增 workspaceAuthority.ts，独立origin权威适配器候选：独立IDB单槽、显式迁移候选、prepared/active/archived、异步读取与CAS提交/回退/归档、原始候选保留，目标任意inftab.*旧键阻塞写入；不同origin检查，旧源不双写。拒绝覆盖既有记录，拒绝自动回落。未接生产bootstrap，不改变现有localStorage权威性。
+- 旧客户端同源无法强制锁定；独立origin是可实现的部署隔离，但源origin是调用者声明，无法验证导出后修改；目标不应部署旧应用。不同Pages路径不算origin隔离。后续需要真实候选传输界面、独立部署决策、全应用异步适配与故障验收；归档不等于安全回迁旧存储。详见架构文档。
+- 新增真实浏览器双origin测试，覆盖同源拒绝、初始化配额中止、重载、竞争CAS、回退、旧键阻塞与归档；新增data-smoke路径及用例。使用GitHub连接器原子提交，未在本机执行新测试，待远程CI核验。保持#37 Draft，V2.0.0 main/tag不变，无新依赖/生产分包变化。
