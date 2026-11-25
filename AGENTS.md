@@ -405,3 +405,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - #37 e4a2302 五项远程CI全绿（data-smoke 45575612698），权威适配器双origin用例通过。
 - 新增 workspaceTransfer.ts、migration/index.html、src/migrationConsole.ts、vite.migration.config.ts；npm run build:migration 独立产物 dist-migration，保持正式站/PWA/MV3资源预算及原启动不变。源端检查已保存候选、原始键和未完成意图，显式下载绑定双origin/版本/SHA256的文件。目标端预览、二次验证、确认初始化、状态读取、独立启用/归档、记录导出，不允许覆盖既有记录。校验不是签名，文件含私人数据，不能检测源站未落盘编辑及导出后的变化；需先保存候选并关闭其他编辑标签。不得将控制台启用视为正式应用迁移。
 - 新增实际独立构建的浏览器文件传输回归：错误目标、篡改、重载、重复初始化、源字节保留及漂移。data-smoke 增加独立构建步骤。通过GitHub连接器原子提交，未本机运行，待新CI；尚未选定或部署独立域名，尚未全应用异步接线及进程终止验收。继续保留#37 Draft，不修改V2.0 main/tag。
+
+## V2.1 异步权威工作区编辑试点（2026-11-25）
+- #37 c4dc396 verify与data-smoke已通过；736单测、Linux首屏59.4/60.5、非Swiper199.8/200 KiB，独立迁移构建及数据专项22/22。其余专项在检查时运行中。
+- 新增authoritySession.ts异步会话契约及authorityEditor.ts独立控制台业务试点：active读取、base/draft/token、显式CAS保存、三方重基、冲突保留及含基础快照的草稿下载。实际笔记标题/正文与待办完成状态接线，不改其余快照域，不双写原站，不自动回退。关闭/离开未保存提示，内存草稿不保证崩溃恢复。全应用其他域、草稿重新导入、独立部署和进程终止验收仍待完成。
+- 扩展双origin控制台E2E至真实双标签业务编辑竞争、无冲突合并、冲突草稿保留；尚未执行新测试。本轮GitHub原子提交，不消耗Desktop Commander，不加入正式站/PWA/扩展生产图、不放宽预算。保持#37 Draft，main/tag不变。

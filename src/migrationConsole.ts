@@ -1,6 +1,7 @@
 import { createTransfer, inspectTransfer, transferLimit } from './data/workspaceTransfer'
 import { createWorkspaceAuthority, type AuthorityState } from './data/workspaceAuthority'
 import { downloadText } from './data/downloadBackup'
+import { bindAuthorityEditor } from './authorityEditor'
 
 const el=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T
 const target=el<HTMLInputElement>('target'),source=el<HTMLInputElement>('source'),file=el<HTMLInputElement>('file')
@@ -12,6 +13,7 @@ el('origin').textContent=location.origin
 function reset(){
  reviewed=undefined;stored=undefined;storedSource='';preview.textContent='';state.textContent=''
  prepare.disabled=activate.disabled=archive.disabled=record.disabled=true
+ editor.setAvailable(false)
 }
 source.addEventListener('input',reset)
 async function run(action:()=>Promise<void>){
@@ -20,6 +22,11 @@ async function run(action:()=>Promise<void>){
  try{await action()}catch(error){status.textContent=error instanceof Error?error.message:String(error)}
  finally{busy=false;controls.disabled=false}
 }
+const editor=bindAuthorityEditor(source,run,opened=>{
+ source.disabled=file.disabled=opened
+ el<HTMLButtonElement>('refresh').disabled=opened
+ prepare.disabled=activate.disabled=archive.disabled=record.disabled=true
+},status)
 async function refresh(){
  const expected=source.value.trim(),read=await createWorkspaceAuthority(expected).read()
  stored=read.state;storedSource=expected
@@ -27,6 +34,7 @@ async function refresh(){
  activate.disabled=read.mode!=='prepared'
  archive.disabled=!stored||stored.phase==='archived'
  record.disabled=!stored
+ editor.setAvailable(read.mode==='active')
 }
 el('export').addEventListener('click',()=>void run(async()=>{
  downloadText(await createTransfer(target.value.trim()),'application/json','inftab-transfer.json')

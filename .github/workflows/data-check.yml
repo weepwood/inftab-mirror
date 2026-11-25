@@ -25,6 +25,8 @@ on:
       - 'src/data/workspaceAuthority.ts'
       - 'src/data/workspaceTransfer.ts'
       - 'src/migrationConsole.ts'
+      - 'src/authorityEditor.ts'
+      - 'src/data/authoritySession.ts'
       - 'migration/**'
       - 'vite.migration.config.ts'
       - 'e2e/workspace-authority.spec.ts'
