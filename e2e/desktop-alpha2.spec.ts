@@ -1441,3 +1441,55 @@ for(const theme of ['light','dark']){
   await page.screenshot({path:info.outputPath('calculator.png'),animations:'disabled'})
  })
 }
+
+for(const [width,height,theme] of [[1440,900,'light'],[1280,800,'dark'],[360,740,'light']] as const){
+ test('desktop visual composition '+width+' '+theme,async({page},info)=>{
+  await page.setViewportSize({width,height})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.addInitScript(theme=>{
+   localStorage.setItem('inftab.desktop-mode.v1','true')
+   localStorage.setItem('inftab.preferences.v1',JSON.stringify({themeMode:theme,shade:0,showClock:true,showSearchBar:false,dockItemIds:['todos','notes','calendar','calculator','weather','bookmarks','visual-link']}))
+   localStorage.setItem('inftab.shortcuts.v1',JSON.stringify([{id:'visual-link',title:'Research library',url:'https://example.com',color:'#5275a5',mark:'R'}]))
+   localStorage.setItem('inftab.folders.v1',JSON.stringify([{id:'visual-folder',title:'Projects',shortcutIds:[],color:'#4176e8',mark:'P'}]))
+   localStorage.setItem('inftab.home-workspaces.v1',JSON.stringify([{id:'default',name:'个人工作区',itemIds:['visual-folder','visual-link','todos','notes','calendar','calculator','weather','bookmarks','habits','focus-timer']}]))
+  },theme)
+  await page.goto('/')
+  await expect(page.locator('.desktop-icon[data-item-id="visual-folder"]')).toBeVisible()
+  await expect(page.locator('.desktop-icon[data-item-id="visual-link"]')).toBeVisible()
+  await expect(page.locator('.home-dock')).toBeVisible()
+  const dock=page.locator('.home-dock'),workspace=page.locator('.home-workspace-trigger')
+  await expect(dock.locator('.home-dock-item')).toHaveCount(7)
+  const long=page.locator('.desktop-icon[data-item-id="visual-link"]')
+  const label=long.locator('.desktop-label')
+  const metrics=await long.evaluate(el=>{
+   const label=el.querySelector('.desktop-label')!,symbol=el.querySelector('.desktop-symbol')!,r=el.getBoundingClientRect(),l=label.getBoundingClientRect(),icon=symbol.getBoundingClientRect(),style=getComputedStyle(label)
+   const [red,green,blue,alpha]=style.backgroundColor.match(/[\d.]+/g)!.map(Number)
+   const lum=[red!,green!,blue!].map(v=>(v*alpha!+255*(1-alpha!))/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i]!,0)
+   return {contrast:1.05/(lum+.05),height:r.height,width:r.width,inside:l.bottom<=r.bottom+1,iconBeforeLabel:icon.bottom<=l.top,lines:l.height/parseFloat(style.lineHeight),labelFits:label.scrollHeight<=label.clientHeight+1}
+  })
+  expect(metrics.contrast).toBeGreaterThanOrEqual(4.5)
+  expect(metrics.width).toBe(96);expect(metrics.height).toBe(96)
+  expect(metrics.inside&&metrics.iconBeforeLabel&&metrics.labelFits).toBe(true)
+  expect(metrics.lines).toBeGreaterThan(1.9)
+  await expect(page.locator('.desktop-toolbar span')).toHaveText('桌面')
+  if(width===360){
+   const bounds=await dock.evaluate(el=>{
+    const tray=getComputedStyle(el,'::before'),r=el.getBoundingClientRect(),items=[...el.querySelectorAll('.home-dock-icon')].map(i=>i.getBoundingClientRect())
+    return {left:r.left+parseFloat(tray.left),right:r.right-parseFloat(tray.right),first:items[0]!.left,last:items.at(-1)!.right,bottom:r.bottom}
+   })
+   expect(bounds.first).toBeGreaterThanOrEqual(bounds.left-1)
+   expect(bounds.last).toBeLessThanOrEqual(bounds.right+1)
+   expect(bounds.bottom).toBeLessThanOrEqual((await workspace.boundingBox())!.y)
+  }
+  await page.screenshot({path:info.outputPath('desktop-composition.png'),animations:'disabled'})
+  await workspace.click()
+  await expect(page.locator('.workspace-panel')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.workspace-panel')).toHaveCount(0)
+  if(width===360){
+   await page.setViewportSize({width:320,height:740})
+   await dock.locator('.home-dock-item').last().scrollIntoViewIfNeeded()
+   await expect(dock.locator('.home-dock-item').last()).toBeInViewport()
+  }
+ })
+}

@@ -1065,7 +1065,9 @@ onBeforeUnmount(() => {
 .desktop-mode .home-brand{display:none}
 .desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:42px;padding:2px 14px;gap:5px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);backdrop-filter:blur(24px) saturate(140%);box-shadow:0 1px 0 var(--mac-line);z-index:8}
 .desktop-mode .home-actions .round-action{width:30px;height:30px;border-radius:6px;color:var(--mac-ink);background:transparent}
-.desktop-mode .home-actions .round-action:hover{background:var(--ui-accent-soft)}
+.desktop-mode .home-actions .round-action:hover,.desktop-mode .home-actions .round-action[aria-pressed=true]{background:var(--mac-selection-soft)}
+.desktop-mode .home-actions .desktop-mode-toggle[aria-pressed=true]{background:transparent}
+.desktop-mode .home-actions .desktop-mode-toggle:hover{background:var(--mac-selection-soft)}
 .desktop-menu-label{border:0;background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:500;padding:6px 10px;border-radius:5px;cursor:pointer}
 .desktop-menu-label:hover{background:var(--ui-accent-soft)}
 .desktop-menu-label:first-child{margin-right:2px;font-weight:650}
@@ -1077,6 +1079,7 @@ onBeforeUnmount(() => {
 .desktop-mode .home-content :deep(.search-box){height:40px;border-radius:10px;background:var(--mac-bar);border-color:var(--mac-line);box-shadow:0 4px 18px #0002}
 .desktop-mode .home-actions :deep(.home-clock){display:flex;flex-direction:row-reverse;align-items:center;gap:7px;margin:0 0 0 6px;color:var(--mac-ink);text-shadow:none;white-space:nowrap}
 .desktop-mode .home-actions :deep(.clock-time),.desktop-mode .home-actions :deep(.clock-date){font:500 12px/1.3 var(--mac-font);color:inherit;letter-spacing:0;text-shadow:none}
+@media(max-width:780px){.home.desktop-mode .home-content:not(.home-content-minimal){padding-bottom:138px}}
 @media(max-width:760px){.desktop-mode .home-actions :deep(.clock-date){display:none}}
 @media(max-width:460px){.desktop-mode .home-actions :deep(.home-clock){display:none}}
 .desktop-mode .home-actions .round-action:focus-visible,.desktop-menu-label:focus-visible{outline:2px solid var(--ui-focus);outline-offset:1px}

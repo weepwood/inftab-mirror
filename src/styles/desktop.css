@@ -1,9 +1,9 @@
 /* Desktop-specific visual overrides. Loaded after the shared application stylesheet. */
 /* macOS-inspired desktop-only surfaces. No layout changes to classic mode. */
 .desktop-mode .home-dock {bottom:12px;max-width:max(100px,calc(100vw - 380px));}
-.desktop-mode .home-dock::before {inset:auto 8px 12px;height:calc(var(--dock-item-size) + 22px);border-radius:18px;background:var(--mac-dock);border-color:rgba(255,255,255,.32);box-shadow:0 9px 26px #0003,inset 0 1px 0 #fff4;backdrop-filter:blur(22px) saturate(150%);}
+.desktop-mode .home-dock::before {inset:auto 8px 12px;height:calc(var(--dock-item-size) + 22px);border-radius:18px;background:var(--mac-dock);border-color:var(--mac-dock-edge);box-shadow:var(--mac-dock-shadow);backdrop-filter:blur(22px) saturate(150%);}
 .desktop-mode .home-dock-track {padding:30px 16px 22px;}
-.desktop-mode .home-dock-icon {border-radius:calc(var(--dock-icon-size,44px) * .23);box-shadow:0 3px 8px #0003,inset 0 1px 0 #fff5;}
+.desktop-mode .home-dock-icon {border-radius:calc(var(--dock-icon-size,44px) * .25);box-shadow:var(--mac-icon-shadow);}
 .desktop-mode .command-palette {width:min(620px,calc(100% - 24px));border-radius:14px;background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line);box-shadow:var(--mac-shadow-active);font-family:var(--mac-font);}
 .desktop-mode .command-palette::backdrop {background:#0002;backdrop-filter:none;}
 .desktop-mode .command-shell header {padding:14px 16px;}
@@ -11,7 +11,12 @@
 .desktop-mode .command-option {min-height:36px;border-radius:7px;padding:6px 10px;}
 .desktop-mode .command-option[aria-selected="true"] {background:var(--mac-selection);color:var(--mac-selection-ink);}
 .desktop-mode .command-option[aria-selected="true"] small {color:var(--mac-selection-ink);}
-@media(max-width:780px){.desktop-mode .home-dock{bottom:30px;max-width:max(90px,calc(100vw - 202px));}}
+@media(max-width:780px){
+ .desktop-mode .home-dock{left:50%;bottom:max(52px,calc(44px + env(safe-area-inset-bottom)));max-width:calc(100vw - 20px);transform:translateX(-50%)}
+ .desktop-mode .home-dock.dock-auto-hide:not(:hover):not(:focus-within):not(.dock-menu-open){transform:translateX(-50%)}
+ .desktop-mode .home-dock-track{padding-inline:12px}
+ .desktop-mode .home-dock::before{inset:auto 2px 12px;transform:none}
+}
 @media(forced-colors:active){.desktop-mode .command-option[aria-selected="true"]{background:Highlight;color:HighlightText}.desktop-mode .command-option[aria-selected="true"] small{color:HighlightText}}
 
 /* Original, CSS-rendered folder glyph, shared by Finder and free desktop.
@@ -47,7 +52,7 @@
  .desktop-mode .mac-settings-panel .settings-group{grid-column:2;min-width:0;scroll-margin-top:calc(var(--panel-header-height) + 8px)}
 }
 
-.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin{color:#fff;background:linear-gradient(150deg,#ffffff38,transparent 75%),var(--app-icon,#677587);border-color:#ffffff55;box-shadow:0 4px 10px #0003,inset 0 1px 0 #fff8}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="weather"]{--app-icon:#208bd7}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="todos"]{--app-icon:#3479db}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="notes"]{--app-icon:#cb931b}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="calendar"]{--app-icon:#d64c55}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="habits"]{--app-icon:#26956d}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="focus-timer"]{--app-icon:#7a62c3}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="countdowns"]{--app-icon:#c27a37}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="calculator"]{--app-icon:#4b626f}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="bookmarks"]{--app-icon:#258b9a}
+.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin{color:#fff;background:linear-gradient(155deg,#ffffff32,transparent 58%,#0000000d),var(--app-icon,#677587);border-color:var(--mac-icon-edge);box-shadow:var(--mac-icon-shadow)}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="weather"]{--app-icon:#208bd7}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="todos"]{--app-icon:#3479db}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="notes"]{--app-icon:#cb931b}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="calendar"]{--app-icon:#d64c55}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="habits"]{--app-icon:#26956d}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="focus-timer"]{--app-icon:#7a62c3}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="countdowns"]{--app-icon:#c27a37}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="calculator"]{--app-icon:#4b626f}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="bookmarks"]{--app-icon:#258b9a}
 
 .desktop-mode .spotlight-icon{width:26px;height:26px;flex:0 0 26px;display:grid;place-items:center;border-radius:6px;background:var(--mac-toolbar);color:var(--mac-muted)}
 .desktop-mode .spotlight-label{display:flex;align-items:center;gap:10px;min-width:0}
@@ -253,3 +258,21 @@
  .desktop-mode .tool-content :is(.icon-action,.todo-edit-form button,.calendar-nav-button){min-width:36px;min-height:36px}
  .desktop-mode .tool-content .collection-filters button{min-height:40px}
 }
+
+/* Wallpaper remains the visual focus. Neutral shading preserves user opacity,
+   rather than inheriting the classic green gradient. */
+.desktop-mode .background-shade{background:linear-gradient(180deg,#0000000a,transparent 45%,#00000012),rgba(0,0,0,var(--page-shade,.24))}
+.desktop-mode .home-dock-item:focus-visible{outline:2px solid var(--mac-selection);outline-offset:2px}
+.desktop-mode .home-workspace-trigger{font-family:var(--mac-font)}
+.desktop-mode .home-workspace-trigger:focus-visible{outline-color:var(--ui-focus)}
+.desktop-mode .home-dock-icon:not(.builtin){color:#fff}
+@media(max-width:780px){
+ .desktop-mode .home-workspace-bar{bottom:max(12px,env(safe-area-inset-bottom));right:max(12px,env(safe-area-inset-right))}
+ .desktop-mode .home-workspace-trigger{min-height:34px;max-width:144px}
+}
+@media(forced-colors:active){
+ .desktop-mode .home-dock::before{background:Canvas;border-color:ButtonText;box-shadow:none}
+ .desktop-mode .home-dock-item:focus-visible{outline-color:Highlight}
+}
+
+.desktop-mode .home-footer{bottom:2px;letter-spacing:.02em;color:rgba(255,255,255,.72)}

@@ -448,3 +448,7 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 ## #46 资源预算与窗口手势收口
 - 8eb4104 的 verify 139272400284、cross 139272400092 都因 Linux gzip 204831 > 204800 B（超31 B）构建失败，UI通过。未放宽预算。保留desktop-shell合并菜单/画布及workspace-recovery合并备份解析/恢复，撤销会使桌面窗口静态加载settings-tools的事务合并实验。保持Swiper独立、经典首屏及桌面外壳按需加载契约。
 - WindowFrame 标题栏和缩放手柄 user-select:none，正文保持可选择，双主题笔记缩放新增DOM无误选断言；生产分包新增经典/设置不加载desktop-shell、桌面仅加载一次且可往返验证。首次新测试同名设置按钮定位歧义已修正。最终check/build:web、生产Edge 71/71（desktop-alpha2、production-chunks、desktop-storage、config-migration）通过。Mac首屏59.8/60.5、非Swiper198.4/200、CSS34.4/64KiB，PWA额外10666/16384 B、全站1746653/4194304 B。Linux待CI，未重复全量单测或真机。追加现有#46，不创建新PR；#45线上8de2601保持不变，#37与正式Tag保持。通过后合并部署，再继续其他业务应用视觉。
+
+## 桌面整体视觉专项（2026-11-25）
+- 在 #46 779c71a 候选上独立分支 feat/desktop-visual-refinement，后续基线随 #46 收口；不修改保存图标坐标、排列规则、经典模式或数据格式。共享图标材质及标签衬底、长名称两行、图标顶对齐、顶部反馈/桌面工具条主题、壁纸中性暗度、Dock材质和窄屏独立布局、备案位置。保留PWA入口、工作区和横向滚动。
+- 真实前后截图6张 docs/screenshots/macos-desktop/composition。最终check/build:web、3/3视觉专项与84/84宽范围生产Edge回归通过；360px七图标托盘内，320px最后入口滚动可达、标签96px几何及合成白底对比度≥4.5。Mac非Swiper198.4/200、首屏59.8/60.5、CSS34.9/64KiB；不提高预算。实际默认雾林壁纸，未覆盖所有壁纸/强制颜色/真机。#46 最新常规/PWA/UI通过（737单测，Linux非Swiper199.4/200），cross WebKit两项文本误选失败，独立修复，不提前合并或称上线。

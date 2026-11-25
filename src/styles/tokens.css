@@ -211,7 +211,14 @@
   --mac-line: rgba(0,0,0,.13);
   --mac-selection: #0063cc;
   --mac-selection-soft: #dceaff;
-  --mac-dock: rgba(244,245,248,.52);
+  --mac-dock: rgba(244,245,248,.70);
+  --mac-dock-edge: rgba(255,255,255,.66);
+  --mac-dock-shadow: 0 8px 30px rgba(0,0,0,.23), inset 0 1px 0 rgba(255,255,255,.65);
+  --mac-desktop-label: rgba(17,22,30,.65);
+  --mac-desktop-label-ink: #fff;
+  --mac-icon-radius: 14px;
+  --mac-icon-edge: rgba(255,255,255,.32);
+  --mac-icon-shadow: 0 3px 9px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.4);
   --mac-menu: rgba(250,250,252,.96);
   --mac-shadow: 0 20px 62px rgba(0,0,0,.26), 0 3px 12px rgba(0,0,0,.12);
   --mac-shadow-active: 0 32px 100px rgba(0,0,0,.38), 0 7px 22px rgba(0,0,0,.18);
@@ -230,7 +237,9 @@
   --mac-line: rgba(255,255,255,.14);
   --mac-selection: #0065cc;
   --mac-selection-soft: #284467;
-  --mac-dock: rgba(32,33,38,.62);
+  --mac-dock: rgba(32,33,38,.76);
+  --mac-dock-edge: rgba(255,255,255,.22);
+  --mac-dock-shadow: 0 10px 32px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.12);
   --mac-menu: rgba(37,37,41,.97);
   --mac-shadow: 0 20px 62px rgba(0,0,0,.42), 0 3px 12px rgba(0,0,0,.25);
   --mac-shadow-active: 0 32px 100px rgba(0,0,0,.54), 0 7px 22px rgba(0,0,0,.28);
