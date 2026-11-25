@@ -719,7 +719,8 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 
 @media (max-width: 360px) {
   .brand-word { display: none; }
-  .home:not(.desktop-mode) .home-brand { left: 12px; }
+  .home:not(.desktop-mode) .home-brand { left: 12px; width: 32px; justify-content: center; gap: 0; }
+  .home:not(.desktop-mode) .brand-mark { width: 100%; flex: none; text-align: center; }
   .home:not(.desktop-mode) .home-actions { right: 12px; gap: 1px; }
 }
 

@@ -33,10 +33,17 @@ async function openTool(page: Page, title: string) {
 
 test('the phone toolbar creates a shortcut directly without overlapping the brand', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 760 })
-  const brand = await page.locator('.home-brand').boundingBox()
-  const toolbar = await page.locator('.home-actions').boundingBox()
-  expect(brand!.x + brand!.width).toBeLessThan(toolbar!.x)
-  expect(toolbar!.x - (brand!.x + brand!.width)).toBeGreaterThanOrEqual(8)
+  // Measure both boxes in the same rendering state after resize. Preserve the
+  // 8px gap contract even while crossing responsive breakpoints repeatedly.
+  const gap=()=>page.evaluate(()=>{
+    const brand=document.querySelector('.home-brand')!.getBoundingClientRect()
+    const toolbar=document.querySelector('.home-actions')!.getBoundingClientRect()
+    return toolbar.x-brand.right
+  })
+  for(const width of [320,360,480,320]){
+    await page.setViewportSize({width,height:760})
+    await expect.poll(gap).toBeGreaterThanOrEqual(8)
+  }
   const create = page.getByRole('button', { name: '新建快捷入口', exact: true })
   await create.click()
   const dialog = page.getByRole('dialog', { name: '添加快捷入口', exact: true })
