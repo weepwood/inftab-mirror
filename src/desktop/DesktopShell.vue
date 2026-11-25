@@ -57,8 +57,8 @@ const renderedHeight = computed(() => Math.max(canvasHeight.value,...positions.v
 let observer: ResizeObserver | undefined
 type DragMember = { id:string; el:HTMLElement; point:Point }
 let dragging: {id:string; x:number; y:number; dx:number; dy:number; members:DragMember[]} | undefined
-const holdMs=180,moveThreshold=5
-type Press={pointer:number;button:number;item:LauncherItem;el:HTMLElement;x:number;y:number;at:number;travelled:boolean}
+const holdMs=180,touchHoldMs=450,moveThreshold=5
+type Press={pointer:number;button:number;item:LauncherItem;el:HTMLElement;x:number;y:number;at:number;travelled:boolean;touch?:boolean;timer?:ReturnType<typeof setTimeout>}
 let press:Press|undefined
 let suppressClick=false
 const moving=ref(false)
@@ -114,7 +114,13 @@ function pointerStart(event:PointerEvent,item:LauncherItem){
   closeMenu()
   const el=event.currentTarget as HTMLElement
   suppressClick=false
-  press={pointer:event.pointerId,button:event.button,item,el,x:event.clientX,y:event.clientY,at:performance.now(),travelled:false}
+  press={pointer:event.pointerId,button:event.button,item,el,x:event.clientX,y:event.clientY,at:performance.now(),travelled:false,touch:event.pointerType==='touch'}
+  const p=press
+  if(p.touch)p.timer=setTimeout(()=>{
+    if(press!==p||p.travelled||props.blocked)return
+    suppressClick=true;selected.value=[item.id];emit('dismissSearch')
+    openMenu(p.x,p.y,item,el,false)
+  },touchHoldMs)
   if(event.button===2){
     event.preventDefault();event.stopPropagation();emit('dismissSearch')
     el.focus({preventScroll:true})
@@ -127,7 +133,7 @@ function pointerMove(event:PointerEvent){
   if(!p||p.pointer!==event.pointerId)return
   const dx=event.clientX-p.x,dy=event.clientY-p.y
   if(Math.hypot(dx,dy)>=moveThreshold)p.travelled=true
-  if(p.button===0){if(p.travelled)suppressClick=true;return}
+  if(p.button===0){if(p.travelled){suppressClick=true;clearTimeout(p.timer);if(p.touch)closeMenu()}return}
   if(!(event.buttons&2)){cancelDrag();return}
   if(!dragging){
     if(!p.travelled||performance.now()-p.at<holdMs)return
@@ -149,7 +155,7 @@ function pointerMove(event:PointerEvent){
   for(const member of d.members){const pos=preview[member.id];if(pos)member.el.style.transform='translate('+pos.x+'px,'+pos.y+'px)'}
 }
 function releasePress(p:Press){
-  press=undefined
+  clearTimeout(p.timer);press=undefined
   try{if(p.el.hasPointerCapture(p.pointer))p.el.releasePointerCapture(p.pointer)}catch{/* detached */}
 }
 function pointerEnd(event:PointerEvent){
@@ -158,7 +164,13 @@ function pointerEnd(event:PointerEvent){
   const d=dragging
   dragging=undefined;moving.value=false
   releasePress(p)
-  if(p.button===0)return
+  if(p.button===0){
+    if(p.touch&&!p.travelled&&performance.now()-p.at>=touchHoldMs){
+      suppressClick=true;event.preventDefault();event.stopPropagation()
+      if(!menu.value)openMenu(p.x,p.y,p.item,p.el,false)
+    }
+    return
+  }
   event.preventDefault();event.stopPropagation()
   if(!d){
     if(!p.travelled)openMenu(event.clientX,event.clientY,p.item,p.el)
@@ -222,7 +234,7 @@ function cancelKey(event:KeyboardEvent){
   event.preventDefault();event.stopImmediatePropagation()
   cancelDrag();boxEnd();closeMenu(true)
 }
-function openMenu(x:number,y:number,item?:LauncherItem,trigger?:HTMLElement){
+function openMenu(x:number,y:number,item?:LauncherItem,trigger?:HTMLElement,focus=true){
   if(props.blocked)return
   menuTrigger=trigger
   menu.value={x:Math.max(0,Math.min(x,innerWidth-180)),y:Math.max(0,Math.min(y,innerHeight-260)),item}
@@ -232,7 +244,7 @@ function openMenu(x:number,y:number,item?:LauncherItem,trigger?:HTMLElement){
     const r=root.getBoundingClientRect()
     menu.value.x=Math.max(0,Math.min(menu.value.x,innerWidth-r.width-4))
     menu.value.y=Math.max(0,Math.min(menu.value.y,innerHeight-r.height-4))
-    root.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true})
+    if(focus)root.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true})
   })
 }
 function context(event:MouseEvent){openMenu(event.clientX,event.clientY,undefined,surface.value)}
@@ -245,18 +257,21 @@ function outside(event:PointerEvent){
   if(press&&event.pointerId!==press.pointer)cancelDrag()
 }
 function blur(){cancelDrag();boxEnd();closeMenu()}
+function ancestorScroll(e:Event){if(e.target instanceof Element&&surface.value&&e.target.contains(surface.value))blur()}
 watch(()=>props.blocked,blocked=>{if(blocked)blur()})
 watch(()=>props.searchActive,active=>{if(active)blur()})
 onMounted(()=>{
  window.addEventListener('blur',blur)
  window.addEventListener('keydown',cancelKey,true)
  document.addEventListener('pointerdown',outside,true)
+ document.addEventListener('scroll',ancestorScroll,true)
 })
 onBeforeUnmount(()=>{
  blur();observer?.disconnect()
  window.removeEventListener('blur',blur)
  window.removeEventListener('keydown',cancelKey,true)
  document.removeEventListener('pointerdown',outside,true)
+ document.removeEventListener('scroll',ancestorScroll,true)
 })
 watch(() => visibleItems.value.map(i=>i.id), ids => {
   if ((press&&!ids.includes(press.item.id))||(dragging&&dragging.members.some(member=>!ids.includes(member.id))))cancelDrag()
@@ -301,7 +316,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 .desktop-toolbar button:hover{background:#ffffff25}.desktop-toolbar button[aria-pressed=true]{background:#ffffff30;color:#fff}
 .desktop-surface{position:relative;flex:1;min-height:240px;overflow:auto}
 .desktop-canvas{position:relative;min-width:100%;touch-action:pan-y}
-.desktop-icon{position:absolute;top:0;left:0;width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;background:none;color:white;touch-action:pan-y;user-select:none;cursor:pointer}
+.desktop-icon{position:absolute;top:0;left:0;width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;background:none;color:white;touch-action:pan-y;user-select:none;-webkit-touch-callout:none;cursor:pointer}
 .desktop-shell.is-moving,.desktop-shell.is-moving .desktop-icon{cursor:grabbing}
 .desktop-icon:focus-visible{outline:2px solid white;outline-offset:-3px;border-radius:8px}
 .desktop-symbol{width:56px;height:56px;border-radius:14px;border:1px solid #ffffff48;display:grid;place-items:center;overflow:hidden;color:white;box-shadow:0 4px 14px #0004,inset 0 1px 1px #ffffff50;font-size:24px}
@@ -311,5 +326,6 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 .desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection)}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:56px}.desktop-menu{position:fixed;z-index:10;background:var(--mac-menu);color:var(--mac-ink);padding:5px;border:1px solid var(--mac-line);border-radius:8px;box-shadow:var(--mac-shadow);width:170px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);overflow:auto;overscroll-behavior:contain;backdrop-filter:blur(18px)}.desktop-menu button{display:block;width:100%;text-align:left;padding:7px 9px;background:none;border:0;border-radius:5px;color:inherit;cursor:pointer}.desktop-menu button:hover,.desktop-menu button:focus-visible{background:var(--mac-selection);color:#fff}
 .desktop-marquee{position:absolute;pointer-events:none;border:1px solid #93c9ff;background:#559aff30;z-index:4}@media(prefers-reduced-motion:no-preference){.desktop-icon.selected .desktop-symbol{transition:outline-color .12s}.finder{animation:finder-appear .15s ease-out}}
 .desktop-menu.dark{background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line)}
+@media(pointer:coarse){.desktop-menu button{min-height:44px;padding:9px 12px}}
 @media(max-width:480px){.desktop-toolbar{gap:3px}.desktop-toolbar span{font-size:10px;margin-inline:2px}.desktop-toolbar button{padding:5px;font-size:11px}}
 </style>

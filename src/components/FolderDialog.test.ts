@@ -76,6 +76,24 @@ describe('FolderDialog accessibility', () => {
     expect(document.activeElement).toBe(wrapper.get('input[placeholder="例如：工作"]').element)
   })
 
+  it('validates the name, focuses the invalid field and supports Enter without consuming IME', async () => {
+    wrapper = mount(FolderDialog, { attachTo: document.body, props: { shortcuts: [] } })
+    const input=wrapper.get<HTMLInputElement>('input[placeholder="例如：工作"]')
+    await wrapper.get('.button-primary').trigger('click')
+    expect(document.activeElement).toBe(input.element)
+    expect(input.attributes('aria-invalid')).toBe('true')
+    expect(wrapper.emitted('save')).toBeUndefined()
+    await input.setValue('项目')
+    await input.trigger('keydown',{key:'Enter',isComposing:true})
+    expect(wrapper.emitted('save')).toBeUndefined()
+    await input.trigger('keydown',{key:'Enter'})
+    expect(wrapper.emitted('save')).toHaveLength(1)
+    expect(input.attributes('aria-invalid')).toBeUndefined()
+    await wrapper.setProps({limitReached:true})
+    await input.trigger('keydown',{key:'Enter'})
+    expect(wrapper.emitted('save')).toHaveLength(1)
+  })
+
   it('opens all contained shortcuts in their saved order', async () => {
     const first = { id: 'first', title: 'First', url: 'https://first.example/', color: '#369', mark: 'F' }
     const second = { id: 'second', title: 'Second', url: 'https://second.example/', color: '#936', mark: 'S' }

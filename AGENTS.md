@@ -419,3 +419,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 ## 精确数值控件与窗口边缘交互专项（2026-11-25）
 - #40已合并6bc1b93，Pages部署成功，95/95文件逐字节一致。以此main建立独立worktree /private/tmp/inftab-window41，分支feat/desktop-precision-window。新增RangeField统一14项设置，原生range/number联动、单位转换、提交步长夹紧、空值恢复、Enter/Escape、禁用同步；复用settings-tools分块。WindowFrame沿用InteractJS八方向缩放、锚定对边和视口约束、宽屏左右边缘20px停靠预览及取消/解除恢复；预览位于活动窗口后方。文件夹表单错误语义及焦点样式。未新增依赖、存储格式或正式安装包；不混入#37。
 - 本机check/build:web通过，98/98定向单测通过。生产Edge宽范围首次69/70，八方向新用例触及顶部安全边界（正确限制8px）；调整测试起始位置并保留八方向精确几何断言，最终数值与窗口专项2/2通过，未再次执行全量回归。首屏59.8/60.5、非Swiper198.4/200、Swiper26.4/30、combined224.7/230、CSS33.2/64 KiB，PWA额外10697/16384 B、全站1732928/4194304 B；不放宽预算。真实截图两张见docs/screenshots/macos-desktop/precision，说明见docs/desktop-controls-design.md。临时playwright.local-window41.config.ts不提交。新CI待验收，通过后收口合并部署。后续优先补齐公共表单与交互反馈、动画和触屏实测；本批未实现顶部停靠、停靠直接拖出、触屏专项或完整动效系统，旧Mac Edge原生选择器回退差异仍待研究。
+
+## 桌面触屏入口及表单交互（2026-11-25）
+- #41 四项远程CI全绿（736项单测、95文件），已合并3cbc036，Pages 45602059862成功，实际产物与线上95/95文件逐字节一致。基于3cbc036，在原隔离worktree切换新分支feat/desktop-touch-form，保留#37冻结与V2.0.0 Tag。
+- 桌面Pointer Events新增触屏450ms静止长按菜单，5px移动取消，释放/取消清理计时器，普通轻点打开、滑动自然滚动、鼠标右键拖动保持；触屏菜单避免兼容点击引发焦点丢失，鼠标/键盘自动聚焦保留，粗指针菜单44px。根桌面纵向滚动、搜索fixed、祖先滚动取消手势，避免图标不可达或搜索随页面滚走。FolderDialog名称Enter提交、IME保护、空名错误聚焦、数量上限守卫。无新依赖/数据格式，不实现触屏直接拖动或完整动画系统。
+- check/build:web通过，App/FolderDialog 73/73单测、核心生产Edge 5/5。宽范围69/70，新增触控用例滚动失败；等待Finder关闭、触点命中检查与逐步CDP触控移动后两并发5/5，未重跑全量。仅Chromium支持CDP触控专用用例，Firefox/WebKit跳过此用例，其他现有用例保留。实际Mac Edge移动模拟非真机。首屏59.8/60.5、非Swiper198.6/200、Swiper26.4/30、CSS33.2/64 KiB；PWA额外10713/16384 B、全站1733901/4194304 B。原预算不变，新远程CI待验收。临时playwright.local-window41.config.ts不提交；通过后合并部署。后续继续动画、公共控件与移动端交互，触屏真机和Mac原生选择器差异仍待研究。
