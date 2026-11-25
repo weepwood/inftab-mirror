@@ -7,7 +7,7 @@ import '@interactjs/actions/resize'
 import '@interactjs/auto-start'
 import { fitWindow, dockWindow, resizeWindow, readGeometry, saveGeometry, type WindowGeometry, type WindowSnap, type ResizeEdges } from './windowGeometry'
 const props=defineProps<{kind:'finder'|'tool'; title:string; description?:string; label:string; geometryKey:string; active:boolean; minimized:boolean; maximized:boolean; cascade:number; layer:number; dark?:boolean; hidden?:boolean}>()
-const emit=defineEmits<{activate:[];close:[];minimize:[];maximize:[];keydown:[event:KeyboardEvent]}>()
+const emit=defineEmits<{activate:[];close:[];left:[];minimize:[];maximize:[];keydown:[event:KeyboardEvent]}>()
 const root=ref<HTMLElement>(),bar=ref<HTMLElement>(),snap=ref<WindowSnap>(null)
 const preferred=ref<WindowGeometry>({x:12,y:64,width:props.kind==='finder'?850:640,height:props.kind==='finder'?570:530})
 const preview=ref<WindowSnap|'top'>(null)
@@ -132,7 +132,7 @@ onBeforeUnmount(()=>{stopMotion();reducedMotion.removeEventListener('change',onR
 </script>
 <template>
  <div v-if="preview" class="window-snap-preview" aria-hidden="true" :style="previewStyle"/>
- <Transition name="mac-window" appear @before-enter="dockTransition" @before-leave="dockTransition" @after-enter="dockMotion=false">
+ <Transition name="mac-window" appear @before-enter="dockTransition" @before-leave="dockTransition" @after-enter="dockMotion=false" @after-leave="emit('left')">
  <section v-show="!minimized&&!hidden" ref="root" class="window-frame" :class="[kind==='finder'?'finder':'tool-window',{active,maximized:isMaximized,dark,snapped:!!snap}]" :style="style" role="dialog" :aria-label="label" :aria-hidden="minimized||hidden||undefined" :inert="(minimized||hidden)||undefined" tabindex="-1" @pointerdown="emit('activate')" @focusin="focusWithin" @keydown="handleKey">
   <header ref="bar" @dblclick="titleDoubleClick" class="window-title" :class="kind==='finder'?'finder-title':'tool-title'">
    <div class="traffic"><button type="button" :aria-label="kind==='finder'?'关闭 Finder':'关闭窗口'" class="close" @click="emit('close')"/><button type="button" :aria-label="kind==='finder'?'最小化 Finder':'最小化窗口'" class="minimize" @click="emit('minimize')"/><button type="button" :aria-label="(maximized?'还原':'最大化')+(kind==='finder'?' Finder':'窗口')" class="maximize" @click="maximize"/></div>

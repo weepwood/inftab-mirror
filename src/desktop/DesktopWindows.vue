@@ -14,7 +14,7 @@ import type { HomeWorkspace } from '../data/homeWorkspaces'
 import { readIntent,readTransactionValues,canReplay,type TransactionIntent } from './transactionIntent'
 import { folderParents } from '../data/folderTree'
 import { readWindowSession, saveWindowSession } from './windowSession'
-import { activeWindow, activateWindow, closeWindow, openWindow, updateWindow, maxWindows, reconcileWindowSpaces } from './windowManager'
+import { activeWindow, activateWindow, closeWindow, openWindow, updateWindow, maxWindows, reconcileWindowSpaces, type DesktopWindow } from './windowManager'
 
 const props = defineProps<{ request?: { sequence:number; workspaceId:string; folderId?:string; panelId?:PanelId; targetId?:string }; context:PanelPluginContext; overviewRequest?:number; operationError?:string; history:{undo:boolean;redo:boolean}; mutate:(action:DesktopMutation)=>Promise<boolean>; items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; dark?:boolean; blocked?:boolean }>()
 const emit = defineEmits<{ open:[item:LauncherItem,event?:MouseEvent]; edit:[item:LauncherItem]; remove:[item:LauncherItem]; create:[workspaceId:string,parentId?:string]; dismissError:[]; switchWorkspace:[id:string]; running:[ids:PanelId[]] }>()
@@ -35,6 +35,11 @@ async function recover(direction:'rollback'|'complete'|'keep'){
  try{await props.mutate({kind:'recover',id:pending.value.id,direction});await refreshIntent()}
  finally{recovering.value=false}
 }
+// Closed windows leave the logical/session state immediately. Retain only
+// their inert view until the existing Vue leave transition finishes.
+const closing=ref<DesktopWindow[]>([])
+const renderedWindows=computed(()=>[...state.value.windows,...closing.value])
+function finishClose(id:number){if(closing.value.some(w=>w.id===id))closing.value=closing.value.filter(w=>w.id!==id)}
 const active=computed(()=>activeWindow(state.value,props.workspaceId))
 const minimized=computed(()=>state.value.windows.filter(w=>w.minimized&&w.spaceId===props.workspaceId))
 function previewItems(space:HomeWorkspace){
@@ -88,7 +93,13 @@ function activate(id:number){
  if(target&&target.spaceId!==props.workspaceId)emit('switchWorkspace',target.spaceId)
  state.value=activateWindow(state.value,id);closeOverview()
 }
-function close(id:number){state.value=closeWindow(state.value,id);limit.value=false;if(!state.value.windows.length)closeOverview()}
+function close(id:number){
+ const w=state.value.windows.find(w=>w.id===id)
+ if(!w)return
+ if(!w.minimized&&w.spaceId===props.workspaceId&&!matchMedia('(prefers-reduced-motion: reduce)').matches)closing.value=[...closing.value.slice(-maxWindows+1),w]
+ state.value=closeWindow(state.value,id);limit.value=false
+ if(!state.value.windows.length)closeOverview()
+}
 function minimize(id:number){state.value=updateWindow(state.value,id,{minimized:true})}
 function maximize(id:number){const w=state.value.windows.find(w=>w.id===id);if(w)state.value=updateWindow(state.value,id,{maximized:!w.maximized})}
 function browse(id:number,workspaceId:string,folderId?:string){state.value=updateWindow(state.value,id,{browseWorkspaceId:workspaceId,browseFolderId:folderId})}
@@ -109,9 +120,9 @@ async function paste(workspaceId:string,folderId:string|null){
 </script>
 <template>
  <div class="desktop-windows" :class="{dark}">
-  <template v-for="(window,index) in state.windows" :key="window.id">
-  <ToolWindow v-if="window.panelId" :panel-id="window.panelId" :target-id="window.targetId" :target-sequence="window.sequence" :context="context" :dark="dark" :active="window.id===active" :hidden="window.spaceId!==workspaceId" :minimized="window.minimized" :maximized="window.maximized" :cascade="window.cascade" :layer="index+1" @activate="activate(window.id)" @close="close(window.id)" @minimize="minimize(window.id)" @maximize="maximize(window.id)" @title="title(window.id,$event)" />
-  <FinderWindow v-else :history="history" @history-action="historyAction" :clipboard="clipboard" :pasting="pasting" @clipboard="clipboard=$event" @paste="paste" :items="items" :workspaces="workspaces" :workspace-id="window.workspaceId" :folder-id="window.folderId" :browse-workspace-id="window.browseWorkspaceId" :browse-folder-id="window.browseFolderId" @location="(workspaceId:string,folderId?:string)=>browse(window.id,workspaceId,folderId)" :dark="dark" :active="window.id===active" :hidden="window.spaceId!==workspaceId" :minimized="window.minimized" :maximized="window.maximized" :cascade="window.cascade" :layer="index+1" @activate="activate(window.id)" @close="close(window.id)" @minimize="minimize(window.id)" @maximize="maximize(window.id)" @title="title(window.id,$event)" @open="forwardOpen" @edit="emit('edit',$event)" @remove="emit('remove',$event)" @move="forwardMove" @membership="forwardMembership" @reparent="reparent" @create="createFolder" />
+  <template v-for="(window,index) in renderedWindows" :key="window.id">
+  <ToolWindow v-if="window.panelId" :panel-id="window.panelId" :target-id="window.targetId" :target-sequence="window.sequence" :context="context" :dark="dark" :active="window.id===active" :hidden="window.spaceId!==workspaceId||closing.some(w=>w.id===window.id)" :minimized="window.minimized" :maximized="window.maximized" :cascade="window.cascade" :layer="index+1" @activate="activate(window.id)" @close="close(window.id)" @left="finishClose(window.id)" @minimize="minimize(window.id)" @maximize="maximize(window.id)" @title="title(window.id,$event)" />
+  <FinderWindow v-else :history="history" @history-action="historyAction" :clipboard="clipboard" :pasting="pasting" @clipboard="clipboard=$event" @paste="paste" :items="items" :workspaces="workspaces" :workspace-id="window.workspaceId" :folder-id="window.folderId" :browse-workspace-id="window.browseWorkspaceId" :browse-folder-id="window.browseFolderId" @location="(workspaceId:string,folderId?:string)=>browse(window.id,workspaceId,folderId)" :dark="dark" :active="window.id===active" :hidden="window.spaceId!==workspaceId||closing.some(w=>w.id===window.id)" :minimized="window.minimized" :maximized="window.maximized" :cascade="window.cascade" :layer="index+1" @activate="activate(window.id)" @close="close(window.id)" @left="finishClose(window.id)" @minimize="minimize(window.id)" @maximize="maximize(window.id)" @title="title(window.id,$event)" @open="forwardOpen" @edit="emit('edit',$event)" @remove="emit('remove',$event)" @move="forwardMove" @membership="forwardMembership" @reparent="reparent" @create="createFolder" />
   </template>
   <div v-if="state.windows.length" class="window-shelf">
    <button type="button" aria-label="窗口概览" :aria-expanded="overview" @click="overview?closeOverview(true):openOverview()"><Layers :size="16"/> {{state.windows.length}} 个窗口</button>
