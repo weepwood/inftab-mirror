@@ -499,3 +499,9 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 上一轮旧 run 45650914542 除 Linux 超预算外，Chromium UI 112通过、1失败、1 flaky：Finder 开场缩放尚未结束采样834px而实际850px；自由拖动偶发未提交，测试复用旧屏幕坐标且未等待恢复后的实际落点。新增真实尺寸、动画结束、每次拖动起点命中、最终预览断言，不删原断言或放宽坐标。不声称已确认偶发问题根因。
 - a5549c3 远程 run 45657276693 Linux build:web 已成功，Firefox/WebKit 及 UI 验收仍进行中；这是旧提交（不含本次测试修订），不可当作最终验收。
 - 从已合并 main 新建 feat/desktop-interaction-consolidation，逐个 cherry-pick 原五个后续提交，迁移后文件树与 a5549c3 完全一致；保留旧远端分支，不 force push、不修改主线、#37/#29及正式Tag。新增回归稳定性修订后，生产 Edge Finder 停靠/持久化、快速最小化恢复、自由拖动/碰撞、Dock 精确目标四项三轮12/12。本次优先累计收口，不增加新动效。待新 PR 最新头四项门禁全绿，审查后合并验证部署。
+
+## WebKit 窗口输入几何收口（2026-11-26）
+- #48 e643986 的 verify、PWA、Chromium UI 均通过，Firefox/WebKit 合并任务 132 passed / 4 skipped / 1 failed / 1 flaky。WebKit tool resize 连续三次取到动画中的621px宽度，最终640px且未缩放；最小化生命周期另有一次偶发失败。不能认定为纯测试错误，优先稳定真实输入几何。
+- 普通窗口新建/无有效 Dock 目标的显示过渡改为固定几何淡入，保留 Dock 定向收缩与反向恢复；定向恢复的短暂入场阶段避免指针误命中，原减少动效路径不变。测试补充首帧640px与真实 resize handle 命中断言，不放宽尺寸或可见性门槛。
+- Mac build:web通过，非Swiper198.0/200 KiB、首屏59.8/60.5、PWA额外10325/16384 B；生产Edge工具生命周期、实际resize、Finder停靠、快速最小化与Dock恢复两轮10/10。当前正确版本WebKit未在本机缓存，内存压力门禁defer，未绕过或安装新浏览器。必须等新头跨浏览器CI，不能宣称WebKit已修复或正式上线。
+- 后续 group-motion 分支7766e6e保持独立，不将新功能塞进本次阻塞修复；#48通过后以合并main为基线无损迁移。
