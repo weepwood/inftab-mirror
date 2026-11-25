@@ -13,21 +13,38 @@ function close(restore=false){
  active.value=''
  if(restore)root.value?.querySelector<HTMLButtonElement>('[data-menu="'+previous+'"]')?.focus()
 }
-function open(label:string){active.value=active.value===label?'':label}
+function focusItem(last=false){
+ void nextTick(()=>{
+  const items=root.value?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')
+  if(items?.length)items[last?items.length-1:0]?.focus({preventScroll:true})
+ })
+}
+function open(label:string){
+ if(active.value===label){close(true);return}
+ active.value=label;focusItem()
+}
 function keys(event:KeyboardEvent){
  if(event.key==='Escape'&&active.value){event.preventDefault();event.stopPropagation();close(true)}
- else if(event.key==='ArrowDown'&&event.target instanceof HTMLButtonElement&&event.target.dataset.menu){
-  event.preventDefault();active.value=event.target.dataset.menu
-  void nextTick(()=>root.value?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus())
+ else if(['ArrowDown','ArrowUp'].includes(event.key)&&event.target instanceof HTMLButtonElement&&event.target.dataset.menu){
+  event.preventDefault();event.stopPropagation();active.value=event.target.dataset.menu
+  focusItem(event.key==='ArrowUp')
+ }else if(active.value&&['ArrowLeft','ArrowRight'].includes(event.key)){
+  event.preventDefault();event.stopPropagation()
+  const index=groups.findIndex(g=>g.label===active.value)
+  active.value=groups[(index+(event.key==='ArrowRight'?1:-1)+groups.length)%groups.length]!.label
+  focusItem()
  }
 }
+function focusOut(event:FocusEvent){
+ if(event.relatedTarget instanceof Node&&!root.value?.contains(event.relatedTarget))close()
+}
 function outside(event:PointerEvent){if(!root.value?.contains(event.target as Node))close()}
-function run(command:string){close();emit('run',command)}
+function run(command:string){close(true);emit('run',command)}
 onMounted(()=>document.addEventListener('pointerdown',outside,true))
 onBeforeUnmount(()=>document.removeEventListener('pointerdown',outside,true))
 </script>
 <template>
- <nav ref="root" class="desktop-menus" aria-label="桌面功能菜单" @keydown="keys" @focusout="!root?.contains($event.relatedTarget as Node)&&close()">
+ <nav ref="root" class="desktop-menus" aria-label="桌面功能菜单" @keydown="keys" @focusout="focusOut">
   <div v-for="group in groups" :key="group.label" class="desktop-menu-anchor">
    <button type="button" :data-menu="group.label" aria-haspopup="menu" :aria-expanded="active===group.label" @click="open(group.label)">{{group.label}}</button>
    <div v-if="active===group.label" class="desktop-dropdown" role="menu" :aria-label="group.label+'菜单'" @keydown="navigateMenu">

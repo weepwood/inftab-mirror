@@ -1383,3 +1383,15 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .desktop-mode .mac-settings-panel .settings-section input[type=range]{accent-color:var(--mac-selection)}
 .desktop-mode .tool-window .tool-content{font-family:var(--mac-font)}
 @media(prefers-reduced-motion:reduce){.desktop-mode .command-option,.desktop-mode .toggle-row,.desktop-mode .toggle-row input[type=checkbox],.desktop-mode .toggle-row input[type=checkbox]::after{transition:none}}
+
+/* Desktop popovers: semantic surfaces, compact spacing, consistent focus. */
+.desktop-mode .workspace-panel{background:var(--mac-menu);color:var(--mac-ink);border:1px solid var(--mac-line);border-radius:10px;padding:9px;box-shadow:var(--mac-shadow)}
+.desktop-mode .workspace-panel :is(.workspace-panel-heading span,.workspace-form-hint,.workspace-pinned-hint,.workspace-no-results){color:var(--mac-muted)}
+.desktop-mode .workspace-panel :is(.workspace-row:hover,.workspace-row:focus-within,.workspace-row.is-active,.workspace-icon,.workspace-action:hover,.workspace-action[aria-expanded=true],.workspace-actions button:hover,.workspace-actions button:focus-visible){background:var(--mac-selection-soft);color:var(--mac-ink)}
+.desktop-mode .workspace-panel :is(.workspace-filter,.workspace-form input){background:var(--mac-window);border-color:var(--mac-line);color:var(--mac-ink)}
+.desktop-mode .workspace-panel :is(.workspace-create,.workspace-editor-action,.workspace-form-actions button){border-color:var(--mac-line);color:var(--mac-ink)}
+.desktop-mode .workspace-panel .workspace-submit{background:var(--mac-selection);border-color:var(--mac-selection);color:white}
+.desktop-mode .workspace-panel :is(button,input):focus-visible{outline-color:var(--ui-focus)}
+.desktop-mode .workspace-panel :is(.workspace-row,.workspace-action,.workspace-create,.workspace-form-actions button){border-radius:6px}
+.desktop-mode .window-frame :is(button,input,select,textarea):focus-visible{outline:2px solid var(--ui-focus);outline-offset:1px}
+.desktop-mode .window-frame :is(button,select):disabled{cursor:default}

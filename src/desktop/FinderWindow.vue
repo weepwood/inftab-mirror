@@ -150,6 +150,7 @@ function menuKeys(e:KeyboardEvent){
  buttons[e.key==='Home'?0:e.key==='End'?buttons.length-1:(index+(e.key==='ArrowUp'?-1:1)+buttons.length)%buttons.length]?.focus()
 }
 function keys(e:KeyboardEvent){
+ if(e.defaultPrevented||e.isComposing||e.keyCode===229)return
  if(e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement)return
  if(e.ctrlKey||e.metaKey){
   const key=e.key.toLowerCase()
