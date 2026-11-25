@@ -168,10 +168,10 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .home-dock::before { content: ''; position: absolute; z-index: -1; inset: 22px 10px 16px; border: 1px solid rgba(255, 255, 255, .4); border-radius: 20px; background: rgba(245, 252, 246, .18); box-shadow: 0 12px 32px rgba(8, 24, 16, .2), inset 0 1px 0 rgba(255, 255, 255, .16); backdrop-filter: blur(24px) saturate(140%); pointer-events: none; }
 .home-dock-track { position: relative; display: flex; align-items: center; gap: min(var(--dock-gap-setting, 2px), clamp(0px, 1vw, 16px)); max-width: 100%; overflow-x: auto; padding: 32px 18px 24px; scrollbar-width: none; }
 .home-dock-track::-webkit-scrollbar { display: none; }
-.home-dock-entry { position: relative; z-index: 0; width: var(--dock-item-size, 48px); flex: 0 0 var(--dock-item-size, 48px); --dock-scale: 1; }
-.home-dock-entry:hover, .home-dock-entry:focus-within { z-index: 2; }
-.home-dock-entry:focus-within { --dock-scale: 1.2; }
-.home-dock.magnification-off .home-dock-entry { --dock-scale: 1 !important; }
+:is(.home-dock-entry,.home-dock-system-entry) { position: relative; z-index: 0; width: var(--dock-item-size, 48px); flex: 0 0 var(--dock-item-size, 48px); --dock-scale: 1; }
+:is(.home-dock-entry,.home-dock-system-entry):hover, :is(.home-dock-entry,.home-dock-system-entry):focus-within { z-index: 2; }
+:is(.home-dock-entry,.home-dock-system-entry):focus-within { --dock-scale: 1.2; }
+.home-dock.magnification-off :is(.home-dock-entry,.home-dock-system-entry) { --dock-scale: 1 !important; }
 .home-dock-item { width: var(--dock-item-size, 48px); height: var(--dock-item-size, 48px); display: grid; place-items: center; border: 0; border-radius: 10px; padding: 0; background: transparent; color: #fff; cursor: pointer; }
 .home-dock-item:focus-visible { outline-offset: 3px; }
 .home-dock-icon { width: var(--dock-icon-size, 44px); height: var(--dock-icon-size, 44px); display: grid; place-items: center; overflow: hidden; border-radius: 12px; corner-shape: squircle; color: #303640; font-size: 19px; box-shadow: 0 3px 9px rgba(8, 12, 17, .24); transform: translateX(var(--dock-shift-x, 0px)) scale(var(--dock-scale, 1)); transform-origin: center bottom; transition: transform .16s cubic-bezier(.2, .8, .2, 1); }
@@ -1224,12 +1224,12 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 /* Stable visual hierarchy without changing stored launcher dimensions. */
 .shortcut-grid-wrap { isolation: isolate; }
 .page-dot:focus-visible { outline-offset: 2px; }
-.home-dock-entry::before { content: attr(data-title); position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ui-text); background: var(--ui-surface); border: 1px solid var(--ui-border); padding: 4px 8px; border-radius: 7px; font-size: 11px; opacity: 0; pointer-events: none; transition: opacity 100ms ease; z-index: 5; }
+:is(.home-dock-entry,.home-dock-system-entry)::before { content: attr(data-title); position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ui-text); background: var(--ui-surface); border: 1px solid var(--ui-border); padding: 4px 8px; border-radius: 7px; font-size: 11px; opacity: 0; pointer-events: none; transition: opacity 100ms ease; z-index: 5; }
 @media (hover: hover) and (pointer: fine) {
-  .home-dock:not(.dock-dragging) .home-dock-entry:hover::before, .home-dock-entry:focus-within::before { opacity: 1; transform: translate(var(--dock-shift-x, 0px), calc(-1 * var(--dock-icon-size) * (var(--dock-scale, 1) - 1))) translateX(-50%); }
+  .home-dock:not(.dock-dragging) :is(.home-dock-entry,.home-dock-system-entry):hover::before, :is(.home-dock-entry,.home-dock-system-entry):focus-within::before { opacity: 1; transform: translate(var(--dock-shift-x, 0px), calc(-1 * var(--dock-icon-size) * (var(--dock-scale, 1) - 1))) translateX(-50%); }
   .home-dock:not(.magnification-off) .home-dock-track { padding-top: calc(var(--dock-item-size) * .7 + 34px); }
 }
-@media (prefers-reduced-motion: reduce) { .home-dock-entry::before { transition: none; } }
+@media (prefers-reduced-motion: reduce) { :is(.home-dock-entry,.home-dock-system-entry)::before { transition: none; } }
 
 /* Clean launcher: center the visual mass without changing stored grid settings. */
 @media (min-width: 781px) and (min-height: 680px) {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
+import { LayoutGrid, ArrowDownUp, FolderPlus, FolderOpen, Pencil, Trash2, ChevronRight, ChevronLeft, Check } from '@lucide/vue'
 import type { LauncherItem } from '../types'
 import { navigateMenu } from '../components/menuNavigation'
 import { desktopHabitIcon, launcherIcons } from '../components/launcherIcons'
@@ -40,28 +41,57 @@ const selected = ref<string[]>([])
 const visibleItems=computed(()=>{const parents=folderParents(props.items.flatMap(i=>i.folder?[i.folder]:[]),{id:props.workspaceId,name:'',itemIds:props.items.map(i=>i.id)});return props.items.filter(i=>!parents.has(i.id))})
 const menu = ref<{x:number;y:number;item?:LauncherItem}>()
 const menuRoot=ref<HTMLElement>()
-const branch=ref<'view'|'arrange'>()
-const submenu=ref<HTMLElement>()
+type MenuBranch='view'|'arrange'
+const branch=ref<MenuBranch>()
+const submenu=ref<HTMLElement>(),stacked=ref(false)
 const submenuPosition=ref({left:0,top:0})
+let hoverTimer:ReturnType<typeof setTimeout>|undefined
+function clearHover(){clearTimeout(hoverTimer);hoverTimer=undefined}
 function hideBranch(restore=false){
+ clearHover()
  const previous=branch.value
- branch.value=undefined
- if(restore&&previous)menuRoot.value?.querySelector<HTMLElement>('[data-branch="'+previous+'"]')?.focus({preventScroll:true})
+ branch.value=undefined;stacked.value=false
+ if(restore&&previous)void nextTick(()=>menuRoot.value?.querySelector<HTMLElement>('[data-branch="'+previous+'"]')?.focus({preventScroll:true}))
 }
-function showBranch(kind:'view'|'arrange',anchor:HTMLElement,focus=false){
+function showBranch(kind:MenuBranch,anchor:HTMLElement,focus=false){
+ clearHover()
+ const r=anchor.getBoundingClientRect(),parent=menuRoot.value?.getBoundingClientRect()
+ stacked.value=r.right+222>innerWidth&&r.left<222
  branch.value=kind
- const r=anchor.getBoundingClientRect()
+ // Set a safe provisional location before measuring the actual panel.
+ submenuPosition.value={left:parent?.left??4,top:parent?.top??4}
  void nextTick(()=>{
   if(branch.value!==kind||!submenu.value)return
   const {width,height}=submenu.value.getBoundingClientRect()
   const right=r.right+3,left=r.left-width-3
-  submenuPosition.value={left:Math.max(4,Math.min(right+width<=innerWidth-4?right:left,innerWidth-width-4)),top:Math.max(4,Math.min(r.top-5,innerHeight-height-4))}
-  if(focus)submenu.value.querySelector<HTMLElement>('button')?.focus({preventScroll:true})
+  submenuPosition.value={left:Math.max(4,Math.min(stacked.value?(parent?.left??4):right+width<=innerWidth-4?right:left,innerWidth-width-4)),top:Math.max(4,Math.min(stacked.value?(parent?.top??4):r.top-5,innerHeight-height-4))}
+  if(focus||stacked.value)submenu.value.querySelector<HTMLElement>('button')?.focus({preventScroll:true})
  })
+}
+function hoverItem(e:PointerEvent,kind?:MenuBranch){
+ if(e.pointerType!=='mouse')return
+ clearHover()
+ if(kind===branch.value)return
+ const anchor=e.currentTarget as HTMLElement
+ // Narrow displays use explicit click-to-enter navigation.
+ if(kind&&anchor.getBoundingClientRect().right+222>innerWidth&&anchor.getBoundingClientRect().left<222)return
+ const run=()=>{
+  if(!anchor.isConnected||!menu.value)return
+  if(submenu.value?.contains(document.activeElement))anchor.focus({preventScroll:true})
+  if(kind)showBranch(kind,anchor)
+  else hideBranch()
+ }
+ if(branch.value)hoverTimer=setTimeout(run,170)
+ else run()
+}
+function menuFocusOut(e:FocusEvent){
+ if(e.relatedTarget instanceof Node){if(!menuRoot.value?.contains(e.relatedTarget))closeMenu();return}
+ void nextTick(()=>{if(menu.value&&!menuRoot.value?.contains(document.activeElement))closeMenu()})
 }
 function menuKeys(e:KeyboardEvent){
  const target=e.target as HTMLElement
- const kind=target.dataset.branch as 'view'|'arrange'|undefined
+ const kind=target.dataset.branch as MenuBranch|undefined
+ clearHover()
  if(e.key==='ArrowRight'&&kind){e.preventDefault();e.stopPropagation();showBranch(kind,target,true);return}
  if(e.key==='ArrowLeft'&&branch.value){e.preventDefault();e.stopPropagation();hideBranch(true);return}
  navigateMenu(e)
@@ -307,6 +337,7 @@ function cancelDrag() {
   if(d)restoreDrag(d.members)
 }
 function closeMenu(restore=false){
+  clearHover()
   if(!menu.value)return
   const trigger=menuTrigger
   menu.value=undefined;menuTrigger=undefined;hideBranch()
@@ -381,26 +412,28 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
         <div v-if="marquee" class="desktop-marquee" :style="{left:Math.min(marquee.x,marquee.endX)+'px',top:Math.min(marquee.y,marquee.endY)+'px',width:Math.abs(marquee.endX-marquee.x)+'px',height:Math.abs(marquee.endY-marquee.y)+'px'}"/>
       </div>
     </div>
-    <div v-if="menu" ref="menuRoot" class="desktop-menu" @focusout="!menuRoot?.contains($event.relatedTarget as Node)&&closeMenu()" :class="{dark}" :style="{left:menu.x+'px',top:menu.y+'px'}">
-      <div class="desktop-menu-panel" role="menu" aria-label="桌面操作菜单" @keydown="menuKeys">
-        <button v-if="menu.item" role="menuitem" @pointerenter="hideBranch()" @click="openMenuItem">打开</button>
-        <button v-if="menu.item" role="menuitem" @pointerenter="hideBranch()" @click="menuAction(()=>emit('create'))">新建文件夹</button>
-        <button role="menuitem" data-branch="view" aria-haspopup="menu" :aria-expanded="branch==='view'" @pointerenter="$event.pointerType==='mouse'&&showBranch('view',$event.currentTarget as HTMLElement)" @click="showBranch('view',$event.currentTarget as HTMLElement,true)">查看 <span class="menu-chevron" aria-hidden="true">›</span></button>
-        <button role="menuitem" data-branch="arrange" aria-haspopup="menu" :aria-expanded="branch==='arrange'" @pointerenter="$event.pointerType==='mouse'&&showBranch('arrange',$event.currentTarget as HTMLElement)" @click="showBranch('arrange',$event.currentTarget as HTMLElement,true)">排列方式 <span class="menu-chevron" aria-hidden="true">›</span></button>
+    <div v-if="menu" ref="menuRoot" class="desktop-menu" @focusout="menuFocusOut" :class="{dark,stacked}" :style="{left:menu.x+'px',top:menu.y+'px'}">
+      <div class="desktop-menu-panel" role="menu" aria-label="桌面操作菜单" :inert="stacked||undefined" @keydown="menuKeys">
+        <button v-if="menu.item" role="menuitem" @pointerenter="hoverItem($event)" @click="openMenuItem"><FolderOpen :size="15" aria-hidden="true"/>打开</button>
+        <button v-if="menu.item" role="menuitem" @pointerenter="hoverItem($event)" @click="menuAction(()=>emit('create'))"><FolderPlus :size="15" aria-hidden="true"/>新建文件夹</button>
+        <button role="menuitem" data-branch="view" aria-haspopup="menu" :aria-expanded="branch==='view'" @pointerenter="hoverItem($event,'view')" @click="showBranch('view',$event.currentTarget as HTMLElement,true)"><LayoutGrid :size="15" aria-hidden="true"/>查看 <ChevronRight class="menu-chevron" :size="14" aria-hidden="true"/></button>
+        <button role="menuitem" data-branch="arrange" aria-haspopup="menu" :aria-expanded="branch==='arrange'" @pointerenter="hoverItem($event,'arrange')" @click="showBranch('arrange',$event.currentTarget as HTMLElement,true)"><ArrowDownUp :size="15" aria-hidden="true"/>排列方式 <ChevronRight class="menu-chevron" :size="14" aria-hidden="true"/></button>
         <div role="separator" class="desktop-menu-separator"/>
-        <button v-if="!menu.item" role="menuitem" @pointerenter="hideBranch()" @click="menuAction(()=>emit('create'))">新建文件夹</button>
-        <button role="menuitem" @pointerenter="hideBranch()" @click="menuAction(()=>emit('finder'))">打开 Finder</button>
-        <template v-if="menu.item?.shortcut||menu.item?.folder"><div role="separator" class="desktop-menu-separator"/><button role="menuitem" @pointerenter="hideBranch()" @click="editMenuItem()">编辑</button><button role="menuitem" @pointerenter="hideBranch()" @click="editMenuItem(true)">删除</button></template>
+        <button v-if="!menu.item" role="menuitem" @pointerenter="hoverItem($event)" @click="menuAction(()=>emit('create'))"><FolderPlus :size="15" aria-hidden="true"/>新建文件夹</button>
+        <button role="menuitem" @pointerenter="hoverItem($event)" @click="menuAction(()=>emit('finder'))"><FolderOpen :size="15" aria-hidden="true"/>打开 Finder</button>
+        <template v-if="menu.item?.shortcut||menu.item?.folder"><div role="separator" class="desktop-menu-separator"/><button role="menuitem" @pointerenter="hoverItem($event)" @click="editMenuItem()"><Pencil :size="15" aria-hidden="true"/>编辑</button><button role="menuitem" @pointerenter="hoverItem($event)" @click="editMenuItem(true)" class="menu-danger"><Trash2 :size="15" aria-hidden="true"/>删除</button></template>
       </div>
-      <div v-if="branch" ref="submenu" class="desktop-menu-panel desktop-submenu" role="menu" :aria-label="branch==='view'?'查看子菜单':'排列方式子菜单'" :style="{left:submenuPosition.left+'px',top:submenuPosition.top+'px'}" @keydown="menuKeys" :key="branch">
+      <div v-if="branch" ref="submenu" class="desktop-menu-panel desktop-submenu" role="menu" :aria-label="branch==='view'?'查看子菜单':'排列方式子菜单'" :style="{left:submenuPosition.left+'px',top:submenuPosition.top+'px'}" @keydown="menuKeys" @pointerenter="clearHover" :key="branch">
+        <button v-if="stacked" role="menuitem" @click="hideBranch(true)"><ChevronLeft :size="15" aria-hidden="true"/>返回上一级</button>
+        <div v-if="stacked" role="separator" class="desktop-menu-separator"/>
         <template v-if="branch==='view'">
-          <button role="menuitemcheckbox" :aria-checked="layout.snap" @click="menuAction(toggleSnap)"><span class="menu-check" aria-hidden="true">{{layout.snap?'✓':''}}</span>将图标与网格对齐</button>
+          <button role="menuitemcheckbox" :aria-checked="layout.snap" @click="menuAction(toggleSnap)"><span class="menu-check" aria-hidden="true"><Check v-if="layout.snap" :size="14"/></span>将图标与网格对齐</button>
           <div role="separator" class="desktop-menu-separator"/>
-          <button role="menuitem" @click="menuAction(()=>{touchArrange=!touchArrange})">{{touchArrange?'完成排布':'触屏排布'}}</button>
+          <button role="menuitem" @click="menuAction(()=>{touchArrange=!touchArrange})"><span class="menu-check" aria-hidden="true"><Check v-if="touchArrange" :size="14"/></span>{{touchArrange?'完成排布':'触屏排布'}}</button>
         </template>
         <template v-else>
-          <button role="menuitem" @click="menuAction(arrangeRight)">从右上排列</button>
-          <button role="menuitem" @click="menuAction(()=>update({...layout,positions:{}}))">整理图标</button>
+          <button role="menuitem" @click="menuAction(arrangeRight)"><span class="menu-check" aria-hidden="true"/>从右上排列</button>
+          <button role="menuitem" @click="menuAction(()=>update({...layout,positions:{}}))"><span class="menu-check" aria-hidden="true"/>整理图标</button>
         </template>
       </div>
     </div>
@@ -429,12 +462,13 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 .desktop-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;white-space:nowrap;padding:7px 9px;background:none;border:0;border-radius:var(--mac-radius-menu-item);color:inherit;cursor:pointer;font:13px var(--mac-font)}
 .desktop-menu button:hover,.desktop-menu button:focus-visible,.desktop-menu button[aria-expanded=true]{background:var(--mac-selection);color:var(--mac-selection-ink)}
 .desktop-menu-separator{height:1px;background:var(--mac-line);margin:4px 5px}
-.menu-chevron{margin-left:auto;font-size:17px;line-height:14px;opacity:.7}
-.menu-check{width:13px;text-align:center;flex:none}
+.menu-chevron{margin-left:auto;opacity:.7}.desktop-menu button>svg{flex:none}.desktop-menu.stacked>.desktop-menu-panel:first-child{opacity:0;pointer-events:none}.desktop-menu .menu-danger:not(:hover):not(:focus-visible){color:var(--ui-danger)}
+.menu-check{width:15px;display:grid;place-items:center;flex:none}
 .desktop-surface:focus-visible{outline:2px solid var(--mac-selection);outline-offset:-2px}
 .desktop-marquee{position:absolute;pointer-events:none;border:1px solid #93c9ff;background:#559aff30;z-index:4}@media(prefers-reduced-motion:no-preference){.desktop-shell{animation:desktop-space-in .14s ease-out}@keyframes desktop-space-in{from{opacity:.65}to{opacity:1}}.desktop-icon.selected .desktop-symbol{transition:outline-color .12s}.finder{animation:finder-appear .15s ease-out}}
 
 @media(forced-colors:active){.desktop-label{color:CanvasText;background:Canvas}.desktop-icon.selected .desktop-label{color:HighlightText;background:Highlight}.desktop-icon:focus-visible{outline-color:Highlight}}
 @media(pointer:coarse){.desktop-menu button{min-height:44px;padding:9px 12px}}
+@media(prefers-reduced-motion:no-preference){.desktop-menu:not(.stacked)>.desktop-menu-panel,.desktop-submenu{animation:menu-appear .1s ease-out}@keyframes menu-appear{from{opacity:0}to{opacity:1}}}
 
 </style>

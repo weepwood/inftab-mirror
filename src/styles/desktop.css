@@ -1,9 +1,9 @@
 /* Desktop-specific visual overrides. Loaded after the shared application stylesheet. */
 /* macOS-inspired desktop-only surfaces. No layout changes to classic mode. */
-.desktop-mode .home-dock {bottom:12px;max-width:max(100px,calc(100vw - 380px));}
-.desktop-mode .home-dock::before {inset:auto 8px 12px;height:calc(var(--dock-item-size) + 22px);border-radius:18px;background:var(--mac-dock);border-color:var(--mac-dock-edge);box-shadow:var(--mac-dock-shadow);backdrop-filter:blur(22px) saturate(150%);}
-.desktop-mode .home-dock-track {padding:30px 16px 22px;}
-.desktop-mode .home-dock-icon {border-radius:calc(var(--dock-icon-size,44px) * .25);box-shadow:var(--mac-icon-shadow);}
+.desktop-mode .home-dock {bottom:6px;max-width:calc(100vw - 36px)}
+.desktop-mode .home-dock::before {inset:auto 5px 7px;height:calc(var(--dock-item-size) + 14px);border-radius:20px;background:var(--mac-dock);border-color:var(--mac-dock-edge);box-shadow:var(--mac-dock-shadow);backdrop-filter:blur(36px) saturate(180%)}
+.desktop-mode .home-dock-track {padding:calc(var(--dock-item-size) * .7 + 12px) 14px 14px;align-items:flex-end}
+.desktop-mode .home-dock-icon {corner-shape:squircle;border-radius:24%;border:1px solid var(--mac-icon-edge);box-sizing:border-box;box-shadow:var(--mac-icon-shadow)}
 .desktop-mode .command-palette {width:min(620px,calc(100% - 24px));border-radius:14px;background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line);box-shadow:var(--mac-shadow-active);font-family:var(--mac-font);}
 .desktop-mode .command-palette::backdrop {background:#0002;backdrop-filter:none;}
 .desktop-mode .command-shell header {padding:14px 16px;}
@@ -27,7 +27,7 @@
 .mac-folder-icon::after{inset:23% 0 0;border:1px solid #4294d3;border-top-color:#c3eaff;border-radius:7% 9% 10% 10%;background:linear-gradient(180deg,#92dbff 0%,#66c2fc 21%,#52b5f6 86%,#4caaf1);box-shadow:inset 0 1px 0 #fff8}
 .desktop-mode .home-workspace-trigger{min-height:36px;padding:0 10px;border-radius:8px;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);box-shadow:0 4px 15px #0002}
 .desktop-mode .home-workspace-trigger:hover,.desktop-mode .home-workspace-trigger[aria-expanded=true]{background:var(--mac-menu)}
-.desktop-mode .home-dock-entry::before{background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line);font-size:12px}
+.desktop-mode :is(.home-dock-entry,.home-dock-system-entry)::before{background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line);font-size:12px}
 .desktop-mode .dock-running-dot{background:var(--mac-ink)}
 .desktop-mode .command-palette{margin:min(17vh,120px) auto auto;max-height:min(480px,calc(100dvh - min(17vh,120px) - 16px))}
 .desktop-mode .command-palette .command-shell input{color:var(--mac-ink)}
@@ -82,10 +82,10 @@
 .desktop-mode .command-shell input:focus-visible{outline:none}
 .desktop-mode .command-shell header .spotlight-search-icon{color:var(--mac-muted);flex:none}
 
-.desktop-mode .home-dock-entry.dock-divider{border-left:1px solid var(--mac-muted);padding-left:2px;margin-left:4px}
-.desktop-mode .dock-running-dot{bottom:-6px;width:4px;height:4px;box-shadow:0 0 1px #0004}
-.desktop-mode .home-dock-entry::before{border-radius:6px;box-shadow:0 5px 16px #0003}
-.desktop-mode .home-dock.dock-menu-open .home-dock-entry::before{opacity:0!important}
+.desktop-mode .home-dock-entry.dock-divider{border-left:1px solid var(--mac-line);padding-left:3px;margin-left:6px}
+.desktop-mode .dock-running-dot{bottom:-4px;width:4px;height:4px;box-shadow:0 0 1px #0004}
+.desktop-mode :is(.home-dock-entry,.home-dock-system-entry)::before{border-radius:6px;box-shadow:0 5px 16px #0003}
+.desktop-mode .home-dock.dock-menu-open :is(.home-dock-entry,.home-dock-system-entry)::before{opacity:0!important}
 .desktop-mode .home-dock.dock-menu-open .home-dock-icon{transform:none;transition:none}
 .mac-dock-context .dock-context-menu{background:var(--mac-menu);color:var(--mac-ink);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);padding:var(--mac-menu-padding);box-shadow:var(--mac-shadow);backdrop-filter:blur(20px);font-family:var(--mac-font)}
 .mac-dock-context .dock-context-menu button{color:inherit;border-radius:var(--mac-radius-menu-item);font-size:12px}
@@ -327,19 +327,10 @@
 .desktop-mode .wallpaper-option:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px}
 @media(forced-colors:active){.desktop-mode .wallpaper-option.selected{border-color:Highlight}.desktop-mode .wallpaper-option span{background:Canvas;color:CanvasText}}
 
-/* Desktop composition v2 — system materials, not dashboard cards.
-   All selectors stay scoped to desktop; retain existing application state. */
-.desktop-mode .home-dock {bottom:6px;max-width:calc(100vw - 36px)}
-.desktop-mode .home-dock::before {inset:auto 5px 7px;height:calc(var(--dock-item-size) + 14px);border-radius:20px;backdrop-filter:blur(36px) saturate(180%)}
-.desktop-mode .home-dock-track {padding:calc(var(--dock-item-size) * .7 + 12px) 14px 14px;align-items:flex-end}
+/* The fixed Finder is a system slot, not a user-reorderable pin. */
 .desktop-mode .home-dock-track:has(.home-dock-system-entry:only-child){padding-inline:14px}
-.desktop-mode .home-dock-icon {corner-shape:squircle;border-radius:24%;border:1px solid var(--mac-icon-edge);box-sizing:border-box}
-.desktop-mode .dock-running-dot {bottom:-4px;width:4px;height:4px}
-.desktop-mode .home-dock-entry.dock-divider{border-left-color:var(--mac-line);margin-left:6px;padding-left:3px}
-.home-dock-system-entry{flex:0 0 var(--dock-item-size);width:var(--dock-item-size)}
 .home-dock-finder{width:var(--dock-item-size);height:var(--dock-item-size);display:grid;place-items:center;border:0;padding:0;background:transparent;cursor:pointer}
 .home-dock-finder:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px;border-radius:10px}
-.home-dock-finder:hover .home-dock-icon{transform:scale(1.08)}
 .home-dock .mac-finder-glyph{position:relative;background:linear-gradient(110deg,#50b8fb 0 49%,#e4f1fc 50% 100%);box-shadow:var(--mac-icon-shadow)}
 .mac-finder-glyph::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:#24649580;transform:skew(-12deg)}
 .mac-finder-glyph::after{content:"";position:absolute;left:26%;right:24%;bottom:25%;height:20%;border-bottom:1.5px solid #244c79;border-radius:0 0 50% 50%}
@@ -369,6 +360,5 @@
  .desktop-mode .home-workspace-bar{top:auto;left:auto;right:12px;bottom:12px}
  .desktop-mode .workspace-panel{top:auto;left:auto;right:0;bottom:calc(100% + 8px)}
 }
-@media(prefers-reduced-motion:reduce){.home-dock-finder:hover .home-dock-icon{transform:none}}
 @media(prefers-reduced-transparency:reduce){.desktop-mode{--mac-bar:var(--mac-toolbar);--mac-menu:var(--mac-window);--mac-dock:var(--mac-sidebar)}}
 @media(forced-colors:active){.home-dock-finder{border:1px solid ButtonText}.desktop-mode .home-dock::before{background:Canvas;border-color:ButtonText}.desktop-mode .home-widget-card{background:Canvas;color:CanvasText}}

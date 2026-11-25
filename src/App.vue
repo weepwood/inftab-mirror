@@ -32,10 +32,10 @@ const SearchBar = defineAsyncComponent({
 const ClockWidget = lazyHome(() => import('./components/ClockWidget.vue'), '时钟')
 const LauncherSearchResults = lazyHome(() => import('./components/LauncherSearchResults.vue'), '入口查找', true)
 const DesktopWindows = lazyHome(() => import('./desktop/DesktopWindows.vue'), '桌面窗口', true)
-const finderRequest = shallowRef<{ sequence: number; workspaceId: string; folderId?: string; panelId?: PanelId; targetId?:string }>()
+const finderRequest = shallowRef<{ sequence: number; workspaceId: string; folderId?: string; panelId?: PanelId; targetId?:string; fromDock?:true }>()
 let finderSequence = 0
 const overviewRequest = ref(0)
-const runningDesktopPanels = ref<PanelId[]>([])
+const runningDesktopPanels = ref<PanelId[]>([]),finderRunning=ref(false)
 const finderOperationError = ref('')
 const desktopHistory = shallowRef({undo:false,redo:false})
 const DesktopMenus = defineAsyncComponent(() => import('./desktop/DesktopMenus.vue'))
@@ -410,14 +410,14 @@ function openPanel(id: PanelId) {
   loadPanelRegistry()
 }
 
-watch(desktopMode, value => { if(!value){finderRequest.value=undefined;overviewRequest.value=0;finderOperationError.value='';runningDesktopPanels.value=[]} })
+watch(desktopMode, value => { if(!value){finderRequest.value=undefined;overviewRequest.value=0;finderOperationError.value='';runningDesktopPanels.value=[];finderRunning.value=false} })
 function switchDesktopWorkspace(id: string) {
   if(homeWorkspaces.value.some(w=>w.id===id))activeHomeWorkspaceId.value=id
 }
-function openFinder(folderId?: string) {
+function openFinder(folderId?: string,fromDock?:true) {
   dismissDesktopSearch()
   const owner=folderId?homeWorkspaces.value.find(w=>w.itemIds.includes(folderId)):undefined
-  finderRequest.value = { sequence: ++finderSequence, workspaceId: owner?.id??activeHomeWorkspaceId.value, folderId }
+  finderRequest.value = { sequence: ++finderSequence, workspaceId: owner?.id??activeHomeWorkspaceId.value, folderId,fromDock }
 }
 function dismissDesktopSearch(){
   if(localSearchMode.value){localSearchMode.value=false;query.value=''}
@@ -1006,8 +1006,8 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :blocked="overlayOpen||localSearchMode||minimalMode" :inert="(overlayOpen)||undefined" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :history="desktopHistory" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="runningDesktopPanels=$event" @create="openFinderFolderEditor" />
-    <HomeDock v-if="(homeDockItems.length || desktopMode) && !minimalMode" :blocked="desktopMode&&overlayOpen" :desktop="desktopMode" :items="homeDockItems" :running-panels="runningDesktopPanels" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="dockOpen" @remove="toggleDockItem" @finder="openFinder()" />
+    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :blocked="overlayOpen||localSearchMode||minimalMode" :inert="(overlayOpen)||undefined" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :history="desktopHistory" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="(ids,finder)=>{runningDesktopPanels=ids;finderRunning=finder}" @create="openFinderFolderEditor" />
+    <HomeDock v-if="(homeDockItems.length || desktopMode) && !minimalMode" :blocked="desktopMode&&overlayOpen" :desktop="desktopMode" :items="homeDockItems" :running-panels="runningDesktopPanels" :finder-running="finderRunning" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="dockOpen" @remove="toggleDockItem" @finder="openFinder(undefined,true)" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
       <span>{{ storageError }}</span>

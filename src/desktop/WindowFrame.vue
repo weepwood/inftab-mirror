@@ -34,10 +34,10 @@ function focusWithin(e:FocusEvent){
 let dockMotion=props.minimized
 function dockTransition(el:Element){
  const frame=el as HTMLElement
- const id=props.kind==='tool'?props.geometryKey.slice(5):''
- const target=(id&&document.querySelector<HTMLElement>('.home-dock [data-dock-item-id="'+CSS.escape(id)+'"]'))||document.querySelector<HTMLElement>('.window-shelf button')
+ const id=props.geometryKey.slice(5)
+ const target=document.querySelector<HTMLElement>(props.kind==='finder'?'.home-dock [data-system-finder]':'.home-dock [data-dock-item-id="'+CSS.escape(id)+'"]')||document.querySelector<HTMLElement>('.window-shelf button')
  const r=target&&target.getBoundingClientRect(),g=fitted.value
- const usable=dockMotion&&!props.hidden&&r&&r.width&&r.height&&getComputedStyle(target).visibility!=='hidden'&&r.top<innerHeight&&r.bottom>0
+ const usable=dockMotion&&!props.hidden&&r&&r.width&&r.height&&getComputedStyle(target).visibility!=='hidden'&&r.top<innerHeight&&r.bottom>0&&r.left<innerWidth&&r.right>0
  frame.style.setProperty('--window-end-x',usable?(r.x+r.width/2-g.x-g.width/2)+'px':'0px')
  frame.style.setProperty('--window-end-y',usable?(r.y+r.height/2-g.y-g.height/2)+'px':'0px')
  frame.style.setProperty('--window-end-scale',usable?'.09':'1')
@@ -136,7 +136,7 @@ onBeforeUnmount(()=>{stopMotion();reducedMotion.removeEventListener('change',onR
  <section v-show="!minimized&&!hidden" ref="root" class="window-frame" :class="[kind==='finder'?'finder':'tool-window',{active,maximized:isMaximized,dark,snapped:!!snap}]" :style="style" role="dialog" :aria-label="label" :aria-hidden="minimized||hidden||undefined" :inert="(minimized||hidden)||undefined" tabindex="-1" @pointerdown="emit('activate')" @focusin="focusWithin" @keydown="handleKey">
   <header ref="bar" @dblclick="titleDoubleClick" class="window-title" :class="kind==='finder'?'finder-title':'tool-title'">
    <div class="traffic"><button type="button" :aria-label="kind==='finder'?'关闭 Finder':'关闭窗口'" class="close" @click="emit('close')"/><button type="button" :aria-label="kind==='finder'?'最小化 Finder':'最小化窗口'" class="minimize" @click="emit('minimize')"/><button type="button" :aria-label="(maximized?'还原':'最大化')+(kind==='finder'?' Finder':'窗口')" class="maximize" @click="maximize"/></div>
-   <strong>{{title}}</strong><span class="window-description">{{description}}</span>
+   <strong>{{title}}</strong><span class="window-description" :title="description">{{description}}</span>
    <div class="snap-controls"><button type="button" aria-label="左侧停靠" :aria-pressed="snap==='left'" @click="toggleSnap('left')"><PanelLeft :size="15"/></button><button type="button" aria-label="右侧停靠" :aria-pressed="snap==='right'" @click="toggleSnap('right')"><PanelRight :size="15"/></button></div>
   </header>
   <slot/>

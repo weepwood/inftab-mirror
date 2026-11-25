@@ -7,7 +7,7 @@ import type { LauncherItem } from '../types'
 import { launcherPanelRoutes, shortcutPanelRoutes } from '../plugins/routes'
 import type { PanelId } from '../plugins/ids'
 
-const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean; autoHide?: boolean; runningPanels?: PanelId[]; desktop?: boolean; blocked?:boolean }>(), {
+const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean; autoHide?: boolean; runningPanels?: PanelId[]; finderRunning?:boolean; desktop?: boolean; blocked?:boolean }>(), {
   magnificationEnabled: false,
   iconSize: 44,
   iconGap: 2,
@@ -43,7 +43,7 @@ let pointerX = 0
 let lastFrame = 0
 let dirty = false
 let hovering = false
-let geometry: { slots: HTMLElement[]; left: number; right: number; size: number; origin: number; pitch: number; radius: number } | undefined
+let geometry: { slots: HTMLElement[]; left: number; right: number; size: number; centers: number[]; radius: number } | undefined
 type Spring = { position: number; velocity: number; target: number }
 const springs = new Map<HTMLElement, Spring>()
 // Critical damping, exact integration; shared between magnification and reorder.
@@ -64,6 +64,7 @@ const failedIcons = ref<Record<string, string>>({})
 // FLIP: capture the visible pre-reorder position, then invert the keyed move.
 // Animate only the entry wrapper, not the magnified inner icon.
 const entries = () => Array.from(dock.value?.querySelectorAll<HTMLElement>('.home-dock-entry') ?? [])
+const magnificationSlots=()=>Array.from(dock.value?.querySelectorAll<HTMLElement>('.home-dock-entry,.home-dock-system-entry')??[])
 // Offset geometry is independent of FLIP transforms and drop markers.
 function slotBounds(el: HTMLElement) {
   const parent = el.offsetParent
@@ -237,17 +238,17 @@ function paintMagnification(now: number) {
   if (dirty) {
     dirty = false
     if (!geometry) {
-      const slots = entries()
+      const slots = magnificationSlots()
       if (!slots.length) { clearDockMagnification(); return }
-      const first = slotBounds(slots[0]!), last = slotBounds(slots.at(-1)!)
+      const rects=slots.map(slotBounds),first=rects[0]!,last=rects.at(-1)!
       const size = first.width || 48
       const pitch = (last.left - first.left) / Math.max(1, slots.length - 1)
       const bounds = dock.value.getBoundingClientRect()
-      geometry = { slots, size, origin: first.left + size / 2, pitch, radius: Math.max(size, pitch) * 2.8, left: bounds.width ? Math.max(0, first.left - bounds.left) : size * slots.length, right: bounds.width ? Math.max(0, bounds.right - last.right) : size * slots.length }
+      geometry = { slots, size, centers:rects.map(r=>r.left+r.width/2), radius: Math.max(size, pitch) * 2.8, left: bounds.width ? Math.max(0, first.left - bounds.left) : size * slots.length, right: bounds.width ? Math.max(0, bounds.right - last.right) : size * slots.length }
     }
-    const { slots, origin, pitch, radius } = geometry
+    const { slots, centers, radius } = geometry
     slots.forEach((el, index) => {
-      const p = Math.max(0, 1 - Math.abs(pointerX - origin - index * pitch) / radius)
+      const p = Math.max(0, 1 - Math.abs(pointerX - centers[index]!) / radius)
       const state = springs.get(el) ?? { position: 1, velocity: 0, target: 1 }
       state.target = hovering ? 1 + .65 * p * p * (3 - 2 * p) : 1
       springs.set(el, state)
@@ -299,7 +300,7 @@ function clearDockMagnification() {
   springs.clear()
   dock.value?.classList.remove('is-magnifying')
   dock.value?.style.removeProperty('--dock-lift')
-  entries().forEach(entry => {
+  magnificationSlots().forEach(entry => {
     entry.style.removeProperty('--dock-scale')
     entry.style.removeProperty('--dock-shift-x')
     entry.style.removeProperty('z-index')
@@ -378,9 +379,10 @@ onBeforeUnmount(() => {
 <template>
   <nav v-if="items.length || props.desktop" ref="dock" :inert="(props.blocked)||undefined" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled, 'dock-auto-hide': props.autoHide, 'dock-menu-open': Boolean(contextItem), 'dock-dragging': Boolean(dragId) }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px` }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="releaseDockMagnification" @click.capture="preventGestureClick">
     <div class="home-dock-track" @scroll.passive="clearDockMagnification">
-      <div v-if="props.desktop" class="home-dock-system-entry">
-        <button type="button" class="home-dock-finder" aria-label="Finder" title="Finder" @click="emit('finder')">
+      <div v-if="props.desktop" class="home-dock-system-entry" data-title="Finder">
+        <button type="button" class="home-dock-finder" aria-label="Finder" :data-running="finderRunning||undefined" data-system-finder @click="emit('finder')">
           <span class="home-dock-icon mac-finder-glyph" aria-hidden="true"><i/><b/></span>
+          <span v-if="finderRunning" class="dock-running-dot" aria-hidden="true"/>
         </button>
       </div>
       <div v-for="(item,index) in items" :key="item.id" class="home-dock-entry" :data-title="item.title" :class="{ 'dock-divider': props.desktop && index>0 && !item.action && !!items[index-1]?.action, 'dock-drag-source': dragId === item.id, 'dock-drop-before': dropTarget?.id === item.id && !dropTarget.after, 'dock-drop-after': dropTarget?.id === item.id && dropTarget.after }" @dragover="previewDrop($event, item.id)" @drop="dropItem($event, item.id)">

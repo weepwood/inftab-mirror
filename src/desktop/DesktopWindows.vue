@@ -16,8 +16,8 @@ import { folderParents } from '../data/folderTree'
 import { readWindowSession, saveWindowSession } from './windowSession'
 import { activeWindow, activateWindow, closeWindow, openWindow, updateWindow, maxWindows, reconcileWindowSpaces, type DesktopWindow } from './windowManager'
 
-const props = defineProps<{ request?: { sequence:number; workspaceId:string; folderId?:string; panelId?:PanelId; targetId?:string }; context:PanelPluginContext; overviewRequest?:number; operationError?:string; history:{undo:boolean;redo:boolean}; mutate:(action:DesktopMutation)=>Promise<boolean>; items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; dark?:boolean; blocked?:boolean }>()
-const emit = defineEmits<{ open:[item:LauncherItem,event?:MouseEvent]; edit:[item:LauncherItem]; remove:[item:LauncherItem]; create:[workspaceId:string,parentId?:string]; dismissError:[]; switchWorkspace:[id:string]; running:[ids:PanelId[]] }>()
+const props = defineProps<{ request?: { sequence:number; workspaceId:string; folderId?:string; panelId?:PanelId; targetId?:string;fromDock?:true }; context:PanelPluginContext; overviewRequest?:number; operationError?:string; history:{undo:boolean;redo:boolean}; mutate:(action:DesktopMutation)=>Promise<boolean>; items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; dark?:boolean; blocked?:boolean }>()
+const emit = defineEmits<{ open:[item:LauncherItem,event?:MouseEvent]; edit:[item:LauncherItem]; remove:[item:LauncherItem]; create:[workspaceId:string,parentId?:string]; dismissError:[]; switchWorkspace:[id:string]; running:[ids:PanelId[],finder:boolean] }>()
 const state=ref(readWindowSession(props.workspaces,props.items.filter(i=>i.folder).map(i=>i.id))), overview=ref(false), limit=ref(false)
 watch(state,value=>saveWindowSession(value))
 const clipboard=ref<FinderClipboard>(),pasting=ref(false)
@@ -62,7 +62,7 @@ function moveWindow(id:number,event:Event){
  const target=(event.target as HTMLSelectElement).value
  if(props.workspaces.some(w=>w.id===target))state.value=updateWindow(state.value,id,{spaceId:target})
 }
-watch(()=>state.value.windows.map(w=>w.panelId).filter((id):id is PanelId=>!!id),ids=>emit('running',ids),{immediate:true})
+watch(()=>state.value.windows,windows=>emit('running',windows.flatMap(w=>w.panelId?[w.panelId]:[]),windows.some(w=>!w.panelId)),{immediate:true})
 const overviewRoot=ref<HTMLElement>()
 let overviewTrigger:HTMLElement|undefined
 function openOverview(){
@@ -88,6 +88,7 @@ onMounted(()=>document.addEventListener('pointerdown',overviewOutside,true))
 onBeforeUnmount(()=>document.removeEventListener('pointerdown',overviewOutside,true))
 watch(()=>props.request, request=>{
  if(!request)return
+ if(request.fromDock){const recent=state.value.windows.slice().reverse().find(w=>!w.panelId&&w.spaceId===request.workspaceId);if(recent){limit.value=false;activate(recent.id);return}}
  const next=openWindow(state.value,request)
  limit.value=next===state.value&&state.value.windows.length>=maxWindows&&!state.value.windows.some(w=>request.panelId?w.panelId===request.panelId:!w.panelId&&w.workspaceId===request.workspaceId&&w.folderId===request.folderId)
  closeOverview()
