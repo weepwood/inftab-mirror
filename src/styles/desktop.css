@@ -305,3 +305,24 @@
 }
 
 .desktop-mode .home-footer{bottom:2px;letter-spacing:.02em;color:rgba(255,255,255,.72)}
+
+.desktop-mode .wallpaper-current{display:block;margin:0 0 14px;overflow:hidden;border:1px solid var(--mac-line);border-radius:var(--mac-radius-popover);background:var(--mac-window)}
+.desktop-mode .wallpaper-current-image{aspect-ratio:16/8;position:relative;isolation:isolate;background-size:cover;background-position:center;background-color:#34453f;overflow:hidden}
+.desktop-mode .wallpaper-current-image::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,var(--preview-shade));z-index:-1}
+.desktop-mode .wallpaper-preview-bar{height:7%;background:var(--mac-bar);border-bottom:1px solid var(--mac-line)}
+.desktop-mode .wallpaper-preview-icons{display:flex;gap:3%;margin:4%}
+.desktop-mode .wallpaper-preview-icons i,.desktop-mode .wallpaper-preview-dock i{width:6%;aspect-ratio:1;border-radius:22%;background:#dbe9f9;box-shadow:0 1px 3px #0004}
+.desktop-mode .wallpaper-preview-icons i:nth-child(2),.desktop-mode .wallpaper-preview-dock i:nth-child(2){background:#f6e9b7}
+.desktop-mode .wallpaper-preview-icons i:nth-child(3),.desktop-mode .wallpaper-preview-dock i:nth-child(3){background:#b5e6c5}
+.desktop-mode .wallpaper-preview-dock{position:absolute;bottom:4%;left:50%;transform:translateX(-50%);display:flex;gap:6%;justify-content:center;width:34%;padding:2%;border-radius:6px;background:var(--mac-dock);border:1px solid var(--mac-dock-edge)}
+.desktop-mode .wallpaper-preview-dock i{width:19%}
+.desktop-mode .wallpaper-preview-dock i:last-child{background:#66717e}
+.desktop-mode .wallpaper-current figcaption{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;font-size:12px;color:var(--mac-ink)}
+.desktop-mode .wallpaper-current figcaption span{color:var(--mac-muted);font-size:11px}
+.desktop-mode .wallpaper-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.desktop-mode .wallpaper-option{aspect-ratio:16/8;border-radius:var(--mac-radius-menu);border:2px solid var(--mac-line)}
+.desktop-mode .wallpaper-option.selected{border-color:var(--mac-selection)}
+.desktop-mode .wallpaper-option span{padding:9px 6px 5px;font-size:12px;background:linear-gradient(transparent,#000b)}
+.desktop-mode .wallpaper-option:hover{transform:none;filter:brightness(1.07)}
+.desktop-mode .wallpaper-option:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px}
+@media(forced-colors:active){.desktop-mode .wallpaper-option.selected{border-color:Highlight}.desktop-mode .wallpaper-option span{background:Canvas;color:CanvasText}}

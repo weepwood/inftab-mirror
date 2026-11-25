@@ -1526,3 +1526,48 @@ for(const theme of ['light','dark']){
   await expect(page.locator('.home-dock-item[data-dock-item-id="habits"] svg')).toHaveClass(/lucide-list-todo/)
  })
 }
+
+for(const theme of ['light','dark']){
+ test('desktop wallpaper preview reflects saved background and shade '+theme,async({page},info)=>{
+  await page.setViewportSize({width:1280,height:900})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.addInitScript(theme=>{
+   localStorage.setItem('inftab.desktop-mode.v1','true')
+   if(!localStorage.getItem('inftab.preferences.v1'))localStorage.setItem('inftab.preferences.v1',JSON.stringify({themeMode:theme,showSearchBar:false,shade:.24}))
+  },theme)
+  await page.goto('/')
+  const home=page.locator('.home.desktop-mode')
+  const icon=page.locator('.desktop-icon[data-item-id="todos"]')
+  await expect(icon).toBeVisible()
+  const original=await icon.boundingBox()
+  await page.locator('.home-actions').getByRole('button',{name:'打开设置',exact:true}).click()
+  const panel=page.getByRole('dialog',{name:'设置',exact:true})
+  const preview=panel.locator('.wallpaper-current-image'),caption=panel.locator('.wallpaper-current figcaption')
+  await expect(preview).toBeVisible()
+  const background=()=>home.evaluate(el=>getComputedStyle(el).backgroundImage)
+  for(const name of ['雾林','暮色','海面','暖沙']){
+   await panel.getByRole('button',{name,exact:true}).click()
+   await expect(caption).toContainText(name)
+   await expect.poll(()=>preview.evaluate(el=>getComputedStyle(el).backgroundImage)).toBe(await background())
+   await expect(panel.getByRole('button',{name,exact:true})).toHaveAttribute('aria-pressed','true')
+  }
+  const shade=panel.getByRole('spinbutton',{name:'背景暗度精确值（%）'})
+  await shade.fill('35');await shade.press('Enter')
+  await expect(caption).toContainText('35%')
+  await expect(preview).toHaveCSS('--preview-shade','0.35')
+  await panel.locator('.wallpaper-current').evaluate(el=>el.scrollIntoView({block:'start'}))
+  await expect(preview).toBeInViewport()
+  await page.screenshot({path:info.outputPath('wallpaper-gallery.png'),animations:'disabled'})
+  await panel.getByPlaceholder('https://example.com/wallpaper.jpg').fill('linear-gradient(135deg, #122638, #be9c78)')
+  await expect(caption).toContainText('自定义背景')
+  await expect.poll(()=>preview.evaluate(el=>getComputedStyle(el).backgroundImage)).toBe(await background())
+  await expect(panel.locator('.wallpaper-option[aria-pressed=true]')).toHaveCount(0)
+  await panel.getByRole('button',{name:'海面',exact:true}).click()
+  await panel.getByRole('button',{name:'关闭',exact:true}).click()
+  await expect.poll(()=>icon.boundingBox()).toEqual(original)
+  const saved=await background()
+  await page.reload()
+  await expect.poll(background).toBe(saved)
+  await expect.poll(()=>icon.boundingBox()).toEqual(original)
+ })
+}

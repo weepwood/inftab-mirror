@@ -50,6 +50,13 @@ const backupExportedAtLabel = computed(() => {
   return Number.isFinite(timestamp) ? new Date(timestamp).toLocaleString() : '未知'
 })
 const hasLocalWallpaper = computed(() => props.preferences.customWallpaper.startsWith('data:image/'))
+const wallpaperPreview = computed(() => {
+  const choice = wallpaperChoices.find(item => item.value === props.preferences.wallpaper) ?? wallpaperChoices[0]!
+  const value = props.preferences.customWallpaper.trim()
+  return { label: value ? (hasLocalWallpaper.value ? '本地壁纸' : '自定义背景') : choice.label,
+    image: value ? (value.startsWith('linear-gradient') ? value : `url("${value.replaceAll('"', '%22')}")`) : choice.preview }
+})
+
 const searchEngineName = ref('')
 const searchEngineTemplate = ref('')
 const searchEngineError = ref('')
@@ -328,6 +335,14 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       <div class="section-heading">
         <div><h3>背景图库</h3><p>选择归档壁纸或本地背景主题</p></div>
       </div>
+      <figure class="wallpaper-current">
+        <div class="wallpaper-current-image" :style="{ backgroundImage: wallpaperPreview.image, '--preview-shade': preferences.shade }" aria-hidden="true">
+          <div class="wallpaper-preview-bar"></div>
+          <div class="wallpaper-preview-icons"><i/><i/><i/></div>
+          <div class="wallpaper-preview-dock"><i/><i/><i/><i/></div>
+        </div>
+        <figcaption><strong>{{ wallpaperPreview.label }}</strong><span>当前背景 · {{ Math.round(preferences.shade * 100) }}% 暗度</span></figcaption>
+      </figure>
       <div class="wallpaper-options">
         <button
           v-for="choice in wallpaperChoices"
@@ -341,7 +356,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
           @click="setWallpaper(choice.value)"
         ><Check v-if="preferences.wallpaper === choice.value && !preferences.customWallpaper" class="wallpaper-check" :size="17" aria-hidden="true" /><span>{{ choice.label }}</span></button>
       </div>
-      <p class="wallpaper-note">图库图片保存在项目中，无需依赖外站加载。</p>
+      <p class="wallpaper-note">内置壁纸与渐变无需依赖外站加载。</p>
       <label class="toggle-row">定时轮换内置壁纸
         <SelectField aria-label="壁纸轮换" :model-value="preferences.wallpaperRotation" @update:model-value="setWallpaperRotation($event as WallpaperRotation)">
           <option value="off">关闭</option>

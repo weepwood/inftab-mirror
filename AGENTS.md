@@ -459,3 +459,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 ## #47 应用图标与桌面空间深化
 - 保留#47作为集中视觉PR，同步#46 da76a3d（仅AGENTS.md冲突，双方记录均保留）。桌面/Dock/Spotlight材质前景按应用归一，纸白/黄页眉/红页眉/深灰/银灰等独立身份；复用现有Lucide CalendarCheck区分习惯打卡，经典ListTodo不变，Dock文件夹共用原CSS文件夹。顶部操作分组及窄屏取消额外间距，系统强制颜色回退。无新增依赖、外部图标、业务数据或坐标变更。
 - Mac check/build:web、最终定向生产Edge10/10通过，含双主题三处计算材质和习惯图标、经典切换、既有320/360窄屏几何。五张截图 docs/screenshots/macos-desktop/icon-materials。首屏59.8/60.5、非Swiper198.6/200、CSS35.2/64KiB；PWA额外10671/16384 B、全站1751375/4194304 B。此前84/84是图标改动前，未重跑全量。保留预算，远程Linux与WebKit待验收；未完成所有图标对比度、真机或其他壁纸、个性化密度。保持#37与正式Tag，临时playwright.local-window41.config.ts不提交。
+
+## #47 壁纸图库与预览收口
+- #46 da76a3d 远程四项全绿，737单测/95文件，cross108通过/2跳过，Linux非Swiper199.4/200；合并7600b50，Pages 45642782444成功，首次93/94一个CSS503，单独重试后94/94。#47合入该main，无冲突。
+- 继续原#47，桌面背景区添加装饰性当前背景缩略图与暗度、两列宽幅图库、选中/焦点/forced-colors规则。保持经典图库、四种内置背景、轮换/上传/持久化及坐标规则；没有新依赖或外部图片。实际预览不是交互桌面，远程/本地自定义图片未逐一视觉测试。
+- 最终check/build:web，SettingsPanel23/23，生产Edge宽范围84/84（desktop-alpha2、desktop-alpha、production-chunks、custom-theme、workspace-switcher），含全部四种内置背景/自定义渐变/暗度/刷新坐标保护。两张真实截图docs/screenshots/macos-desktop/wallpaper。Mac非Swiper198.8/200、首屏59.8/60.5、CSS35.6/64KiB；PWA额外10662/16384 B、全站1754673/4194304 B。无预算放宽。#47转main后等待实际Linux与跨浏览器门禁，暂不新增图标密度/小组件/真机专项，不改#37或V2.0.0 Tag。
