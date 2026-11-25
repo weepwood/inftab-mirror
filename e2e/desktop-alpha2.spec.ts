@@ -1571,3 +1571,47 @@ for(const theme of ['light','dark']){
   await expect.poll(()=>icon.boundingBox()).toEqual(original)
  })
 }
+
+test('desktop resize cancels marquee and context menus use measured bounds',async({page})=>{
+ await page.setViewportSize({width:1280,height:900})
+ await page.emulateMedia({reducedMotion:'reduce'})
+ await page.addInitScript(()=>{
+  localStorage.setItem('inftab.desktop-mode.v1','true')
+  localStorage.setItem('inftab.preferences.v1',JSON.stringify({showSearchBar:false}))
+ })
+ await page.goto('/')
+ const canvas=page.locator('.desktop-canvas'),menu=page.locator('.desktop-menu'),marquee=page.locator('.desktop-marquee')
+ await expect(canvas).toBeVisible()
+ const blank=await canvas.evaluate(el=>{
+  for(let y=innerHeight-225;y>=innerHeight-250;y-=5){
+   for(let x=innerWidth-260;x>=40;x-=20){
+    if(document.elementFromPoint(x,y)===el&&document.elementFromPoint(x+12,y+12)===el)return {x,y}
+   }
+  }
+  return null
+ })
+ expect(blank).not.toBeNull()
+ const {x,y}=blank!
+ const read=()=>page.evaluate(()=>localStorage.getItem('inftab.home-workspaces.v1'))
+ const before=await read()
+ await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+12,y+12,{steps:4})
+ await expect(marquee).toBeVisible()
+ await page.setViewportSize({width:1200,height:900})
+ await expect(marquee).toHaveCount(0)
+ await page.mouse.move(x-20,y-20,{steps:4});await page.mouse.up()
+ await expect(marquee).toHaveCount(0)
+ await expect.poll(read).toEqual(before)
+ await page.setViewportSize({width:1280,height:900})
+ // Let the ResizeObserver finish cancelling the previous layout gesture.
+ await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))))
+ await expect.poll(()=>canvas.evaluate((el,p)=>document.elementFromPoint(p.x,p.y)===el,{x,y})).toBe(true)
+ await page.mouse.click(x,y,{button:'right'})
+ await expect(menu).toBeVisible()
+ await expect.poll(async()=>{
+  const r=await menu.boundingBox()
+  return !!r&&Math.abs(r.x-Math.max(4,Math.min(x,1280-r.width-4)))<1&&Math.abs(r.y-Math.max(4,Math.min(y,900-r.height-4)))<1
+ }).toBe(true)
+ await page.setViewportSize({width:1200,height:900})
+ await expect(menu).toHaveCount(0)
+ await expect.poll(read).toEqual(before)
+})

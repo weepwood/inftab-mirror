@@ -468,3 +468,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 ## #47 导入壁纸兼容性与正式 CI 收口（2026-11-25）
 - aea2801 的手动 Focused UI validation 45643971433 已通过（ui-smoke、desktop-cross-browser 均成功）；该提交没有普通 PR CI check，不能以手动 UI 代替完整验收。
 - 审查发现 sanitizePreferences 接受大小写不同的本地 data:image 地址，而 SettingsPanel 仅识别小写前缀，导入后可能显示完整数据地址且缺少移除按钮。改为大小写不敏感判定，补充本地壁纸预览标签、暗度、输入框、选择状态、移除及回退断言，不改保存格式或壁纸实际渲染。SettingsPanel 24/24 通过；本机类型检查因资源门禁内存压力 2 未启动，保留门禁，依赖新提交的常规 CI 复验。不重复新增 PR、不修改 main、#37 或 V2.0.0 Tag。
+
+## 桌面手势生命周期与浮层位置专项（2026-11-25）
+- #47 c0ce84f 四项正式 CI 全绿（verify、ui-smoke、desktop-cross-browser、soak），已转 Ready for review；合并接口 GraphQL 错误及 REST 超时，复查仍 OPEN、main 7600b50，未绕过 PR。独立 worktree `/Volumes/data/AI-Development/worktrees/inftab-mirror/desktop-gesture-lifecycle` 基于已验收 c0ce84f，后续待 #47 合并后同步 main，不混入已验收 PR。
+- 桌面尺寸变化统一取消图标拖动、框选与菜单；第二指针取消框选；菜单依据实际尺寸限制视口边缘 4px，删除固定 180/260px 预裁切。保留现有单击打开、右键拖动、坐标格式与选择语义。无新依赖或资源预算放宽。
+- Mac build:web 通过：首屏 59.8/60.5 KiB，非 Swiper 198.8/200 KiB，CSS 35.6/64 KiB，PWA 10665/16384 B。首次生产 Edge 定向 3/4，新增测试在恢复视口后 ResizeObserver 尚未处理即打开菜单；加入两帧等待（保留真实鼠标、几何及持久化断言），定向复测三轮 3/3。未再次运行完整宽范围、Linux CI 或真机。临时配置与 node_modules 链接不提交。先保留独立分支，后续集中合并开发，保持 #37、#29 及正式 Tag 不变。

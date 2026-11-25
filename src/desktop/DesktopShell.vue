@@ -213,7 +213,7 @@ onMounted(() => {
   migrate()
   const root = surface.value
   if (!root) return
-  const measure = () => { const w=root.clientWidth || 960, h=root.clientHeight || 480; if(w!==width.value || h!==height.value) cancelDrag(); width.value=w; height.value=h }
+  const measure = () => { const w=root.clientWidth || 960, h=root.clientHeight || 480; if(w!==width.value || h!==height.value) blur(); width.value=w; height.value=h }
   measure()
   if (typeof ResizeObserver !== 'undefined') { observer = new ResizeObserver(measure); observer.observe(root) }
 })
@@ -237,13 +237,13 @@ function cancelKey(event:KeyboardEvent){
 function openMenu(x:number,y:number,item?:LauncherItem,trigger?:HTMLElement,focus=true){
   if(props.blocked)return
   menuTrigger=trigger
-  menu.value={x:Math.max(0,Math.min(x,innerWidth-180)),y:Math.max(0,Math.min(y,innerHeight-260)),item}
+  menu.value={x,y,item}
   void nextTick(()=>{
     const root=menuRoot.value
     if(!root||!menu.value)return
     const r=root.getBoundingClientRect()
-    menu.value.x=Math.max(0,Math.min(menu.value.x,innerWidth-r.width-4))
-    menu.value.y=Math.max(0,Math.min(menu.value.y,innerHeight-r.height-4))
+    menu.value.x=Math.max(4,Math.min(menu.value.x,innerWidth-r.width-4))
+    menu.value.y=Math.max(4,Math.min(menu.value.y,innerHeight-r.height-4))
     if(focus)root.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true})
   })
 }
@@ -255,6 +255,7 @@ function editMenuItem(remove=false){const item=menu.value?.item;menuAction(()=>{
 function outside(event:PointerEvent){
   if(menu.value&&!menuRoot.value?.contains(event.target as Node))closeMenu()
   if(press&&event.pointerId!==press.pointer)cancelDrag()
+  if(marquee.value&&event.pointerId!==marqueePointer)boxEnd()
 }
 function blur(){cancelDrag();boxEnd();closeMenu()}
 function ancestorScroll(e:Event){if(e.target instanceof Element&&surface.value&&e.target.contains(surface.value))blur()}
