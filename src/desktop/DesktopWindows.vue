@@ -9,11 +9,12 @@ import type { PanelPluginContext } from '../plugins/registry'
 const ToolWindow=defineAsyncComponent(()=>import('./ToolWindow.vue'))
 import type { LauncherItem } from '../types'
 import type { HomeWorkspace } from '../data/homeWorkspaces'
+import { folderParents } from '../data/folderTree'
 import { readWindowSession, saveWindowSession } from './windowSession'
 import { activeWindow, activateWindow, closeWindow, openWindow, updateWindow, maxWindows, reconcileWindowSpaces } from './windowManager'
 
 const props = defineProps<{ request?: { sequence:number; workspaceId:string; folderId?:string; panelId?:PanelId; targetId?:string }; context:PanelPluginContext; overviewRequest?:number; operationError?:string; history:{undo:boolean;redo:boolean}; mutate:(action:DesktopMutation)=>Promise<boolean>; items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; dark?:boolean }>()
-const emit = defineEmits<{ open:[item:LauncherItem,event?:MouseEvent]; edit:[item:LauncherItem]; remove:[item:LauncherItem]; create:[workspaceId:string]; dismissError:[]; switchWorkspace:[id:string]; running:[ids:PanelId[]] }>()
+const emit = defineEmits<{ open:[item:LauncherItem,event?:MouseEvent]; edit:[item:LauncherItem]; remove:[item:LauncherItem]; create:[workspaceId:string,parentId?:string]; dismissError:[]; switchWorkspace:[id:string]; running:[ids:PanelId[]] }>()
 const state=ref(readWindowSession(props.workspaces,props.items.filter(i=>i.folder).map(i=>i.id))), overview=ref(false), limit=ref(false)
 watch(state,value=>saveWindowSession(value))
 const clipboard=ref<FinderClipboard>(),pasting=ref(false)
@@ -21,7 +22,8 @@ const active=computed(()=>activeWindow(state.value,props.workspaceId))
 const minimized=computed(()=>state.value.windows.filter(w=>w.minimized&&w.spaceId===props.workspaceId))
 function previewItems(space:HomeWorkspace){
  const members=new Set(props.items.filter(i=>i.folder&&space.itemIds.includes(i.id)).flatMap(i=>i.folder!.shortcutIds))
- return space.itemIds.filter(id=>!members.has(id)).slice(0,30).map((id,index)=>{
+ const parents=folderParents(props.items.flatMap(i=>i.folder?[i.folder]:[]),space)
+ return space.itemIds.filter(id=>!members.has(id)&&!parents.has(id)).slice(0,30).map((id,index)=>{
   const point=space.desktop?.positions[id]
   return {id,x:point?Math.min(94,Math.max(0,point.x/1440*100)):5+index%6*15,y:point?Math.min(85,Math.max(0,point.y/900*100)):8+Math.floor(index/6)*16}
  })
@@ -54,6 +56,8 @@ function browse(id:number,workspaceId:string,folderId?:string){state.value=updat
 function title(id:number,value:string){state.value=updateWindow(state.value,id,{title:value})}
 function historyAction(kind:'undo'|'redo'){void props.mutate({kind})}
 function forwardOpen(item:LauncherItem,event?:MouseEvent){emit('open',item,event)}
+function reparent(ids:string[],workspaceId:string,folderId:string|null){void props.mutate({kind:'reparent',ids,workspaceId,folderId})}
+function createFolder(id:string,parentId?:string){emit('create',id,parentId)}
 function forwardMove(ids:string[],id:string){void props.mutate({kind:'move',ids,workspaceId:id})}
 function forwardMembership(ids:string[],id:string|null){void props.mutate({kind:'membership',ids,folderId:id})}
 async function paste(workspaceId:string,folderId:string|null){
@@ -68,7 +72,7 @@ async function paste(workspaceId:string,folderId:string|null){
  <div class="desktop-windows" :class="{dark}">
   <template v-for="(window,index) in state.windows" :key="window.id">
   <ToolWindow v-if="window.panelId" :panel-id="window.panelId" :target-id="window.targetId" :target-sequence="window.sequence" :context="context" :dark="dark" :active="window.id===active" :hidden="window.spaceId!==workspaceId" :minimized="window.minimized" :maximized="window.maximized" :cascade="window.cascade" :layer="index+1" @activate="activate(window.id)" @close="close(window.id)" @minimize="minimize(window.id)" @maximize="maximize(window.id)" @title="title(window.id,$event)" />
-  <FinderWindow v-else :history="history" @history-action="historyAction" :clipboard="clipboard" :pasting="pasting" @clipboard="clipboard=$event" @paste="paste" :items="items" :workspaces="workspaces" :workspace-id="window.workspaceId" :folder-id="window.folderId" :browse-workspace-id="window.browseWorkspaceId" :browse-folder-id="window.browseFolderId" @location="(workspaceId:string,folderId?:string)=>browse(window.id,workspaceId,folderId)" :dark="dark" :active="window.id===active" :hidden="window.spaceId!==workspaceId" :minimized="window.minimized" :maximized="window.maximized" :cascade="window.cascade" :layer="index+1" @activate="activate(window.id)" @close="close(window.id)" @minimize="minimize(window.id)" @maximize="maximize(window.id)" @title="title(window.id,$event)" @open="forwardOpen" @edit="emit('edit',$event)" @remove="emit('remove',$event)" @move="forwardMove" @membership="forwardMembership" @create="emit('create',$event)" />
+  <FinderWindow v-else :history="history" @history-action="historyAction" :clipboard="clipboard" :pasting="pasting" @clipboard="clipboard=$event" @paste="paste" :items="items" :workspaces="workspaces" :workspace-id="window.workspaceId" :folder-id="window.folderId" :browse-workspace-id="window.browseWorkspaceId" :browse-folder-id="window.browseFolderId" @location="(workspaceId:string,folderId?:string)=>browse(window.id,workspaceId,folderId)" :dark="dark" :active="window.id===active" :hidden="window.spaceId!==workspaceId" :minimized="window.minimized" :maximized="window.maximized" :cascade="window.cascade" :layer="index+1" @activate="activate(window.id)" @close="close(window.id)" @minimize="minimize(window.id)" @maximize="maximize(window.id)" @title="title(window.id,$event)" @open="forwardOpen" @edit="emit('edit',$event)" @remove="emit('remove',$event)" @move="forwardMove" @membership="forwardMembership" @reparent="reparent" @create="createFolder" />
   </template>
   <div v-if="state.windows.length" class="window-shelf">
    <button type="button" aria-label="窗口概览" :aria-expanded="overview" @click="overview=!overview"><Layers :size="16"/> {{state.windows.length}} 个窗口</button>

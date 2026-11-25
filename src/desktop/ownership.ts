@@ -1,3 +1,4 @@
+import { folderParents, folderDescendants, planFolderParent } from '../data/folderTree'
 import type { HomeWorkspace } from '../data/homeWorkspaces'
 import type { ShortcutFolder } from '../types'
 
@@ -17,7 +18,12 @@ export function planWorkspaceMove(state: State, ids: readonly string[], targetId
   const shortcuts = new Set(state.shortcutIds)
   const byFolder = new Map(state.folders.map(folder => [folder.id, folder]))
   const moved = new Set<string>()
-  for (const id of ids) {
+  const expanded=new Set(ids)
+  for(const id of ids){
+    const source=state.workspaces.find(w=>w.id===owners.get(id))
+    for(const child of folderDescendants(id,folderParents(state.folders,source)))expanded.add(child)
+  }
+  for (const id of expanded) {
     const owner = owners.get(id)
     if (!owner) return
     const folder = byFolder.get(id)
@@ -36,7 +42,11 @@ export function planWorkspaceMove(state: State, ids: readonly string[], targetId
     return { ...workspace, itemIds, ...(desktop ? { desktop } : {}) }
   })
   const folders = state.folders.map(folder => {
-    if (moved.has(folder.id) || owners.get(folder.id) === targetId) return folder
+    if(moved.has(folder.id)){
+      if(folder.parentId&&!moved.has(folder.parentId)&&owners.get(folder.parentId)!==targetId){const {parentId:_,...rest}=folder;return rest}
+      return folder
+    }
+    if (owners.get(folder.id) === targetId) return folder
     const shortcutIds = folder.shortcutIds.filter(id => !moved.has(id))
     return shortcutIds.length === folder.shortcutIds.length ? folder : { ...folder, shortcutIds }
   })
@@ -61,7 +71,7 @@ export function planFolderMembership(state: State, ids: readonly string[], targe
 }
 
 export interface FinderClipboard { mode:'cut'|'copy'; ids:string[]; workspaceId:string; folderId:string|null }
-export type DesktopMutation = {kind:'undo'|'redo'}|{kind:'move';ids:string[];workspaceId:string}|{kind:'membership';ids:string[];folderId:string|null}|{kind:'paste';clipboard:FinderClipboard;workspaceId:string;folderId:string|null}
+export type DesktopMutation = {kind:'reparent';ids:string[];workspaceId:string;folderId:string|null}|{kind:'undo'|'redo'}|{kind:'move';ids:string[];workspaceId:string}|{kind:'membership';ids:string[];folderId:string|null}|{kind:'paste';clipboard:FinderClipboard;workspaceId:string;folderId:string|null}
 export function planPaste(state:State,clipboard:FinderClipboard,workspaceId:string,folderId:string|null,copyIds:string[]=[]):MovePlan|undefined {
  const ids=[...new Set(clipboard.ids)]
  const owners=getOwners(state.workspaces)
@@ -81,3 +91,5 @@ export function planPaste(state:State,clipboard:FinderClipboard,workspaceId:stri
  const folders=planFolderMembership({...state,...moved},ids,folderId)
  return folders?{...moved,folders}:undefined
 }
+
+export function planFolderNesting(state:State,ids:string[],workspaceId:string,folderId:string|null){return planFolderParent(state.folders,state.workspaces.find(w=>w.id===workspaceId),ids,folderId)}

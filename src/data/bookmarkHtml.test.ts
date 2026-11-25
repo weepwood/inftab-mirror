@@ -13,3 +13,10 @@ it('escapes text and URL attributes and round-trips HTML links', () => {
   expect(html).toContain('&lt;Work&gt;')
   expect(previewBookmarkHtml(html, [], 10).items[0]?.title).toBe(snapshot.shortcuts[0]!.title)
 })
+
+it('exports nested directories without duplicating or losing their links',()=>{
+ const snapshot={shortcuts:[{id:'x',title:'Nested link',url:'https://example.com/',color:'#abc',mark:'X'}],folders:[{id:'p',title:'Parent',mark:'P',color:'#abc',shortcutIds:[]},{id:'c',title:'Child',mark:'C',color:'#abc',shortcutIds:['x'],parentId:'p'}],homeWorkspaces:[{id:'default',name:'Home',itemIds:['p','c','x']}]}
+ const html=exportBookmarkHtml(snapshot)
+ expect(html).toContain('<H3>Parent</H3>\n<DL><p>\n<DT><H3>Child</H3>')
+ expect(previewBookmarkHtml(html,[],10).items).toEqual([{title:'Nested link',url:'https://example.com/'}])
+})

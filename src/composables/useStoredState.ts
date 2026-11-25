@@ -20,6 +20,7 @@ export interface StoredStateOptions<T = unknown> {
     previous: T,
     external: T,
     mergeDefault: (current: T, previous: T, external: T) => T,
+    mergeWorkspace: typeof import('../data/workspaceOwnership').mergeHomeWorkspaceChanges,
   ) => T
   /** Use a clean default when another tab clears the entire local storage area. */
   clearFallback?: T
@@ -141,11 +142,11 @@ export function useStoredState<T>(
       }
       if (hasPreviousValue && JSON.stringify(value.value) !== JSON.stringify(previousValue!)) {
         try {
-          const { mergeConcurrentEdits, valuesEqual } = await loadConcurrentState()
+          const { mergeConcurrentEdits, valuesEqual, mergeHomeWorkspaceChanges } = await loadConcurrentState()
           const mergeDefault = (current: T, previous: T, external: T) =>
             mergeConcurrentEdits(current, previous, external, normalize)
           nextValue = options.resolveConcurrentChanges
-            ? options.resolveConcurrentChanges(value.value, previousValue!, externalValue, mergeDefault)
+            ? options.resolveConcurrentChanges(value.value, previousValue!, externalValue, mergeDefault, mergeHomeWorkspaceChanges)
             : mergeDefault(value.value, previousValue!, externalValue)
           persistMergedValue = !valuesEqual(nextValue, externalValue)
         } catch {

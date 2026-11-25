@@ -1,3 +1,4 @@
+import { normalizeFolderTree } from './folderTree'
 import { sanitizeCustomTheme, sanitizeThemePresets } from './customTheme'
 import { isRecord, isValidRecordId } from './validation'
 import { defaultLauncherOrder, defaultPreferences, launcherItems, wallpaperChoices } from './defaults'
@@ -219,9 +220,10 @@ export function sanitizeFolders(
       color: sanitizePaletteColor(item.color, fallbackFolderColor),
       mark: truncateCodePoints(item.mark.trim(), 12),
       shortcutIds: [...new Set(members)],
+      ...(isValidRecordId(item.parentId) ? { parentId: item.parentId } : {}),
     })
   }
-  return result
+  return normalizeFolderTree(result)
 }
 
 export function sanitizeTodos(value: unknown): TodoItem[] {

@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'src/data/bookmarkHtml.ts'
+      - 'src/data/folderTree.ts'
       - 'src/data/backupHistory.ts'
       - 'src/data/shortcutBatch.ts'
       - 'src/data/workspaceLayout.ts'

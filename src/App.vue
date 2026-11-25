@@ -421,11 +421,14 @@ function openFolder(folder: ShortcutFolder) {
   openFolderEditor(folder)
 }
 
-function openFinderFolderEditor(workspaceId: string) {
+function openFinderFolderEditor(workspaceId: string, parentId?:string) {
   openFolderEditor(undefined, workspaceId)
+  folderParentId.value=parentId
 }
 
+const folderParentId=ref<string>()
 function openFolderEditor(folder?: ShortcutFolder, workspaceId = activeHomeWorkspaceId.value) {
+  folderParentId.value=folder?.parentId
   folderWorkspaceId.value = (folder && homeWorkspaces.value.find(w => w.itemIds.includes(folder.id))?.id) || workspaceId
   folderSaveError.value = ''
   activeFolder.value = folder
@@ -484,7 +487,8 @@ function saveFolder(folder: ShortcutFolder) {
     folderSaveError.value = '工作区或入口归属已发生变化，请关闭后重新打开文件夹。'
     return
   }
-  if (!saveFolderData(folder, target.id)) {
+  if(folderParentId.value&&!folders.value.some(f=>f.id===folderParentId.value&&target.itemIds.includes(f.id))){folderSaveError.value='父文件夹已变化，请重新打开。';return}
+  if (!saveFolderData({...folder,...(folderParentId.value?{parentId:folderParentId.value}:{})}, target.id)) {
     folderSaveError.value = '无法保存文件夹，请检查名称、颜色及数量限制。'
     return
   }

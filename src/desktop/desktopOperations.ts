@@ -6,7 +6,7 @@ import { flushStoredState } from '../composables/useStoredState'
 import { captureHistory } from '../data/backupHistory'
 import { OperationHistory } from './operationHistory'
 import { createLocalId } from '../data/createId'
-import { planWorkspaceMove,planFolderMembership,planPaste,type DesktopMutation } from './ownership'
+import { planWorkspaceMove,planFolderMembership,planPaste,planFolderNesting,type DesktopMutation } from './ownership'
 
 type MutationState={workspaces:Ref<HomeWorkspace[]>;folders:Ref<ShortcutFolder[]>;shortcuts:Ref<Shortcut[]>;launcherOrder:Ref<string[]>;addShortcuts:(items:Shortcut[],workspaceId:string)=>boolean;createBackup:()=>WorkspaceBackup}
 const signature=(snapshot:WorkspaceBackup)=>JSON.stringify({...snapshot,exportedAt:''})
@@ -28,6 +28,11 @@ function applyDomain(state:MutationState,next:Domain){
 }
 function prepare(action:Exclude<DesktopMutation,{kind:'undo'|'redo'}>,state:MutationState):(()=>string|undefined)|string{
  const input={workspaces:state.workspaces.value,folders:state.folders.value,shortcutIds:state.shortcuts.value.map(s=>s.id)}
+ if(action.kind==='reparent'){
+  const next=planFolderNesting(input,action.ids,action.workspaceId,action.folderId)
+  if(!next)return '无法移动文件夹：目标无效、跨工作区、循环引用或层级过深。'
+  return ()=>{state.folders.value=next;return undefined}
+ }
  if(action.kind==='membership'){
   const next=planFolderMembership(input,action.ids,action.folderId)
   if(!next)return '入口或文件夹归属已变化，请重新选择。'

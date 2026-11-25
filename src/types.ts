@@ -51,6 +51,8 @@ export interface Shortcut {
 }
 
 export interface ShortcutFolder {
+  /** Optional desktop hierarchy; classic mode still shows every folder. */
+  parentId?: string
   id: string
   title: string
   shortcutIds: string[]

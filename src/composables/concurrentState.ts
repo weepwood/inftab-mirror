@@ -120,3 +120,5 @@ export function mergeConcurrentEdits<T>(current: T, previous: T, external: T, no
   return normalize(mergeConcurrentValue(current, previous, external))
 }
 
+
+export { mergeHomeWorkspaceChanges } from '../data/workspaceOwnership'

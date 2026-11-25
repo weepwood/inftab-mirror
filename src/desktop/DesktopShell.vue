@@ -6,11 +6,13 @@ import '@interactjs/auto-start'
 import type { LauncherItem } from '../types'
 import { launcherIcons } from '../components/launcherIcons'
 import { Folder } from '@lucide/vue'
+import { folderParents } from '../data/folderTree'
 import { cell, resolvePoints, fitPoint, freshLayout, normalizeLayout, translateGroup, type Point, type DesktopLayout } from './layout'
 const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout; folderShortcuts?: LauncherItem[]; dark?: boolean}>()
 const emit = defineEmits<{open: [item: LauncherItem, event?: MouseEvent]; edit: [item: LauncherItem]; layout: [layout: DesktopLayout]; finder:[]; create:[]; remove:[item:LauncherItem]; membership:[item:LauncherItem,folderId:string]}>()
 const surface = ref<HTMLElement>()
 const selected = ref<string[]>([])
+const visibleItems=computed(()=>{const parents=folderParents(props.items.flatMap(i=>i.folder?[i.folder]:[]),{id:props.workspaceId,name:'',itemIds:props.items.map(i=>i.id)});return props.items.filter(i=>!parents.has(i.id))})
 const menu = ref<{x:number;y:number;item?:LauncherItem}>()
 const marquee=ref<{x:number;y:number;endX:number;endY:number}>()
 let marqueePointer:number|undefined
@@ -30,9 +32,9 @@ function migrate() {
 }
 const width = ref(960)
 const height = ref(480)
-const canvasHeight = computed(() => Math.max(height.value, Math.ceil(props.items.length / Math.max(1, Math.floor(width.value/cell)))*cell, ...props.items.map(item => (layout.value.positions[item.id]?.y ?? 0) + cell)))
-const resolved = computed(() => resolvePoints(props.items.map(i=>i.id),layout.value.positions,width.value,canvasHeight.value))
-const positions = computed(() => props.items.map(item => ({item,point:resolved.value[item.id]!})))
+const canvasHeight = computed(() => Math.max(height.value, Math.ceil(visibleItems.value.length / Math.max(1, Math.floor(width.value/cell)))*cell, ...visibleItems.value.map(item => (layout.value.positions[item.id]?.y ?? 0) + cell)))
+const resolved = computed(() => resolvePoints(visibleItems.value.map(i=>i.id),layout.value.positions,width.value,canvasHeight.value))
+const positions = computed(() => visibleItems.value.map(item => ({item,point:resolved.value[item.id]!})))
 const renderedHeight = computed(() => Math.max(canvasHeight.value,...positions.value.map(p=>p.point.y+cell)))
 let observer: ResizeObserver | undefined
 let binding: ReturnType<typeof interact> | undefined
@@ -53,7 +55,7 @@ function saveGroup(ids:string[],dx:number,dy:number) {
   const source=Object.fromEntries(ids.flatMap(id=>resolved.value[id]?[[id,resolved.value[id]!]]:[]))
   const moved=translateGroup(source,{x:dx,y:dy},width.value,renderedHeight.value,layout.value.snap)
   const next={...layout.value.positions,...moved}
-  const candidate=resolvePoints(props.items.map(item=>item.id),next,width.value,renderedHeight.value)
+  const candidate=resolvePoints(visibleItems.value.map(item=>item.id),next,width.value,renderedHeight.value)
   // Do not accept partial group moves or displace other icons as a side effect.
   if(positions.value.some(({item,point})=>{
     const expected=moved[item.id]??point,actual=candidate[item.id]
@@ -75,9 +77,9 @@ function activate(item: LauncherItem, event: MouseEvent) {
   if(event.detail===0 || event.button===1 || event.detail===2) emit('open',item,event)
 }
 function keyMove(event: KeyboardEvent,id: string) {
-  if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='a'){event.preventDefault();selected.value=props.items.map(i=>i.id);return}
+  if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='a'){event.preventDefault();selected.value=visibleItems.value.map(i=>i.id);return}
   if(event.key===' '){event.preventDefault();selected.value=selected.value.includes(id)?selected.value.filter(i=>i!==id):[...selected.value,id];return}
-  if(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10')){event.preventDefault();const r=(event.currentTarget as HTMLElement).getBoundingClientRect();menu.value={x:r.left,y:r.bottom,item:props.items.find(i=>i.id===id)};return}
+  if(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10')){event.preventDefault();const r=(event.currentTarget as HTMLElement).getBoundingClientRect();menu.value={x:r.left,y:r.bottom,item:visibleItems.value.find(i=>i.id===id)};return}
   if(!event.altKey&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){
     event.preventDefault();event.stopPropagation()
     const p=resolved.value[id];if(!p)return
@@ -136,7 +138,7 @@ onMounted(() => {
         if (d.moved) {
           if(d.members.length>1)saveGroup(d.members.map(m=>m.id),d.dx,d.dy)
           else{
-            const source=props.items.find(i=>i.id===d.id)
+            const source=visibleItems.value.find(i=>i.id===d.id)
             const target=positions.value.find(p=>p.item.folder && Math.abs(p.point.x-d.x)<40 && Math.abs(p.point.y-d.y)<40)
             if(source?.shortcut && target) emit('membership',source,target.item.id)
             else save(d.id,d.x,d.y)
@@ -159,7 +161,7 @@ function context(event:MouseEvent,item?:LauncherItem){menu.value={x:Math.min(eve
 function menuAction(action:()=>void){menu.value=undefined;action()}
 onMounted(() => { window.addEventListener('blur',cancelDrag); window.addEventListener('keydown',cancelKey); surface.value?.addEventListener('pointercancel',cancelDrag,true) })
 onBeforeUnmount(() => { cancelDrag(); observer?.disconnect(); binding?.unset(); window.removeEventListener('blur',cancelDrag); window.removeEventListener('keydown',cancelKey); surface.value?.removeEventListener('pointercancel',cancelDrag,true) })
-watch(() => props.items.map(i=>i.id), ids => {
+watch(() => visibleItems.value.map(i=>i.id), ids => {
   if (dragging && dragging.members.some(member=>!ids.includes(member.id))) cancelDrag()
   selected.value=selected.value.filter(id=>ids.includes(id))
 })

@@ -48,3 +48,13 @@ it('cuts and copies across folders with a validated source location',()=>{
  expect(copied.folders[0]?.shortcutIds).toEqual(['one','two'])
  expect(copied.folders[1]?.shortcutIds).toEqual(['three','copy-one'])
 })
+
+it('moves an entire nested folder subtree and preserves its links',()=>{
+ const state=fixture()
+ state.folders.push({id:'child',title:'Child',mark:'F',color:'#abc',shortcutIds:['other'],parentId:'folder'} as typeof state.folders[number])
+ state.workspaces[0]!.itemIds.push('child')
+ const result=planWorkspaceMove(state,['folder'],'b')!
+ expect(result.workspaces[0]?.itemIds).toEqual([])
+ expect(result.workspaces[1]?.itemIds).toEqual(expect.arrayContaining(['child','folder','one','two','other']))
+ expect(result.folders.find(f=>f.id==='child')).toMatchObject({parentId:'folder',shortcutIds:['other']})
+})

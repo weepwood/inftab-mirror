@@ -372,3 +372,9 @@ it('round-trips custom themes without adding a field to old backups and rejects 
   expect(parseWorkspaceBackup(backup({preferences:{...defaultPreferences,customTheme:defaultCustomTheme}})).preferences.customTheme).toEqual(defaultCustomTheme)
   expect(()=>parseWorkspaceBackup(backup({preferences:{...defaultPreferences,customTheme:{...defaultCustomTheme,light:{...defaultCustomTheme.light,text:'red; color:blue'}}}}))).toThrow(/页面设置无法识别/)
 })
+
+it('round-trips optional nested folder topology in v1 JSON without losing links',()=>{
+ const source=backup({folders:[{id:'parent',title:'Parent',mark:'P',color:'#abc',shortcutIds:[]},{id:'child',title:'Child',mark:'C',color:'#abc',shortcutIds:['custom'],parentId:'parent'}],homeWorkspaces:[{id:'default',name:'主页',itemIds:['parent','child','custom']}]})
+ const parsed=parseWorkspaceBackup(source)
+ expect(parseWorkspaceBackup(JSON.parse(JSON.stringify(parsed))).folders[1]).toMatchObject({parentId:'parent',shortcutIds:['custom']})
+})
