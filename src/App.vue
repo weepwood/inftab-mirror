@@ -36,6 +36,7 @@ const finderRequest = shallowRef<{ sequence: number; workspaceId: string; folder
 let finderSequence = 0
 const overviewRequest = ref(0)
 const runningDesktopPanels = ref<PanelId[]>([]),finderRunning=ref(false)
+function updateRunningWindows(ids:PanelId[],finder:boolean){runningDesktopPanels.value=ids;finderRunning.value=finder}
 const finderOperationError = ref('')
 const desktopHistory = shallowRef({undo:false,redo:false})
 const DesktopMenus = defineAsyncComponent(() => import('./desktop/DesktopMenus.vue'))
@@ -370,7 +371,7 @@ function setLocalSearch(enabled: boolean) {
   query.value = ''
   void nextTick(() => {
     if (searchBar.value) searchBar.value.focusSearch()
-    else document.querySelector<HTMLButtonElement>('.home-search-toggle')?.focus()
+    else document.querySelector<HTMLButtonElement>('.home-search-toggle,.home-command-toggle')?.focus()
   })
 }
 
@@ -378,7 +379,7 @@ function openLocalSearchResult(match: LauncherSearchMatch, event?: MouseEvent) {
   activeHomeWorkspaceId.value = match.workspaceId
   localSearchMode.value = false
   query.value = ''
-  document.querySelector<HTMLButtonElement>('.home-search-toggle')?.focus()
+  document.querySelector<HTMLButtonElement>('.home-search-toggle,.home-command-toggle')?.focus()
   if(desktopMode.value)desktopOpen(match.item,event)
   else openItem(match.item, event)
 }
@@ -386,7 +387,7 @@ function openLocalSearchResult(match: LauncherSearchMatch, event?: MouseEvent) {
 function createFromSearch(folder = false) {
   localSearchMode.value = false
   query.value = ''
-  document.querySelector<HTMLButtonElement>('.home-search-toggle')?.focus()
+  document.querySelector<HTMLButtonElement>('.home-search-toggle,.home-command-toggle')?.focus()
   if (folder) openFolderEditor()
   else openShortcutDialog()
 }
@@ -696,7 +697,7 @@ function returnHome(){
  goToPage(0)
 }
 function openCommandPalette() {
-  if (!overlayOpen.value) commandPaletteOpen.value = true
+  if (!overlayOpen.value) { if(desktopMode.value)dismissDesktopSearch();commandPaletteOpen.value = true }
 }
 
 async function runCommand(id: string) {
@@ -733,10 +734,12 @@ function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') layoutEditorOpen.value = false
     return
   }
+  const spotlightShortcut=desktopMode.value&&!minimalMode.value&&!event.altKey&&!event.shiftKey&&(event.metaKey||event.ctrlKey)&&(event.code==='Space'||event.key==='k')
   if (commandPaletteOpen.value) {
-    if (event.key === 'Escape') commandPaletteOpen.value = false
+    if (event.key === 'Escape'||spotlightShortcut) {event.preventDefault();commandPaletteOpen.value = false}
     return
   }
+  if(spotlightShortcut&&!overlayOpen.value){event.preventDefault();openCommandPalette();return}
   if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'p' && !activePanel.value && !shortcutDialog.value && !folderDialogOpen.value) {
     event.preventDefault()
     openCommandPalette()
@@ -908,9 +911,9 @@ onBeforeUnmount(() => {
       <DesktopMenus v-if="desktopMode && !minimalMode" @run="$event==='desktop:folder'?openFolderEditor():runCommand($event)" />
       <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="toggleWindowOverview">窗口</button>
       <button v-if="!minimalMode" type="button" class="round-action desktop-mode-toggle" :aria-label="desktopMode ? '经典模式' : '桌面模式'" :title="desktopMode ? '经典模式' : '桌面模式'" :aria-pressed="desktopMode" @click="desktopMode = !desktopMode"><span aria-hidden="true">▦</span></button>
-      <button type="button" class="round-action home-command-toggle" aria-label="打开命令面板" title="命令面板（Ctrl/⌘+Shift+P）" @click="openCommandPalette"><span aria-hidden="true">⌘</span></button>
+      <button type="button" class="round-action home-command-toggle" aria-label="打开命令面板"  :title="desktopMode&&!minimalMode?'Spotlight 搜索（Ctrl/⌘+K）':'命令面板（Ctrl/⌘+Shift+P）'" @click="openCommandPalette"><Search v-if="desktopMode&&!minimalMode" :size="17"/><span v-else aria-hidden="true">⌘</span></button>
       <button v-if="!minimalMode" type="button" class="round-action home-create-shortcut" aria-label="新建快捷入口" title="新建快捷入口" @click="openShortcutDialog()"><Plus :size="19" /></button>
-      <button type="button" class="round-action home-search-toggle" aria-label="查找快捷入口" title="查找快捷入口（Ctrl/⌘+F）" :aria-pressed="localSearchMode" @click="setLocalSearch(!localSearchMode)"><Search :size="18" /></button>
+      <button v-if="!desktopMode||minimalMode||localSearchMode" type="button" class="round-action home-search-toggle" aria-label="查找快捷入口" title="查找快捷入口（Ctrl/⌘+F）" :aria-pressed="localSearchMode" @click="setLocalSearch(!localSearchMode)"><Search :size="18" /></button>
       <button type="button" class="round-action minimal-mode-toggle" :aria-label="minimalMode ? '退出极简模式' : '进入极简模式'" :aria-pressed="minimalMode" :title="minimalMode ? '退出极简模式' : '进入极简模式'" @click="toggleMinimalMode"><X v-if="minimalMode" :size="18" /><span v-else class="minimal-mode-symbol" aria-hidden="true"></span></button>
       <button type="button" class="round-action" aria-label="回到首页" title="回到首页" @click="returnHome"><House :size="19" /></button>
       <button type="button" class="round-action" aria-label="打开设置" title="打开设置" @click="openPanel('settings')"><Menu :size="21" /></button>
@@ -1006,7 +1009,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :blocked="overlayOpen||localSearchMode||minimalMode" :inert="(overlayOpen)||undefined" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :history="desktopHistory" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="(ids,finder)=>{runningDesktopPanels=ids;finderRunning=finder}" @create="openFinderFolderEditor" />
+    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :blocked="overlayOpen||localSearchMode||minimalMode" :inert="(overlayOpen)||undefined" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :history="desktopHistory" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="updateRunningWindows" @create="openFinderFolderEditor" />
     <HomeDock v-if="(homeDockItems.length || desktopMode) && !minimalMode" :blocked="desktopMode&&overlayOpen" :desktop="desktopMode" :items="homeDockItems" :running-panels="runningDesktopPanels" :finder-running="finderRunning" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="dockOpen" @remove="toggleDockItem" @finder="openFinder(undefined,true)" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">

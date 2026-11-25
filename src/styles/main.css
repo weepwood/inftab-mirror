@@ -1133,6 +1133,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .command-shell input { flex: 1; min-width: 0; height: 38px; border: 0; background: transparent; color: var(--ui-text); padding: 0 8px; font-size: 15px; }
 .command-shell input::placeholder { color: var(--ui-muted); }
 .command-shell header button { padding: 5px 8px; border: 1px solid var(--ui-border); border-radius: 6px; background: var(--ui-field); color: var(--ui-muted); font-size: 11px; cursor: pointer; }
+.spotlight-body {display:flex;flex:1;min-height:0}
 .command-results { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px; }
 .command-option { display: flex; align-items: center; justify-content: space-between; min-height: 42px; padding: 8px 12px; gap: 12px; border-radius: 9px; cursor: pointer; font-size: 13px; }
 .command-option[aria-selected="true"] { background: var(--ui-accent-soft); color: var(--ui-accent-text); }
