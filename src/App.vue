@@ -1015,13 +1015,14 @@ onBeforeUnmount(() => {
 .desktop-mode .storage-error-toast{position:fixed;z-index:9;bottom:14px}
 .desktop-mode-toggle{font-size:22px}
 .desktop-mode .home-brand{display:none}
-.desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:42px;padding:2px 14px;gap:5px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--ui-surface);color:var(--ui-text);box-shadow:0 1px 8px #0002;z-index:8}
-.desktop-mode .home-actions .round-action{width:32px;height:32px;color:var(--ui-text);background:transparent}
+.desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:42px;padding:2px 14px;gap:5px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);backdrop-filter:blur(24px) saturate(140%);box-shadow:0 1px 0 var(--mac-line);z-index:8}
+.desktop-mode .home-actions .round-action{width:32px;height:32px;border-radius:6px;color:var(--mac-ink);background:transparent}
 .desktop-mode .home-actions .round-action:hover{background:var(--ui-accent-soft)}
-.desktop-menu-label{border:0;background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:600;padding:6px 10px;border-radius:6px;cursor:pointer}
+.desktop-menu-label{border:0;background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:500;padding:6px 10px;border-radius:5px;cursor:pointer}
 .desktop-menu-label:hover{background:var(--ui-accent-soft)}
-.desktop-menu-label:first-child{margin-right:2px}
+.desktop-menu-label:first-child{margin-right:2px;font-weight:650}
 .desktop-mode .desktop-mode-toggle{margin-left:auto}
+.desktop-mode .home-actions .round-action:focus-visible,.desktop-menu-label:focus-visible{outline:2px solid var(--ui-focus);outline-offset:1px}
 @media(max-width:480px){.desktop-mode .home-actions{padding-inline:5px;gap:2px}.desktop-menu-label{padding:4px 5px;font-size:12px}.desktop-mode .home-actions .round-action{width:29px;height:29px}}
 
 </style>

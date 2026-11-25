@@ -105,3 +105,7 @@ npm run test:e2e:production
 ```
 
 原有功能、焦点、触屏排序与滚动、生产分块失败恢复和构建体积预算继续由既有测试保护。
+
+## 桌面模式
+
+独立 macOS 桌面专项见 [macOS 桌面视觉设计](macos-desktop-design.md)，经典模式继续遵循本文。
