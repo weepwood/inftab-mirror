@@ -41,6 +41,7 @@ export default defineConfig({
             },
             // Both desktop shell views mount together, but never on classic home.
             { name: 'desktop-shell', test: /\/src\/desktop\/(?:DesktopShell|DesktopMenus)\.vue/, includeDependenciesRecursively: false },
+            { name: 'widget-shelf', test: /\/src\/(?:components\/HomeWidgetShelf\.vue|data\/widgetSlots\.ts)/, includeDependenciesRecursively: false },
             { name: 'desktop-transactions', test: /\/src\/desktop\/(?:desktopOperations|transactionIntent)\.ts/, includeDependenciesRecursively: false },
             { name: 'workspace-recovery', test: /\/src\/(?:data\/backup\.ts|composables\/workspaceBackup\.ts)/, includeDependenciesRecursively: false },
             // Related opt-in widgets share templates and imports, but never pull
@@ -52,7 +53,7 @@ export default defineConfig({
             },
             {
               name: 'browser-widgets',
-              test: /\/src\/components\/(?:Bookmarks|History|TopSites)SummaryWidget\.vue/,
+              test: /\/src\/components\/(?:Bookmarks|History|TopSites)SummaryWidget\.vue|\/src\/data\/bookmarkPreview\.ts/,
               includeDependenciesRecursively: false,
             },
             {

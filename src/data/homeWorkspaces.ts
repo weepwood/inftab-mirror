@@ -1,3 +1,5 @@
+import type { WidgetSlots } from './widgetSlots'
+import { availableHomeWidgetIds } from '../plugins/ids'
 import { normalizeLayout, type DesktopLayout } from '../desktop/layout'
 import { isRecord, isValidRecordId } from './validation'
 import { truncateCodePoints } from './text'
@@ -12,6 +14,7 @@ export interface HomeWorkspace {
   name: string
   itemIds: string[]
   desktop?: DesktopLayout
+  widgetSlots?: WidgetSlots
   layout?: WorkspaceLayoutOverrides
 }
 
@@ -32,11 +35,22 @@ function uniqueName(name: string, used: Set<string>, fallback: string): string {
   return `工作区 ${used.size + 1}`
 }
 
+export function sanitizeWidgetSlots(value:unknown):WidgetSlots|undefined{
+ if(!value||typeof value!=='object'||Array.isArray(value))return
+ const raw=value as WidgetSlots
+ return Object.fromEntries(availableHomeWidgetIds.flatMap(id=>{
+  const p=raw[id]
+  return p&&Number.isFinite(p.x)&&Number.isFinite(p.y)?[[id,{x:Math.max(0,Math.min(2,Math.round(p.x))),y:Math.max(0,Math.min(15,Math.round(p.y)))}]]:[]
+ }))
+}
+
 function parseWorkspace(value: unknown): HomeWorkspace | undefined {
   if (!isRecord(value) || !isValidRecordId(value.id) || !Array.isArray(value.itemIds)) return undefined
   const layout = sanitizeWorkspaceLayout(value.layout)
+  const widgetSlots = sanitizeWidgetSlots(value.widgetSlots)
   return {
     ...(layout ? { layout } : {}),
+    ...(widgetSlots ? { widgetSlots } : {}),
     ...(isRecord(value.desktop) && value.desktop.version === 1 ? { desktop: normalizeLayout(value.desktop) } : {}),
     id: value.id,
     name: typeof value.name === 'string' ? truncateCodePoints(value.name.trim(), maxHomeWorkspaceNameLength) : '',
@@ -79,6 +93,7 @@ export function sanitizeHomeWorkspaces(
       name: uniqueName(workspace.name, usedNames, index === 0 ? '主页' : `工作区 ${index + 1}`),
       itemIds,
       ...(workspace.layout ? { layout: workspace.layout } : {}),
+      ...(workspace.widgetSlots ? { widgetSlots: workspace.widgetSlots } : {}),
       ...(workspace.desktop ? { desktop: { ...workspace.desktop, positions: Object.fromEntries(Object.entries(workspace.desktop.positions).filter(([id]) => allowedDesktopIds.has(id))) } } : {}),
     }]
   })
