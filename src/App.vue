@@ -908,7 +908,7 @@ onBeforeUnmount(() => {
     <div class="home-brand" aria-label="Infinity 新标签页"><span class="brand-mark" aria-hidden="true">∞</span><span class="brand-word">infinity</span><span class="brand-label">新标签页</span></div>
     <header class="home-actions" :inert="(desktopMode&&overlayOpen)||undefined">
       <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label desktop-app-menu" @click="openFinder()"><span aria-hidden="true">∞</span> Inftab</button>
-      <DesktopMenus v-if="desktopMode && !minimalMode" @run="$event==='desktop:folder'?openFolderEditor():runCommand($event)" />
+      <DesktopMenus v-if="desktopMode && !minimalMode" :blocked="overlayOpen" @run="$event==='desktop:folder'?openFolderEditor():runCommand($event)" />
       <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="toggleWindowOverview">窗口</button>
       <button v-if="!minimalMode" type="button" class="round-action desktop-mode-toggle" :aria-label="desktopMode ? '经典模式' : '桌面模式'" :title="desktopMode ? '经典模式' : '桌面模式'" :aria-pressed="desktopMode" @click="desktopMode = !desktopMode"><span aria-hidden="true">▦</span></button>
       <button type="button" class="round-action home-command-toggle" aria-label="打开命令面板"  :title="desktopMode&&!minimalMode?'Spotlight 搜索（Ctrl/⌘+K）':'命令面板（Ctrl/⌘+Shift+P）'" @click="openCommandPalette"><Search v-if="desktopMode&&!minimalMode" :size="17"/><span v-else aria-hidden="true">⌘</span></button>
@@ -917,6 +917,7 @@ onBeforeUnmount(() => {
       <button type="button" class="round-action minimal-mode-toggle" :aria-label="minimalMode ? '退出极简模式' : '进入极简模式'" :aria-pressed="minimalMode" :title="minimalMode ? '退出极简模式' : '进入极简模式'" @click="toggleMinimalMode"><X v-if="minimalMode" :size="18" /><span v-else class="minimal-mode-symbol" aria-hidden="true"></span></button>
       <button type="button" class="round-action" aria-label="回到首页" title="回到首页" @click="returnHome"><House :size="19" /></button>
       <button type="button" class="round-action" aria-label="打开设置" title="打开设置" @click="openPanel('settings')"><Menu :size="21" /></button>
+      <DesktopMenus v-if="desktopMode && !minimalMode" controls-only :blocked="overlayOpen" :preferences="preferences" @update="updatePreferences" @run="runCommand" />
       <ClockWidget v-if="desktopMode && !minimalMode && preferences.showClock" />
     </header>
 

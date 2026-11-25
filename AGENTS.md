@@ -569,3 +569,7 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 ## Liquid Glass 材质体系第一轮（2026-11-26）
 - 基于本地326e3a8，用户指定经典Spotlight逻辑+最新Apple Liquid Glass视觉；核对Apple HIG、Adopting Liquid Glass和WWDC26，新增研究文档记录。统一共享材质令牌与浅深、无滤镜支持/减少透明度/强制色彩降级，分别接入菜单栏、Dock、Spotlight、搜索栏、桌面右键及顶部菜单、工作区、窗口概览、小组件、设置/窗口外壳与停靠控件。内容区保持实色；未增加shader、网络依赖或改变交互数据。经典模式不受本轮桌面CSS影响。
 - 新增实际浏览器回归用例验证浅深材质、紧凑与展开圆角、实色预览/窗口内容及forced-colors降级；更新原Finder圆角断言18px。git diff --check及Vite七个相关模块HTTP200。run-budgeted因Swap I/O 28.563 MiB/s及此前内存压力2拒绝启动本轮TypeScript/浏览器任务；新增用例未运行，未检查实际截图、跨浏览器、可读性或生产构建。此前窄屏菜单复验及JS预算仍未完成。不绕过资源门禁。仅本地中文提交，不推送、不建PR、不发布，保留127.0.0.1:4277预览服务。
+
+## Liquid Glass 材质精修与控制中心（2026-11-26）
+- 基于本地3f54803，保留经典Spotlight逻辑。共享浅深玻璃光泽增加方向性径向高光及分边内阴影；合并6种应用图标重复材质，统一app-material/app-ink所有权；Spotlight圆角过渡和结果淡入，不改变搜索框命中几何，不添加动态滤镜/逐帧渲染。检索命令补NFKC。复用DesktopMenus新增右侧控制中心，真实外观/网页搜索栏/时钟/Dock放大/图标名称设置，使用既有preferences及更新方法，ARIA radio/checkbox支持现有导航，叠层开启关闭菜单。无新依赖、未改经典模式及数据模型。
+- 上轮积压check通过，Edge 4/4（Liquid Glass浅深/forced-colors、Spotlight、Finder、窄屏级联菜单）。本轮check、检索命令和Spotlight单测7/7；Edge首轮6项4通过2失败，实际原因是早期桌面右键菜单结构已拆分，旧测试仍测透明父容器；修正为实际.desktop-menu-panel，并增加backgroundImage及backdropFilter对照，关键复测4/4（浅深菜单材质、窄屏级联、控制中心真实设置/刷新恢复/390px）。保留控制中心真实截图于外置日志目录。生产vite构建和类型检查已完成，但原非Swiper预算208491>204800 B（203.6/200KiB），首屏60.5/60.5、Swiper26.4/30、combined230.0/230、CSS38.6/64、输出1720.6/4096 KiB；资源门禁不通过，未运行后续PWA及生产浏览器。未放宽预算。后续优先回收至少3691B并留合理余量；实际折射、真实触屏/320px/跨浏览器/多壁纸对比与内置应用逐页重构仍未完成。预览127.0.0.1:4277，中文本地提交，不推送、不建PR、不发布。

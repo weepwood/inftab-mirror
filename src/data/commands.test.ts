@@ -20,3 +20,5 @@ it('exposes desktop commands only in desktop mode', () => {
   expect(filterCommands('finder', true).map(item=>item.id)).toEqual(['desktop:finder'])
   expect(filterCommands('mission control', true).map(item=>item.id)).toEqual(['desktop:overview'])
 })
+
+it('matches full-width Spotlight keywords',()=>expect(filterCommands('ＦＩＮＤＥＲ',true).map(item=>item.id)).toEqual(['desktop:finder']))

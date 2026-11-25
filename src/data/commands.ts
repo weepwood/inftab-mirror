@@ -27,6 +27,6 @@ const desktopCommands = [
 ] as const
 
 export function filterCommands(query: string, desktop = false) {
-  const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean)
+  const terms = query.normalize('NFKC').trim().toLocaleLowerCase().split(/\s+/).filter(Boolean)
   return (desktop ? [...homeCommands, ...desktopCommands] : homeCommands).filter(command => terms.every(term => (command.label + ' ' + command.detail + ' ' + command.keywords).toLocaleLowerCase().includes(term)))
 }

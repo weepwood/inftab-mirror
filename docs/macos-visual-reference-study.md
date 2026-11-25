@@ -22,3 +22,8 @@
 - 用户要求保留经典 Spotlight 交互，视觉参考 Apple 最新 Liquid Glass。核对 Apple HIG Materials（https://developer.apple.com/design/human-interface-guidelines/materials）、Adopting Liquid Glass（https://developer.apple.com/documentation/TechnologyOverviews/adopting-liquid-glass）、WWDC26 Platforms State of the Union（https://developer.apple.com/videos/play/wwdc2026/102/）。原则：玻璃优先用于导航和浮动操作层，正文层用标准材质；采用层级、边缘光泽、透光度、圆角与内容可读性，不对每个按钮叠加模糊。
 - tokens.css 是桌面及传送Dock菜单的材质所有权：mac-glass-filter/sheen/edge/shadow/focus-shadow/widget/control/control-shadow；浅深独立。Dock较清透、菜单和Spotlight较浓、桌面小组件更厚；窗口正文保持不透明。支持 backdrop-filter 或 -webkit-backdrop-filter 时启用；否则默认实色。prefers-reduced-transparency 与 forced-colors 明确关闭滤镜和光泽，恢复实色及轮廓。没有GPU折射模拟、SVG位移、动态逐像素采样、第三方素材或新依赖，非Apple原生Liquid Glass渲染。
 - Spotlight 仍用旧式紧凑条和左右结果/预览，空态28px/展开22px圆角，窗口18px；菜单13px、弹层18px、Dock24px，窗口停靠按钮和工作区/搜索采用胶囊轮廓。改动仅作用桌面模式，经典模式数据与布局不变。控制中心、内置应用逐页面设计以及真实折射/自适应色彩仍未完整实施。
+
+## Liquid Glass 材质精修与控制中心（2026-11-26）
+- 在已有材质令牌上增加方向性径向高光与分边内阴影；仍是静态CSS光学近似，无真实场景折射或逐帧像素处理。应用图标的6处重复材质归并到唯一app-material/app-ink定义；保留色彩语义。Spotlight结果淡入、圆角连续过渡，减少动效模式关闭新增动画。
+- 复用DesktopMenus作为独立的右侧控制中心实例，具有外观三选一、网页搜索栏/时钟/Dock放大/图标名称开关和系统设置入口，直接绑定真实preferences，不增加另一套设置存储。ARIA menuitemradio/menuitemcheckbox与现有菜单键盘导航共用，窗口叠层开启时关闭菜单。保留原左侧菜单及经典模式。390px窄屏已测试，320px及真实触屏尚未验证。
+- Spotlight命令检索补齐NFKC规范化，与本地记录检索一致；未扩展网络索引、OS系统状态或真实硬件控制。控制中心截图保留于外置日志目录 liquid-glass-control-center.png。

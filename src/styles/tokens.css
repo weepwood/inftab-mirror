@@ -269,9 +269,9 @@
     --mac-glass-control: rgba(247,248,251,.78);
     --mac-glass-control-shadow: 0 2px 9px #0002, inset 0 1px 1px #fff9;
     --mac-glass-filter: blur(28px) saturate(160%);
-    --mac-glass-sheen: linear-gradient(155deg,#ffffff66,transparent 42%,#ffffff12 75%,#ffffff30);
+    --mac-glass-sheen: radial-gradient(ellipse at 12% 0%,#ffffff55,transparent 46%),linear-gradient(160deg,#ffffff20,transparent 40%,#ffffff0a 72%,#ffffff32);
     --mac-glass-edge: rgba(255,255,255,.65);
-    --mac-glass-shadow: 0 12px 34px #0003, 0 2px 8px #0002, inset 0 1px 1px #fffd, inset 0 -1px 1px #ffffff30;
+    --mac-glass-shadow: 0 12px 34px #0003, 0 2px 8px #0002, inset 0 1px 1px #fffd, inset 1px 0 1px #ffffff55, inset 0 -1px 2px #ffffff45;
     --mac-glass-focus-shadow: 0 24px 64px #0004, 0 3px 12px #0002, inset 0 1px 1px #fffd;
   }
   .desktop-mode.theme-dark,.mac-dock-context.theme-dark {
@@ -281,9 +281,9 @@
     --mac-glass-widget: rgba(35,36,42,.90);
     --mac-glass-control: rgba(57,58,64,.82);
     --mac-glass-control-shadow: 0 2px 9px #0005, inset 0 1px 1px #ffffff30;
-    --mac-glass-sheen: linear-gradient(155deg,#ffffff20,transparent 45%,#0000000a 75%,#ffffff0e);
+    --mac-glass-sheen: radial-gradient(ellipse at 12% 0%,#ffffff20,transparent 48%),linear-gradient(160deg,#ffffff0e,transparent 42%,#0000000a 74%,#ffffff12);
     --mac-glass-edge: rgba(255,255,255,.24);
-    --mac-glass-shadow: 0 12px 36px #0006, 0 2px 8px #0004, inset 0 1px 1px #ffffff40, inset 0 -1px 1px #ffffff12;
+    --mac-glass-shadow: 0 12px 36px #0006, 0 2px 8px #0004, inset 0 1px 1px #ffffff40, inset 1px 0 1px #ffffff18, inset 0 -1px 2px #ffffff19;
     --mac-glass-focus-shadow: 0 24px 64px #0008, 0 3px 12px #0005, inset 0 1px 1px #ffffff40;
   }
 }
