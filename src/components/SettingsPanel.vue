@@ -8,6 +8,8 @@ const CustomThemeEditor = lazyPluginComponent(() => import('./CustomThemeEditor.
 const showThemeEditor = ref(false)
 const ConfigMigration = lazyPluginComponent(() => import('./ConfigMigration.vue'), '正在加载配置迁移…', '配置迁移加载失败。')
 const showMigration = ref(false)
+const StoragePreflight = lazyPluginComponent(() => import('./StoragePreflight.vue'), '正在加载存储预检…', '存储预检加载失败。')
+const showStoragePreflight = ref(false)
 import { Check, Database, FolderPlus, House, LayoutGrid, Palette, Plus, Search, X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { launcherItems, searchModes, wallpaperChoices } from '../data/defaults'
@@ -458,6 +460,11 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
     </div>
 
     <div class="settings-group" data-group="data">
+    <section v-if="workspaceTools" class="settings-section">
+      <div class="section-heading"><div><h3>存储可靠性</h3><p>独立检查并保存迁移候选，不切换现有数据源。</p></div></div>
+      <button class="button-secondary" type="button" :aria-expanded="showStoragePreflight" @click="showStoragePreflight = !showStoragePreflight">{{ showStoragePreflight ? '收起存储预检' : '打开存储预检' }}</button>
+      <StoragePreflight v-if="showStoragePreflight" :tools="workspaceTools" />
+    </section>
     <section v-if="workspaceTools" class="settings-section">
       <div class="section-heading"><div><h3>选择性配置迁移</h3><p>从现有 JSON 备份中选择配置，保留其他数据。</p></div></div>
       <button class="button-secondary" type="button" :aria-expanded="showMigration" @click="showMigration = !showMigration">{{ showMigration ? '收起配置迁移' : '打开配置迁移' }}</button>

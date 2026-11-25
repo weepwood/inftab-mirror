@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Inftab 独立迁移控制台</title>
+<style>
+:root{color-scheme:light dark;font:15px/1.55 system-ui,sans-serif;color:#222;background:#f4f5f7}body{margin:0}main{max-width:760px;margin:auto;padding:32px 20px}section{background:white;border:1px solid #d8dce2;border-radius:12px;padding:20px;margin:16px 0}h1{font-size:24px;margin:0 0 8px}h2{font-size:17px;margin:0 0 12px}p{margin:8px 0;overflow-wrap:anywhere}label{display:grid;gap:4px;margin:12px 0}input,button{font:inherit;min-height:36px;border:1px solid #bbc1c9;border-radius:6px;padding:6px 10px;box-sizing:border-box;max-width:100%}button{cursor:pointer;margin:4px 4px 4px 0;background:#edf1f7;color:#222}button:disabled{opacity:.5;cursor:default}fieldset{border:0;padding:0;margin:0;min-width:0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}small{color:#666}output{display:block;padding:12px;border:1px solid #a5aebc;border-radius:8px;overflow-wrap:anywhere}@media(prefers-color-scheme:dark){:root{background:#16181c;color:#eee}section{background:#202329;border-color:#414650}button{background:#313741;color:#eee;border-color:#515867}small{color:#aab1bc}}
+select,textarea{font:inherit;padding:8px;border:1px solid #bbc1c9;border-radius:6px;width:100%;box-sizing:border-box}#editor-todos label{display:flex;align-items:center;gap:8px}#editor-todos input{min-height:0}
+</style>
+</head>
+<body><main>
+<h1>独立迁移控制台</h1>
+<p>实验性工具。仅用于显式文件迁移，不接管正式 Inftab 首页。文件含用户原始数据及快照，务必妥善保管；不上传网络。</p>
+<p>当前 Origin：<strong id="origin"></strong></p>
+<fieldset id="controls">
+<section>
+<h2>01 · 原站导出</h2>
+<p>先在原应用保存迁移候选，并关闭其他编辑标签页。此处只核对已保存的原始键，不能检测尚未落盘的修改或之后的源站编辑。</p>
+<label>目标 Origin<input id="target" type="url" placeholder="https://new.example.com"></label>
+<button id="export">下载迁移文件</button>
+</section>
+<section>
+<h2>02 · 目标站检查与初始化</h2>
+<p>目标须与原站不同 Origin，不能运行旧应用。SHA256 仅用于完整性校验，不证明来源身份。</p>
+<label>来源 Origin<input id="source" type="url" placeholder="https://old.example.com"></label>
+<label>选择迁移文件<input id="file" type="file" accept=".json,application/json"></label>
+<pre id="preview"></pre>
+<button id="prepare" disabled>确认初始化</button>
+<button id="refresh">读取目标记录</button>
+<pre id="state"></pre>
+<button id="activate" disabled>启用独立记录</button>
+<button id="archive" disabled>归档独立记录</button>
+<button id="record" disabled>下载目标记录</button>
+<button id="open-editor" disabled>打开权威工作区编辑</button>
+</section>
+<section id="authority-editor" hidden>
+<h2>03 · 独立权威工作区编辑</h2>
+<p>实验性笔记和待办编辑会话，其他工作区数据随完整快照保留。明确保存后才写入 IndexedDB；冲突时保留草稿。</p>
+<p id="editor-revision"></p>
+<p id="editor-checkpoint-status" aria-live="polite"></p>
+<button id="editor-checkpoint">立即保存恢复草稿</button>
+<label>本地恢复记录<select id="editor-recovery"><option value="">选择恢复草稿</option></select></label>
+<button id="editor-recovery-refresh">刷新恢复记录</button>
+<button id="editor-recovery-restore">恢复所选草稿</button>
+<button id="editor-recovery-export">下载所选草稿</button>
+<button id="editor-recovery-delete">删除所选草稿</button>
+<label>导入外部恢复草稿<input id="editor-import" type="file" accept=".json,application/json"></label>
+<p>自动保存有短暂延迟；仅“恢复草稿已持久化”表示本地检查点完成。最多 8 份、总计 32 MiB，满时拒绝写入，不自动删除旧记录。恢复不自动提交权威数据。</p>
+<label>笔记<select id="editor-note"></select></label>
+<label>笔记标题<input id="editor-title"></label>
+<label>笔记正文<textarea id="editor-body" rows="5"></textarea></label>
+<h3>待办事项</h3><div id="editor-todos"></div>
+<button id="editor-save" disabled>保存权威修改</button>
+<button id="editor-rebase">读取并合并最新版本</button>
+<button id="editor-download">导出未提交草稿</button>
+<button id="editor-close">关闭编辑会话</button>
+</section>
+</fieldset>
+<output id="status" role="status" aria-live="polite">请选择操作。</output>
+</main><script type="module" src="../src/migrationConsole.ts"></script></body></html>

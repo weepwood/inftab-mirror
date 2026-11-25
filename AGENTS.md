@@ -369,3 +369,48 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - #36 8ab5c0a 六项专项CI通过，完整Release validation 45548634139/job/138984196222 在 Chromium全量E2E阶段 216通过、1失败、1既有跳过；手机320px品牌右边42.109375大于工具栏左边42，三次复现，已审核下载的实际失败截图。后续稳定浏览器、生产预览和扩展验收被跳过，不能宣称通过。
 - 仅调整<=360px经典模式品牌左距与工具栏右距为12px、工具栏间距1px，保留按钮尺寸和桌面模式。原不重叠断言保留，增加至少8px安全间距断言。初次边距修复本机间距5.609375不足，增加间距压缩后生产Edge productivity全部6/6通过；build:web通过（首屏59.3/60.5、非Swiper195.2/200、Swiper26.4/30、CSS28.4/64 KiB；PWA bootstrap485/512 B、额外JS10716/16384 B、全站1691668/4194304 B）。未改变门禁、依赖或业务功能。
 - main无强制状态检查，因此继续保留Draft，不能用自动合并绕过完整验收。最新修复提交CI全绿后才审查合并并核实main发布及Pages；v1.8.0保留原tag f486d393，v2.0.0此前不存在。不要重复扩大功能或创建其他PR。
+
+## V2.1 存储迁移预检候选（2026-11-25）
+- 基线为正式V2.0.0 main/tag 4eb27a6b6d8140c29406c3e2a369d761b07742c3；#36最终线上95/95文件字节一致、两ZIP校验通过，完整证据见PR评论7153754327。使用独立worktree /private/tmp/inftab-v21-storage，分支feat/v2.1-storage-preflight，不修改已发布Tag。
+- 设置→数据→存储可靠性，按需加载StoragePreflight。保留14核心键、桌面模式、旧天气/历史桌面位置原值及逻辑备份；报告差异、未纳入键，坏JSON拒绝。独立IDB候选单槽8MiB，ID CAS、双来源检查、写后回读，未完成桌面事务拒绝，替换/删除明确确认。没有自动迁移、无原键修改、无网络上传；不是权威存储，旧客户端隔离仍需专门设计。详见docs/workspace-transaction-design.md。
+- 本机npm ci、npm run check、最终build:web通过；首屏59.3/60.5、非Swiper198.7/200、Swiper26.4/30、CSS28.7/64 KiB，PWA额外JS10823/16384 B。最终生产Edge 10/10（新预检4项、旧事务恢复5项、选择性迁移1项），已审截图。新用例加入data-smoke。Linux预算余量紧，待CI核验；不扩大预算、不新增依赖。临时playwright.local-v21.config.ts不提交。
+- 后续集中实现存储世代与旧写入隔离的可验证协议、初始化/回退状态机、CAS与冲突处理；不直接启用权威后端。保留Draft直到完整可用阶段及实际CI通过，下一轮先复查CI。正式V2.1版本号尚未升级。
+
+## V2.1 隔离存储世代与冲突规划（2026-11-25）
+- #37 de86ed8 四项CI（verify、ui-smoke、desktop-cross-browser、data-smoke）全部通过；Linux 非Swiper199.8/200 KiB、首屏59.5/60.5 KiB，730单测。保持现有预算。
+- 新增 workspaceGeneration.ts 独立IDB存储世代契约，prepared/rehearsal/retired、generation+revision CAS、严谨快照校验、原始候选留存、previous回退、退役旧令牌拒绝、退役草稿显式保护、旧数据漂移及未完成桌面事务拒绝；不会修改任何旧键或接管权威存储。实际初始快照与解析规范存在差异，初次E2E因此拒绝；修正为显式确认规范化、保留原候选，后续提交仍要求无隐式规范化。独立记录总大小受候选及head/previous各8MiB限制。旧客户端隔离是检测与停止隔离写入，并非强制旧版本只读。
+- 新增 workspaceConflict.ts 独立三方规划器，按ID与字段合并非冲突修改，保留插入锚点，删除/编辑、同字段、顺序、引用冲突拒绝输出。尚未接入实际编辑及冲突UI。详见docs/workspace-transaction-design.md。
+- 本机最终npm run check、冲突规划6/6单测、真实Edge预检+世代6/6 E2E通过（包含隔离初始化、双标签CAS、回退、代际淘汰、草稿保护、损坏快照、注入配额错误、旧存储漂移）；E2E通过Vite仅打包测试入口运行真实解析器，来源取真实键，逻辑回调取已保存候选，生产响应式接线未验证。新增用例纳入data-smoke。build:web通过（首屏59.3/60.5、非Swiper198.7/200、CSS28.7/64 KiB，PWA额外JS10823/16384 B）；后续改动仅未接生产图的引擎与测试，不扩大预算、无新依赖。
+- 下一轮优先复查#37 CI，治理资源分包后再接入可操作演练/草稿导出与实际响应式快照初始化。全数据权威适配器、真实旧客户端隔离方案、冲突交互、进程终止/跨浏览器迁移专项及V2.1正式发布仍待实施。不将隔离演练当作正式数据迁移。临时playwright.local-v21.config.ts不提交。
+
+## V2.1 演练界面与资源治理（2026-11-25）
+- #37 31022ff verify/ui/cross-browser通过，data-smoke 45557743211/job/139013787850失败：Linux开发环境初始候选已经规范化，错误断言要求prepare必拒绝（error undefined）。使用固定缺失habits的非规范化样本测试显式确认，不降低生产验证。
+- 复用snapshotStore.ts，桌面意图、预检及世代三个库沿用原数据库/存储名及数据格式。按需设置资源合并StoragePreflight、storagePreflight、workspaceGeneration、backup、layoutEditor等；桌面合并试验触发实际桌面加载失败，已停止试验并撤销，保留原分包。最终build:web首屏59.3/60.5、非Swiper198.8/200、Swiper26.4/30、CSS28.5/64 KiB；PWA额外JS10655/16384 B，完整1706266/4194304 B。Linux预算待新CI，门禁不变。
+- 预检界面接入实际实时getBackup初始化、显式接受规范化、替换退役记录确认、开始/回退/结束、JSON文件独立提交、当前草稿及含原始候选与previous的完整记录导出、重载读回。来源漂移限制写入，不修改旧数据，不切换权威存储。完整记录含用户数据，仅本地下载。
+- 最终npm run check通过；冲突规划与桌面意图单测8/8；生产Edge 51/51（desktop-alpha2、desktop-storage、config-migration、storage-preflight、workspace-generation、production-chunks）；实际下载与读回断言已验证。尚未完成Linux重新验收、冲突交互、正式权威适配器及真实跨版本隔离，仍保留#37 Draft。下一轮复查CI，特别关注非Swiper预算；继续集中开发。临时playwright.local-v21.config.ts不提交。
+
+## V2.1 版本化独立草稿与冲突预览（2026-11-25）
+- #37 上轮1e640b5五项远程CI通过；Linux 736单测、非Swiper199.9/200 KiB，预算临界。新功能初次本机非Swiper204844 >204800 bytes，合并设置面板、主题验证及相关按需工具并复用规范比较后build:web通过，首屏59.3/60.5、非Swiper198.7/200、Swiper26.4/30、CSS28.5/64 KiB；PWA额外JS10555/16384 B、完整1709177/4194304 B。未提高预算或新增依赖，Linux仍需核验。
+- 新增rehearsalDraft.ts：inftab-rehearsal v1信封generation/revision/draft，当前及上一保留版本的三方预览，明确确认后CAS提交；缺世代、旧世代、过旧版本、同字段/删除/排序/引用冲突拒绝。冲突展示路径和原因（前20项及总数），保留原文件且可导出原版本未提交内容，手工修正后重导。不是完整逐字段冲突编辑器；不修改生产数据源。原始完整演练记录下载仍保留。
+- 实际check、专项单测8/8、生产Edge宽范围22项通过，另1项UI测试在测试模块回读阶段失败（inspection undefined）；改为实际界面下载完整记录检验合并结果及拒绝旧版本，最终独立世代/预览4/4通过。最终build:web通过。现有首次宽范围其余22项通过的事实不等于最终全量重跑；远程data-smoke等仍需新CI。增加CI路径。更新docs/workspace-transaction-design.md。
+- 仍保留#37 Draft；下一轮核验Linux预算与CI，治理实际权威适配器、跨版本隔离方案及冲突恢复，不将隔离演练宣称为正式迁移。Desktop Commander本月约90%，优先使用GitHub连接器检查远程CI。临时playwright.local-v21.config.ts不提交。
+
+## V2.1 独立 origin 权威适配器候选（2026-11-25）
+- #37 32a2f0d 五项远程CI全部成功；Linux 736单测，首屏59.4/60.5、非Swiper199.8/200 KiB。资源余量紧，保持预算。
+- 新增 workspaceAuthority.ts，独立origin权威适配器候选：独立IDB单槽、显式迁移候选、prepared/active/archived、异步读取与CAS提交/回退/归档、原始候选保留，目标任意inftab.*旧键阻塞写入；不同origin检查，旧源不双写。拒绝覆盖既有记录，拒绝自动回落。未接生产bootstrap，不改变现有localStorage权威性。
+- 旧客户端同源无法强制锁定；独立origin是可实现的部署隔离，但源origin是调用者声明，无法验证导出后修改；目标不应部署旧应用。不同Pages路径不算origin隔离。后续需要真实候选传输界面、独立部署决策、全应用异步适配与故障验收；归档不等于安全回迁旧存储。详见架构文档。
+- 新增真实浏览器双origin测试，覆盖同源拒绝、初始化配额中止、重载、竞争CAS、回退、旧键阻塞与归档；新增data-smoke路径及用例。使用GitHub连接器原子提交，未在本机执行新测试，待远程CI核验。保持#37 Draft，V2.0.0 main/tag不变，无新依赖/生产分包变化。
+
+## V2.1 独立迁移控制台（2026-11-25）
+- #37 e4a2302 五项远程CI全绿（data-smoke 45575612698），权威适配器双origin用例通过。
+- 新增 workspaceTransfer.ts、migration/index.html、src/migrationConsole.ts、vite.migration.config.ts；npm run build:migration 独立产物 dist-migration，保持正式站/PWA/MV3资源预算及原启动不变。源端检查已保存候选、原始键和未完成意图，显式下载绑定双origin/版本/SHA256的文件。目标端预览、二次验证、确认初始化、状态读取、独立启用/归档、记录导出，不允许覆盖既有记录。校验不是签名，文件含私人数据，不能检测源站未落盘编辑及导出后的变化；需先保存候选并关闭其他编辑标签。不得将控制台启用视为正式应用迁移。
+- 新增实际独立构建的浏览器文件传输回归：错误目标、篡改、重载、重复初始化、源字节保留及漂移。data-smoke 增加独立构建步骤。通过GitHub连接器原子提交，未本机运行，待新CI；尚未选定或部署独立域名，尚未全应用异步接线及进程终止验收。继续保留#37 Draft，不修改V2.0 main/tag。
+
+## V2.1 异步权威工作区编辑试点（2026-11-25）
+- #37 c4dc396 verify与data-smoke已通过；736单测、Linux首屏59.4/60.5、非Swiper199.8/200 KiB，独立迁移构建及数据专项22/22。其余专项在检查时运行中。
+- 新增authoritySession.ts异步会话契约及authorityEditor.ts独立控制台业务试点：active读取、base/draft/token、显式CAS保存、三方重基、冲突保留及含基础快照的草稿下载。实际笔记标题/正文与待办完成状态接线，不改其余快照域，不双写原站，不自动回退。关闭/离开未保存提示，内存草稿不保证崩溃恢复。全应用其他域、草稿重新导入、独立部署和进程终止验收仍待完成。
+- 扩展双origin控制台E2E至真实双标签业务编辑竞争、无冲突合并、冲突草稿保留；尚未执行新测试。本轮GitHub原子提交，不消耗Desktop Commander，不加入正式站/PWA/扩展生产图、不放宽预算。保持#37 Draft，main/tag不变。
+
+## V2.1 持久化恢复草稿（2026-11-25）
+- #37 89b93d4 五项远程CI全绿，异步笔记/待办并发试点通过。新建authorityRecovery.ts独立IDB恢复库，每会话随机ID、严格快照/来源/世代验证、有界8份/32MiB、不自动驱逐、比对记录删除。700ms自动检查点及立即保存，串行写入，完成才确认。失败保留内存草稿，恢复到新会话ID，支持列表、下载、删除及外部导入；外部文件基础仅接受当前或上一保留版本，旧本地检查点可保留历史基础，恢复后仍需重基/CAS。
+- 清理仅本会话记录，明确关闭放弃/权威提交后清理。非同一跨库事务，不保证异常终止前未落盘数据，pagehide尽力。重载恢复及同字段冲突保留用例纳入data-smoke，未本机运行，待CI。独立控制台不加入正式站图，不改main/tag，不消耗Desktop Commander。保持#37 Draft。后续仍须全应用接线、跨浏览器异常关闭、资源及部署决策。
