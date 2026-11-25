@@ -1582,16 +1582,17 @@ test('desktop resize cancels marquee and context menus use measured bounds',asyn
  await page.goto('/')
  const canvas=page.locator('.desktop-canvas'),menu=page.locator('.desktop-menu'),marquee=page.locator('.desktop-marquee')
  await expect(canvas).toBeVisible()
- const blank=await canvas.evaluate(el=>{
-  for(let y=innerHeight-225;y>=innerHeight-250;y-=5){
-   for(let x=innerWidth-260;x>=40;x-=20){
+ const findBlank=()=>canvas.evaluate(el=>{
+  const r=el.getBoundingClientRect()
+  for(let y=Math.min(innerHeight-100,r.bottom-20);y>=Math.max(r.top+10,60);y-=10){
+   for(let x=Math.min(innerWidth-30,r.right-20);x>=Math.max(r.left+10,40);x-=15){
     if(document.elementFromPoint(x,y)===el&&document.elementFromPoint(x+12,y+12)===el)return {x,y}
    }
   }
   return null
  })
- expect(blank).not.toBeNull()
- const {x,y}=blank!
+ await expect.poll(findBlank).not.toBeNull()
+ const {x,y}=(await findBlank())!
  const read=()=>page.evaluate(()=>localStorage.getItem('inftab.home-workspaces.v1'))
  const before=await read()
  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+12,y+12,{steps:4})
@@ -1614,4 +1615,79 @@ test('desktop resize cancels marquee and context menus use measured bounds',asyn
  await page.setViewportSize({width:1200,height:900})
  await expect(menu).toHaveCount(0)
  await expect.poll(read).toEqual(before)
+})
+
+test('maximized window can drag out, cancel and dock without losing its free geometry',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000})
+ await page.emulateMedia({reducedMotion:'reduce'})
+ await page.addInitScript(()=>localStorage.setItem('inftab.desktop-mode.v1','true'))
+ await page.goto('/')
+ await page.getByRole('button',{name:'Finder',exact:true}).click()
+ const finder=page.getByRole('dialog',{name:'Finder 入口管理'})
+ await expect(finder).toBeVisible()
+ const free=(await finder.boundingBox())!
+ await finder.getByRole('button',{name:'最大化 Finder'}).click()
+ await expect(finder).toHaveClass(/maximized/)
+ await expect.poll(async()=>Math.round((await finder.boundingBox())!.width)).toBe(1416)
+ const max=(await finder.boundingBox())!
+ const saved=()=>page.evaluate(()=>sessionStorage.getItem('inftab.window-geometry.v1'))
+ const initial=await saved()
+ async function dragTo(x:number,y:number){
+  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))))
+  const header=finder.locator('.window-title')
+  const title=(await header.boundingBox())!
+  const point={x:title.x+title.width*.5,y:title.y+title.height*.5}
+  await expect.poll(()=>header.evaluate((el,p)=>{const hit=document.elementFromPoint(p.x,p.y);return !!hit&&el.contains(hit)&&!hit.closest('button')},point)).toBe(true)
+  await page.mouse.move(point.x,point.y);await page.mouse.down()
+  await page.mouse.move(x,y,{steps:12})
+ }
+ await dragTo(700,200)
+ await expect(finder).not.toHaveClass(/maximized/)
+ await expect.poll(async()=>Math.round((await finder.boundingBox())!.width)).toBe(Math.round(free.width))
+ await page.keyboard.press('Escape');await page.mouse.up()
+ await expect(finder).toHaveClass(/maximized/)
+ await expect.poll(()=>finder.boundingBox()).toEqual(max)
+ await expect.poll(saved).toEqual(initial)
+ await dragTo(700,200);await page.mouse.up()
+ await expect(finder.getByRole('button',{name:'最大化 Finder'})).toBeVisible()
+ await expect.poll(async()=>Math.round((await finder.boundingBox())!.width)).toBe(Math.round(free.width))
+ await expect.poll(saved).not.toEqual(initial)
+ await finder.getByRole('button',{name:'最大化 Finder'}).click()
+ await dragTo(12,200)
+ await expect(page.locator('.window-snap-preview')).toBeVisible()
+ await page.mouse.up()
+ await expect(finder.getByRole('button',{name:'左侧停靠'})).toHaveAttribute('aria-pressed','true')
+ await expect(finder).not.toHaveClass(/maximized/)
+ await finder.getByRole('button',{name:'左侧停靠'}).click()
+ await expect.poll(async()=>Math.round((await finder.boundingBox())!.width)).toBe(Math.round(free.width))
+})
+
+test('desktop icon preferences resize visuals and hide labels without moving hit targets',async({page})=>{
+ await page.setViewportSize({width:1280,height:900})
+ await page.addInitScript(()=>{
+  localStorage.setItem('inftab.desktop-mode.v1','true')
+  if(!localStorage.getItem('inftab.preferences.v1'))localStorage.setItem('inftab.preferences.v1',JSON.stringify({iconSize:72,showNames:true,showSearchBar:false}))
+ })
+ await page.goto('/')
+ const icon=page.locator('.desktop-icon[data-item-id="todos"]'),symbol=icon.locator('.desktop-symbol')
+ await expect(icon).toBeVisible()
+ await expect(symbol).toHaveCSS('width','56px')
+ const box=await icon.boundingBox(),saved=()=>page.evaluate(()=>localStorage.getItem('inftab.home-workspaces.v1')),before=await saved()
+ await page.locator('.home-actions').getByRole('button',{name:'打开设置',exact:true}).click()
+ const panel=page.getByRole('dialog',{name:'设置',exact:true})
+ const size=panel.getByRole('spinbutton',{name:'图标大小精确值（px）',exact:true})
+ await size.fill('40');await size.press('Enter')
+ await expect(symbol).toHaveCSS('width','32px')
+ await panel.getByLabel('显示网站名称').uncheck()
+ await expect(icon.locator('.desktop-label')).toHaveCount(0)
+ await expect(icon).toHaveAttribute('aria-label','待办事项')
+ await size.fill('120');await size.press('Enter')
+ await expect(symbol).toHaveCSS('width','80px')
+ await panel.getByRole('button',{name:'关闭',exact:true}).click()
+ await expect.poll(()=>icon.boundingBox()).toEqual(box)
+ await expect.poll(saved).toEqual(before)
+ await page.reload()
+ await expect(symbol).toHaveCSS('width','80px')
+ await expect(icon.locator('.desktop-label')).toHaveCount(0)
+ await expect.poll(()=>icon.boundingBox()).toEqual(box)
 })
