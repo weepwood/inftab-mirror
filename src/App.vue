@@ -135,6 +135,7 @@ const searchBar = ref<{ focusSearch: () => void; showTranslationError: () => voi
 const sidePanel = ref<HTMLElement>()
 const shortcutDialogElement = ref<HTMLDialogElement>()
 const folderDialogOpen = ref(false)
+let desktopFolderReturnFocus:HTMLElement|undefined
 const activeFolder = ref<ShortcutFolder>()
 const folderWorkspaceId = ref('default')
 const folderSaveError = ref('')
@@ -292,13 +293,22 @@ watch(() => [preferences.value.wallpaperRotation, preferences.value.wallpaperRot
 watch(activePanel, async (panel, previousPanel) => {
   if (panel && !previousPanel) panelReturnFocusTarget = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
   if (!panel && previousPanel) {
-    if (panelReturnFocusTarget?.isConnected) panelReturnFocusTarget.focus()
+    const target=panelReturnFocusTarget
     panelReturnFocusTarget = undefined
+    if(!desktopMode.value){if(target?.isConnected)target.focus();return}
+    await nextTick()
+    if(target?.isConnected&&!target.closest('[inert]'))target.focus({preventScroll:true})
     return
   }
   if (!panel) return
   await nextTick()
   if (sidePanel.value) getOverlayFocusable(sidePanel.value)[0]?.focus()
+})
+watch(folderDialogOpen,async open=>{
+  if(open)return
+  const target=desktopFolderReturnFocus;desktopFolderReturnFocus=undefined
+  await nextTick()
+  if(target?.isConnected&&!target.closest('[inert]'))target.focus({preventScroll:true})
 })
 watch(shortcutDialog, async (isOpen) => {
   if (isOpen) {
@@ -357,7 +367,8 @@ function openLocalSearchResult(match: LauncherSearchMatch, event?: MouseEvent) {
   localSearchMode.value = false
   query.value = ''
   document.querySelector<HTMLButtonElement>('.home-search-toggle')?.focus()
-  openItem(match.item, event)
+  if(desktopMode.value)desktopOpen(match.item,event)
+  else openItem(match.item, event)
 }
 
 function createFromSearch(folder = false) {
@@ -378,6 +389,7 @@ function loadPanelRegistry() {
 }
 
 function openPanel(id: PanelId) {
+  if(desktopMode.value)dismissDesktopSearch()
   if(desktopMode.value && !minimalMode.value && id !== 'settings' && id !== 'bookmarks' && id !== 'history') {
     finderRequest.value={sequence:++finderSequence,workspaceId:activeHomeWorkspaceId.value,panelId:id}
     return
@@ -391,9 +403,22 @@ function switchDesktopWorkspace(id: string) {
   if(homeWorkspaces.value.some(w=>w.id===id))activeHomeWorkspaceId.value=id
 }
 function openFinder(folderId?: string) {
-  finderRequest.value = { sequence: ++finderSequence, workspaceId: activeHomeWorkspaceId.value, folderId }
+  dismissDesktopSearch()
+  const owner=folderId?homeWorkspaces.value.find(w=>w.itemIds.includes(folderId)):undefined
+  finderRequest.value = { sequence: ++finderSequence, workspaceId: owner?.id??activeHomeWorkspaceId.value, folderId }
+}
+function dismissDesktopSearch(){
+  if(localSearchMode.value){localSearchMode.value=false;query.value=''}
+}
+function dismissSearchOutside(event:PointerEvent){
+  if(desktopMode.value&&localSearchMode.value&&event.target instanceof Element&&!event.target.closest('.search-area,.home-search-toggle'))dismissDesktopSearch()
+}
+function dockOpen(item:LauncherItem,event?:MouseEvent){
+  if(desktopMode.value&&!minimalMode.value)desktopOpen(item,event)
+  else openItem(item,event)
 }
 function desktopOpen(item: LauncherItem, event?: MouseEvent) {
+  dismissDesktopSearch()
   if (item.folder) openFinder(item.id)
   else openItem(item,event)
 }
@@ -429,6 +454,7 @@ function openFinderFolderEditor(workspaceId: string, parentId?:string) {
 
 const folderParentId=ref<string>()
 function openFolderEditor(folder?: ShortcutFolder, workspaceId = activeHomeWorkspaceId.value) {
+  if(desktopMode.value&&!folderDialogOpen.value)desktopFolderReturnFocus=document.activeElement instanceof HTMLElement?document.activeElement:undefined
   folderParentId.value=folder?.parentId
   folderWorkspaceId.value = (folder && homeWorkspaces.value.find(w => w.itemIds.includes(folder.id))?.id) || workspaceId
   folderSaveError.value = ''
@@ -645,6 +671,18 @@ async function applyHomeLayout(draft: LayoutEditorDraft) {
   return error
 }
 
+function toggleWindowOverview(){
+ dismissDesktopSearch();overviewRequest.value++
+}
+function returnHome(){
+ if(desktopMode.value&&!minimalMode.value){
+  dismissDesktopSearch()
+  switchDesktopWorkspace(homeWorkspaces.value[0]?.id??activeHomeWorkspaceId.value)
+  document.querySelector<HTMLElement>('#main-content')?.focus({preventScroll:true})
+  return
+ }
+ goToPage(0)
+}
 function openCommandPalette() {
   if (!overlayOpen.value) commandPaletteOpen.value = true
 }
@@ -659,7 +697,7 @@ async function runCommand(id: string) {
   else if (id === 'light' || id === 'dark' || id === 'system') updatePreferences({ themeMode: id })
   else if (id === 'home') goToPage(0)
   else if (id === 'desktop:finder' && desktopMode.value) openFinder()
-  else if (id === 'desktop:overview' && desktopMode.value) overviewRequest.value++
+  else if (id === 'desktop:overview' && desktopMode.value) toggleWindowOverview()
   else if (id === 'desktop:classic' && desktopMode.value) desktopMode.value = false
   else if (id.startsWith('panel:')) openPanel(id.slice(6) as PanelId)
   else if (desktopMode.value && id.startsWith('record:')) openDesktopRecord(id)
@@ -717,6 +755,8 @@ function handleKeydown(event: KeyboardEvent) {
   const target = event.target instanceof HTMLElement ? event.target : null
   const editingText = target?.matches('input, textarea, [contenteditable="true"]') ?? false
   const navigatingComposite = Boolean(target?.closest('[role="menu"], [role="listbox"]'))
+  // A focused application owns text editing and local keyboard commands.
+  if(desktopMode.value&&target?.closest('.window-frame')&&(editingText||navigatingComposite))return
   const localSearchShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f'
   if (localSearchShortcut && (!editingText || target?.closest('.search-area'))
     && !activePanel.value && !shortcutDialog.value && !folderDialogOpen.value) {
@@ -807,6 +847,7 @@ onMounted(() => {
     if (!historyDisposed) return module.captureDailyHistory(() => historyDisposed ? undefined : createBackup())
   }).catch(() => undefined) }, 2000)
   window.addEventListener('keydown', handleKeydown)
+  document.addEventListener('pointerdown',dismissSearchOutside,true)
   window.addEventListener('resize', updateViewport)
   window.addEventListener(storageWriteErrorEvent, handleStorageWriteError)
   window.addEventListener(storageWriteSuccessEvent, handleStorageWriteSuccess)
@@ -827,6 +868,7 @@ onBeforeUnmount(() => {
   applyCustomTheme(document.documentElement)
   delete document.documentElement.dataset.themePalette
   window.removeEventListener('keydown', handleKeydown)
+  document.removeEventListener('pointerdown',dismissSearchOutside,true)
   window.removeEventListener('resize', updateViewport)
   window.removeEventListener(storageWriteErrorEvent, handleStorageWriteError)
   window.removeEventListener(storageWriteSuccessEvent, handleStorageWriteSuccess)
@@ -845,25 +887,25 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': !minimalMode && (showHomeWidgets || shortHomeScrollEnabled), 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode, 'desktop-mode': desktopMode && !minimalMode }" :style="backgroundStyle" @pointerdown="startLauncherSwipe" @pointerup="!desktopMode && finishHomeSwipe($event)" @pointercancel="cancelHomeSwipe()" @wheel="!desktopMode && handleHomeWheel($event)">
-    <a class="skip-link" href="#main-content">跳到快捷入口</a>
+    <a class="skip-link" :inert="(desktopMode&&overlayOpen)||undefined" href="#main-content">跳到快捷入口</a>
     <h1 class="visually-hidden">Infinity 新标签页</h1>
     <div class="background-shade"></div>
     <div class="home-brand" aria-label="Infinity 新标签页"><span class="brand-mark" aria-hidden="true">∞</span><span class="brand-word">infinity</span><span class="brand-label">新标签页</span></div>
-    <header class="home-actions">
+    <header class="home-actions" :inert="(desktopMode&&overlayOpen)||undefined">
       <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="openFinder()">Inftab</button>
       <DesktopMenus v-if="desktopMode && !minimalMode" @run="$event==='desktop:folder'?openFolderEditor():runCommand($event)" />
-      <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="overviewRequest++">窗口</button>
+      <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="toggleWindowOverview">窗口</button>
       <button v-if="!minimalMode" type="button" class="round-action desktop-mode-toggle" :aria-label="desktopMode ? '经典模式' : '桌面模式'" :title="desktopMode ? '经典模式' : '桌面模式'" :aria-pressed="desktopMode" @click="desktopMode = !desktopMode"><span aria-hidden="true">▦</span></button>
       <button type="button" class="round-action home-command-toggle" aria-label="打开命令面板" title="命令面板（Ctrl/⌘+Shift+P）" @click="openCommandPalette"><span aria-hidden="true">⌘</span></button>
       <button v-if="!minimalMode" type="button" class="round-action home-create-shortcut" aria-label="新建快捷入口" title="新建快捷入口" @click="openShortcutDialog()"><Plus :size="19" /></button>
       <button type="button" class="round-action home-search-toggle" aria-label="查找快捷入口" title="查找快捷入口（Ctrl/⌘+F）" :aria-pressed="localSearchMode" @click="setLocalSearch(!localSearchMode)"><Search :size="18" /></button>
       <button type="button" class="round-action minimal-mode-toggle" :aria-label="minimalMode ? '退出极简模式' : '进入极简模式'" :aria-pressed="minimalMode" :title="minimalMode ? '退出极简模式' : '进入极简模式'" @click="toggleMinimalMode"><X v-if="minimalMode" :size="18" /><span v-else class="minimal-mode-symbol" aria-hidden="true"></span></button>
-      <button type="button" class="round-action" aria-label="回到首页" title="回到首页" @click="goToPage(0)"><House :size="19" /></button>
+      <button type="button" class="round-action" aria-label="回到首页" title="回到首页" @click="returnHome"><House :size="19" /></button>
       <button type="button" class="round-action" aria-label="打开设置" title="打开设置" @click="openPanel('settings')"><Menu :size="21" /></button>
       <ClockWidget v-if="desktopMode && !minimalMode && preferences.showClock" />
     </header>
 
-    <section id="main-content" class="home-content" :class="{ 'home-content-minimal': minimalMode }" tabindex="-1">
+    <section id="main-content" :inert="(desktopMode&&overlayOpen)||undefined" class="home-content" :class="{ 'home-content-minimal': minimalMode, 'desktop-search-reserved': desktopMode&&!minimalMode&&preferences.showSearchBar }" tabindex="-1">
       <ClockWidget v-if="preferences.showClock && (!desktopMode || minimalMode)" />
       <HomeWidgetShelf
         v-if="showHomeWidgets && !minimalMode"
@@ -919,7 +961,7 @@ onBeforeUnmount(() => {
           />
         </template>
       </SearchBar>
-      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" :folder-shortcuts="folderPreviewItems" :dark="effectiveTheme==='dark'" @layout="saveDesktopLayout" @open="desktopOpen" @edit="editLauncherItem" @finder="openFinder()" @create="openFolderEditor()" @remove="removeLauncherItem" @membership="finderMembership" />
+      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" :folder-shortcuts="folderPreviewItems" :dark="effectiveTheme==='dark'" :blocked="overlayOpen" :search-active="localSearchMode" @dismiss-search="dismissDesktopSearch" @layout="saveDesktopLayout" @open="desktopOpen" @edit="editLauncherItem" @finder="openFinder()" @create="openFolderEditor()" @remove="removeLauncherItem" @membership="finderMembership" />
       <ShortcutGrid
         v-if="!minimalMode && !desktopMode"
         :items="allLauncherItems"
@@ -953,8 +995,8 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :history="desktopHistory" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="runningDesktopPanels=$event" @create="openFinderFolderEditor" />
-    <HomeDock v-if="homeDockItems.length && !minimalMode" :desktop="desktopMode" :items="homeDockItems" :running-panels="runningDesktopPanels" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
+    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :blocked="overlayOpen||localSearchMode||minimalMode" :inert="(overlayOpen)||undefined" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :history="desktopHistory" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="runningDesktopPanels=$event" @create="openFinderFolderEditor" />
+    <HomeDock v-if="homeDockItems.length && !minimalMode" :blocked="desktopMode&&overlayOpen" :desktop="desktopMode" :items="homeDockItems" :running-panels="runningDesktopPanels" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="dockOpen" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
       <span>{{ storageError }}</span>
@@ -1013,7 +1055,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.desktop-mode .home-content{width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;padding-top:54px;padding-bottom:84px}
+.home.desktop-mode .home-content:not(.home-content-minimal){width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;justify-content:flex-start;gap:8px;padding-top:54px;padding-bottom:84px}
+.home.desktop-mode .home-content.desktop-search-reserved{padding-top:142px}
 .desktop-mode .desktop-shell{min-height:240px}
 .desktop-mode .storage-error-toast{position:fixed;z-index:9;bottom:14px}
 .desktop-mode-toggle{font-size:22px}
@@ -1025,8 +1068,10 @@ onBeforeUnmount(() => {
 .desktop-menu-label:hover{background:var(--ui-accent-soft)}
 .desktop-menu-label:first-child{margin-right:2px;font-weight:650}
 .desktop-mode .desktop-mode-toggle{margin-left:auto}
-.desktop-mode .home-content{justify-content:flex-start;gap:8px}
-.desktop-mode .home-content :deep(.search-area){width:min(420px,100%);margin:0 auto 4px}
+.home.desktop-mode .home-content:not(.home-content-minimal){z-index:auto}
+.desktop-mode .home-content :deep(.search-area){position:absolute;z-index:2;top:54px;left:50%;transform:translateX(-50%);width:min(420px,100%);margin:0}
+.desktop-mode .home-content :deep(.search-area.local-search-mode){z-index:10}
+.desktop-mode .home-content :deep(.local-search-results){border-radius:10px;background:var(--mac-menu);border-color:var(--mac-line);box-shadow:var(--mac-shadow)}
 .desktop-mode .home-content :deep(.search-box){height:40px;border-radius:10px;background:var(--mac-bar);border-color:var(--mac-line);box-shadow:0 4px 18px #0002}
 .desktop-mode .home-actions :deep(.home-clock){display:flex;flex-direction:row-reverse;align-items:center;gap:7px;margin:0 0 0 6px;color:var(--mac-ink);text-shadow:none;white-space:nowrap}
 .desktop-mode .home-actions :deep(.clock-time),.desktop-mode .home-actions :deep(.clock-date){font:500 12px/1.3 var(--mac-font);color:inherit;letter-spacing:0;text-shadow:none}

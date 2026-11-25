@@ -117,15 +117,16 @@ async function navigateKey(e:KeyboardEvent){
  buttons[next]?.focus()
 }
 function closeMenu(restore=false){
- contextMenu.value=undefined
- if(restore)void nextTick(()=>{if(returnFocus?.isConnected)returnFocus.focus()})
+ const target=returnFocus
+ contextMenu.value=undefined;returnFocus=undefined
+ if(restore&&target?.isConnected)target.focus({preventScroll:true})
 }
 watch(()=>props.active&&!props.hidden&&!props.minimized,active=>{if(!active)closeMenu()})
 async function showMenu(event:MouseEvent|KeyboardEvent,item?:LauncherItem){
  event.preventDefault();event.stopPropagation()
  if(item&&!selected.value.includes(item.id)){selected.value=[item.id];anchor.value=item.id;focusId.value=item.id}
  if(!item)selected.value=[]
- returnFocus=event.currentTarget instanceof HTMLElement?event.currentTarget:undefined
+ returnFocus=event.currentTarget instanceof HTMLElement?(event.currentTarget.matches('button')?event.currentTarget:event.currentTarget.closest<HTMLElement>('.window-frame')??undefined):undefined
  const bounds=body.value?.getBoundingClientRect()
  if(!bounds)return
  const target=returnFocus?.getBoundingClientRect()
@@ -138,7 +139,7 @@ async function showMenu(event:MouseEvent|KeyboardEvent,item?:LauncherItem){
  contextMenu.value={x:Math.max(4,Math.min(contextMenu.value.x,bounds.width-menu.offsetWidth-4)),y:Math.max(4,Math.min(contextMenu.value.y,bounds.height-menu.offsetHeight-4))}
  menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
 }
-function menuAction(action:()=>void){closeMenu();action()}
+function menuAction(action:()=>void){closeMenu(true);action()}
 function menuKeys(e:KeyboardEvent){
  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeMenu(true);return}
  if(e.key==='Tab'){closeMenu();return}
@@ -150,6 +151,7 @@ function menuKeys(e:KeyboardEvent){
  buttons[e.key==='Home'?0:e.key==='End'?buttons.length-1:(index+(e.key==='ArrowUp'?-1:1)+buttons.length)%buttons.length]?.focus()
 }
 function keys(e:KeyboardEvent){
+ if(e.defaultPrevented||e.isComposing||e.keyCode===229)return
  if(e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement)return
  if(e.ctrlKey||e.metaKey){
   const key=e.key.toLowerCase()

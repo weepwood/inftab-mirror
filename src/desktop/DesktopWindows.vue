@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { Folder, Layers } from '@lucide/vue'
 import FinderWindow from './FinderWindow.vue'
 import { launcherIcons } from '../components/launcherIcons'
@@ -15,7 +15,7 @@ import { folderParents } from '../data/folderTree'
 import { readWindowSession, saveWindowSession } from './windowSession'
 import { activeWindow, activateWindow, closeWindow, openWindow, updateWindow, maxWindows, reconcileWindowSpaces } from './windowManager'
 
-const props = defineProps<{ request?: { sequence:number; workspaceId:string; folderId?:string; panelId?:PanelId; targetId?:string }; context:PanelPluginContext; overviewRequest?:number; operationError?:string; history:{undo:boolean;redo:boolean}; mutate:(action:DesktopMutation)=>Promise<boolean>; items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; dark?:boolean }>()
+const props = defineProps<{ request?: { sequence:number; workspaceId:string; folderId?:string; panelId?:PanelId; targetId?:string }; context:PanelPluginContext; overviewRequest?:number; operationError?:string; history:{undo:boolean;redo:boolean}; mutate:(action:DesktopMutation)=>Promise<boolean>; items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; dark?:boolean; blocked?:boolean }>()
 const emit = defineEmits<{ open:[item:LauncherItem,event?:MouseEvent]; edit:[item:LauncherItem]; remove:[item:LauncherItem]; create:[workspaceId:string,parentId?:string]; dismissError:[]; switchWorkspace:[id:string]; running:[ids:PanelId[]] }>()
 const state=ref(readWindowSession(props.workspaces,props.items.filter(i=>i.folder).map(i=>i.id))), overview=ref(false), limit=ref(false)
 watch(state,value=>saveWindowSession(value))
@@ -51,11 +51,33 @@ function moveWindow(id:number,event:Event){
  if(props.workspaces.some(w=>w.id===target))state.value=updateWindow(state.value,id,{spaceId:target})
 }
 watch(()=>state.value.windows.map(w=>w.panelId).filter((id):id is PanelId=>!!id),ids=>emit('running',ids),{immediate:true})
-watch(()=>props.overviewRequest,value=>{if(value)overview.value=true},{immediate:true})
+const overviewRoot=ref<HTMLElement>()
+let overviewTrigger:HTMLElement|undefined
+function openOverview(){
+ if(props.blocked)return
+ overviewTrigger=document.activeElement instanceof HTMLElement?document.activeElement:undefined
+ overview.value=true
+ void nextTick(()=>overviewRoot.value?.querySelector<HTMLButtonElement>('header button')?.focus({preventScroll:true}))
+}
+function closeOverview(restore=false){
+ if(!overview.value)return
+ overview.value=false
+ const trigger=overviewTrigger;overviewTrigger=undefined
+ if(restore)void nextTick(()=>{if(trigger?.isConnected&&!trigger.closest('[inert]'))trigger.focus({preventScroll:true})})
+}
+function overviewOutside(event:PointerEvent){
+ if(overview.value&&!overviewRoot.value?.contains(event.target as Node)&&!(event.target as Element)?.closest('[aria-label="窗口概览"],.desktop-menu-label'))closeOverview()
+}
+watch(()=>props.overviewRequest,value=>{if(value){if(overview.value)closeOverview(true);else openOverview()}},{immediate:true})
+watch(()=>props.blocked,value=>{if(value)closeOverview()})
+watch(()=>props.workspaceId,()=>closeOverview())
+onMounted(()=>document.addEventListener('pointerdown',overviewOutside,true))
+onBeforeUnmount(()=>document.removeEventListener('pointerdown',overviewOutside,true))
 watch(()=>props.request, request=>{
  if(!request)return
  const next=openWindow(state.value,request)
  limit.value=next===state.value&&state.value.windows.length>=maxWindows&&!state.value.windows.some(w=>request.panelId?w.panelId===request.panelId:!w.panelId&&w.workspaceId===request.workspaceId&&w.folderId===request.folderId)
+ closeOverview()
  state.value=next
  const opened=next.windows.at(-1)
  if(!limit.value&&opened&&opened.spaceId!==props.workspaceId)emit('switchWorkspace',opened.spaceId)
@@ -63,9 +85,9 @@ watch(()=>props.request, request=>{
 function activate(id:number){
  const target=state.value.windows.find(w=>w.id===id)
  if(target&&target.spaceId!==props.workspaceId)emit('switchWorkspace',target.spaceId)
- state.value=activateWindow(state.value,id);overview.value=false
+ state.value=activateWindow(state.value,id);closeOverview()
 }
-function close(id:number){state.value=closeWindow(state.value,id);limit.value=false;if(!state.value.windows.length)overview.value=false}
+function close(id:number){state.value=closeWindow(state.value,id);limit.value=false;if(!state.value.windows.length)closeOverview()}
 function minimize(id:number){state.value=updateWindow(state.value,id,{minimized:true})}
 function maximize(id:number){const w=state.value.windows.find(w=>w.id===id);if(w)state.value=updateWindow(state.value,id,{maximized:!w.maximized})}
 function browse(id:number,workspaceId:string,folderId?:string){state.value=updateWindow(state.value,id,{browseWorkspaceId:workspaceId,browseFolderId:folderId})}
@@ -91,12 +113,12 @@ async function paste(workspaceId:string,folderId:string|null){
   <FinderWindow v-else :history="history" @history-action="historyAction" :clipboard="clipboard" :pasting="pasting" @clipboard="clipboard=$event" @paste="paste" :items="items" :workspaces="workspaces" :workspace-id="window.workspaceId" :folder-id="window.folderId" :browse-workspace-id="window.browseWorkspaceId" :browse-folder-id="window.browseFolderId" @location="(workspaceId:string,folderId?:string)=>browse(window.id,workspaceId,folderId)" :dark="dark" :active="window.id===active" :hidden="window.spaceId!==workspaceId" :minimized="window.minimized" :maximized="window.maximized" :cascade="window.cascade" :layer="index+1" @activate="activate(window.id)" @close="close(window.id)" @minimize="minimize(window.id)" @maximize="maximize(window.id)" @title="title(window.id,$event)" @open="forwardOpen" @edit="emit('edit',$event)" @remove="emit('remove',$event)" @move="forwardMove" @membership="forwardMembership" @reparent="reparent" @create="createFolder" />
   </template>
   <div v-if="state.windows.length" class="window-shelf">
-   <button type="button" aria-label="窗口概览" :aria-expanded="overview" @click="overview=!overview"><Layers :size="16"/> {{state.windows.length}} 个窗口</button>
+   <button type="button" aria-label="窗口概览" :aria-expanded="overview" @click="overview?closeOverview(true):openOverview()"><Layers :size="16"/> {{state.windows.length}} 个窗口</button>
    <button v-for="window in minimized" :key="window.id" type="button" :aria-label="window.panelId?'恢复 '+window.title:'恢复 Finder'" :title="window.title" @click="activate(window.id)"><component :is="window.panelId?launcherIcons[window.panelId]??Folder:Folder" :size="16"/> {{window.title}}</button>
   </div>
-  <section v-if="overview" class="window-overview" aria-label="窗口概览" @keydown.esc.stop="overview=false">
-   <header><strong>运行中的窗口</strong><button type="button" @click="overview=false">关闭概览</button></header>
-   <div class="space-list"><small>桌面空间</small><button v-for="space in workspaces" :key="space.id" :aria-pressed="space.id===workspaceId" @click="emit('switchWorkspace',space.id);overview=false"><span class="space-preview" aria-hidden="true"><i v-for="item in previewItems(space)" :key="item.id" :style="{left:item.x+'%',top:item.y+'%'}"/></span><strong>{{space.name}}</strong><span>{{state.windows.filter(w=>w.spaceId===space.id).length}} 个窗口</span></button></div>
+  <section v-if="overview" ref="overviewRoot" class="window-overview" aria-label="窗口概览" @keydown.esc.stop.prevent="closeOverview(true)">
+   <header><strong>运行中的窗口</strong><button type="button" @click="closeOverview(true)">关闭概览</button></header>
+   <div class="space-list"><small>桌面空间</small><button v-for="space in workspaces" :key="space.id" :aria-pressed="space.id===workspaceId" @click="emit('switchWorkspace',space.id);closeOverview(true)"><span class="space-preview" aria-hidden="true"><i v-for="item in previewItems(space)" :key="item.id" :style="{left:item.x+'%',top:item.y+'%'}"/></span><strong>{{space.name}}</strong><span>{{state.windows.filter(w=>w.spaceId===space.id).length}} 个窗口</span></button></div>
    <p v-if="!state.windows.length">没有运行中的窗口。</p>
    <div v-if="state.windows.length" class="overview-grid"><div v-for="window in [...state.windows].reverse()" :key="window.id" class="overview-window"><button type="button" class="overview-card" @click="activate(window.id)"><span class="overview-preview" :class="{'is-minimized':window.minimized,'is-active':window.id===active}" aria-hidden="true"><span class="overview-titlebar"><i/><i/><i/></span><span class="overview-preview-body"><component :is="window.panelId?launcherIcons[window.panelId]??Folder:Folder" :size="32" :stroke-width="1.5"/></span></span><span class="overview-caption">{{window.title}}<small>{{spaceName(window.spaceId)}} · {{window.minimized?'已最小化':window.id===active?'当前窗口':'打开中'}}</small></span></button><select :aria-label="'移动窗口 '+window.title" :value="window.spaceId" @change="moveWindow(window.id,$event)"><option v-for="space in workspaces" :key="space.id" :value="space.id">{{space.name}}</option></select></div></div>
   </section>

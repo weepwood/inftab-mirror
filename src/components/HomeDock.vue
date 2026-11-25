@@ -7,7 +7,7 @@ import type { LauncherItem } from '../types'
 import { launcherPanelRoutes, shortcutPanelRoutes } from '../plugins/routes'
 import type { PanelId } from '../plugins/ids'
 
-const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean; autoHide?: boolean; runningPanels?: PanelId[]; desktop?: boolean }>(), {
+const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean; autoHide?: boolean; runningPanels?: PanelId[]; desktop?: boolean; blocked?:boolean }>(), {
   magnificationEnabled: false,
   iconSize: 44,
   iconGap: 2,
@@ -158,7 +158,7 @@ function cleanGestureListeners() {
 }
 
 function startDockGesture(event: PointerEvent) {
-  if (event.pointerType !== 'touch' || event.button !== 0 || !dock.value) return
+  if (props.blocked || event.pointerType !== 'touch' || event.button !== 0 || !dock.value) return
   gesture = {
     pointerId: event.pointerId,
     startX: event.clientX,
@@ -314,9 +314,11 @@ function closeContextMenu(restoreFocus = false) {
 }
 
 function closeOnOutsideClick() { closeContextMenu() }
+watch(()=>props.blocked,value=>{if(value){closeContextMenu();clearDockMagnification();cleanGestureListeners();gesture=undefined;dragId.value=undefined;dropTarget.value=undefined;clearSuppressedClick();clearReorders()}})
 
 function showContextMenu(event: Event, item: LauncherItem, x: number, y: number) {
   event.preventDefault()
+  if(props.blocked)return
   contextTrigger = event.currentTarget as HTMLElement
   if(props.desktop)clearDockMagnification()
   const iconBounds = contextTrigger.querySelector('.home-dock-icon')?.getBoundingClientRect()
@@ -374,7 +376,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <nav v-if="items.length" ref="dock" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled, 'dock-auto-hide': props.autoHide, 'dock-menu-open': Boolean(contextItem), 'dock-dragging': Boolean(dragId) }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px` }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="releaseDockMagnification" @click.capture="preventGestureClick">
+  <nav v-if="items.length" ref="dock" :inert="(props.blocked)||undefined" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled, 'dock-auto-hide': props.autoHide, 'dock-menu-open': Boolean(contextItem), 'dock-dragging': Boolean(dragId) }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px` }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="releaseDockMagnification" @click.capture="preventGestureClick">
     <div class="home-dock-track" @scroll.passive="clearDockMagnification">
       <div v-for="(item,index) in items" :key="item.id" class="home-dock-entry" :data-title="item.title" :class="{ 'dock-divider': props.desktop && index>0 && !item.action && !!items[index-1]?.action, 'dock-drag-source': dragId === item.id, 'dock-drop-before': dropTarget?.id === item.id && !dropTarget.after, 'dock-drop-after': dropTarget?.id === item.id && dropTarget.after }" @dragover="previewDrop($event, item.id)" @drop="dropItem($event, item.id)">
         <button
