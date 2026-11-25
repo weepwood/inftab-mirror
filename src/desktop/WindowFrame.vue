@@ -23,6 +23,14 @@ let originalSnap:WindowSnap=null
 let delta={left:0,right:0,top:0,bottom:0}
 let motion:Animation|undefined
 let motionId=0
+const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)')
+let lastField:HTMLElement|undefined
+function focusWithin(e:FocusEvent){
+ const target=e.target
+ if(props.hidden||props.minimized||root.value?.closest('[inert]'))return
+ if(target instanceof HTMLElement&&target.matches('input,textarea,[contenteditable=true]'))lastField=target
+ emit('activate')
+}
 let dockMotion=props.minimized
 function dockTransition(el:Element){
  const frame=el as HTMLElement
@@ -39,17 +47,19 @@ watch(()=>props.minimized,()=>{dockMotion=true},{flush:'sync'})
 function stopMotion(){motionId++;motion?.cancel();motion=undefined}
 function animateGeometry(){
  const el=root.value
- if(!el||props.hidden||props.minimized||matchMedia('(prefers-reduced-motion: reduce)').matches)return
+ if(!el||props.hidden||props.minimized||reducedMotion.matches)return
  const from=el.getBoundingClientRect()
  stopMotion()
  const id=motionId
  void Promise.resolve().then(()=>nextTick()).then(()=>{
-  if(id!==motionId||!el.isConnected||!el.animate)return
+  if(id!==motionId||!el.isConnected||!el.animate||reducedMotion.matches)return
   const to=el.getBoundingClientRect()
   if(!to.width||!to.height||from.x===to.x&&from.y===to.y&&from.width===to.width&&from.height===to.height)return
-  motion=el.animate([{transformOrigin:'0 0',transform:`translate(${from.x-to.x}px,${from.y-to.y}px) scale(${from.width/to.width},${from.height/to.height})`},{transformOrigin:'0 0',transform:'none'}],{duration:220,easing:'cubic-bezier(.2,.8,.2,1)'})
+  const animation=motion=el.animate([{transformOrigin:'0 0',transform:`translate(${from.x-to.x}px,${from.y-to.y}px) scale(${from.width/to.width},${from.height/to.height})`},{transformOrigin:'0 0',transform:'none'}],{duration:220,easing:'cubic-bezier(.2,.8,.2,1)'})
+  animation.onfinish=()=>{if(motion===animation)motion=undefined}
  })
 }
+function onReducedMotion(){if(reducedMotion.matches)stopMotion()}
 function onResize(){stopMotion();cancel();viewport.value={w:innerWidth,h:innerHeight}}
 function start(x?:number,y?:number){
  if(!props.active||props.minimized||props.hidden||root.value?.closest('[inert]'))return
@@ -106,16 +116,24 @@ onMounted(()=>{
  preferred.value=saved??{...preferred.value,x:(innerWidth-preferred.value.width)/2+props.cascade*18,y:64+props.cascade*16}
  if(bar.value)drag=interact(bar.value).draggable({mouseButtons:1,ignoreFrom:'button',listeners:{start(e){start(e.clientX,e.clientY)},move(e){move(e.dx,e.dy,e.clientX,e.clientY)},end}})
  if(root.value)resize=interact(root.value).resizable({mouseButtons:1,edges:{left:'.resize-w,.resize-nw,.resize-sw',right:'.resize-e,.resize-ne,.resize-handle',top:'.resize-n,.resize-nw,.resize-ne',bottom:'.resize-s,.resize-sw,.resize-handle'},listeners:{start(){start()},move(e){resizing(e.deltaRect,e.edges)},end}})
- window.addEventListener('resize',onResize);window.addEventListener('blur',cancel)
+ window.addEventListener('resize',onResize);window.addEventListener('blur',cancel);reducedMotion.addEventListener('change',onReducedMotion)
  root.value?.addEventListener('pointercancel',cancel,true)
 })
-watch(()=>props.active&&!props.minimized&&!props.hidden,async active=>{if(!active){stopMotion();cancel()}if(active){await nextTick();if(root.value&&!root.value.closest('[inert]')&&!root.value.contains(document.activeElement))root.value.focus({preventScroll:true})}},{immediate:true})
-onBeforeUnmount(()=>{stopMotion();drag?.unset();resize?.unset();window.removeEventListener('resize',onResize);window.removeEventListener('blur',cancel);root.value?.removeEventListener('pointercancel',cancel,true)})
+watch(()=>props.active&&!props.minimized&&!props.hidden,async active=>{
+ if(!active){stopMotion();cancel();return}
+ await nextTick()
+ const el=root.value
+ if(!props.active||props.minimized||props.hidden||!el||el.closest('[inert]')||el.contains(document.activeElement))return
+ const field=lastField
+ if(field&&el.contains(field)&&!field.matches(':disabled')&&field.getClientRects().length)field.focus({preventScroll:true})
+ if(!el.contains(document.activeElement))el.focus({preventScroll:true})
+},{immediate:true})
+onBeforeUnmount(()=>{stopMotion();reducedMotion.removeEventListener('change',onReducedMotion);drag?.unset();resize?.unset();window.removeEventListener('resize',onResize);window.removeEventListener('blur',cancel);root.value?.removeEventListener('pointercancel',cancel,true)})
 </script>
 <template>
  <div v-if="preview" class="window-snap-preview" aria-hidden="true" :style="previewStyle"/>
  <Transition name="mac-window" appear @before-enter="dockTransition" @before-leave="dockTransition" @after-enter="dockMotion=false">
- <section v-show="!minimized&&!hidden" ref="root" class="window-frame" :class="[kind==='finder'?'finder':'tool-window',{active,maximized:isMaximized,dark,snapped:!!snap}]" :style="style" role="dialog" :aria-label="label" :aria-hidden="minimized||hidden||undefined" :inert="(minimized||hidden)||undefined" tabindex="-1" @pointerdown="emit('activate')" @focusin="emit('activate')" @keydown="handleKey">
+ <section v-show="!minimized&&!hidden" ref="root" class="window-frame" :class="[kind==='finder'?'finder':'tool-window',{active,maximized:isMaximized,dark,snapped:!!snap}]" :style="style" role="dialog" :aria-label="label" :aria-hidden="minimized||hidden||undefined" :inert="(minimized||hidden)||undefined" tabindex="-1" @pointerdown="emit('activate')" @focusin="focusWithin" @keydown="handleKey">
   <header ref="bar" @dblclick="titleDoubleClick" class="window-title" :class="kind==='finder'?'finder-title':'tool-title'">
    <div class="traffic"><button type="button" :aria-label="kind==='finder'?'关闭 Finder':'关闭窗口'" class="close" @click="emit('close')"/><button type="button" :aria-label="kind==='finder'?'最小化 Finder':'最小化窗口'" class="minimize" @click="emit('minimize')"/><button type="button" :aria-label="(maximized?'还原':'最大化')+(kind==='finder'?' Finder':'窗口')" class="maximize" @click="maximize"/></div>
    <strong>{{title}}</strong><span class="window-description">{{description}}</span>
@@ -144,6 +162,7 @@ onBeforeUnmount(()=>{stopMotion();drag?.unset();resize?.unset();window.removeEve
  .mac-window-enter-active,.mac-window-leave-active{transition:opacity .18s ease,filter .18s ease,scale .18s cubic-bezier(.2,.8,.2,1),translate .18s cubic-bezier(.2,.8,.2,1);filter:brightness(1);scale:1;translate:0 0;transform-origin:50% 50%}
  .mac-window-enter-from,.mac-window-leave-to{opacity:0;filter:brightness(.97);scale:var(--window-end-scale,.97);translate:var(--window-end-x,0px) var(--window-end-y,8px)}
  .mac-window-leave-active,.mac-window-enter-active.dock-motion{pointer-events:none}
+ .window-title{transition:background-color .14s ease,color .14s ease}
  .window-snap-preview{animation:preview-in .12s ease-out}
  @keyframes preview-in{from{opacity:0}}
 }
