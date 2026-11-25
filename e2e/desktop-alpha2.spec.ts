@@ -310,6 +310,8 @@ test('shared Finder frame docks and restores dimensions after reopening',async({
  await page.goto('/')
  await page.getByRole('button',{name:'Finder',exact:true}).click()
  const finder=page.getByRole('dialog',{name:'Finder 入口管理'})
+ await expect.poll(async()=>(await finder.boundingBox())!.width).toBe(850)
+ await expect.poll(()=>finder.evaluate(el=>el.getAnimations().filter(a=>a.playState==='running').length)).toBe(0)
  const initial=(await finder.boundingBox())!
  await finder.getByRole('button',{name:'左侧停靠'}).click()
  await expect.poll(async()=>Math.round((await finder.boundingBox())!.x)).toBe(12)
@@ -1714,8 +1716,13 @@ test('free desktop mode supports left drag at exact pixel positions and preserve
  const baseline=await read()
  const box=(await icon.boundingBox())!
  async function start(){
-  await page.mouse.move(box.x+30,box.y+30);await page.mouse.down()
-  await page.mouse.move(box.x+67,box.y+61,{steps:8})
+  await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 0, 384)')
+  const r=(await icon.boundingBox())!,point={x:r.x+30,y:r.y+30}
+  await expect.poll(()=>icon.evaluate((el,p)=>el.contains(document.elementFromPoint(p.x,p.y)),point)).toBe(true)
+  await page.mouse.move(point.x,point.y);await page.mouse.down()
+  await page.mouse.move(point.x+37,point.y+31,{steps:8})
+  await expect(icon).toHaveAttribute('data-drop','ready')
+  await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 37, 415)')
  }
  await start()
  await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 37, 415)')

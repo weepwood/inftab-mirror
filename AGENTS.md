@@ -493,3 +493,9 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - bebf066 远程 Focused UI validation 45650914542 的 desktop-cross-browser 在 build:web 阶段失败，实际 non-Swiper gzip 205633 > 204800 bytes（超833），浏览器步骤未执行。直接读取失败 job 139334844965 日志确认，不扩大预算。
 - Vite 合并既有相关懒加载模块：桌面事务/恢复共享 desktop-transactions；浏览器权限适配归入 browser-data；书签HTML、配置迁移、主题交换、布局编辑、组件预设归入 settings-tools。保留 Swiper 隔离、startup 优先级及原业务逻辑；不引入依赖、不修改数据格式。该批冻结新动效开发，优先收口 Linux 资源差异。
 - Mac build:web 通过，非Swiper从199.9降至197.9/200 KiB，首屏59.8/60.5，CSS35.9/64，PWA额外10327/16384 B，全站1755977/4194304 B，预缓存93降至87。生产Edge原有全部按需加载/恢复用例15/15，新增桌面事务经典首页不加载、桌面加载一次用例1/1。尚待新提交Linux预算及跨浏览器CI，未宣称线上发布。#47仍OPEN/CLEAN/Ready，保留原门禁及正式Tag。
+
+## 桌面交互累计收口（2026-11-26）
+- #47 已 squash 合并，main=2875665ce79d720ae8535b20eea3f6f0b5b62cc6，与原候选 c0ce84f 文件树完全一致；Pages run 45657298582 build/deploy 均成功，线上首页 HTML HTTP 请求通过（非真实视觉验收）。
+- 上一轮旧 run 45650914542 除 Linux 超预算外，Chromium UI 112通过、1失败、1 flaky：Finder 开场缩放尚未结束采样834px而实际850px；自由拖动偶发未提交，测试复用旧屏幕坐标且未等待恢复后的实际落点。新增真实尺寸、动画结束、每次拖动起点命中、最终预览断言，不删原断言或放宽坐标。不声称已确认偶发问题根因。
+- a5549c3 远程 run 45657276693 Linux build:web 已成功，Firefox/WebKit 及 UI 验收仍进行中；这是旧提交（不含本次测试修订），不可当作最终验收。
+- 从已合并 main 新建 feat/desktop-interaction-consolidation，逐个 cherry-pick 原五个后续提交，迁移后文件树与 a5549c3 完全一致；保留旧远端分支，不 force push、不修改主线、#37/#29及正式Tag。新增回归稳定性修订后，生产 Edge Finder 停靠/持久化、快速最小化恢复、自由拖动/碰撞、Dock 精确目标四项三轮12/12。本次优先累计收口，不增加新动效。待新 PR 最新头四项门禁全绿，审查后合并验证部署。
