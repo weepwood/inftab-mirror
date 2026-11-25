@@ -375,3 +375,10 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 设置→数据→存储可靠性，按需加载StoragePreflight。保留14核心键、桌面模式、旧天气/历史桌面位置原值及逻辑备份；报告差异、未纳入键，坏JSON拒绝。独立IDB候选单槽8MiB，ID CAS、双来源检查、写后回读，未完成桌面事务拒绝，替换/删除明确确认。没有自动迁移、无原键修改、无网络上传；不是权威存储，旧客户端隔离仍需专门设计。详见docs/workspace-transaction-design.md。
 - 本机npm ci、npm run check、最终build:web通过；首屏59.3/60.5、非Swiper198.7/200、Swiper26.4/30、CSS28.7/64 KiB，PWA额外JS10823/16384 B。最终生产Edge 10/10（新预检4项、旧事务恢复5项、选择性迁移1项），已审截图。新用例加入data-smoke。Linux预算余量紧，待CI核验；不扩大预算、不新增依赖。临时playwright.local-v21.config.ts不提交。
 - 后续集中实现存储世代与旧写入隔离的可验证协议、初始化/回退状态机、CAS与冲突处理；不直接启用权威后端。保留Draft直到完整可用阶段及实际CI通过，下一轮先复查CI。正式V2.1版本号尚未升级。
+
+## V2.1 隔离存储世代与冲突规划（2026-11-25）
+- #37 de86ed8 四项CI（verify、ui-smoke、desktop-cross-browser、data-smoke）全部通过；Linux 非Swiper199.8/200 KiB、首屏59.5/60.5 KiB，730单测。保持现有预算。
+- 新增 workspaceGeneration.ts 独立IDB存储世代契约，prepared/rehearsal/retired、generation+revision CAS、严谨快照校验、原始候选留存、previous回退、退役旧令牌拒绝、退役草稿显式保护、旧数据漂移及未完成桌面事务拒绝；不会修改任何旧键或接管权威存储。实际初始快照与解析规范存在差异，初次E2E因此拒绝；修正为显式确认规范化、保留原候选，后续提交仍要求无隐式规范化。独立记录总大小受候选及head/previous各8MiB限制。旧客户端隔离是检测与停止隔离写入，并非强制旧版本只读。
+- 新增 workspaceConflict.ts 独立三方规划器，按ID与字段合并非冲突修改，保留插入锚点，删除/编辑、同字段、顺序、引用冲突拒绝输出。尚未接入实际编辑及冲突UI。详见docs/workspace-transaction-design.md。
+- 本机最终npm run check、冲突规划6/6单测、真实Edge预检+世代6/6 E2E通过（包含隔离初始化、双标签CAS、回退、代际淘汰、草稿保护、损坏快照、注入配额错误、旧存储漂移）；E2E通过Vite仅打包测试入口运行真实解析器，来源取真实键，逻辑回调取已保存候选，生产响应式接线未验证。新增用例纳入data-smoke。build:web通过（首屏59.3/60.5、非Swiper198.7/200、CSS28.7/64 KiB，PWA额外JS10823/16384 B）；后续改动仅未接生产图的引擎与测试，不扩大预算、无新依赖。
+- 下一轮优先复查#37 CI，治理资源分包后再接入可操作演练/草稿导出与实际响应式快照初始化。全数据权威适配器、真实旧客户端隔离方案、冲突交互、进程终止/跨浏览器迁移专项及V2.1正式发布仍待实施。不将隔离演练当作正式数据迁移。临时playwright.local-v21.config.ts不提交。

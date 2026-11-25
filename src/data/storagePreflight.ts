@@ -68,7 +68,7 @@ export function planStorageMigration(backup: WorkspaceBackup, source: Raw, unkno
   }
   return {candidate,report}
 }
-function validate(value: unknown): MigrationCandidate | undefined {
+export function validateMigrationCandidate(value: unknown): MigrationCandidate | undefined {
   if(value===undefined)return
   const c=value as MigrationCandidate
   if(!c||c.schema!==1||typeof c.id!=='string'||!Number.isFinite(c.createdAt)||!c.source||!c.backup)throw new Error('迁移候选损坏，拒绝覆盖。')
@@ -100,7 +100,7 @@ async function access<T>(mode:IDBTransactionMode,run:(object:IDBObjectStore,set:
   })}finally{db.close()}
 }
 export function readMigrationCandidate(){return access<MigrationCandidate|undefined>('readonly',(object,set,abort)=>{
-  const req=object.get(slot);req.onsuccess=()=>{try{set(validate(req.result))}catch(e){abort(e)}}
+  const req=object.get(slot);req.onsuccess=()=>{try{set(validateMigrationCandidate(req.result))}catch(e){abort(e)}}
 })}
 export function isCandidateCurrent(candidate:MigrationCandidate,backup:WorkspaceBackup,source:Raw=readMigrationSource()){
   return same(candidate.source,source)&&same({...candidate.backup,exportedAt:''},{...backup,exportedAt:''})
@@ -119,7 +119,7 @@ export async function stageMigration(candidate:MigrationCandidate,expectedId:str
   if(!isCandidateCurrent(candidate,getBackup()))throw new Error('来源数据已变化，请重新检查。')
   await access<void>('readwrite',(object,set,abort)=>{
     const req=object.get(slot);req.onsuccess=()=>{try{
-      const current=validate(req.result)
+      const current=validateMigrationCandidate(req.result)
       if((current?.id??null)!==expectedId)throw new Error('另一个标签页更新了迁移候选，请重新读取。')
       if(!isCandidateCurrent(candidate,getBackup()))throw new Error('来源数据已变化，请重新检查。')
       object.put(candidate,slot);set(undefined)
@@ -131,7 +131,7 @@ export async function stageMigration(candidate:MigrationCandidate,expectedId:str
 }
 export function discardMigrationCandidate(expectedId:string){return access<void>('readwrite',(object,set,abort)=>{
   const req=object.get(slot);req.onsuccess=()=>{try{
-    if(validate(req.result)?.id!==expectedId)throw new Error('候选已变化，请重新读取。')
+    if(validateMigrationCandidate(req.result)?.id!==expectedId)throw new Error('候选已变化，请重新读取。')
     object.delete(slot);set(undefined)
   }catch(e){abort(e)}}
 })}
