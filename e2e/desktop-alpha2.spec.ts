@@ -1187,3 +1187,50 @@ test('all eight window resize handles preserve the unmodified edges',async({page
   },{message:'resize '+edge}).toEqual([Math.abs(dx),Math.abs(dy),Math.min(dx,0),Math.min(dy,0)])
  }
 })
+
+test('desktop touch tap, long press and scroll have distinct outcomes',async({browser,browserName,page})=>{
+ test.skip(browserName!=='chromium','CDP touch input is Chromium-specific')
+ const context=await browser.newContext({viewport:{width:390,height:540},isMobile:true,hasTouch:true})
+ try{
+  const touch=await context.newPage()
+  await touch.addInitScript(()=>{
+   localStorage.setItem('inftab.desktop-mode.v1','true')
+   localStorage.setItem('inftab.preferences.v1',JSON.stringify({showSearchBar:false}))
+   localStorage.setItem('inftab.folders.v1',JSON.stringify([{id:'touch-folder',title:'Touch folder',shortcutIds:[],mark:'F',color:'#4176e8'}]))
+   localStorage.setItem('inftab.home-workspaces.v1',JSON.stringify([{id:'default',name:'主页',itemIds:['touch-folder'],desktop:{version:1,snap:true,positions:{'touch-folder':{x:0,y:0}}}}]))
+  })
+  await touch.goto(new URL(page.url()).origin)
+  const icon=touch.locator('[data-item-id="touch-folder"]'),menu=touch.locator('.desktop-menu')
+  await expect(icon).toBeVisible()
+  const cdp=await context.newCDPSession(touch)
+  const point=async()=>{const r=(await icon.boundingBox())!;return {x:r.x+r.width/2,y:r.y+r.height/2,id:1}}
+  const start=async()=>cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[await point()]})
+  const end=async()=>cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
+  const saved=()=>touch.evaluate(()=>localStorage.getItem('inftab.home-workspaces.v1'))
+  const initial=await saved()
+  await start();await touch.waitForTimeout(480);await expect(menu).toBeVisible();await end()
+  await expect(menu.getByRole('menuitem',{name:'打开',exact:true})).toBeVisible()
+  await expect(touch.getByRole('dialog',{name:'Finder 入口管理'})).toHaveCount(0)
+  await menu.getByRole('menuitem',{name:'打开',exact:true}).tap()
+  const finder=touch.getByRole('dialog',{name:'Finder 入口管理'})
+  await expect(finder).toBeVisible();await finder.getByRole('button',{name:'关闭 Finder'}).tap()
+  await icon.tap();await expect(finder).toBeVisible();await finder.getByRole('button',{name:'关闭 Finder'}).tap()
+  await expect(finder).toHaveCount(0)
+  await icon.scrollIntoViewIfNeeded()
+  const surface=touch.locator('.home.desktop-mode')
+  await expect.poll(()=>surface.evaluate(el=>el.scrollHeight>el.clientHeight)).toBe(true)
+  const before=await surface.evaluate(el=>el.scrollTop)
+  const pos=await point()
+  await expect.poll(()=>icon.evaluate((el,p)=>el.contains(document.elementFromPoint(p.x,p.y)),pos)).toBe(true)
+  await start()
+  for(const dy of [20,40,60,80,100]){
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...pos,y:pos.y-dy}]})
+   await touch.waitForTimeout(24)
+  }
+  await end()
+  await expect.poll(()=>surface.evaluate(el=>el.scrollTop)).toBeGreaterThan(before)
+  await expect(menu).toHaveCount(0);await expect(finder).toHaveCount(0)
+  await expect.poll(saved).toEqual(initial)
+  await cdp.detach()
+ }finally{await context.close()}
+})

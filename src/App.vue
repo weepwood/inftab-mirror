@@ -1057,6 +1057,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .home.desktop-mode .home-content:not(.home-content-minimal){width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;justify-content:flex-start;gap:8px;padding-top:54px;padding-bottom:84px}
 .home.desktop-mode .home-content.desktop-search-reserved{padding-top:142px}
+.home.desktop-mode{overflow-y:auto;overscroll-behavior-y:contain}
+.desktop-mode .background-shade{position:fixed}
 .desktop-mode .desktop-shell{min-height:240px}
 .desktop-mode .storage-error-toast{position:fixed;z-index:9;bottom:14px}
 .desktop-mode-toggle{font-size:22px}
@@ -1069,7 +1071,7 @@ onBeforeUnmount(() => {
 .desktop-menu-label:first-child{margin-right:2px;font-weight:650}
 .desktop-mode .desktop-mode-toggle{margin-left:auto}
 .home.desktop-mode .home-content:not(.home-content-minimal){z-index:auto}
-.desktop-mode .home-content :deep(.search-area){position:absolute;z-index:2;top:54px;left:50%;transform:translateX(-50%);width:min(420px,100%);margin:0}
+.desktop-mode .home-content :deep(.search-area){position:fixed;z-index:2;top:54px;left:50%;transform:translateX(-50%);width:min(420px,calc(100% - 40px));margin:0}
 .desktop-mode .home-content :deep(.search-area.local-search-mode){z-index:10}
 .desktop-mode .home-content :deep(.local-search-results){border-radius:10px;background:var(--mac-menu);border-color:var(--mac-line);box-shadow:var(--mac-shadow)}
 .desktop-mode .home-content :deep(.search-box){height:40px;border-radius:10px;background:var(--mac-bar);border-color:var(--mac-line);box-shadow:0 4px 18px #0002}

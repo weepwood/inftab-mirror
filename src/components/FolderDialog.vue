@@ -93,10 +93,15 @@ function handleDialogKeydown(event: KeyboardEvent) {
   }
   trapOverlayTab(event, dialog.value)
 }
+function nameKey(event:KeyboardEvent){
+  if(event.key==='Enter'&&!isComposingKey(event)){event.preventDefault();event.stopPropagation();save()}
+}
 function save() {
+  if(props.limitReached)return
   const cleanTitle = title.value.trim()
   if (!cleanTitle) {
     error.value = '请输入文件夹名称。'
+    titleInput.value?.focus()
     return
   }
   emit('save', {
@@ -119,7 +124,7 @@ function save() {
       </header>
 
       <template v-if="editing">
-        <label>文件夹名称<input ref="titleInput" v-model="title" maxlength="80" placeholder="例如：工作" :aria-invalid="error?true:undefined" :aria-describedby="error?'folder-input-error':undefined" @input="error = ''" /></label>
+        <label>文件夹名称<input ref="titleInput" v-model="title" maxlength="80" required placeholder="例如：工作" @keydown="nameKey" :aria-invalid="error?true:undefined" :aria-describedby="error?'folder-input-error':undefined" @input="error = ''" /></label>
         <label class="color-field">文件夹颜色<input v-model="color" type="color" /></label>
         <p class="folder-selection-label">选择要收纳的快捷入口</p>
         <div class="folder-choice-list">
