@@ -59,10 +59,18 @@ onBeforeUnmount(()=>document.removeEventListener('pointerdown',outside,true))
    <button type="button" :aria-label="group.label" :data-menu="group.label" aria-haspopup="menu" :aria-expanded="active===group.label" @click="open(group.label)" @pointerenter="active&&active!==group.label&&(active=group.label)"><svg v-if="controlsOnly" aria-hidden="true" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="16" height="6" rx="3"/><circle cx="6" cy="6" r="1.7" fill="currentColor" stroke="none"/><rect x="2" y="11" width="16" height="6" rx="3"/><circle cx="14" cy="14" r="1.7" fill="currentColor" stroke="none"/></svg><template v-else>{{group.label}}</template></button>
    <div v-if="active===group.label" class="desktop-dropdown" :style="controlsOnly?{translate:offset+'px 0'}:undefined" role="menu" :aria-label="group.label+'菜单'" @keydown="navigateMenu">
     <template v-if="controlsOnly&&preferences">
-     <div class="control-heading" role="presentation">外观</div>
-     <div class="control-segment" role="group" aria-label="外观模式"><button v-for="mode in modes" :key="mode" type="button" role="menuitemradio" :aria-checked="preferences.themeMode===mode" @click="emit('update',{themeMode:mode})">{{mode==='light'?'浅色':mode==='dark'?'深色':'自动'}}</button></div>
-     <div class="control-heading" role="presentation">桌面显示</div>
-     <div class="control-tiles"><button v-for="[key,label,Icon] in quickControls" :key="key" class="control-tile" type="button" role="menuitemcheckbox" :aria-label="label" :aria-checked="preferences[key]" @click="toggle(key)"><span class="control-tile-icon" aria-hidden="true"><component :is="Icon" :size="16" :stroke-width="2.25"/></span><span class="control-tile-text"><strong>{{label}}</strong><small>{{preferences[key]?'开启':'关闭'}}</small></span></button></div>
+     <div class="control-modules">
+      <div class="control-stack">
+       <button v-for="[key,label,Icon] in quickControls.slice(0,3)" :key="key" class="control-tile" type="button" role="menuitemcheckbox" :aria-label="label" :aria-checked="preferences[key]" @click="toggle(key)"><span class="control-tile-icon" aria-hidden="true"><component :is="Icon" :size="20"/></span><span class="control-tile-text"><strong>{{label}}</strong><small>{{preferences[key]?'开启':'关闭'}}</small></span></button>
+      </div>
+      <div class="control-right">
+       <button class="control-tile control-feature" type="button" role="menuitemcheckbox" aria-label="桌面图标名称" :aria-checked="preferences.showNames" @click="toggle('showNames')"><span class="control-tile-icon" aria-hidden="true"><Type :size="18"/></span><span class="control-tile-text"><strong>桌面图标名称</strong><small>{{preferences.showNames?'开启':'关闭'}}</small></span></button>
+       <div class="control-appearance">
+        <div class="control-heading" role="presentation">外观</div>
+        <div class="control-segment" role="group" aria-label="外观模式"><button v-for="mode in modes" :key="mode" type="button" role="menuitemradio" :aria-checked="preferences.themeMode===mode" @click="emit('update',{themeMode:mode})">{{mode==='light'?'浅色':mode==='dark'?'深色':'自动'}}</button></div>
+       </div>
+      </div>
+     </div>
      <div class="control-separator" role="separator"/>
     </template>
     <button v-for="[id,label] in group.items" :key="id" type="button" role="menuitem" @click="run(id!)">{{label}}</button>
@@ -80,24 +88,30 @@ button:hover,button[aria-expanded=true]{background:var(--mac-selection-soft)}
 .desktop-dropdown button:hover,.desktop-dropdown button:focus-visible{background:var(--mac-selection);color:var(--mac-selection-ink);outline:0}
 @media(max-width:800px){.desktop-menus:not(.control-center){display:none}}
 .control-center .desktop-menu-anchor>button{width:27px;height:25px;padding:3px;display:grid;place-items:center;border-radius:8px}
-.control-center .desktop-dropdown{left:auto;right:0;width:min(324px,calc(100vw - 16px));min-width:0;padding:10px;box-sizing:border-box}
-.control-heading{font-size:11px;font-weight:600;color:var(--mac-muted);padding:6px 8px}
-.control-segment{display:flex;gap:3px;padding:3px;background:var(--mac-glass-control);border-radius:12px}
-.control-segment button{flex:1;text-align:center;padding:7px 4px;border-radius:9px}
-.control-center .desktop-dropdown button[aria-checked=true][role=menuitemradio]{background:var(--mac-selection);color:var(--mac-selection-ink)}
-/* ToggleTile layout port: a2d2-dev/macos27-claude, MIT.
-   Omit nested blur, since the panel already provides a glass backdrop. */
-.control-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.control-center .desktop-dropdown .control-tile{display:flex;align-items:center;gap:10px;height:60px;min-width:0;padding:8px 10px;text-align:left;border-radius:18px;background:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.32);border:1px solid var(--mac-glass-edge)}
-.control-center .desktop-dropdown .control-tile[aria-checked=true]{background:rgba(255,255,255,.28)}
+.control-center .desktop-dropdown{left:auto;right:0;width:min(360px,calc(100vw - 16px));min-width:0;padding:12px;box-sizing:border-box;border-radius:24px;max-height:calc(100dvh - 44px);overflow:auto}
+/* Adapted from Thanas-OS ControlCenter.tsx (MIT, 5a430db).
+   Source's connectivity stack + feature tile + module layout;
+   all state comes from real inftab preferences, not mocked hardware. */
+.control-modules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.control-stack,.control-feature,.control-appearance{border-radius:16px;background:var(--mac-glass-control)}
+.control-stack{display:flex;flex-direction:column;gap:6px;padding:10px}
+.control-right{display:grid;grid-template-rows:minmax(78px,1fr) auto;gap:8px;min-width:0}
+.control-center .desktop-dropdown .control-tile{display:flex;align-items:center;gap:10px;min-height:44px;min-width:0;padding:4px 6px;text-align:left;border-radius:12px}
+.control-center .desktop-dropdown .control-feature{padding:12px 9px;border-radius:16px}
 .control-center .desktop-dropdown .control-tile:hover,.control-center .desktop-dropdown .control-tile:focus-visible{background:var(--mac-selection-soft);color:var(--mac-ink);outline:1px solid var(--ui-focus)}
-.control-tile-icon{width:32px;height:32px;display:grid;place-items:center;flex:none;border-radius:50%;background:var(--mac-line);color:var(--mac-muted)}
-[aria-checked=true]>.control-tile-icon{background:#0a84ff;color:white}
+.control-tile-icon{width:36px;height:36px;display:grid;place-items:center;flex:none;border-radius:50%;background:var(--mac-line);color:var(--mac-muted)}
+.control-feature .control-tile-icon{width:40px;height:40px}
+[aria-checked=true]>.control-tile-icon{background:#3b82f6;color:white}
 .control-tile-text{min-width:0;display:grid;gap:3px}
 .control-tile-text strong,.control-tile-text small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.control-tile-text strong{font-size:13px;font-weight:500;line-height:16px}
-.control-tile-text small{font-size:11px;color:var(--mac-muted);line-height:14px}
+.control-tile-text strong{font-size:12.5px;font-weight:600;line-height:16px}
+.control-tile-text small{font-size:10.5px;color:var(--mac-muted);line-height:14px}
+.control-appearance{padding:8px}
+.control-heading{font-size:11px;font-weight:600;color:var(--mac-muted);padding:4px 4px 8px}
+.control-segment{display:flex;gap:2px;padding:3px;background:var(--mac-line);border-radius:999px}
+.control-center .desktop-dropdown .control-segment button{flex:1;text-align:center;padding:7px 2px;border-radius:999px;font-size:11px}
+.control-center .desktop-dropdown button[aria-checked=true][role=menuitemradio]{background:var(--mac-selection);color:var(--mac-selection-ink)}
 .control-separator{height:1px;background:var(--mac-line);margin:8px}
-@media(max-width:340px){.control-tiles{grid-template-columns:1fr}}
+@media(max-width:360px){.control-modules{grid-template-columns:1fr}.control-right{grid-template-rows:auto auto}}
 @media(forced-colors:active){.control-tile-icon{border:1px solid ButtonText}[aria-checked=true]>.control-tile-icon{background:Highlight;color:HighlightText}}
 </style>

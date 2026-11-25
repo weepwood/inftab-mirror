@@ -578,3 +578,7 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 用户对原整体UI不满意，要求直接复刻成熟开源项目设计和功能；核查3个MIT项目，选a2d2-dev/macos27-claude e3a4e72为主参考，实际读取并移植glass.css的材料参数及ControlCenter.tsx的ToggleTile模块布局，完整MIT许可证保存在docs/licenses/macos27-claude-MIT.txt，来源与调整写入docs/macos-visual-reference-study.md。不引入React或虚假系统硬件状态、不复制第三方素材，保留现有数据和经典Spotlight语义。
 - 主菜单/上下文菜单/Spotlight共用上游popover滤镜与阴影，Dock与菜单栏使用独立滤镜，Dock轮廓26px，控制中心移植双列模块且真实设置持久化，增加窄屏边界钳位，Finder胶囊工具组、搜索栏及菜单材质统一。正文不透明，菜单栏/控制保留高遮盖度，支持原有降级。
 - npm run check通过；本地Edge浏览器7/7（Finder窗口恢复、两主题菜单材质、固定Finder/经典模式、Spotlight、Liquid Glass/forced-colors、控制中心设置持久化及390px窄屏）。生产build已编译但非Swiper gzip 208796>204800 B，203.9/200KiB，首屏60.5/60.5、combined230.3/230、CSS38.6/64、output1722.4/4096，未执行后续PWA及生产E2E；不放宽预算。保存3张实际截图于外置日志upstream-port，尚未进行源站逐像素对照、跨浏览器及全套应用移植。Desktop Commander额度已达91%，减少重复查询；本轮仅本地提交，未写入GitHub、PR或发布，保留127.0.0.1:4277。
+
+## ThanasOS 单一复刻基准与技术栈确认（2026-11-26）
+- 用户指定ThanasOS，基于c13333f将其设为唯一主参考，锁定5a430db1abf4c4545c88c717b9eaebb1d789a0ae，保留MIT文件。通过GitHub连接器及本地package.json核实两项目技术栈差异，继续Vue而非擅自重写React，原有许可证仍保留。直接移植ControlCenter的左三项状态栈、右侧重点模块与外观模块布局，360px宽/24px圆角/36与40px状态图标、窄屏降为单列，真实preferences绑定不引入模拟硬件或额外依赖。更新研究文档。
+- npm run check与本地Edge专项4/4通过（浅深菜单、经典Spotlight、控制中心真实设置/持久化/390px窄屏）。实际截图保存外置日志thanas-port；生产预算未复验，上一轮累计超3996B仍是阻塞。尚未移植完整Dock、窗口、桌面、应用或完成源站截图对照。仅本地开发、中文提交，未推送/PR/发布，保留127.0.0.1:4277。

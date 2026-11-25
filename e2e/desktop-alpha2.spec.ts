@@ -2324,6 +2324,8 @@ test('desktop control center changes real display preferences and keeps menu foc
  await magnification.click()
  await expect(magnification).toHaveAttribute('aria-checked','false')
  await expect(menu.locator('.control-tile')).toHaveCount(4)
+ await expect(menu.locator('.control-stack .control-tile')).toHaveCount(3)
+ await expect(menu.locator('.control-right .control-feature')).toHaveCount(1)
  await expect(magnification).toContainText('关闭')
  await expect(page.locator('.home-dock')).toHaveClass(/magnification-off/)
  const clock=menu.getByRole('menuitemcheckbox',{name:'菜单栏时钟'})

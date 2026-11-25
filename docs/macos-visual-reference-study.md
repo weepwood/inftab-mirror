@@ -34,3 +34,6 @@
 - Thanas-R/Thanas-OS（MIT），https://github.com/Thanas-R/Thanas-OS/tree/5a430db1abf4c4545c88c717b9eaebb1d789a0ae ，演示 https://thanasos.thanas.dev/ 。核查Spotlight.tsx，快速入口/结果结构与真实记录索引的思路；不复制当前不符合用户经典双栏Spotlight要求的单列结果布局。
 - StarKnightt/macos-web（MIT），https://github.com/StarKnightt/macos-web ，演示 https://starknightt.github.io/macos-web/ 。核对仓库说明/许可证元数据，尚未逐模块移植。
 - 主参考与本项目框架不同，选择直接移植CSS令牌及组件模板和交互语义，不引入React/Tailwind/Framer Motion。现有菜单栏和小控件保留更高遮盖度以适配用户任意壁纸，保留opaque正文和减少透明度降级；参考Dock的26px轮廓与底部留白，复用现有可靠拖动与动画引擎。控制中心改为324px宽双列60px模块、32px圆形状态图标、18px圆角及真实开关状态，窄屏钳位；不伪造Wi-Fi/蓝牙/剪贴板等。Finder统一胶囊工具组、搜索及右键材质。本轮是第一批真实移植，不是整站1:1复刻；后续以单一参考源码布局为主，优先逐个迁移窗口外壳、Finder、内置应用以及完整Dock视觉，避免继续混合多套风格。截图存外置日志upstream-port。
+
+## ThanasOS 单一复刻基准（2026-11-26）
+用户指定 https://github.com/Thanas-R/Thanas-OS 为后续唯一视觉与交互主参考，锁定已检查提交5a430db1abf4c4545c88c717b9eaebb1d789a0ae，MIT许可证完整保留于docs/licenses/Thanas-OS-MIT.txt。GitHub连接器核对package.json：React18.3.1、Vite5.4.19、TS5.8.3、Tailwind3.4.17、Framer Motion12.38.0、Radix/shadcn。现有inftab为Vue3.5.43、Vite8.3.4、TS5.9.3、Interact.js1.10.29、Swiper14.4.0、Lucide Vue；不擅自迁移框架。首批直接转换ControlCenter.tsx的360px外壳、左侧连接状态栈、右侧突出模块及外观区布局；绑定真实网页搜索/时钟/Dock放大/名称显示与外观设置，不复制模拟硬件。保留经典双栏Spotlight、用户数据、原MIT通知和既有材质，浅深适配及窄屏单列。后续以ThanasOS实际源码为基准逐模块替换旧视觉，而非继续拼接其他项目。当前仍非整站复刻。
