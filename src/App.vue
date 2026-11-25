@@ -1079,7 +1079,7 @@ onBeforeUnmount(() => {
 .desktop-mode .storage-error-toast{position:fixed;z-index:9;bottom:14px}
 .desktop-mode-toggle{font-size:22px}
 .desktop-mode .home-brand{display:none}
-.desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:30px;padding:0 12px;gap:2px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);-webkit-backdrop-filter:var(--mac-glass-filter);backdrop-filter:var(--mac-glass-filter);box-shadow:none;z-index:8}
+.desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:30px;padding:0 12px;gap:2px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);-webkit-backdrop-filter:var(--mac-bar-filter);backdrop-filter:var(--mac-bar-filter);box-shadow:none;z-index:8}
 .desktop-mode .home-actions .round-action{width:27px;height:25px;border-radius:5px;color:var(--mac-ink);background:transparent}
 .desktop-mode .home-actions .round-action:hover,.desktop-mode .home-actions .round-action[aria-pressed=true]{background:var(--mac-selection-soft)}
 .desktop-mode .home-actions .desktop-mode-toggle[aria-pressed=true]{background:transparent}

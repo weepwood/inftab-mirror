@@ -1,7 +1,7 @@
 /* Desktop-specific visual overrides. Loaded after the shared application stylesheet. */
 /* macOS-inspired desktop-only surfaces. No layout changes to classic mode. */
-.desktop-mode .home-dock {bottom:6px;max-width:calc(100vw - 36px)}
-.desktop-mode .home-dock::before {inset:auto 5px 7px;height:calc(var(--dock-item-size) + 14px);border-radius:24px;background:var(--mac-glass-sheen) var(--mac-dock);border-color:var(--mac-dock-edge);box-shadow:var(--mac-dock-shadow);-webkit-backdrop-filter:var(--mac-glass-filter);backdrop-filter:var(--mac-glass-filter)}
+.desktop-mode .home-dock {bottom:12px;max-width:calc(100vw - 36px)}
+.desktop-mode .home-dock::before {inset:auto 5px 7px;height:calc(var(--dock-item-size) + 14px);border-radius:26px;background:var(--mac-glass-sheen) var(--mac-dock);border-color:var(--mac-dock-edge);box-shadow:var(--mac-dock-shadow);-webkit-backdrop-filter:var(--mac-dock-filter);backdrop-filter:var(--mac-dock-filter)}
 .desktop-mode .home-dock-track {padding:calc(var(--dock-item-size) * .7 + 12px) 14px 14px;align-items:flex-end}
 .desktop-mode .home-dock-icon {corner-shape:squircle;border-radius:24%;border:1px solid var(--mac-icon-edge);box-sizing:border-box;box-shadow:var(--mac-icon-shadow)}
 @media(max-width:780px){

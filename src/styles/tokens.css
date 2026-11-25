@@ -221,6 +221,8 @@
   --mac-icon-shadow: 0 3px 9px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.4);
   --mac-menu: #f7f7fa;
   --mac-glass-filter: none;
+  --mac-dock-filter: none;
+  --mac-bar-filter: none;
   --mac-glass-sheen: none;
   --mac-glass-edge: #d3d4dc;
   --mac-glass-shadow: 0 12px 36px #0003, 0 2px 8px #0002;
@@ -260,31 +262,43 @@
 /* Liquid Glass-inspired web materials.
    Opaque base is intentional: unsupported filters and reduced transparency
    must not leave text on an unfiltered, unpredictable wallpaper. */
+/* Ported from a2d2-dev/macos27-claude, src/styles/glass.css,
+   e3a4e72, MIT (docs/licenses/macos27-claude-MIT.txt).
+   Scope and opaque content/contrast fallbacks adapted to inftab. */
 @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
   .desktop-mode,.mac-dock-context {
-    --mac-bar: rgba(247,248,251,.72);
-    --mac-menu: rgba(248,249,252,.84);
-    --mac-dock: rgba(238,242,249,.44);
-    --mac-glass-widget: rgba(247,248,251,.87);
+    --mac-menu: rgba(250, 250, 252, 0.82);
+    --mac-dock: rgba(255, 255, 255, 0.26);
+    --mac-glass-widget: rgba(250, 250, 252, 0.82);
     --mac-glass-control: rgba(247,248,251,.78);
+    --mac-glass-filter: blur(44px) saturate(230%);
+    --mac-dock-filter: blur(38px) saturate(210%);
+    --mac-bar-filter: blur(24px) saturate(190%);
+    --mac-glass-edge: rgba(255, 255, 255, 0.5);
+    --mac-dock-edge: rgba(255, 255, 255, 0.34);
+    --mac-glass-sheen: linear-gradient(155deg,rgba(255, 255, 255, 0.52),transparent 38%);
+    --mac-glass-shadow: 0 18px 50px rgba(15, 23, 42, 0.18), 0 44px 110px rgba(15, 23, 42, 0.24), inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
+    --mac-glass-focus-shadow: 0 18px 50px rgba(15, 23, 42, 0.18), 0 44px 110px rgba(15, 23, 42, 0.24), inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
+    --mac-dock-shadow: 0 22px 70px rgba(15, 23, 42, 0.24), inset 0 1px 0 0 rgba(255, 255, 255, 0.52);
+    --mac-bar: rgba(247,248,251,.72);
     --mac-glass-control-shadow: 0 2px 9px #0002, inset 0 1px 1px #fff9;
-    --mac-glass-filter: blur(28px) saturate(160%);
-    --mac-glass-sheen: radial-gradient(ellipse at 12% 0%,#ffffff55,transparent 46%),linear-gradient(160deg,#ffffff20,transparent 40%,#ffffff0a 72%,#ffffff32);
-    --mac-glass-edge: rgba(255,255,255,.65);
-    --mac-glass-shadow: 0 12px 34px #0003, 0 2px 8px #0002, inset 0 1px 1px #fffd, inset 1px 0 1px #ffffff55, inset 0 -1px 2px #ffffff45;
-    --mac-glass-focus-shadow: 0 24px 64px #0004, 0 3px 12px #0002, inset 0 1px 1px #fffd;
   }
   .desktop-mode.theme-dark,.mac-dock-context.theme-dark {
-    --mac-bar: rgba(28,29,34,.76);
-    --mac-menu: rgba(37,38,44,.88);
-    --mac-dock: rgba(31,33,40,.58);
-    --mac-glass-widget: rgba(35,36,42,.90);
+    --mac-menu: rgba(40, 40, 42, 0.82);
+    --mac-dock: rgba(54, 54, 56, 0.28);
+    --mac-glass-widget: rgba(40, 40, 42, 0.82);
     --mac-glass-control: rgba(57,58,64,.82);
+    --mac-glass-filter: blur(46px) saturate(220%);
+    --mac-dock-filter: blur(42px) saturate(205%);
+    --mac-bar-filter: blur(24px) saturate(185%);
+    --mac-glass-edge: rgba(255, 255, 255, 0.18);
+    --mac-dock-edge: rgba(255, 255, 255, 0.13);
+    --mac-glass-sheen: linear-gradient(155deg,rgba(255, 255, 255, 0.14),transparent 38%);
+    --mac-glass-shadow: 0 18px 58px rgba(0, 0, 0, 0.46), 0 48px 120px rgba(0, 0, 0, 0.56), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+    --mac-glass-focus-shadow: 0 18px 58px rgba(0, 0, 0, 0.46), 0 48px 120px rgba(0, 0, 0, 0.56), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+    --mac-dock-shadow: 0 24px 86px rgba(0, 0, 0, 0.46), inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
+    --mac-bar: rgba(28,29,34,.76);
     --mac-glass-control-shadow: 0 2px 9px #0005, inset 0 1px 1px #ffffff30;
-    --mac-glass-sheen: radial-gradient(ellipse at 12% 0%,#ffffff20,transparent 48%),linear-gradient(160deg,#ffffff0e,transparent 42%,#0000000a 74%,#ffffff12);
-    --mac-glass-edge: rgba(255,255,255,.24);
-    --mac-glass-shadow: 0 12px 36px #0006, 0 2px 8px #0004, inset 0 1px 1px #ffffff40, inset 1px 0 1px #ffffff18, inset 0 -1px 2px #ffffff19;
-    --mac-glass-focus-shadow: 0 24px 64px #0008, 0 3px 12px #0005, inset 0 1px 1px #ffffff40;
   }
 }
 @media(prefers-reduced-transparency:reduce),(forced-colors:active){
@@ -295,6 +309,10 @@
     --mac-glass-widget:var(--mac-toolbar);
     --mac-glass-control:var(--mac-toolbar);
     --mac-glass-filter:none;
+    --mac-dock-filter:none;
+    --mac-bar-filter:none;
+    --mac-dock-edge:var(--mac-field-line);
+    --mac-dock-shadow:var(--mac-shadow);
     --mac-glass-sheen:none;
     --mac-glass-edge:var(--mac-field-line);
     --mac-glass-shadow:var(--mac-shadow);

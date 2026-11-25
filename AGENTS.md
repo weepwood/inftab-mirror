@@ -573,3 +573,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 ## Liquid Glass 材质精修与控制中心（2026-11-26）
 - 基于本地3f54803，保留经典Spotlight逻辑。共享浅深玻璃光泽增加方向性径向高光及分边内阴影；合并6种应用图标重复材质，统一app-material/app-ink所有权；Spotlight圆角过渡和结果淡入，不改变搜索框命中几何，不添加动态滤镜/逐帧渲染。检索命令补NFKC。复用DesktopMenus新增右侧控制中心，真实外观/网页搜索栏/时钟/Dock放大/图标名称设置，使用既有preferences及更新方法，ARIA radio/checkbox支持现有导航，叠层开启关闭菜单。无新依赖、未改经典模式及数据模型。
 - 上轮积压check通过，Edge 4/4（Liquid Glass浅深/forced-colors、Spotlight、Finder、窄屏级联菜单）。本轮check、检索命令和Spotlight单测7/7；Edge首轮6项4通过2失败，实际原因是早期桌面右键菜单结构已拆分，旧测试仍测透明父容器；修正为实际.desktop-menu-panel，并增加backgroundImage及backdropFilter对照，关键复测4/4（浅深菜单材质、窄屏级联、控制中心真实设置/刷新恢复/390px）。保留控制中心真实截图于外置日志目录。生产vite构建和类型检查已完成，但原非Swiper预算208491>204800 B（203.6/200KiB），首屏60.5/60.5、Swiper26.4/30、combined230.0/230、CSS38.6/64、输出1720.6/4096 KiB；资源门禁不通过，未运行后续PWA及生产浏览器。未放宽预算。后续优先回收至少3691B并留合理余量；实际折射、真实触屏/320px/跨浏览器/多壁纸对比与内置应用逐页重构仍未完成。预览127.0.0.1:4277，中文本地提交，不推送、不建PR、不发布。
+
+## 从开源参考直接移植第一批（2026-11-26）
+- 用户对原整体UI不满意，要求直接复刻成熟开源项目设计和功能；核查3个MIT项目，选a2d2-dev/macos27-claude e3a4e72为主参考，实际读取并移植glass.css的材料参数及ControlCenter.tsx的ToggleTile模块布局，完整MIT许可证保存在docs/licenses/macos27-claude-MIT.txt，来源与调整写入docs/macos-visual-reference-study.md。不引入React或虚假系统硬件状态、不复制第三方素材，保留现有数据和经典Spotlight语义。
+- 主菜单/上下文菜单/Spotlight共用上游popover滤镜与阴影，Dock与菜单栏使用独立滤镜，Dock轮廓26px，控制中心移植双列模块且真实设置持久化，增加窄屏边界钳位，Finder胶囊工具组、搜索栏及菜单材质统一。正文不透明，菜单栏/控制保留高遮盖度，支持原有降级。
+- npm run check通过；本地Edge浏览器7/7（Finder窗口恢复、两主题菜单材质、固定Finder/经典模式、Spotlight、Liquid Glass/forced-colors、控制中心设置持久化及390px窄屏）。生产build已编译但非Swiper gzip 208796>204800 B，203.9/200KiB，首屏60.5/60.5、combined230.3/230、CSS38.6/64、output1722.4/4096，未执行后续PWA及生产E2E；不放宽预算。保存3张实际截图于外置日志upstream-port，尚未进行源站逐像素对照、跨浏览器及全套应用移植。Desktop Commander额度已达91%，减少重复查询；本轮仅本地提交，未写入GitHub、PR或发布，保留127.0.0.1:4277。

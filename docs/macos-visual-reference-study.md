@@ -27,3 +27,10 @@
 - 在已有材质令牌上增加方向性径向高光与分边内阴影；仍是静态CSS光学近似，无真实场景折射或逐帧像素处理。应用图标的6处重复材质归并到唯一app-material/app-ink定义；保留色彩语义。Spotlight结果淡入、圆角连续过渡，减少动效模式关闭新增动画。
 - 复用DesktopMenus作为独立的右侧控制中心实例，具有外观三选一、网页搜索栏/时钟/Dock放大/图标名称开关和系统设置入口，直接绑定真实preferences，不增加另一套设置存储。ARIA menuitemradio/menuitemcheckbox与现有菜单键盘导航共用，窗口叠层开启时关闭菜单。保留原左侧菜单及经典模式。390px窄屏已测试，320px及真实触屏尚未验证。
 - Spotlight命令检索补齐NFKC规范化，与本地记录检索一致；未扩展网络索引、OS系统状态或真实硬件控制。控制中心截图保留于外置日志目录 liquid-glass-control-center.png。
+
+## 开源源码移植基线（2026-11-26）
+用户明确反馈之前逐步叠加的视觉设计不满足要求，转为直接复刻成熟开源实现。筛选：
+- a2d2-dev/macos27-claude（MIT，主参考），https://github.com/a2d2-dev/macos27-claude/tree/e3a4e72b8d46b55828796a362799be1d7f511ef4 ，演示 https://macos27-claude.vercel.app/ 。核查src/styles/glass.css、src/components/ControlCenter.tsx、Spotlight.tsx、Dock.tsx、Window.tsx；实际移植glass.css的glass/popover/menu bar滤镜与阴影令牌，并将ControlCenter的ToggleTile结构转换到Vue；保留原MIT版权及许可于docs/licenses/macos27-claude-MIT.txt。
+- Thanas-R/Thanas-OS（MIT），https://github.com/Thanas-R/Thanas-OS/tree/5a430db1abf4c4545c88c717b9eaebb1d789a0ae ，演示 https://thanasos.thanas.dev/ 。核查Spotlight.tsx，快速入口/结果结构与真实记录索引的思路；不复制当前不符合用户经典双栏Spotlight要求的单列结果布局。
+- StarKnightt/macos-web（MIT），https://github.com/StarKnightt/macos-web ，演示 https://starknightt.github.io/macos-web/ 。核对仓库说明/许可证元数据，尚未逐模块移植。
+- 主参考与本项目框架不同，选择直接移植CSS令牌及组件模板和交互语义，不引入React/Tailwind/Framer Motion。现有菜单栏和小控件保留更高遮盖度以适配用户任意壁纸，保留opaque正文和减少透明度降级；参考Dock的26px轮廓与底部留白，复用现有可靠拖动与动画引擎。控制中心改为324px宽双列60px模块、32px圆形状态图标、18px圆角及真实开关状态，窄屏钳位；不伪造Wi-Fi/蓝牙/剪贴板等。Finder统一胶囊工具组、搜索及右键材质。本轮是第一批真实移植，不是整站1:1复刻；后续以单一参考源码布局为主，优先逐个迁移窗口外壳、Finder、内置应用以及完整Dock视觉，避免继续混合多套风格。截图存外置日志upstream-port。
