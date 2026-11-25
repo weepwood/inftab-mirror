@@ -89,7 +89,7 @@ onBeforeUnmount(()=>{drag?.unset();resize?.unset();window.removeEventListener('r
    <div class="snap-controls"><button type="button" aria-label="左侧停靠" :aria-pressed="snap==='left'" @click="toggleSnap('left')"><PanelLeft :size="15"/></button><button type="button" aria-label="右侧停靠" :aria-pressed="snap==='right'" @click="toggleSnap('right')"><PanelRight :size="15"/></button></div>
   </header>
   <slot/>
-  <template v-if="!maximized&&!snap"><span v-for="edge in ['n','s','w','e','nw','ne','sw','handle']" :key="edge" :class="'resize-'+edge" class="window-resize-edge" aria-hidden="true"/></template>
+  <template v-if="!maximized&&!snap"><span v-for="edge in ['n','s','w','e','nw','ne','sw','handle']" :key="edge" :class="'resize-'+edge" class="window-resize-edge" aria-hidden="true" @mousedown.prevent/></template>
  </section>
  </Transition>
 </template>

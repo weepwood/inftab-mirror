@@ -448,3 +448,6 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 ## #46 资源预算与窗口手势收口
 - 8eb4104 的 verify 139272400284、cross 139272400092 都因 Linux gzip 204831 > 204800 B（超31 B）构建失败，UI通过。未放宽预算。保留desktop-shell合并菜单/画布及workspace-recovery合并备份解析/恢复，撤销会使桌面窗口静态加载settings-tools的事务合并实验。保持Swiper独立、经典首屏及桌面外壳按需加载契约。
 - WindowFrame 标题栏和缩放手柄 user-select:none，正文保持可选择，双主题笔记缩放新增DOM无误选断言；生产分包新增经典/设置不加载desktop-shell、桌面仅加载一次且可往返验证。首次新测试同名设置按钮定位歧义已修正。最终check/build:web、生产Edge 71/71（desktop-alpha2、production-chunks、desktop-storage、config-migration）通过。Mac首屏59.8/60.5、非Swiper198.4/200、CSS34.4/64KiB，PWA额外10666/16384 B、全站1746653/4194304 B。Linux待CI，未重复全量单测或真机。追加现有#46，不创建新PR；#45线上8de2601保持不变，#37与正式Tag保持。通过后合并部署，再继续其他业务应用视觉。
+
+## #46 WebKit 缩放选择回归
+- 779c71a 常规737/737、PWA、UI通过，Linux非Swiper199.4/200KiB；cross 139280374918 实际106通过/2跳过/2失败，两个WebKit笔记缩放用例仍选中页脚文字，CSS user-select单独不足。缩放手柄新增mousedown.prevent阻止原生鼠标文本选择起始，保留原选择断言及正文编辑，不改其他行为。本机build:web、四项核心缩放专项4/4通过，Mac非Swiper198.5/200KiB。对应Playwright WebKit 2370未安装，远程复验待核验。#47独立视觉提交c66dc28，基于本PR分支，合并#46后再转main，保留6张截图与84/84本机回归记录，不提前合并。
