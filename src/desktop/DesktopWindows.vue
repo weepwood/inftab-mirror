@@ -6,11 +6,12 @@ import type { LauncherItem } from '../types'
 import type { HomeWorkspace } from '../data/homeWorkspaces'
 import { activeWindow, activateWindow, closeWindow, emptyWindows, openWindow, updateWindow, maxWindows } from './windowManager'
 
-const props = defineProps<{ request?: { sequence:number; workspaceId:string; folderId?:string }; items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; dark?:boolean }>()
+const props = defineProps<{ request?: { sequence:number; workspaceId:string; folderId?:string }; overviewRequest?:number; items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; dark?:boolean }>()
 const emit = defineEmits<{ open:[item:LauncherItem,event?:MouseEvent]; edit:[item:LauncherItem]; remove:[item:LauncherItem]; move:[item:LauncherItem,id:string]; membership:[item:LauncherItem,folderId:string|null]; create:[workspaceId:string] }>()
 const state=ref(emptyWindows()), overview=ref(false), limit=ref(false)
 const active=computed(()=>activeWindow(state.value))
 const minimized=computed(()=>state.value.windows.filter(w=>w.minimized))
+watch(()=>props.overviewRequest,()=>{overview.value=true})
 watch(()=>props.request, request=>{
  if(!request)return
  const next=openWindow(state.value,request)
@@ -35,6 +36,7 @@ function forwardMembership(item:LauncherItem,id:string|null){emit('membership',i
   </div>
   <section v-if="overview" class="window-overview" aria-label="窗口概览" @keydown.esc.stop="overview=false">
    <header><strong>运行中的窗口</strong><button type="button" @click="overview=false">关闭概览</button></header>
+   <p v-if="!state.windows.length">没有运行中的窗口。</p>
    <button v-for="window in [...state.windows].reverse()" :key="window.id" type="button" @click="activate(window.id)"><Folder :size="20"/><span>{{window.title}}</span><small>{{window.minimized?'已最小化':window.id===active?'当前窗口':'打开中'}}</small></button>
   </section>
   <p v-if="limit" role="status" class="window-limit">最多打开 {{maxWindows}} 个 Finder 窗口，请先关闭一个。</p>

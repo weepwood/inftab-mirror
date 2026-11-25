@@ -46,3 +46,25 @@ export function resolvePoints(ids: string[], saved: Record<string, Point>, width
   }
   return result
 }
+
+/** Translate a selected group without distorting relative positions at viewport edges. */
+export function translateGroup(points: Record<string, Point>, delta: Point, width: number, height: number, snap = false): Record<string, Point> {
+  const entries = Object.entries(points)
+  const result: Record<string, Point> = Object.create(null)
+  if (!entries.length) return result
+  const values = entries.map(([, point]) => point)
+  function axis(key: 'x' | 'y', size: number) {
+    const lo = -Math.min(...values.map(p => p[key]))
+    const hi = Math.max(lo, size - cell - Math.max(...values.map(p => p[key])))
+    const requested = delta[key]
+    if (snap) {
+      const lower = Math.ceil(lo / cell) * cell
+      const upper = Math.floor(hi / cell) * cell
+      if (lower <= upper) return Math.max(lower, Math.min(upper, Math.round(requested / cell) * cell))
+    }
+    return Math.max(lo, Math.min(hi, requested))
+  }
+  const dx = axis('x', width), dy = axis('y', height)
+  for (const [id, point] of entries) result[id] = { x: point.x + dx, y: point.y + dy }
+  return result
+}

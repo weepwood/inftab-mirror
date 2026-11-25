@@ -34,6 +34,7 @@ const LauncherSearchResults = lazyHome(() => import('./components/LauncherSearch
 const DesktopWindows = lazyHome(() => import('./desktop/DesktopWindows.vue'), '桌面窗口', true)
 const finderRequest = shallowRef<{ sequence: number; workspaceId: string; folderId?: string }>()
 let finderSequence = 0
+const overviewRequest = ref(0)
 const DesktopShell = lazyHome(() => import('./desktop/DesktopShell.vue'), '自由桌面', true)
 const desktopMode = useStoredState('inftab.desktop-mode.v1', false, value => value === true)
 const ShortcutGrid = lazyHome(() => import('./components/ShortcutGrid.vue'), '快捷入口', true)
@@ -648,6 +649,9 @@ async function runCommand(id: string) {
   else if (id === 'minimal') toggleMinimalMode()
   else if (id === 'light' || id === 'dark' || id === 'system') updatePreferences({ themeMode: id })
   else if (id === 'home') goToPage(0)
+  else if (id === 'desktop:finder' && desktopMode.value) openFinder()
+  else if (id === 'desktop:overview' && desktopMode.value) overviewRequest.value++
+  else if (id === 'desktop:classic' && desktopMode.value) desktopMode.value = false
   else if (id.startsWith('panel:')) openPanel(id.slice(6) as PanelId)
 }
 
@@ -923,7 +927,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembership" @create="openFinderFolderEditor" />
+    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :overview-request="overviewRequest" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembership" @create="openFinderFolderEditor" />
     <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
@@ -950,7 +954,7 @@ onBeforeUnmount(() => {
     </div>
 
     <HomeLayoutEditor v-if="layoutEditorOpen" :workspace="activeHomeWorkspace" :preferences="preferences" :save="applyHomeLayout" @close="layoutEditorOpen = false" />
-    <CommandPalette v-if="commandPaletteOpen" @close="commandPaletteOpen = false" @run="runCommand" />
+    <CommandPalette v-if="commandPaletteOpen" :desktop="desktopMode" @close="commandPaletteOpen = false" @run="runCommand" />
 
     <FolderDialog
       v-if="folderDialogOpen"

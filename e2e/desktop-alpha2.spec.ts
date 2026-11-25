@@ -151,3 +151,16 @@ test('independent Finder windows restore from overview and preserve navigation',
  await active.getByRole('button',{name:'返回',exact:true}).click()
  await expect(active.locator('.finder-title strong')).toHaveText('Window folder')
 })
+
+test('desktop command palette opens Finder and window overview',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('inftab.desktop-mode.v1','true'))
+ await page.goto('/')
+ await page.getByRole('button',{name:'打开命令面板'}).click()
+ await page.getByRole('combobox',{name:'搜索命令'}).fill('finder')
+ await page.getByRole('combobox',{name:'搜索命令'}).press('Enter')
+ await expect(page.getByRole('dialog',{name:'Finder 入口管理'})).toBeVisible()
+ await page.getByRole('button',{name:'打开命令面板'}).click()
+ await page.getByRole('combobox',{name:'搜索命令'}).fill('mission control')
+ await page.getByRole('combobox',{name:'搜索命令'}).press('Enter')
+ await expect(page.getByRole('region',{name:'窗口概览'})).toBeVisible()
+})

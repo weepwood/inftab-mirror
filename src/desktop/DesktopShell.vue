@@ -6,7 +6,7 @@ import '@interactjs/auto-start'
 import type { LauncherItem } from '../types'
 import { launcherIcons } from '../components/launcherIcons'
 import { Folder } from '@lucide/vue'
-import { cell, resolvePoints, fitPoint, freshLayout, normalizeLayout, type DesktopLayout } from './layout'
+import { cell, resolvePoints, fitPoint, freshLayout, normalizeLayout, translateGroup, type Point, type DesktopLayout } from './layout'
 const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout; folderShortcuts?: LauncherItem[]; dark?: boolean}>()
 const emit = defineEmits<{open: [item: LauncherItem, event?: MouseEvent]; edit: [item: LauncherItem]; layout: [layout: DesktopLayout]; finder:[]; create:[]; remove:[item:LauncherItem]; membership:[item:LauncherItem,folderId:string]}>()
 const surface = ref<HTMLElement>()
@@ -36,7 +36,8 @@ const positions = computed(() => props.items.map(item => ({item,point:resolved.v
 const renderedHeight = computed(() => Math.max(canvasHeight.value,...positions.value.map(p=>p.point.y+cell)))
 let observer: ResizeObserver | undefined
 let binding: ReturnType<typeof interact> | undefined
-let dragging: {el: HTMLElement; id: string; x: number; y: number; moved: boolean} | undefined
+type DragMember = { id:string; el:HTMLElement; point:Point }
+let dragging: {id:string; x:number; y:number; dx:number; dy:number; moved:boolean; members:DragMember[]} | undefined
 let suppressUntil = 0
 let suppressedId = ''
 function save(id: string, x: number, y: number) {
@@ -44,6 +45,28 @@ function save(id: string, x: number, y: number) {
   const occupied = positions.value.some(p => p.item.id !== id && Math.abs(p.point.x-point.x)<cell && Math.abs(p.point.y-point.y)<cell)
   if (occupied) return
   update({ ...layout.value, positions: { ...layout.value.positions, [id]: point } })
+}
+function selectedGroup(id:string) {
+  return selected.value.includes(id) ? [id,...selected.value.filter(candidate=>candidate!==id&&resolved.value[candidate])] : [id]
+}
+function saveGroup(ids:string[],dx:number,dy:number) {
+  const source=Object.fromEntries(ids.flatMap(id=>resolved.value[id]?[[id,resolved.value[id]!]]:[]))
+  const moved=translateGroup(source,{x:dx,y:dy},width.value,renderedHeight.value,layout.value.snap)
+  const next={...layout.value.positions,...moved}
+  const candidate=resolvePoints(props.items.map(item=>item.id),next,width.value,renderedHeight.value)
+  // Do not accept partial group moves or displace other icons as a side effect.
+  if(positions.value.some(({item,point})=>{
+    const expected=moved[item.id]??point,actual=candidate[item.id]
+    return !actual||actual.x!==expected.x||actual.y!==expected.y
+  }))return
+  if(ids.some(id=>moved[id]&&(moved[id]!.x!==source[id]?.x||moved[id]!.y!==source[id]?.y)))update({...layout.value,positions:next})
+}
+function restoreDrag(members:DragMember[]) {
+  for(const member of members){
+    member.el.style.zIndex=''
+    const point=resolved.value[member.id]
+    if(point&&member.el.isConnected)member.el.style.transform='translate('+point.x+'px,'+point.y+'px)'
+  }
 }
 function activate(item: LauncherItem, event: MouseEvent) {
   if (item.id === suppressedId && performance.now() < suppressUntil && event.detail !== 0) return
@@ -67,7 +90,11 @@ function keyMove(event: KeyboardEvent,id: string) {
   const point = positions.value.find(p=>p.item.id===id)?.point
   if (!point) return
   const step = layout.value.snap ? cell : 8
-  save(id,point.x+(event.key==='ArrowRight'?step:event.key==='ArrowLeft'?-step:0),point.y+(event.key==='ArrowDown'?step:event.key==='ArrowUp'?-step:0))
+  const dx=event.key==='ArrowRight'?step:event.key==='ArrowLeft'?-step:0
+  const dy=event.key==='ArrowDown'?step:event.key==='ArrowUp'?-step:0
+  const ids=selectedGroup(id)
+  if(ids.length>1)saveGroup(ids,dx,dy)
+  else save(id,point.x+dx,point.y+dy)
 }
 onMounted(() => {
   migrate()
@@ -84,27 +111,39 @@ onMounted(() => {
         const id = el.dataset.itemId
         const point = positions.value.find(p=>p.item.id===id)?.point
         if (!id || !point) return
-        dragging = {el,id,x:point.x,y:point.y,moved:false}
-        el.style.zIndex='2'
+        const ids=selectedGroup(id)
+        const members=ids.flatMap(memberId=>{
+          const member=memberId===id?el:root.querySelector<HTMLElement>('[data-item-id="'+CSS.escape(memberId)+'"]')
+          const position=resolved.value[memberId]
+          return member&&position?[{id:memberId,el:member,point:position}]:[]
+        })
+        if(!members.length)return
+        if(!selected.value.includes(id))selected.value=[id]
+        dragging={id,x:point.x,y:point.y,dx:0,dy:0,moved:false,members}
+        for(const member of members)member.el.style.zIndex='2'
       },
       move(event) {
         if (!dragging) return
-        dragging.x += event.dx; dragging.y += event.dy; dragging.moved=true
-        const p = fitPoint(dragging,width.value,renderedHeight.value)
-        dragging.el.style.transform = 'translate('+p.x+'px,'+p.y+'px)'
+        dragging.x += event.dx; dragging.y += event.dy; dragging.dx+=event.dx;dragging.dy+=event.dy;dragging.moved=true
+        const group=dragging.members
+        const preview=group.length===1?{[dragging.id]:fitPoint(dragging,width.value,renderedHeight.value)}:translateGroup(Object.fromEntries(group.map(m=>[m.id,m.point])),{x:dragging.dx,y:dragging.dy},width.value,renderedHeight.value)
+        for(const member of group){const p=preview[member.id];if(p)member.el.style.transform='translate('+p.x+'px,'+p.y+'px)'}
       },
       end() {
         if (!dragging) return
         const d=dragging; dragging=undefined
-        d.el.style.zIndex=''
+        for(const member of d.members)member.el.style.zIndex=''
         if (d.moved) {
-          const source=props.items.find(i=>i.id===d.id)
-          const target=positions.value.find(p=>p.item.folder && Math.abs(p.point.x-d.x)<40 && Math.abs(p.point.y-d.y)<40)
-          if(source?.shortcut && target) emit('membership',source,target.item.id)
-          else save(d.id,d.x,d.y)
+          if(d.members.length>1)saveGroup(d.members.map(m=>m.id),d.dx,d.dy)
+          else{
+            const source=props.items.find(i=>i.id===d.id)
+            const target=positions.value.find(p=>p.item.folder && Math.abs(p.point.x-d.x)<40 && Math.abs(p.point.y-d.y)<40)
+            if(source?.shortcut && target) emit('membership',source,target.item.id)
+            else save(d.id,d.x,d.y)
+          }
           suppressedId=d.id; suppressUntil=performance.now()+300
         }
-        requestAnimationFrame(() => { const p=positions.value.find(p=>p.item.id===d.id)?.point; if(p && d.el.isConnected) d.el.style.transform='translate('+p.x+'px,'+p.y+'px)' })
+        requestAnimationFrame(()=>restoreDrag(d.members))
       },
     },
   })
@@ -112,9 +151,7 @@ onMounted(() => {
 function cancelDrag() {
   if (!dragging) return
   const d=dragging; dragging=undefined
-  d.el.style.zIndex=''
-  const p=positions.value.find(p=>p.item.id===d.id)?.point
-  if (p) d.el.style.transform='translate('+p.x+'px,'+p.y+'px)'
+  restoreDrag(d.members)
   suppressedId=d.id; suppressUntil=performance.now()+300
 }
 function cancelKey(event: KeyboardEvent) { if(event.key==='Escape'){cancelDrag(); menu.value=undefined;selected.value=[]} }
@@ -123,7 +160,8 @@ function menuAction(action:()=>void){menu.value=undefined;action()}
 onMounted(() => { window.addEventListener('blur',cancelDrag); window.addEventListener('keydown',cancelKey); surface.value?.addEventListener('pointercancel',cancelDrag,true) })
 onBeforeUnmount(() => { cancelDrag(); observer?.disconnect(); binding?.unset(); window.removeEventListener('blur',cancelDrag); window.removeEventListener('keydown',cancelKey); surface.value?.removeEventListener('pointercancel',cancelDrag,true) })
 watch(() => props.items.map(i=>i.id), ids => {
-  if (dragging && !ids.includes(dragging.id)) cancelDrag()
+  if (dragging && dragging.members.some(member=>!ids.includes(member.id))) cancelDrag()
+  selected.value=selected.value.filter(id=>ids.includes(id))
 })
 </script>
 <template>
@@ -135,8 +173,8 @@ watch(() => props.items.map(i=>i.id), ids => {
       <button type="button" @click="update({...layout,positions:{}})">整理图标</button>
     </div>
     <div ref="surface" class="desktop-surface" @click.self="selected=[];menu=undefined" @contextmenu.self.prevent="context($event)">
-      <div class="desktop-canvas" @pointerdown="boxStart" @pointermove="boxMove" @pointerup="boxEnd" @pointercancel="boxEnd" @contextmenu.self.prevent="context($event)" :style="{height: renderedHeight+'px'}">
-        <button v-for="{item,point} in positions" :key="item.id" type="button" class="desktop-icon" :class="{selected:selected.includes(item.id)}" :data-item-id="item.id" :style="{transform:'translate('+point.x+'px,'+point.y+'px)'}" :aria-label="item.title" @click="activate(item,$event)" @auxclick.middle.prevent="activate(item,$event)" @contextmenu.stop.prevent="context($event,item)" @keydown="keyMove($event,item.id)">
+      <div class="desktop-canvas" @pointerdown="boxStart" @pointermove="boxMove" @pointerup="boxEnd" @pointercancel="boxEnd" @lostpointercapture="boxEnd" @contextmenu.self.prevent="context($event)" :style="{height: renderedHeight+'px'}">
+        <button v-for="{item,point} in positions" :key="item.id" type="button" class="desktop-icon" :class="{selected:selected.includes(item.id)}" :data-item-id="item.id" :style="{transform:'translate('+point.x+'px,'+point.y+'px)'}" :aria-label="item.title" :aria-pressed="selected.includes(item.id)" @click="activate(item,$event)" @auxclick.middle.prevent="activate(item,$event)" @contextmenu.stop.prevent="context($event,item)" @keydown="keyMove($event,item.id)">
           <span class="desktop-symbol" :class="{builtin:item.action}" :data-action="item.action" :style="{background:item.action ? undefined : item.color}">
             <span v-if="item.folder" class="mac-folder"><Folder :size="56" fill="#72c7fa" color="#369bd7"/><span class="folder-count">{{item.folder.shortcutIds.length}}</span><span class="folder-preview"><i v-for="child in (folderShortcuts??[]).filter(c=>item.folder!.shortcutIds.includes(c.id)).slice(0,3)" :key="child.id" :style="{background:child.color}"/></span></span>
             <component v-else-if="item.action && launcherIcons[item.action]" :is="launcherIcons[item.action]" :size="30" :stroke-width="1.8"/>

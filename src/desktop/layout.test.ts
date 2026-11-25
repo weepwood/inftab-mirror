@@ -25,3 +25,16 @@ describe('desktop collision resolution', () => {
     expect(new Set(Object.values(points).map(p=>p.x+':'+p.y)).size).toBe(count)
   })
 })
+
+import { translateGroup } from './layout'
+describe('desktop group movement', () => {
+  it('preserves offsets and clamps the entire group at the edge', () => {
+    const source = { a: { x: 0, y: 96 }, b: { x: 96, y: 192 } }
+    expect(translateGroup(source, { x: 400, y: -100 }, 384, 384, true)).toEqual({ a: { x: 192, y: 0 }, b: { x: 288, y: 96 } })
+    expect(source.a).toEqual({ x: 0, y: 96 })
+  })
+  it('preserves unsnapped geometry and handles an empty group', () => {
+    expect(translateGroup({ a: { x: 14, y: 22 }, b: { x: 115, y: 25 } }, { x: -20, y: 13 }, 400, 400)).toEqual({ a: { x: 0, y: 35 }, b: { x: 101, y: 38 } })
+    expect(translateGroup({}, { x: 10, y: 10 }, 400, 400)).toEqual({})
+  })
+})

@@ -3,12 +3,13 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { trapOverlayTab, isComposingKey } from '../composables/overlayFocus'
 import { filterCommands } from '../data/commands'
 
+const props = defineProps<{ desktop?: boolean }>()
 const emit = defineEmits<{ close: []; run: [id: string] }>()
 const query = ref('')
 const selected = ref(0)
 const dialog = ref<HTMLDialogElement>()
 const input = ref<HTMLInputElement>()
-const commands = computed(() => filterCommands(query.value))
+const commands = computed(() => filterCommands(query.value, props.desktop))
 let returnFocus: HTMLElement | undefined
 
 watch(query, () => { selected.value = 0 })
