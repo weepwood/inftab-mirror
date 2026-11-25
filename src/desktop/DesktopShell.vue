@@ -5,7 +5,7 @@ import { navigateMenu } from '../components/menuNavigation'
 import { desktopHabitIcon, launcherIcons } from '../components/launcherIcons'
 import { folderParents } from '../data/folderTree'
 import { cell, arrangeFromRight, resolvePoints, fitPoint, freshLayout, normalizeLayout, translateGroup, type Point, type DesktopLayout } from './layout'
-const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout; folderShortcuts?: LauncherItem[]; dark?: boolean; blocked?:boolean; searchActive?:boolean}>()
+const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout; folderShortcuts?: LauncherItem[]; dark?: boolean; blocked?:boolean; searchActive?:boolean; showNames?:boolean}>()
 const emit = defineEmits<{open: [item: LauncherItem, event?: MouseEvent]; edit: [item: LauncherItem]; layout: [layout: DesktopLayout]; finder:[]; create:[]; remove:[item:LauncherItem]; membership:[item:LauncherItem,folderId:string]; dismissSearch:[]}>()
 const surface = ref<HTMLElement>()
 const selected = ref<string[]>([])
@@ -61,7 +61,7 @@ const holdMs=180,touchHoldMs=450,moveThreshold=5
 type Press={pointer:number;button:number;item:LauncherItem;el:HTMLElement;x:number;y:number;at:number;travelled:boolean;touch?:boolean;timer?:ReturnType<typeof setTimeout>}
 let press:Press|undefined
 let suppressClick=false
-const moving=ref(false)
+const moving=ref(false),touchArrange=ref(false)
 function save(id: string, x: number, y: number) {
   const point = fitPoint({x,y},width.value,renderedHeight.value,layout.value.snap)
   const occupied = positions.value.some(p => p.item.id !== id && Math.abs(p.point.x-point.x)<cell && Math.abs(p.point.y-point.y)<cell)
@@ -91,7 +91,7 @@ function saveGroup(ids:string[],dx:number,dy:number) {
 }
 function restoreDrag(members:DragMember[]) {
   for(const member of members){
-    member.el.style.zIndex=''
+    member.el.style.zIndex='';delete member.el.dataset.drop
     const point=resolved.value[member.id]
     if(point&&member.el.isConnected)member.el.style.transform='translate('+point.x+'px,'+point.y+'px)'
   }
@@ -99,6 +99,7 @@ function restoreDrag(members:DragMember[]) {
 function activate(item: LauncherItem, event: MouseEvent) {
   if(props.blocked)return
   if(event.detail!==0&&suppressClick){suppressClick=false;return}
+  if(touchArrange.value&&event.detail!==0){selected.value=[item.id];return}
   if(event.ctrlKey||event.metaKey||event.shiftKey){
     selected.value=selected.value.includes(item.id)?selected.value.filter(id=>id!==item.id):[...selected.value,item.id]
     return
@@ -116,7 +117,7 @@ function pointerStart(event:PointerEvent,item:LauncherItem){
   suppressClick=false
   press={pointer:event.pointerId,button:event.button,item,el,x:event.clientX,y:event.clientY,at:performance.now(),travelled:false,touch:event.pointerType==='touch'}
   const p=press
-  if(p.touch)p.timer=setTimeout(()=>{
+  if(p.touch&&!touchArrange.value)p.timer=setTimeout(()=>{
     if(press!==p||p.travelled||props.blocked)return
     suppressClick=true;selected.value=[item.id];emit('dismissSearch')
     openMenu(p.x,p.y,item,el,false)
@@ -133,10 +134,12 @@ function pointerMove(event:PointerEvent){
   if(!p||p.pointer!==event.pointerId)return
   const dx=event.clientX-p.x,dy=event.clientY-p.y
   if(Math.hypot(dx,dy)>=moveThreshold)p.travelled=true
-  if(p.button===0){if(p.travelled){suppressClick=true;clearTimeout(p.timer);if(p.touch)closeMenu()}return}
-  if(!(event.buttons&2)){cancelDrag();return}
+  const freeDrag=p.button===0&&(p.touch?touchArrange.value:!layout.value.snap)
+  if(p.button===0){if(p.travelled){suppressClick=true;clearTimeout(p.timer);if(p.touch&&!touchArrange.value)closeMenu()}if(!freeDrag)return}
+  if(!(event.buttons&(freeDrag?1:2))){cancelDrag();return}
   if(!dragging){
-    if(!p.travelled||performance.now()-p.at<holdMs)return
+    if(!p.travelled||(!freeDrag&&performance.now()-p.at<holdMs))return
+    if(freeDrag){emit('dismissSearch');if(!selected.value.includes(p.item.id))selected.value=[p.item.id]}
     const point=resolved.value[p.item.id]
     if(!point)return cancelDrag()
     const members=selectedGroup(p.item.id).flatMap(id=>{
@@ -152,7 +155,15 @@ function pointerMove(event:PointerEvent){
   const d=dragging,point=d.members[0]!.point
   d.x=point.x+dx;d.y=point.y+dy;d.dx=dx;d.dy=dy
   const preview=d.members.length===1?{[d.id]:fitPoint(d,width.value,renderedHeight.value)}:translateGroup(Object.fromEntries(d.members.map(m=>[m.id,m.point])),{x:dx,y:dy},width.value,renderedHeight.value)
-  for(const member of d.members){const pos=preview[member.id];if(pos)member.el.style.transform='translate('+pos.x+'px,'+pos.y+'px)'}
+  for(const member of d.members){
+    const pos=preview[member.id];if(!pos)continue
+    member.el.style.transform='translate('+pos.x+'px,'+pos.y+'px)'
+    if(d.members.length===1&&p.button===0){
+      const landing=fitPoint(d,width.value,renderedHeight.value,layout.value.snap)
+      const blocked=positions.value.some(q=>q.item.id!==d.id&&Math.abs(q.point.x-landing.x)<cell&&Math.abs(q.point.y-landing.y)<cell)
+      member.el.dataset.drop=blocked?'blocked':'ready'
+    }
+  }
 }
 function releasePress(p:Press){
   clearTimeout(p.timer);press=undefined
@@ -164,8 +175,8 @@ function pointerEnd(event:PointerEvent){
   const d=dragging
   dragging=undefined;moving.value=false
   releasePress(p)
-  if(p.button===0){
-    if(p.touch&&!p.travelled&&performance.now()-p.at>=touchHoldMs){
+  if(p.button===0&&!d){
+    if(p.touch&&!touchArrange.value&&!p.travelled&&performance.now()-p.at>=touchHoldMs){
       suppressClick=true;event.preventDefault();event.stopPropagation()
       if(!menu.value)openMenu(p.x,p.y,p.item,p.el,false)
     }
@@ -180,7 +191,7 @@ function pointerEnd(event:PointerEvent){
   else{
     const source=visibleItems.value.find(i=>i.id===d.id)
     const target=positions.value.find(q=>q.item.id!==d.id&&q.item.folder&&Math.abs(q.point.x-d.x)<40&&Math.abs(q.point.y-d.y)<40)
-    if(source?.shortcut&&target)emit('membership',source,target.item.id)
+    if(source?.shortcut&&target&&p.button===2)emit('membership',source,target.item.id)
     else save(d.id,d.x,d.y)
   }
   void nextTick(()=>{if(!dragging)restoreDrag(d.members)})
@@ -213,7 +224,7 @@ onMounted(() => {
   migrate()
   const root = surface.value
   if (!root) return
-  const measure = () => { const w=root.clientWidth || 960, h=root.clientHeight || 480; if(w!==width.value || h!==height.value) cancelDrag(); width.value=w; height.value=h }
+  const measure = () => { const w=root.clientWidth || 960, h=root.clientHeight || 480; if(w!==width.value || h!==height.value) blur(); width.value=w; height.value=h }
   measure()
   if (typeof ResizeObserver !== 'undefined') { observer = new ResizeObserver(measure); observer.observe(root) }
 })
@@ -237,13 +248,13 @@ function cancelKey(event:KeyboardEvent){
 function openMenu(x:number,y:number,item?:LauncherItem,trigger?:HTMLElement,focus=true){
   if(props.blocked)return
   menuTrigger=trigger
-  menu.value={x:Math.max(0,Math.min(x,innerWidth-180)),y:Math.max(0,Math.min(y,innerHeight-260)),item}
+  menu.value={x,y,item}
   void nextTick(()=>{
     const root=menuRoot.value
     if(!root||!menu.value)return
     const r=root.getBoundingClientRect()
-    menu.value.x=Math.max(0,Math.min(menu.value.x,innerWidth-r.width-4))
-    menu.value.y=Math.max(0,Math.min(menu.value.y,innerHeight-r.height-4))
+    menu.value.x=Math.max(4,Math.min(menu.value.x,innerWidth-r.width-4))
+    menu.value.y=Math.max(4,Math.min(menu.value.y,innerHeight-r.height-4))
     if(focus)root.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true})
   })
 }
@@ -255,6 +266,7 @@ function editMenuItem(remove=false){const item=menu.value?.item;menuAction(()=>{
 function outside(event:PointerEvent){
   if(menu.value&&!menuRoot.value?.contains(event.target as Node))closeMenu()
   if(press&&event.pointerId!==press.pointer)cancelDrag()
+  if(marquee.value&&event.pointerId!==marqueePointer)boxEnd()
 }
 function blur(){cancelDrag();boxEnd();closeMenu()}
 function ancestorScroll(e:Event){if(e.target instanceof Element&&surface.value&&e.target.contains(surface.value))blur()}
@@ -279,12 +291,13 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 })
 </script>
 <template>
-  <section class="desktop-shell" :class="{'is-moving':moving}" aria-label="自由桌面">
+  <section class="desktop-shell" :class="{'is-moving':moving,'hide-names':showNames===false,'touch-arrange':touchArrange}" aria-label="自由桌面">
     <div class="desktop-toolbar" @pointerdown="emit('dismissSearch')">
-      <span>{{selected.length?selected.length+' 项已选':'桌面'}}</span>
+      <span>{{selected.length?selected.length+' 项已选':layout.snap?'桌面':'自由排布'}}</span>
       <button type="button" @click="emit('finder')">Finder</button>
-      <button type="button" :aria-pressed="layout.snap" @click="update({...layout,snap:!layout.snap})">网格吸附</button>
+      <button type="button" :aria-pressed="layout.snap" :title="layout.snap?'关闭吸附，启用左键自由拖动':'启用网格吸附'" @click="blur();update({...layout,snap:!layout.snap})">网格吸附</button>
       <button type="button" @click="update({...layout,positions:{}})">整理图标</button>
+      <button v-if="touchArrange" type="button" @click="blur();touchArrange=false">完成排布</button>
     </div>
     <div ref="surface" tabindex="-1" class="desktop-surface" @click.self="selected=[];closeMenu()" @scroll.passive="cancelDrag();boxEnd();closeMenu()" @contextmenu.self.prevent="context($event)">
       <div class="desktop-canvas" @pointerdown="boxStart" @pointermove="boxMove" @pointerup="boxEnd" @pointercancel="boxEnd" @lostpointercapture="boxEnd" @contextmenu.self.prevent="context($event)" :style="{height: renderedHeight+'px'}">
@@ -295,7 +308,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
             <img v-else-if="item.icon && failedIcons[item.id]!==item.icon" :src="item.icon" alt="" draggable="false" @error="failedIcons[item.id]=item.icon!"/>
             <span v-else>{{item.mark}}</span>
           </span>
-          <span class="desktop-label">{{item.title}}</span>
+          <span v-if="showNames!==false" class="desktop-label">{{item.title}}</span>
         </button>
         <div v-if="marquee" class="desktop-marquee" :style="{left:Math.min(marquee.x,marquee.endX)+'px',top:Math.min(marquee.y,marquee.endY)+'px',width:Math.abs(marquee.endX-marquee.x)+'px',height:Math.abs(marquee.endY-marquee.y)+'px'}"/>
       </div>
@@ -303,7 +316,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
     <div v-if="menu" ref="menuRoot" class="desktop-menu" @keydown="navigateMenu" @focusout="!menuRoot?.contains($event.relatedTarget as Node)&&closeMenu()" :class="{dark}" :style="{left:menu.x+'px',top:menu.y+'px'}" role="menu">
       <button v-if="menu.item" role="menuitem" @click="openMenuItem">打开</button><button role="menuitem" @click="menuAction(()=>emit('create'))">新建文件夹</button>
       <button role="menuitem" @click="menuAction(()=>emit('finder'))">打开 Finder</button>
-      <button role="menuitem" @click="menuAction(()=>update({...layout,positions:{}}))">整理图标</button><button role="menuitem" @click="menuAction(arrangeRight)">从右上排列</button>
+      <button role="menuitem" @click="menuAction(()=>update({...layout,positions:{}}))">整理图标</button><button role="menuitem" @click="menuAction(arrangeRight)">从右上排列</button><button role="menuitem" @click="menuAction(()=>{touchArrange=!touchArrange})">{{touchArrange?'完成排布':'触屏排布'}}</button>
       <template v-if="menu.item?.shortcut||menu.item?.folder"><button role="menuitem" @click="editMenuItem()">编辑</button><button role="menuitem" @click="editMenuItem(true)">删除</button></template>
     </div>
   </section>
@@ -318,12 +331,15 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 .desktop-canvas{position:relative;min-width:100%;touch-action:pan-y}
 .desktop-icon{position:absolute;top:0;left:0;width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:5px 0 0;gap:4px;border:0;background:none;color:white;touch-action:pan-y;user-select:none;-webkit-touch-callout:none;cursor:pointer}
 .desktop-shell.is-moving,.desktop-shell.is-moving .desktop-icon{cursor:grabbing}
+.touch-arrange .desktop-icon{touch-action:none;cursor:grab}.touch-arrange .desktop-toolbar{flex-wrap:wrap}.desktop-icon[data-drop=ready]{border-radius:8px;background:#559aff20}.desktop-icon[data-drop=blocked]{border-radius:8px;background:#d84c4c35;outline:1px solid #ffaaa7;outline-offset:-2px}
 .desktop-icon:focus-visible{outline:2px solid white;outline-offset:-3px;border-radius:8px}
-.desktop-symbol{width:56px;height:56px;flex:none;border-radius:var(--mac-icon-radius);border:1px solid var(--mac-icon-edge);display:grid;place-items:center;overflow:hidden;color:white;box-shadow:var(--mac-icon-shadow);font-size:24px}
+.desktop-shell{--desktop-symbol-size:clamp(32px,calc(var(--shortcut-size,72px) * .75 + 2px),56px)}.desktop-shell.hide-names{--desktop-symbol-size:clamp(32px,calc(var(--shortcut-size,72px) * .75 + 2px),80px)}
+.desktop-shell.hide-names .desktop-icon{justify-content:center;padding:0}
+.desktop-symbol{width:var(--desktop-symbol-size);height:var(--desktop-symbol-size);flex:none;border-radius:var(--mac-icon-radius);border:1px solid var(--mac-icon-edge);display:grid;place-items:center;overflow:hidden;color:white;box-shadow:var(--mac-icon-shadow);font-size:24px}
 
 .desktop-symbol img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .desktop-label{max-width:90px;padding:1px 5px;border-radius:5px;box-sizing:border-box;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;white-space:normal;font-size:12px;font-weight:500;line-height:14px;text-align:center;color:var(--mac-desktop-label-ink);background:var(--mac-desktop-label)}
-.desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon:focus-visible .desktop-symbol{outline:2px solid #fff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection)}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:56px}.desktop-menu{position:fixed;z-index:10;background:var(--mac-menu);color:var(--mac-ink);padding:var(--mac-menu-padding);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);box-shadow:var(--mac-shadow);width:170px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);overflow:auto;overscroll-behavior:contain;backdrop-filter:blur(18px)}.desktop-menu button{display:block;width:100%;text-align:left;padding:7px 9px;background:none;border:0;border-radius:var(--mac-radius-menu-item);color:inherit;cursor:pointer}.desktop-menu button:hover,.desktop-menu button:focus-visible{background:var(--mac-selection);color:var(--mac-selection-ink)}
+.desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon:focus-visible .desktop-symbol{outline:2px solid #fff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection)}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:var(--desktop-symbol-size)}.desktop-menu{position:fixed;z-index:10;background:var(--mac-menu);color:var(--mac-ink);padding:var(--mac-menu-padding);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);box-shadow:var(--mac-shadow);width:170px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);overflow:auto;overscroll-behavior:contain;backdrop-filter:blur(18px)}.desktop-menu button{display:block;width:100%;text-align:left;padding:7px 9px;background:none;border:0;border-radius:var(--mac-radius-menu-item);color:inherit;cursor:pointer}.desktop-menu button:hover,.desktop-menu button:focus-visible{background:var(--mac-selection);color:var(--mac-selection-ink)}
 .desktop-marquee{position:absolute;pointer-events:none;border:1px solid #93c9ff;background:#559aff30;z-index:4}@media(prefers-reduced-motion:no-preference){.desktop-icon.selected .desktop-symbol{transition:outline-color .12s}.finder{animation:finder-appear .15s ease-out}}
 .desktop-menu.dark{background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line)}
 @media(forced-colors:active){.desktop-label{color:CanvasText;background:Canvas}.desktop-icon.selected .desktop-label{color:HighlightText;background:Highlight}.desktop-icon:focus-visible{outline-color:Highlight}}

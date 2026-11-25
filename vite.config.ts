@@ -41,6 +41,7 @@ export default defineConfig({
             },
             // Both desktop shell views mount together, but never on classic home.
             { name: 'desktop-shell', test: /\/src\/desktop\/(?:DesktopShell|DesktopMenus)\.vue/, includeDependenciesRecursively: false },
+            { name: 'desktop-transactions', test: /\/src\/desktop\/(?:desktopOperations|transactionIntent)\.ts/, includeDependenciesRecursively: false },
             { name: 'workspace-recovery', test: /\/src\/(?:data\/backup\.ts|composables\/workspaceBackup\.ts)/, includeDependenciesRecursively: false },
             // Related opt-in widgets share templates and imports, but never pull
             // a panel or a permission request into the startup graph.
@@ -62,7 +63,7 @@ export default defineConfig({
             // Coalesce the optional launcher menu and Dock; neither is a startup dependency.
             { name: 'home-menus', test: /\/src\/components\/(?:HomeDock|ShortcutContextMenu)\.vue|\/src\/components\/menuNavigation\.ts/, includeDependenciesRecursively: false },
             // Optional extension adapters share runtime/permission guards without loading panels.
-            { name: 'browser-data', test: /\/src\/data\/(?:browserApiShared|browserBookmarks|browserHistory|browserTabs)\.ts/, includeDependenciesRecursively: false },
+            { name: 'browser-data', test: /\/src\/data\/(?:browserApiShared|browserBookmarks|browserHistory|browserTabs|browserTabPermissions)\.ts/, includeDependenciesRecursively: false },
             // Related modal editors share validation/focus/form markup. Their
             // native shortcut shell can open before this optional chunk arrives.
             {
@@ -74,7 +75,7 @@ export default defineConfig({
             // overhead without pulling them into the homepage startup graph.
             {
               name: 'settings-tools',
-              test: /\/src\/components\/(?:RangeField|SettingsPanel|CustomThemeEditor|ConfigMigration|ShortcutManager|HomeLayoutEditor)\.vue|\/src\/data\/(?:backupHistory|shortcutBatch|downloadBackup)\.ts/,
+              test: /\/src\/components\/(?:RangeField|SettingsPanel|CustomThemeEditor|ConfigMigration|ShortcutManager|HomeLayoutEditor)\.vue|\/src\/data\/(?:backupHistory|shortcutBatch|downloadBackup|bookmarkHtml|configMigration|themeExchange|homeWidgetPresets|layoutEditor)\.ts/,
               includeDependenciesRecursively: false,
             },
             // Small offline tools share Vue/icon imports and repeated form markup.

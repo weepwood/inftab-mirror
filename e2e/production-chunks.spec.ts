@@ -331,3 +331,17 @@ test('desktop shell shares one lazy chunk and remains absent in classic mode',as
  await expect(page.locator('.desktop-surface')).toBeVisible()
  expect(requests).toHaveLength(1)
 })
+
+test('desktop transactions stay out of classic startup and load with desktop mode',async({page})=>{
+ const requests:string[]=[]
+ page.on('request',request=>{if(/\/assets\/desktop-transactions-[^/]+\.js(?:\?|$)/.test(request.url()))requests.push(request.url())})
+ await page.reload()
+ await expect(page.locator('.shortcut-grid-wrap')).toBeVisible()
+ expect(requests).toEqual([])
+ await page.getByRole('button',{name:'桌面模式',exact:true}).click()
+ await expect(page.locator('.desktop-surface')).toBeVisible()
+ await expect.poll(()=>requests.length).toBe(1)
+ await page.getByRole('button',{name:'Finder',exact:true}).click()
+ await expect(page.getByRole('dialog',{name:'Finder 入口管理'})).toBeVisible()
+ expect(requests).toHaveLength(1)
+})

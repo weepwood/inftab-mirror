@@ -26,7 +26,7 @@ export function defaultPoint(index: number, width: number): Point {
 // Resolve visible collisions without altering the canonical coordinates.
 export function resolvePoints(ids: string[], saved: Record<string, Point>, width: number, height: number): Record<string, Point> {
   const result: Record<string, Point> = Object.create(null)
-  const occupied = new Set<string>()
+  const occupied = new Map<string,Point[]>()
   const columns = Math.max(1, Math.floor(width / cell))
   const key = (x: number, y: number) => x + ':' + y
   function cells(p: Point) {
@@ -35,14 +35,15 @@ export function resolvePoints(ids: string[], saved: Record<string, Point>, width
       for (let x=Math.floor(p.x/cell); x<=Math.ceil((p.x+cell)/cell)-1; x++) keys.push(key(x,y))
     return keys
   }
+  const overlaps=(p:Point)=>cells(p).some(k=>occupied.get(k)?.some(q=>Math.abs(p.x-q.x)<cell&&Math.abs(p.y-q.y)<cell))
   let cursor=0
   for (const id of [...ids.filter(id=>Object.hasOwn(saved,id)), ...ids.filter(id=>!Object.hasOwn(saved,id))]) {
     let p = Object.hasOwn(saved,id) ? fitPoint(saved[id]!,width,height) : undefined
-    if (!p || cells(p).some(k=>occupied.has(k))) {
-      do { p = {x:cursor%columns*cell,y:Math.floor(cursor/columns)*cell}; cursor++ } while(cells(p).some(k=>occupied.has(k)))
+    if (!p || overlaps(p)) {
+      do { p = {x:cursor%columns*cell,y:Math.floor(cursor/columns)*cell}; cursor++ } while(overlaps(p))
     }
     result[id]=p
-    cells(p).forEach(k=>occupied.add(k))
+    for(const k of cells(p)){const bucket=occupied.get(k);if(bucket)bucket.push(p);else occupied.set(k,[p])}
   }
   return result
 }
