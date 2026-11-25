@@ -13,6 +13,18 @@ describe('desktop layout', () => {
 
 import { resolvePoints } from './layout'
 describe('desktop collision resolution', () => {
+  it('preserves non-overlapping free coordinates even when spatial buckets intersect',()=>{
+    const saved={a:{x:5,y:5},b:{x:102,y:5},c:{x:5,y:101}}
+    expect(resolvePoints(['a','b','c'],saved,480,480)).toEqual(saved)
+  })
+  it('still relocates genuine free-coordinate overlaps',()=>{
+    const saved={a:{x:5,y:5},b:{x:100,y:5}}
+    const points=resolvePoints(['a','b'],saved,480,480)
+    expect(points.a).toEqual(saved.a)
+    expect(points.b).not.toEqual(saved.b)
+    expect(Math.abs(points.a!.x-points.b!.x)>=96||Math.abs(points.a!.y-points.b!.y)>=96).toBe(true)
+  })
+
   it('resolves duplicate and clamped slots without changing the saved layout', () => {
     const saved = {a:{x:960,y:0},b:{x:960,y:0}}
     const points=resolvePoints(['a','b','c'],saved,192,300)

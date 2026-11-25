@@ -21,10 +21,27 @@ let drag:ReturnType<typeof interact>|undefined,resize:ReturnType<typeof interact
 let gesture:WindowGeometry|undefined,original:WindowGeometry|undefined
 let originalSnap:WindowSnap=null
 let delta={left:0,right:0,top:0,bottom:0}
-function onResize(){cancel();viewport.value={w:innerWidth,h:innerHeight}}
+let motion:Animation|undefined
+let motionId=0
+function stopMotion(){motionId++;motion?.cancel();motion=undefined}
+function animateGeometry(){
+ const el=root.value
+ if(!el||props.hidden||props.minimized||matchMedia('(prefers-reduced-motion: reduce)').matches)return
+ const from=el.getBoundingClientRect()
+ stopMotion()
+ const id=motionId
+ void Promise.resolve().then(()=>nextTick()).then(()=>{
+  if(id!==motionId||!el.isConnected||!el.animate)return
+  const to=el.getBoundingClientRect()
+  if(!to.width||!to.height||from.x===to.x&&from.y===to.y&&from.width===to.width&&from.height===to.height)return
+  motion=el.animate([{transformOrigin:'0 0',transform:`translate(${from.x-to.x}px,${from.y-to.y}px) scale(${from.width/to.width},${from.height/to.height})`},{transformOrigin:'0 0',transform:'none'}],{duration:220,easing:'cubic-bezier(.2,.8,.2,1)'})
+ })
+}
+function onResize(){stopMotion();cancel();viewport.value={w:innerWidth,h:innerHeight}}
 function start(x?:number,y?:number){
  if(!props.active||props.minimized||props.hidden||root.value?.closest('[inert]'))return
  if((snap.value||props.maximized)&&x===undefined)return
+ stopMotion()
  original={...preferred.value};originalSnap=snap.value
  const current=fitted.value,{w,h}=viewport.value
  if((snap.value||props.maximized)&&x!==undefined&&y!==undefined){
@@ -52,13 +69,13 @@ function resizing(change:typeof delta,edges:ResizeEdges){
 function end(){
  if(!gesture)return
  if(root.value?.closest('[inert]'))return cancel()
- if(preview.value){if(original)preferred.value=original;if(preview.value==='top'){snap.value=null;if(!props.maximized)emit('maximize')}else{snap.value=preview.value;if(dragFromMax.value)emit('maximize')}}
+ if(preview.value){animateGeometry();if(original)preferred.value=original;if(preview.value==='top'){snap.value=null;if(!props.maximized)emit('maximize')}else{snap.value=preview.value;if(dragFromMax.value)emit('maximize')}}
  else {if(dragFromMax.value)emit('maximize');try{saveGeometry(props.geometryKey,preferred.value,sessionStorage)}catch{/* denied storage */}}
  gesture=undefined;original=undefined;originalSnap=null;preview.value=null;dragFromMax.value=false
 }
 function cancel(){if(original){preferred.value=original;snap.value=originalSnap}gesture=undefined;original=undefined;originalSnap=null;preview.value=null;dragFromMax.value=false}
-function toggleSnap(side:Exclude<WindowSnap,null>){cancel();if(props.maximized)emit('maximize');snap.value=snap.value===side?null:side}
-function maximize(){cancel();snap.value=null;emit('maximize')}
+function toggleSnap(side:Exclude<WindowSnap,null>){cancel();animateGeometry();if(props.maximized)emit('maximize');snap.value=snap.value===side?null:side}
+function maximize(){cancel();animateGeometry();snap.value=null;emit('maximize')}
 function titleDoubleClick(e:MouseEvent){
  if(!(e.target as Element)?.closest('button'))maximize()
 }
@@ -79,8 +96,8 @@ onMounted(()=>{
  window.addEventListener('resize',onResize);window.addEventListener('blur',cancel)
  root.value?.addEventListener('pointercancel',cancel,true)
 })
-watch(()=>props.active&&!props.minimized&&!props.hidden,async active=>{if(!active)cancel();if(active){await nextTick();if(root.value&&!root.value.closest('[inert]')&&!root.value.contains(document.activeElement))root.value.focus({preventScroll:true})}},{immediate:true})
-onBeforeUnmount(()=>{drag?.unset();resize?.unset();window.removeEventListener('resize',onResize);window.removeEventListener('blur',cancel);root.value?.removeEventListener('pointercancel',cancel,true)})
+watch(()=>props.active&&!props.minimized&&!props.hidden,async active=>{if(!active){stopMotion();cancel()}if(active){await nextTick();if(root.value&&!root.value.closest('[inert]')&&!root.value.contains(document.activeElement))root.value.focus({preventScroll:true})}},{immediate:true})
+onBeforeUnmount(()=>{stopMotion();drag?.unset();resize?.unset();window.removeEventListener('resize',onResize);window.removeEventListener('blur',cancel);root.value?.removeEventListener('pointercancel',cancel,true)})
 </script>
 <template>
  <div v-if="preview" class="window-snap-preview" aria-hidden="true" :style="previewStyle"/>
@@ -111,8 +128,8 @@ onBeforeUnmount(()=>{drag?.unset();resize?.unset();window.removeEventListener('r
 @media(max-width:600px){.window-description{display:none}.window-title{padding-inline:8px;gap:8px}}
 
 @media(prefers-reduced-motion:no-preference){
- .mac-window-enter-active,.mac-window-leave-active{transition:opacity .14s ease,filter .14s ease;filter:brightness(1)}
- .mac-window-enter-from,.mac-window-leave-to{opacity:0;filter:brightness(.97)}
+ .mac-window-enter-active,.mac-window-leave-active{transition:opacity .18s ease,filter .18s ease,scale .18s cubic-bezier(.2,.8,.2,1),translate .18s cubic-bezier(.2,.8,.2,1);filter:brightness(1);scale:1;translate:0 0;transform-origin:50% 100%}
+ .mac-window-enter-from,.mac-window-leave-to{opacity:0;filter:brightness(.97);scale:.97;translate:0 8px}
  .mac-window-leave-active{pointer-events:none}
  .window-snap-preview{animation:preview-in .12s ease-out}
  @keyframes preview-in{from{opacity:0}}
