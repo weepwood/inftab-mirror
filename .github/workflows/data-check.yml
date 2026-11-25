@@ -7,6 +7,8 @@ on:
       - 'src/data/backupHistory.ts'
       - 'src/data/shortcutBatch.ts'
       - 'src/data/workspaceLayout.ts'
+      - 'src/desktop/ownership.ts'
+      - 'src/data/workspaceOwnership.ts'
       - 'src/data/shortcutTags.ts'
       - 'src/composables/workspaceBackup.ts'
       - 'src/composables/useStoredState.ts'

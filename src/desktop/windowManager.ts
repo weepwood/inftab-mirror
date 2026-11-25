@@ -1,4 +1,5 @@
-export interface WindowLocation { workspaceId: string; folderId?: string }
+import type { PanelId } from '../plugins/ids'
+export interface WindowLocation { workspaceId: string; folderId?: string; panelId?: PanelId }
 export interface DesktopWindow extends WindowLocation {
   id: number
   minimized: boolean
@@ -22,12 +23,12 @@ export function activateWindow(state: WindowState, id: number): WindowState {
   return { ...state, windows: [...state.windows.filter(w => w.id !== id), { ...window, minimized: false }] }
 }
 export function openWindow(state: WindowState, location: WindowLocation): WindowState {
-  const existing = state.windows.find(w => w.workspaceId === location.workspaceId && w.folderId === location.folderId)
+  const existing = state.windows.find(w => location.panelId ? w.panelId === location.panelId : !w.panelId && w.workspaceId === location.workspaceId && w.folderId === location.folderId)
   if (existing) return activateWindow(state, existing.id)
   if (state.windows.length >= maxWindows) return state
   return {
     nextId: state.nextId + 1,
-    windows: [...state.windows, { ...location, id: state.nextId, cascade: state.nextId % 5, title: 'Finder', minimized: false, maximized: false }],
+    windows: [...state.windows, { ...location, id: state.nextId, cascade: state.nextId % 5, title: location.panelId ?? 'Finder', minimized: false, maximized: false }],
   }
 }
 export function closeWindow(state: WindowState, id: number): WindowState {

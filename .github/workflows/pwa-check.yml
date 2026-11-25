@@ -17,6 +17,8 @@ on:
       - 'scripts/check-bundle-size.mjs'
       - 'vite.config.ts'
       - 'src/data/browserApiShared.ts'
+      - 'src/desktop/DesktopWindows.vue'
+      - 'src/desktop/ToolWindow.vue'
       - 'src/data/browserBookmarks.ts'
       - 'src/data/browserHistory.ts'
       - 'src/data/browserTabs.ts'

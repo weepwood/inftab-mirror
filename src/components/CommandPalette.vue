@@ -2,14 +2,21 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { trapOverlayTab, isComposingKey } from '../composables/overlayFocus'
 import { filterCommands } from '../data/commands'
+import { searchDesktopRecords } from '../desktop/spotlight'
+import type { LauncherItem, Note, TodoItem } from '../types'
+import type { HomeWorkspace } from '../data/homeWorkspaces'
 
-const props = defineProps<{ desktop?: boolean }>()
+const props = defineProps<{ desktop?: boolean; items?:LauncherItem[]; workspaces?:HomeWorkspace[]; notes?:Note[]; todos?:TodoItem[] }>()
 const emit = defineEmits<{ close: []; run: [id: string] }>()
 const query = ref('')
 const selected = ref(0)
 const dialog = ref<HTMLDialogElement>()
 const input = ref<HTMLInputElement>()
-const commands = computed(() => filterCommands(query.value, props.desktop))
+const commands = computed(() => [
+  ...filterCommands(query.value, props.desktop),
+  ...(props.desktop ? searchDesktopRecords(query.value,{items:props.items??[],workspaces:props.workspaces??[],notes:props.notes??[],todos:props.todos??[]}) : []),
+])
+watch(commands, items => { selected.value = Math.max(0,Math.min(selected.value,items.length-1)) })
 let returnFocus: HTMLElement | undefined
 
 watch(query, () => { selected.value = 0 })
@@ -46,7 +53,7 @@ onBeforeUnmount(() => {
   <dialog ref="dialog" class="command-palette" aria-label="命令面板" @keydown="handleDialogKey" @cancel.prevent="emit('close')" @click.self="emit('close')">
     <div class="command-shell">
       <header>
-        <input ref="input" v-model="query" type="search" role="combobox" aria-label="搜索命令" aria-expanded="true" aria-controls="command-results" :aria-activedescendant="commands.length ? 'command-' + selected : undefined" autocomplete="off" placeholder="输入命令…" @keydown="handleInputKey" />
+        <input ref="input" v-model="query" type="search" role="combobox" aria-label="搜索命令" aria-expanded="true" aria-controls="command-results" :aria-activedescendant="commands.length ? 'command-' + selected : undefined" autocomplete="off" :placeholder="desktop?'搜索应用、入口、笔记、待办…':'输入命令…'" @keydown="handleInputKey" />
         <button type="button" aria-label="关闭命令面板" @click="emit('close')">Esc</button>
       </header>
       <div id="command-results" role="listbox" aria-label="可用命令" class="command-results">

@@ -32,9 +32,10 @@ const SearchBar = defineAsyncComponent({
 const ClockWidget = lazyHome(() => import('./components/ClockWidget.vue'), '时钟')
 const LauncherSearchResults = lazyHome(() => import('./components/LauncherSearchResults.vue'), '入口查找', true)
 const DesktopWindows = lazyHome(() => import('./desktop/DesktopWindows.vue'), '桌面窗口', true)
-const finderRequest = shallowRef<{ sequence: number; workspaceId: string; folderId?: string }>()
+const finderRequest = shallowRef<{ sequence: number; workspaceId: string; folderId?: string; panelId?: PanelId }>()
 let finderSequence = 0
 const overviewRequest = ref(0)
+const runningDesktopPanels = ref<PanelId[]>([])
 const finderOperationError = ref('')
 const DesktopShell = lazyHome(() => import('./desktop/DesktopShell.vue'), '自由桌面', true)
 const desktopMode = useStoredState('inftab.desktop-mode.v1', false, value => value === true)
@@ -375,11 +376,18 @@ function loadPanelRegistry() {
 }
 
 function openPanel(id: PanelId) {
+  if(desktopMode.value && !minimalMode.value && id !== 'settings' && id !== 'bookmarks' && id !== 'history') {
+    finderRequest.value={sequence:++finderSequence,workspaceId:activeHomeWorkspaceId.value,panelId:id}
+    return
+  }
   activePanel.value = id
   loadPanelRegistry()
 }
 
-watch(desktopMode, value => { if(!value){finderRequest.value=undefined;overviewRequest.value=0;finderOperationError.value=''} })
+watch(desktopMode, value => { if(!value){finderRequest.value=undefined;overviewRequest.value=0;finderOperationError.value='';runningDesktopPanels.value=[]} })
+function switchDesktopWorkspace(id: string) {
+  if(homeWorkspaces.value.some(w=>w.id===id))activeHomeWorkspaceId.value=id
+}
 function openFinder(folderId?: string) {
   finderRequest.value = { sequence: ++finderSequence, workspaceId: activeHomeWorkspaceId.value, folderId }
 }
@@ -659,6 +667,19 @@ async function runCommand(id: string) {
   else if (id === 'desktop:overview' && desktopMode.value) overviewRequest.value++
   else if (id === 'desktop:classic' && desktopMode.value) desktopMode.value = false
   else if (id.startsWith('panel:')) openPanel(id.slice(6) as PanelId)
+  else if (desktopMode.value && id.startsWith('record:')) openDesktopRecord(id)
+}
+
+function openDesktopRecord(command:string) {
+  const match=/^record:(item|workspace|note|todo):(.+)$/.exec(command)
+  if(!match)return
+  const id=match[2]!
+  if(match[1]==='workspace')switchDesktopWorkspace(id)
+  else if(match[1]==='item'){
+    const item=launcherById.value.get(id),owner=homeWorkspaces.value.find(w=>w.itemIds.includes(id))
+    if(item&&owner){if(item.folder){finderRequest.value={sequence:++finderSequence,workspaceId:owner.id,folderId:id}}else openItem(item)}
+  }else if(match[1]==='note'&&notes.value.some(n=>n.id===id)){activeNoteId.value=id;openPanel('notes')}
+  else if(match[1]==='todo'&&todos.value.some(t=>t.id===id))openPanel('todos')
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -834,6 +855,8 @@ onBeforeUnmount(() => {
     <div class="background-shade"></div>
     <div class="home-brand" aria-label="Infinity 新标签页"><span class="brand-mark" aria-hidden="true">∞</span><span class="brand-word">infinity</span><span class="brand-label">新标签页</span></div>
     <header class="home-actions">
+      <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="openFinder()">Inftab</button>
+      <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="overviewRequest++">窗口</button>
       <button v-if="!minimalMode" type="button" class="round-action desktop-mode-toggle" :aria-label="desktopMode ? '经典模式' : '桌面模式'" :title="desktopMode ? '经典模式' : '桌面模式'" :aria-pressed="desktopMode" @click="desktopMode = !desktopMode"><span aria-hidden="true">▦</span></button>
       <button type="button" class="round-action home-command-toggle" aria-label="打开命令面板" title="命令面板（Ctrl/⌘+Shift+P）" @click="openCommandPalette"><span aria-hidden="true">⌘</span></button>
       <button v-if="!minimalMode" type="button" class="round-action home-create-shortcut" aria-label="新建快捷入口" title="新建快捷入口" @click="openShortcutDialog()"><Plus :size="19" /></button>
@@ -933,8 +956,8 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :overview-request="overviewRequest" :operation-error="finderOperationError" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembershipBatch" @dismiss-error="finderOperationError=''" @create="openFinderFolderEditor" />
-    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
+    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembershipBatch" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="runningDesktopPanels=$event" @create="openFinderFolderEditor" />
+    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :running-panels="runningDesktopPanels" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
       <span>{{ storageError }}</span>
@@ -960,7 +983,7 @@ onBeforeUnmount(() => {
     </div>
 
     <HomeLayoutEditor v-if="layoutEditorOpen" :workspace="activeHomeWorkspace" :preferences="preferences" :save="applyHomeLayout" @close="layoutEditorOpen = false" />
-    <CommandPalette v-if="commandPaletteOpen" :desktop="desktopMode" @close="commandPaletteOpen = false" @run="runCommand" />
+    <CommandPalette v-if="commandPaletteOpen" :desktop="desktopMode" :items="desktopMode?availableLauncherItems:undefined" :workspaces="desktopMode?homeWorkspaces:undefined" :notes="desktopMode?notes:undefined" :todos="desktopMode?todos:undefined" @close="commandPaletteOpen = false" @run="runCommand" />
 
     <FolderDialog
       v-if="folderDialogOpen"
@@ -996,4 +1019,14 @@ onBeforeUnmount(() => {
 .desktop-mode .home-content{width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;padding-top:82px;padding-bottom:84px}
 .desktop-mode .desktop-shell{min-height:320px}
 .desktop-mode-toggle{font-size:22px}
+.desktop-mode .home-brand{display:none}
+.desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:42px;padding:2px 14px;gap:5px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--ui-surface);color:var(--ui-text);box-shadow:0 1px 8px #0002;z-index:8}
+.desktop-mode .home-actions .round-action{width:32px;height:32px;color:var(--ui-text);background:transparent}
+.desktop-mode .home-actions .round-action:hover{background:var(--ui-accent-soft)}
+.desktop-menu-label{border:0;background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:600;padding:6px 10px;border-radius:6px;cursor:pointer}
+.desktop-menu-label:hover{background:var(--ui-accent-soft)}
+.desktop-menu-label:first-child{margin-right:2px}
+.desktop-mode .desktop-mode-toggle{margin-left:auto}
+@media(max-width:480px){.desktop-mode .home-actions{padding-inline:5px;gap:2px}.desktop-menu-label{padding:4px 5px;font-size:12px}.desktop-mode .home-actions .round-action{width:29px;height:29px}}
+
 </style>

@@ -15,6 +15,8 @@ const offset=ref({x:props.cascade*18,y:props.cascade*12})
 const back=ref<{workspaceId:string;folderId:string}[]>([])
 const forward=ref<{workspaceId:string;folderId:string}[]>([])
 const order=ref<'default'|'name'|'type'>('default')
+const anchor=ref<string>()
+const dropTarget=ref<string>()
 const space=computed(()=>props.workspaces.find(w=>w.id===currentSpace.value))
 const folders=computed(()=>props.items.filter(i=>i.folder&&space.value?.itemIds.includes(i.id)))
 const folder=computed(()=>folders.value.find(i=>i.id===currentFolder.value))
@@ -27,7 +29,7 @@ const visible=computed(()=>{
  return matches
 })
 function location(){return {workspaceId:currentSpace.value,folderId:currentFolder.value}}
-function applyLocation(id:string,folderId=''){currentSpace.value=id;currentFolder.value=folderId;selected.value=[];search.value=''}
+function applyLocation(id:string,folderId=''){currentSpace.value=id;currentFolder.value=folderId;selected.value=[];anchor.value=undefined;search.value=''}
 function navigate(id:string,folderId=''){
  if(id===currentSpace.value&&folderId===currentFolder.value)return
  back.value=[...back.value.slice(-49),location()];forward.value=[];applyLocation(id,folderId)
@@ -41,7 +43,32 @@ function traverse(direction:'back'|'forward'){
   target.value=[...target.value.slice(-49),location()];applyLocation(next.workspaceId,next.folderId);return
  }
 }
-function select(item:LauncherItem,event:MouseEvent){selected.value=event.metaKey||event.ctrlKey?selected.value.includes(item.id)?selected.value.filter(id=>id!==item.id):[...selected.value,item.id]:[item.id]}
+function select(item:LauncherItem,event:MouseEvent){
+ const from=visible.value.findIndex(i=>i.id===anchor.value),to=visible.value.findIndex(i=>i.id===item.id)
+ if(event.shiftKey&&from>=0&&to>=0){selected.value=visible.value.slice(Math.min(from,to),Math.max(from,to)+1).map(i=>i.id);return}
+ selected.value=event.metaKey||event.ctrlKey?selected.value.includes(item.id)?selected.value.filter(id=>id!==item.id):[...selected.value,item.id]:[item.id]
+ anchor.value=item.id
+}
+function startDrag(item:LauncherItem,event:DragEvent){
+ if(!event.dataTransfer)return
+ const ids=selected.value.includes(item.id)?selectedItems.value.map(i=>i.id):[item.id]
+ if(!ids.every(id=>props.items.some(i=>i.id===id&&i.shortcut))){event.preventDefault();return}
+ event.dataTransfer.setData('application/x-inftab-shortcuts',JSON.stringify(ids))
+ event.dataTransfer.effectAllowed='move'
+}
+function dragOver(id:string,event:DragEvent){
+ if(!event.dataTransfer?.types.includes('application/x-inftab-shortcuts'))return
+ event.preventDefault();event.dataTransfer.dropEffect='move';dropTarget.value=id
+}
+function drop(id:string,event:DragEvent){
+ dropTarget.value=undefined
+ if(!event.dataTransfer?.types.includes('application/x-inftab-shortcuts'))return
+ event.preventDefault()
+ try{const ids:unknown=JSON.parse(event.dataTransfer.getData('application/x-inftab-shortcuts'))
+ if(Array.isArray(ids)&&ids.length&&ids.length<=500&&ids.every(i=>typeof i==='string'))emit('membership',ids,id)
+ }catch{/* malformed payload */}
+}
+function clearDrop(){dropTarget.value=undefined}
 function open(item:LauncherItem,event?:MouseEvent){if(item.folder)navigate(currentSpace.value,item.id);else emit('open',item,event)}
 const selectedItems=computed(()=>visible.value.filter(i=>selected.value.includes(i.id)))
 let binding:ReturnType<typeof interact>|undefined
@@ -71,9 +98,9 @@ function keys(e:KeyboardEvent){if(e.target instanceof HTMLInputElement||e.target
  <section v-show="!minimized" ref="root" class="finder" :class="{dark,maximized,active}" :style="{transform:'translate('+offset.x+'px,'+offset.y+'px)',zIndex:layer}" role="dialog" aria-label="Finder 入口管理" tabindex="-1" @pointerdown="emit('activate')" @focusin="emit('activate')" @keydown="keys">
   <header ref="titlebar" class="finder-title"><div class="lights"><button class="close" aria-label="关闭 Finder" @click="emit('close')"/><button class="minimize" aria-label="最小化 Finder" @click="emit('minimize')"/><button class="maximize" :aria-label="maximized?'还原 Finder':'最大化 Finder'" @click="emit('maximize')"/></div><strong>{{folder?.title??space?.name??'Finder'}}</strong><span>Finder</span></header>
   <div class="finder-body">
-   <aside><small>工作区</small><button v-for="w in workspaces" :key="w.id" :class="{active:currentSpace===w.id&&!currentFolder}" @click="navigate(w.id)"><Grid2X2 :size="16"/>{{w.name}}</button><small>文件夹</small><button v-for="f in folders" :key="f.id" :class="{active:currentFolder===f.id}" @click="navigate(currentSpace,f.id)"><Folder :size="17"/>{{f.title}}</button></aside>
+   <aside><small>工作区</small><button v-for="w in workspaces" :key="w.id" :class="{active:currentSpace===w.id&&!currentFolder}" @click="navigate(w.id)"><Grid2X2 :size="16"/>{{w.name}}</button><small>文件夹</small><button v-for="f in folders" :key="f.id" :class="{active:currentFolder===f.id,'drop-target':dropTarget===f.id}" @dragover="dragOver(f.id,$event)" @dragleave="clearDrop" @drop="drop(f.id,$event)" @click="navigate(currentSpace,f.id)"><Folder :size="17"/>{{f.title}}</button></aside>
    <main><nav><button aria-label="返回" :disabled="!back.length" @click="traverse('back')">‹</button><button aria-label="前进" :disabled="!forward.length" @click="traverse('forward')">›</button><button @click="emit('create',currentSpace)">新建文件夹</button><button :aria-pressed="!list" aria-label="图标视图" @click="list=false"><Grid2X2 :size="17"/></button><button :aria-pressed="list" aria-label="列表视图" @click="list=true"><List :size="17"/></button><select v-model="order" aria-label="排序入口"><option value="default">默认顺序</option><option value="name">名称</option><option value="type">类型</option></select><label><Search :size="15"/><input v-model="search" placeholder="搜索入口" aria-label="搜索 Finder"/></label></nav>
-    <div class="finder-items" :class="{list}"><button v-for="item in visible" :key="item.id" :aria-pressed="selected.includes(item.id)" @click="select(item,$event)" @dblclick="open(item,$event)" @keydown.enter.stop="open(item)"><Folder v-if="item.folder" :size="40" fill="#65baf0" color="#258acb"/><img v-else-if="item.icon" :src="item.icon" alt=""/><span v-else class="mark" :style="{background:item.color}">{{item.mark}}</span><span>{{item.title}}</span><span v-if="list" class="finder-type">{{item.folder?'文件夹':'快捷入口'}}</span></button><p v-if="!visible.length">没有入口</p></div>
+    <div class="finder-items" :class="{list}"><button v-for="item in visible" :key="item.id" :aria-pressed="selected.includes(item.id)" :draggable="!!item.shortcut" :class="{'drop-target':dropTarget===item.id}" @dragstart="startDrag(item,$event)" @dragend="clearDrop" @dragover="item.folder&&dragOver(item.id,$event)" @dragleave="clearDrop" @drop="item.folder&&drop(item.id,$event)" @click="select(item,$event)" @dblclick="open(item,$event)" @keydown.enter.stop="open(item)"><Folder v-if="item.folder" :size="40" fill="#65baf0" color="#258acb"/><img v-else-if="item.icon" :src="item.icon" alt=""/><span v-else class="mark" :style="{background:item.color}">{{item.mark}}</span><span>{{item.title}}</span><span v-if="list" class="finder-type">{{item.folder?'文件夹':'快捷入口'}}</span></button><p v-if="!visible.length">没有入口</p></div>
     <footer><span>{{visible.length}} 项 · 已选 {{selectedItems.length}} 项</span><template v-if="selectedItems.length===1"><button @click="open(selectedItems[0]!)"><ArrowUpRight :size="14"/>打开</button><button @click="emit('edit',selectedItems[0]!)">编辑</button><button @click="emit('remove',selectedItems[0]!)">删除</button></template><select v-if="selectedItems.length" aria-label="移动到工作区" value="" @change="emit('move',selectedItems.map(i=>i.id),($event.target as HTMLSelectElement).value);($event.target as HTMLSelectElement).value=''"><option value="" disabled>移动到…</option><option v-for="w in workspaces.filter(w=>w.id!==currentSpace)" :key="w.id" :value="w.id">{{w.name}}</option></select><select v-if="selectedItems.length&&selectedItems.every(i=>i.shortcut)" aria-label="移动到文件夹" value="" @change="emit('membership',selectedItems.map(i=>i.id),($event.target as HTMLSelectElement).value==='__root'?null:($event.target as HTMLSelectElement).value);($event.target as HTMLSelectElement).value=''"><option value="" disabled>文件夹…</option><option value="__root">移出文件夹</option><option v-for="f in folders.filter(f=>f.id!==currentFolder)" :key="f.id" :value="f.id">{{f.title}}</option></select></footer>
    </main>
   </div>
@@ -86,7 +113,7 @@ function keys(e:KeyboardEvent){if(e.target instanceof HTMLInputElement||e.target
 .finder-body{display:flex;flex:1;min-height:0}.finder aside{width:180px;flex-shrink:0;background:#8881;padding:12px 8px;overflow:auto}.finder aside small{display:block;margin:12px 8px 4px;opacity:.6}.finder button{font:inherit;color:inherit;cursor:pointer}.finder aside button{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;padding:7px 9px;text-align:left;border-radius:6px}.finder aside button.active{background:#589cff33;color:inherit}
 .finder main{display:flex;flex:1;flex-direction:column;min-width:0}.finder nav,.finder footer{display:flex;align-items:center;gap:6px;padding:9px;border-bottom:1px solid #8883;flex-wrap:wrap}.finder nav button,.finder footer button,.finder select{border:1px solid #8883;border-radius:6px;background:#8881;padding:5px 8px;display:inline-flex;align-items:center;gap:4px;color:inherit}.finder nav label{display:flex;align-items:center;gap:6px;margin-left:auto}.finder input{width:110px;border:1px solid #8883;border-radius:6px;padding:5px;background:transparent;color:inherit}
 .finder-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));align-content:start;gap:6px;overflow:auto;flex:1;padding:14px}.finder-items button{display:flex;flex-direction:column;align-items:center;gap:5px;background:none;border:0;border-radius:7px;padding:8px;min-width:0}.finder-items button[aria-pressed=true]{background:#589cff40}.finder-items button span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.finder-items img,.mark{width:40px;height:40px;object-fit:contain;border-radius:8px}.mark{display:grid;place-items:center;color:white}.finder-items.list{display:flex;flex-direction:column}.finder-items.list button{flex-direction:row;gap:12px}.finder-type{margin-left:auto;opacity:.65;font-size:12px}.finder-items.list button:nth-child(2n){background:#8881}.finder-items.list button[aria-pressed=true]{background:#589cff40}.finder footer{border-top:1px solid #8883;border-bottom:0;font-size:12px}.finder footer>span{margin-right:auto}.finder-restore{position:fixed;z-index:16;bottom:85px;left:24px;padding:9px 16px;border-radius:10px;background:#333c;color:white;border:1px solid #fff4}
- .finder{pointer-events:auto}.finder:not(.active){box-shadow:0 12px 40px #0004}.finder nav button:disabled{opacity:.4;cursor:default}.finder nav select{max-width:110px}.finder-title strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.finder-items button span{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .finder{pointer-events:auto}.finder .drop-target{outline:2px solid #589cff;outline-offset:-2px;background:#589cff28}.finder:not(.active){box-shadow:0 12px 40px #0004}.finder nav button:disabled{opacity:.4;cursor:default}.finder nav select{max-width:110px}.finder-title strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.finder-items button span{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:600px){.finder aside{width:90px}.finder{top:8vh;height:82vh}.finder nav label{margin-left:0}.finder nav{padding:6px;gap:4px}.finder-items{padding:8px;grid-template-columns:repeat(auto-fill,minmax(76px,1fr))}}
 @media(prefers-reduced-motion:no-preference){.finder{animation:finder-in .16s ease-out}@keyframes finder-in{from{opacity:0}to{opacity:1}}}
 </style>

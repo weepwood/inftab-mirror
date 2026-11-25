@@ -27,3 +27,11 @@ describe('desktop window manager', () => {
     expect(s.nextId).toBe(maxWindows + 1)
   })
 })
+
+it('keeps tools separate from Finder and reuses singleton tool windows across workspaces',()=>{
+ let state=openWindow(emptyWindows(),{workspaceId:'a'})
+ state=openWindow(state,{workspaceId:'a',panelId:'notes'})
+ state=openWindow(state,{workspaceId:'b',panelId:'notes'})
+ expect(state.windows).toHaveLength(2)
+ expect(state.windows.at(-1)?.panelId).toBe('notes')
+})
