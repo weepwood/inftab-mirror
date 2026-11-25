@@ -119,7 +119,7 @@ function save() {
       </header>
 
       <template v-if="editing">
-        <label>文件夹名称<input ref="titleInput" v-model="title" maxlength="80" placeholder="例如：工作" @input="error = ''" /></label>
+        <label>文件夹名称<input ref="titleInput" v-model="title" maxlength="80" placeholder="例如：工作" :aria-invalid="error?true:undefined" :aria-describedby="error?'folder-input-error':undefined" @input="error = ''" /></label>
         <label class="color-field">文件夹颜色<input v-model="color" type="color" /></label>
         <p class="folder-selection-label">选择要收纳的快捷入口</p>
         <div class="folder-choice-list">
@@ -131,7 +131,7 @@ function save() {
           <p v-if="!shortcuts.length" class="folder-empty">先添加快捷入口，再将它们放入文件夹。</p>
         </div>
         <p v-if="limitReached" class="backup-error" role="status">最多只能保存 500 个文件夹。</p>
-        <p v-if="error || saveError" class="backup-error" role="alert">{{ error || saveError }}</p>
+        <p v-if="error || saveError" id="folder-input-error" class="backup-error" role="alert">{{ error || saveError }}</p>
         <footer>
           <button class="button-secondary" type="button" @click="cancelEditing">取消</button>
           <button class="button-primary" type="button" :disabled="limitReached" @click="save">保存文件夹</button>

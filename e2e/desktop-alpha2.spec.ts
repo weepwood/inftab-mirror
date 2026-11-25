@@ -1097,7 +1097,7 @@ test('shared desktop controls preserve native selection, stable range labels and
  const shade=panel.getByRole('slider',{name:'背景暗度',exact:true})
  await shade.fill('0.35')
  await expect(shade).toHaveValue('0.35')
- await expect(shade.locator('..').locator('strong')).toHaveText('35%')
+ await expect(panel.getByRole('spinbutton',{name:'背景暗度精确值（%）'})).toHaveValue('35')
  const theme=panel.getByRole('combobox',{name:'颜色主题',exact:true})
  await theme.selectOption('dark')
  await expect(panel).toBeVisible()
@@ -1107,10 +1107,83 @@ test('shared desktop controls preserve native selection, stable range labels and
  await panel.getByLabel('Dock 图标跟随首页大小').uncheck()
  await expect(dockSize).toBeEnabled()
  await dockSize.fill('48')
- await expect(dockSize.locator('..').locator('strong')).toHaveText('48 px')
+ await expect(panel.getByRole('spinbutton',{name:'Dock 图标大小精确值（px）'})).toHaveValue('48')
  await expect(dockSize).toHaveAccessibleName('Dock 图标大小')
  await info.attach('settings-controls',{body:await page.screenshot({animations:'disabled'}),contentType:'image/png'})
  await page.screenshot({path:info.outputPath('settings-controls.png'),animations:'disabled'})
  await panel.getByRole('button',{name:'关闭',exact:true}).click()
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('inftab.preferences.v1')??'{}').dockIconSize)).toBe(48)
+})
+
+test('precise value input commits safely and edge resize anchors the opposite edge',async({page},info)=>{
+ await page.setViewportSize({width:1440,height:1000})
+ await page.emulateMedia({reducedMotion:'reduce'})
+ await page.addInitScript(()=>localStorage.setItem('inftab.desktop-mode.v1','true'))
+ await page.goto('/')
+ await page.locator('.home-actions').getByRole('button',{name:'打开设置',exact:true}).click()
+ const panel=page.getByRole('dialog',{name:'设置',exact:true})
+ const number=panel.getByRole('spinbutton',{name:'背景暗度精确值（%）'}),slider=panel.getByRole('slider',{name:'背景暗度',exact:true})
+ await number.fill('33');await number.press('Enter')
+ await expect(number).toHaveValue('35');await expect(slider).toHaveValue('0.35')
+ await number.fill('100');await number.press('Tab')
+ await expect(number).toHaveValue('65');await expect(slider).toHaveValue('0.65')
+ await number.fill('');await number.press('Escape')
+ await expect(number).toHaveValue('65');await expect(panel).toBeVisible()
+ await number.fill('35');await number.press('Enter')
+ await page.screenshot({path:info.outputPath('precise-controls.png'),animations:'disabled'})
+ await panel.getByRole('button',{name:'关闭',exact:true}).click()
+ await page.getByRole('button',{name:'Finder',exact:true}).click()
+ const finder=page.getByRole('dialog',{name:'Finder 入口管理'})
+ await expect(finder.locator('.window-resize-edge')).toHaveCount(8)
+ const before=(await finder.boundingBox())!
+ const west=(await finder.locator('.resize-w').boundingBox())!
+ await page.mouse.move(west.x+2,west.y+west.height/2);await page.mouse.down()
+ await page.mouse.move(west.x-78,west.y+west.height/2,{steps:10});await page.mouse.up()
+ await expect.poll(async()=>Math.round((await finder.boundingBox())!.width)).toBe(Math.round(before.width+80))
+ const after=(await finder.boundingBox())!
+ expect(after.width).toBeGreaterThan(before.width+50)
+ expect(Math.abs(after.x+after.width-before.x-before.width)).toBeLessThan(2)
+ const north=(await finder.locator('.resize-n').boundingBox())!
+ await page.mouse.move(north.x+north.width/2,north.y+2);await page.mouse.down()
+ await page.mouse.move(north.x+north.width/2,north.y+62,{steps:8});await page.mouse.up()
+ await expect.poll(async()=>Math.round((await finder.boundingBox())!.height)).toBe(Math.round(after.height-60))
+ const shrunk=(await finder.boundingBox())!
+ expect(shrunk.height).toBeLessThan(after.height-40)
+ expect(Math.abs(shrunk.y+shrunk.height-after.y-after.height)).toBeLessThan(2)
+ const title=(await finder.locator('.window-title strong').boundingBox())!
+ await page.mouse.move(title.x+5,title.y+5);await page.mouse.down()
+ await page.mouse.move(8,title.y+5,{steps:12})
+ await expect(page.locator('.window-snap-preview')).toBeVisible()
+ await page.screenshot({path:info.outputPath('snap-preview.png'),animations:'disabled'})
+ await page.keyboard.press('Escape');await page.mouse.up()
+ await expect(page.locator('.window-snap-preview')).toHaveCount(0)
+ await expect.poll(()=>finder.boundingBox()).toEqual(shrunk)
+ await page.mouse.move(title.x+5,title.y+5);await page.mouse.down()
+ await page.mouse.move(8,title.y+5,{steps:12});await page.mouse.up()
+ await expect(finder.getByRole('button',{name:'左侧停靠'})).toHaveAttribute('aria-pressed','true')
+ await expect(page.locator('.window-snap-preview')).toHaveCount(0)
+ await finder.getByRole('button',{name:'左侧停靠'}).click()
+ await expect.poll(()=>finder.boundingBox()).toEqual(shrunk)
+})
+
+test('all eight window resize handles preserve the unmodified edges',async({page})=>{
+ await page.setViewportSize({width:1600,height:1100})
+ await page.emulateMedia({reducedMotion:'reduce'})
+ await page.addInitScript(()=>localStorage.setItem('inftab.desktop-mode.v1','true'))
+ await page.goto('/')
+ await page.getByRole('button',{name:'Finder',exact:true}).click()
+ const finder=page.getByRole('dialog',{name:'Finder 入口管理'})
+ // Leave room for all eight outward moves; minimum and viewport clipping are tested independently.
+ const initial=(await finder.boundingBox())!,title=(await finder.locator('.window-title strong').boundingBox())!
+ await page.mouse.move(title.x+5,title.y+5);await page.mouse.down();await page.mouse.move(title.x+5,title.y+85,{steps:8});await page.mouse.up()
+ await expect.poll(async()=>Math.round((await finder.boundingBox())!.y)).toBe(Math.round(initial.y+80))
+ for(const [edge,dx,dy] of [['n',0,-12],['s',0,12],['w',-12,0],['e',12,0],['nw',-12,-12],['ne',12,-12],['sw',-12,12],['handle',12,12]] as const){
+  const before=(await finder.boundingBox())!,handle=(await finder.locator('.resize-'+edge).boundingBox())!
+  const x=handle.x+handle.width/2,y=handle.y+handle.height/2
+  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y+dy,{steps:4});await page.mouse.up()
+  await expect.poll(async()=>{
+   const after=(await finder.boundingBox())!
+   return [Math.round(after.width-before.width),Math.round(after.height-before.height),Math.round(after.x-before.x),Math.round(after.y-before.y)]
+  },{message:'resize '+edge}).toEqual([Math.abs(dx),Math.abs(dy),Math.min(dx,0),Math.min(dy,0)])
+ }
 })

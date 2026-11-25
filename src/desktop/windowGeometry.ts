@@ -29,3 +29,15 @@ export function saveGeometry(id:string,value:WindowGeometry,storage:Pick<Storage
   storage.setItem(key,JSON.stringify(Object.fromEntries([...entries,[id,value]])))
  }catch{/* optional presentation state; never block the application */}
 }
+
+export type ResizeEdges={left?:boolean;right?:boolean;top?:boolean;bottom?:boolean}
+/** Resize about the opposite edge, even when the minimum or viewport is hit. */
+export function resizeWindow(g:WindowGeometry,delta:{left:number;right:number;top:number;bottom:number},edges:ResizeEdges,w:number,h:number):WindowGeometry{
+ const base=fitWindow(g,w,h),bounds=fitWindow({x:0,y:0,width:w,height:h},w,h)
+ const min=fitWindow({x:0,y:0,width:1,height:1},w,h)
+ const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n))
+ const right=base.x+base.width,bottom=base.y+base.height
+ const x=edges.left?clamp(base.x+delta.left,bounds.x,right-min.width):base.x
+ const y=edges.top?clamp(base.y+delta.top,bounds.y,bottom-min.height):base.y
+ return {x,y,width:edges.left?right-x:edges.right?clamp(right+delta.right,x+min.width,bounds.x+bounds.width)-x:base.width,height:edges.top?bottom-y:edges.bottom?clamp(bottom+delta.bottom,y+min.height,bounds.y+bounds.height)-y:base.height}
+}
