@@ -213,9 +213,9 @@ function cancelDrag() {
 }
 function closeMenu(restore=false){
   if(!menu.value)return
-  menu.value=undefined
-  if(restore&&menuTrigger?.isConnected)menuTrigger.focus({preventScroll:true})
-  menuTrigger=undefined
+  const trigger=menuTrigger
+  menu.value=undefined;menuTrigger=undefined
+  if(restore&&trigger?.isConnected)trigger.focus({preventScroll:true})
 }
 function cancelKey(event:KeyboardEvent){
   if(event.key!=='Escape'||(!press&&!menu.value&&!marquee.value))return
@@ -235,9 +235,11 @@ function openMenu(x:number,y:number,item?:LauncherItem,trigger?:HTMLElement){
     root.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true})
   })
 }
-function context(event:MouseEvent){openMenu(event.clientX,event.clientY)}
-function menuAction(action:()=>void){action();closeMenu()}
-function openMenuItem(){const item=menu.value?.item;closeMenu();if(item)emit('open',item)}
+function context(event:MouseEvent){openMenu(event.clientX,event.clientY,undefined,surface.value)}
+function menuAction(action:()=>void){closeMenu(true);action()}
+function openMenuItem(){const item=menu.value?.item;menuAction(()=>{if(item)emit('open',item)})}
+function editMenuItem(remove=false){const item=menu.value?.item;menuAction(()=>{if(item){if(remove)emit('remove',item);else emit('edit',item)}})}
+
 function outside(event:PointerEvent){
   if(menu.value&&!menuRoot.value?.contains(event.target as Node))closeMenu()
   if(press&&event.pointerId!==press.pointer)cancelDrag()
@@ -269,7 +271,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
       <button type="button" :aria-pressed="layout.snap" @click="update({...layout,snap:!layout.snap})">网格吸附</button>
       <button type="button" @click="update({...layout,positions:{}})">整理图标</button>
     </div>
-    <div ref="surface" class="desktop-surface" @click.self="selected=[];closeMenu()" @scroll.passive="cancelDrag();boxEnd();closeMenu()" @contextmenu.self.prevent="context($event)">
+    <div ref="surface" tabindex="-1" class="desktop-surface" @click.self="selected=[];closeMenu()" @scroll.passive="cancelDrag();boxEnd();closeMenu()" @contextmenu.self.prevent="context($event)">
       <div class="desktop-canvas" @pointerdown="boxStart" @pointermove="boxMove" @pointerup="boxEnd" @pointercancel="boxEnd" @lostpointercapture="boxEnd" @contextmenu.self.prevent="context($event)" :style="{height: renderedHeight+'px'}">
         <button v-for="{item,point} in positions" :key="item.id" type="button" class="desktop-icon" :class="{selected:selected.includes(item.id)}" :data-item-id="item.id" :style="{transform:'translate('+point.x+'px,'+point.y+'px)'}" :aria-label="item.title" :aria-pressed="selected.includes(item.id)" @pointerdown="pointerStart($event,item)" @pointermove="pointerMove" @pointerup="pointerEnd" @pointercancel="pointerCancel" @lostpointercapture="pointerCancel" @click="activate(item,$event)" @auxclick.middle.prevent="activate(item,$event)" @auxclick.right.prevent @contextmenu.stop.prevent @keydown="keyMove($event,item.id)">
           <span class="desktop-symbol" :class="{builtin:item.action}" :data-action="item.action" :style="{background:item.action ? undefined : item.color}">
@@ -287,7 +289,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
       <button v-if="menu.item" role="menuitem" @click="openMenuItem">打开</button><button role="menuitem" @click="menuAction(()=>emit('create'))">新建文件夹</button>
       <button role="menuitem" @click="menuAction(()=>emit('finder'))">打开 Finder</button>
       <button role="menuitem" @click="menuAction(()=>update({...layout,positions:{}}))">整理图标</button><button role="menuitem" @click="menuAction(arrangeRight)">从右上排列</button>
-      <template v-if="menu.item?.shortcut||menu.item?.folder"><button role="menuitem" @click="emit('edit',menu.item!);menu=undefined">编辑</button><button role="menuitem" @click="emit('remove',menu.item!);menu=undefined">删除</button></template>
+      <template v-if="menu.item?.shortcut||menu.item?.folder"><button role="menuitem" @click="editMenuItem()">编辑</button><button role="menuitem" @click="editMenuItem(true)">删除</button></template>
     </div>
   </section>
 </template>
@@ -306,7 +308,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 
 .desktop-symbol img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .desktop-label{max-width:90px;padding:1px 5px;border-radius:4px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500;line-height:1.25;text-shadow:0 1px 3px #000,0 1px 6px #0009}
-.desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection)}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:56px}.desktop-menu{position:fixed;z-index:10;background:var(--mac-menu);color:var(--mac-ink);padding:5px;border:1px solid var(--mac-line);border-radius:8px;box-shadow:var(--mac-shadow);width:170px;backdrop-filter:blur(18px)}.desktop-menu button{display:block;width:100%;text-align:left;padding:7px 9px;background:none;border:0;border-radius:5px;color:inherit;cursor:pointer}.desktop-menu button:hover,.desktop-menu button:focus-visible{background:var(--mac-selection);color:#fff}
+.desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection)}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:56px}.desktop-menu{position:fixed;z-index:10;background:var(--mac-menu);color:var(--mac-ink);padding:5px;border:1px solid var(--mac-line);border-radius:8px;box-shadow:var(--mac-shadow);width:170px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);overflow:auto;overscroll-behavior:contain;backdrop-filter:blur(18px)}.desktop-menu button{display:block;width:100%;text-align:left;padding:7px 9px;background:none;border:0;border-radius:5px;color:inherit;cursor:pointer}.desktop-menu button:hover,.desktop-menu button:focus-visible{background:var(--mac-selection);color:#fff}
 .desktop-marquee{position:absolute;pointer-events:none;border:1px solid #93c9ff;background:#559aff30;z-index:4}@media(prefers-reduced-motion:no-preference){.desktop-icon.selected .desktop-symbol{transition:outline-color .12s}.finder{animation:finder-appear .15s ease-out}}
 .desktop-menu.dark{background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line)}
 @media(max-width:480px){.desktop-toolbar{gap:3px}.desktop-toolbar span{font-size:10px;margin-inline:2px}.desktop-toolbar button{padding:5px;font-size:11px}}

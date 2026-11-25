@@ -404,3 +404,7 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 ## 自主 HCI 审查第二批（2026-11-25）
 - #39 fedbfe0 verify/UI/Firefox-WebKit三项CI全绿。依据Apple HIG和W3C APG独立审查实际组件：P0临时搜索可见但被已有窗口遮挡、模态背景焦点泄漏风险；P1菜单打开/关闭焦点、窗口概览关闭、Dock文件夹路径、桌面回首页；P2工作区颜色/触屏按钮。集中修复于同一PR。先试Teleport复现Vue insertBefore/null挂载错误，完全撤销，保留原挂载，仅移除桌面content stacking context并分级常驻/临时搜索；真实elementFromPoint+click门禁。模态背景inert，Dock取消活动手势、窗口焦点保护，设置关闭nextTick恢复；菜单键盘导航、概览外点/再次点击/Escape恢复，搜索外点关闭，Dock文件夹按所有者路由、回首页回默认空间，Finder尊重IME，工作区中性弹层与粗指针交通灯。无新依赖或格式，经典模式保留。
 - 最终本机类型检查、生产构建及74/74浏览器全绿（7个spec，新增真实跨组件焦点、搜索命中和菜单概览关闭）；首屏59.7/60.5、非Swiper198.6/200、Swiper26.4/30、CSS32.3/64 KiB；PWA额外10755/16384、站点1725298/4194304 B。原预算保留。详细审查与限制见docs/desktop-interaction.md。新远程CI待验收，通过后集中合并部署。#37冻结；不改变V2.0.0正式Tag。临时playwright.local-hci.config.ts与playwright.local-interaction.config.ts不提交。后续如发现实际问题优先修复而非扩大无界范围；继续验证触屏实机、选择器跨平台样式、组件组合、无障碍与视觉对照，不宣称全面通过。
+
+## HCI 第三批质量收口（2026-11-25）
+- #39 2b12da5 verify 139115780618 失败：App.test.ts两项经典模式焦点恢复；UI/PWA/soak通过，跨浏览器仍在执行时开始修复。定位到jsdom的inert="false"布尔属性存在性与焦点时序；全相关模板含ShortcutGrid改用true或undefined，经典恢复同步焦点、桌面解除inert后恢复。保留原单测断言。桌面/Finder菜单执行前恢复图标焦点，桌面文件夹编辑关闭后显式恢复，空白菜单焦点回退与短屏内部滚动。
+- 最终本机App.test.ts 68/68、check、build:web及核心生产Edge 4/4通过（含桌面快捷入口/文件夹/Finder编辑及取消删除焦点）。首屏59.8/60.5、非Swiper198.7/200、Swiper26.4/30、CSS32.3/64 KiB，PWA额外10743/16384、全站1725897/4194304 B。前一批74/74不能视为本次全量结果。新提交CI需实际核验，优先修复阻塞并合并部署，暂不扩大范围，不改正式Tag及#37。触屏真机与全面无障碍仍未覆盖。

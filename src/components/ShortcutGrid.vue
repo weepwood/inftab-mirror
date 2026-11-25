@@ -395,7 +395,7 @@ onBeforeUnmount(() => {
             :data-page-index="renderPage.pageIndex"
             :data-clone="String(renderPage.pageIndex !== currentPage && !particleMode)"
             :aria-hidden="renderPage.pageIndex !== currentPage"
-            :inert="renderPage.pageIndex !== currentPage"
+            :inert="renderPage.pageIndex !== currentPage || undefined"
             :style="particleMode ? { '--grid-rows': reservedRows, '--outgoing-duration': `${outgoingPage?.duration ?? 0}ms`, '--incoming-duration': `${outgoingPage?.duration ?? transitionDuration}ms` } : undefined"
           >
           <article

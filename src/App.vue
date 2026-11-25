@@ -135,6 +135,7 @@ const searchBar = ref<{ focusSearch: () => void; showTranslationError: () => voi
 const sidePanel = ref<HTMLElement>()
 const shortcutDialogElement = ref<HTMLDialogElement>()
 const folderDialogOpen = ref(false)
+let desktopFolderReturnFocus:HTMLElement|undefined
 const activeFolder = ref<ShortcutFolder>()
 const folderWorkspaceId = ref('default')
 const folderSaveError = ref('')
@@ -294,6 +295,7 @@ watch(activePanel, async (panel, previousPanel) => {
   if (!panel && previousPanel) {
     const target=panelReturnFocusTarget
     panelReturnFocusTarget = undefined
+    if(!desktopMode.value){if(target?.isConnected)target.focus();return}
     await nextTick()
     if(target?.isConnected&&!target.closest('[inert]'))target.focus({preventScroll:true})
     return
@@ -301,6 +303,12 @@ watch(activePanel, async (panel, previousPanel) => {
   if (!panel) return
   await nextTick()
   if (sidePanel.value) getOverlayFocusable(sidePanel.value)[0]?.focus()
+})
+watch(folderDialogOpen,async open=>{
+  if(open)return
+  const target=desktopFolderReturnFocus;desktopFolderReturnFocus=undefined
+  await nextTick()
+  if(target?.isConnected&&!target.closest('[inert]'))target.focus({preventScroll:true})
 })
 watch(shortcutDialog, async (isOpen) => {
   if (isOpen) {
@@ -446,6 +454,7 @@ function openFinderFolderEditor(workspaceId: string, parentId?:string) {
 
 const folderParentId=ref<string>()
 function openFolderEditor(folder?: ShortcutFolder, workspaceId = activeHomeWorkspaceId.value) {
+  if(desktopMode.value&&!folderDialogOpen.value)desktopFolderReturnFocus=document.activeElement instanceof HTMLElement?document.activeElement:undefined
   folderParentId.value=folder?.parentId
   folderWorkspaceId.value = (folder && homeWorkspaces.value.find(w => w.itemIds.includes(folder.id))?.id) || workspaceId
   folderSaveError.value = ''
@@ -878,11 +887,11 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="home" :class="{ 'theme-dark': effectiveTheme === 'dark', 'home-scrollable': !minimalMode && (showHomeWidgets || shortHomeScrollEnabled), 'home-with-dock': homeDockItems.length > 0, 'home-minimal': minimalMode, 'desktop-mode': desktopMode && !minimalMode }" :style="backgroundStyle" @pointerdown="startLauncherSwipe" @pointerup="!desktopMode && finishHomeSwipe($event)" @pointercancel="cancelHomeSwipe()" @wheel="!desktopMode && handleHomeWheel($event)">
-    <a class="skip-link" :inert="desktopMode&&overlayOpen" href="#main-content">跳到快捷入口</a>
+    <a class="skip-link" :inert="(desktopMode&&overlayOpen)||undefined" href="#main-content">跳到快捷入口</a>
     <h1 class="visually-hidden">Infinity 新标签页</h1>
     <div class="background-shade"></div>
     <div class="home-brand" aria-label="Infinity 新标签页"><span class="brand-mark" aria-hidden="true">∞</span><span class="brand-word">infinity</span><span class="brand-label">新标签页</span></div>
-    <header class="home-actions" :inert="desktopMode&&overlayOpen">
+    <header class="home-actions" :inert="(desktopMode&&overlayOpen)||undefined">
       <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="openFinder()">Inftab</button>
       <DesktopMenus v-if="desktopMode && !minimalMode" @run="$event==='desktop:folder'?openFolderEditor():runCommand($event)" />
       <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="toggleWindowOverview">窗口</button>
@@ -896,7 +905,7 @@ onBeforeUnmount(() => {
       <ClockWidget v-if="desktopMode && !minimalMode && preferences.showClock" />
     </header>
 
-    <section id="main-content" :inert="desktopMode&&overlayOpen" class="home-content" :class="{ 'home-content-minimal': minimalMode, 'desktop-search-reserved': desktopMode&&!minimalMode&&preferences.showSearchBar }" tabindex="-1">
+    <section id="main-content" :inert="(desktopMode&&overlayOpen)||undefined" class="home-content" :class="{ 'home-content-minimal': minimalMode, 'desktop-search-reserved': desktopMode&&!minimalMode&&preferences.showSearchBar }" tabindex="-1">
       <ClockWidget v-if="preferences.showClock && (!desktopMode || minimalMode)" />
       <HomeWidgetShelf
         v-if="showHomeWidgets && !minimalMode"
@@ -986,7 +995,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :blocked="overlayOpen||localSearchMode||minimalMode" :inert="overlayOpen" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :history="desktopHistory" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="runningDesktopPanels=$event" @create="openFinderFolderEditor" />
+    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :blocked="overlayOpen||localSearchMode||minimalMode" :inert="(overlayOpen)||undefined" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :history="desktopHistory" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="runningDesktopPanels=$event" @create="openFinderFolderEditor" />
     <HomeDock v-if="homeDockItems.length && !minimalMode" :blocked="desktopMode&&overlayOpen" :desktop="desktopMode" :items="homeDockItems" :running-panels="runningDesktopPanels" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="dockOpen" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
