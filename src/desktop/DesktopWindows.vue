@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { Folder, Layers } from '@lucide/vue'
 import FinderWindow from './FinderWindow.vue'
+import { launcherIcons } from '../components/launcherIcons'
 import { defineAsyncComponent } from 'vue'
 import type { DesktopMutation, FinderClipboard } from './ownership'
 import type { PanelId } from '../plugins/ids'
@@ -91,13 +92,13 @@ async function paste(workspaceId:string,folderId:string|null){
   </template>
   <div v-if="state.windows.length" class="window-shelf">
    <button type="button" aria-label="窗口概览" :aria-expanded="overview" @click="overview=!overview"><Layers :size="16"/> {{state.windows.length}} 个窗口</button>
-   <button v-for="window in minimized" :key="window.id" type="button" :aria-label="window.panelId?'恢复 '+window.title:'恢复 Finder'" :title="window.title" @click="activate(window.id)"><Folder :size="16"/> {{window.title}}</button>
+   <button v-for="window in minimized" :key="window.id" type="button" :aria-label="window.panelId?'恢复 '+window.title:'恢复 Finder'" :title="window.title" @click="activate(window.id)"><component :is="window.panelId?launcherIcons[window.panelId]??Folder:Folder" :size="16"/> {{window.title}}</button>
   </div>
   <section v-if="overview" class="window-overview" aria-label="窗口概览" @keydown.esc.stop="overview=false">
    <header><strong>运行中的窗口</strong><button type="button" @click="overview=false">关闭概览</button></header>
    <div class="space-list"><small>桌面空间</small><button v-for="space in workspaces" :key="space.id" :aria-pressed="space.id===workspaceId" @click="emit('switchWorkspace',space.id);overview=false"><span class="space-preview" aria-hidden="true"><i v-for="item in previewItems(space)" :key="item.id" :style="{left:item.x+'%',top:item.y+'%'}"/></span><strong>{{space.name}}</strong><span>{{state.windows.filter(w=>w.spaceId===space.id).length}} 个窗口</span></button></div>
    <p v-if="!state.windows.length">没有运行中的窗口。</p>
-   <div v-for="window in [...state.windows].reverse()" :key="window.id" class="overview-window"><button type="button" @click="activate(window.id)"><Folder :size="20"/><span>{{window.title}}<small>{{spaceName(window.spaceId)}} · {{window.minimized?'已最小化':window.id===active?'当前窗口':'打开中'}}</small></span></button><select :aria-label="'移动窗口 '+window.title" :value="window.spaceId" @change="moveWindow(window.id,$event)"><option v-for="space in workspaces" :key="space.id" :value="space.id">{{space.name}}</option></select></div>
+   <div v-if="state.windows.length" class="overview-grid"><div v-for="window in [...state.windows].reverse()" :key="window.id" class="overview-window"><button type="button" class="overview-card" @click="activate(window.id)"><span class="overview-preview" :class="{'is-minimized':window.minimized,'is-active':window.id===active}" aria-hidden="true"><span class="overview-titlebar"><i/><i/><i/></span><span class="overview-preview-body"><component :is="window.panelId?launcherIcons[window.panelId]??Folder:Folder" :size="32" :stroke-width="1.5"/></span></span><span class="overview-caption">{{window.title}}<small>{{spaceName(window.spaceId)}} · {{window.minimized?'已最小化':window.id===active?'当前窗口':'打开中'}}</small></span></button><select :aria-label="'移动窗口 '+window.title" :value="window.spaceId" @change="moveWindow(window.id,$event)"><option v-for="space in workspaces" :key="space.id" :value="space.id">{{space.name}}</option></select></div></div>
   </section>
   <section v-if="pending" class="window-limit recovery-panel" aria-label="桌面事务恢复">
    <strong>发现未完成的桌面事务</strong><p>{{replayable?'可以继续写入或回退到操作前。':'检测到其他修改，禁止自动回放，请先导出备份。'}}</p>
@@ -119,4 +120,17 @@ async function paste(workspaceId:string,folderId:string|null){
 .space-list button{display:flex;flex-direction:column;align-items:stretch;width:calc(33.333% - 4px);min-width:105px;white-space:normal;text-align:left;border:1px solid var(--mac-line)}.space-list button>span:last-child{font-size:10px;opacity:.7}.space-preview{min-height:78px;position:relative;overflow:hidden;background:linear-gradient(135deg,#7894a5,#415e71);border-radius:6px;padding:7px}.space-preview i{position:absolute;width:6%;height:9%;background:#ffffffa0;border-radius:2px}.overview-window{display:flex;align-items:center;gap:8px;padding:3px;border-bottom:1px solid var(--mac-line)}.overview-window>button{flex:1;min-width:0;text-align:left}.overview-window>button>span{min-width:0;overflow:hidden;text-overflow:ellipsis}.overview-window small{display:block;font-size:10px}.overview-window select{max-width:100px;border:1px solid var(--ui-border);background:var(--ui-surface);color:inherit;border-radius:6px;padding:5px}
 .recovery-panel{width:min(400px,calc(100vw - 24px));box-sizing:border-box;font-size:13px}.recovery-panel p{margin:6px 0;line-height:1.5}.recovery-panel>div{display:flex;gap:6px;flex-wrap:wrap}.recovery-panel button{border:1px solid var(--ui-border);background:var(--ui-panel);color:inherit;padding:6px 8px;border-radius:6px;cursor:pointer}.recovery-panel button:disabled{opacity:.4;cursor:default}
 .window-limit{left:12px;bottom:130px;padding:10px;max-width:calc(100vw - 24px)}
+
+.overview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:10px;padding:4px 0}
+.overview-window{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:5px;border:0;padding:5px;background:var(--mac-window);border-radius:8px}
+.overview-window .overview-card{display:flex;flex-direction:column;align-items:stretch;padding:3px;text-align:left;gap:7px;white-space:normal}
+.overview-preview{height:92px;border:1px solid var(--mac-line);border-radius:7px;overflow:hidden;display:flex;flex-direction:column;background:var(--mac-sidebar)}
+.overview-preview.is-active{border-color:var(--mac-selection);box-shadow:0 0 0 1px var(--mac-selection)}
+.overview-preview.is-minimized{opacity:.65}
+.overview-titlebar{height:18px;display:flex;align-items:center;gap:4px;padding:0 7px;background:var(--mac-toolbar);border-bottom:1px solid var(--mac-line)}
+.overview-titlebar i{width:6px;height:6px;border-radius:50%;background:#ff5f57}.overview-titlebar i:nth-child(2){background:#febc2e}.overview-titlebar i:nth-child(3){background:#28c840}
+.overview-preview-body{flex:1;display:grid;place-items:center;color:var(--mac-muted)}
+.overview-caption{font-weight:600;line-height:1.4}.overview-caption small{font-weight:400;margin-top:3px}
+.overview-window select{max-width:none;width:100%;font-size:11px}
+@media(max-width:460px){.overview-grid{grid-template-columns:repeat(auto-fill,minmax(125px,1fr))}.overview-preview{height:72px}}
 </style>

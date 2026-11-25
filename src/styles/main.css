@@ -1358,3 +1358,18 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .desktop-mode .command-shell header:focus-within{box-shadow:inset 0 -2px 0 var(--mac-selection)}
 .desktop-mode .command-shell input:focus-visible{outline:none}
 .desktop-mode .command-shell header .spotlight-search-icon{color:var(--mac-muted);flex:none}
+
+.desktop-mode .home-dock-entry.dock-divider{border-left:1px solid var(--mac-muted);padding-left:2px;margin-left:4px}
+.desktop-mode .dock-running-dot{bottom:-6px;width:4px;height:4px;box-shadow:0 0 1px #0004}
+.desktop-mode .home-dock-entry::before{border-radius:6px;box-shadow:0 5px 16px #0003}
+.desktop-mode .home-dock.dock-menu-open .home-dock-entry::before{opacity:0!important}
+.desktop-mode .home-dock.dock-menu-open .home-dock-icon{transform:none;transition:none}
+.mac-dock-context .dock-context-menu{background:rgba(250,250,252,.96);color:#242426;border:1px solid #0002;border-radius:8px;padding:5px;box-shadow:0 12px 36px #0004;backdrop-filter:blur(20px)}
+.mac-dock-context.theme-dark .dock-context-menu{background:rgba(37,37,41,.97);color:#f1f1f4;border-color:#fff2}
+.mac-dock-context .dock-context-menu button{color:inherit;border-radius:5px;font-size:12px}
+.mac-dock-context .dock-context-menu button:hover,.mac-dock-context .dock-context-menu button:focus-visible{background:#0063cc;color:white}
+@media(not (forced-colors:active)){
+ .desktop-mode .mac-settings-panel .toggle-row input[type=checkbox]:not(:checked){background:#b9b9bf}
+ .desktop-mode.theme-dark .mac-settings-panel .toggle-row input[type=checkbox]:not(:checked){background:#55555c}
+ .desktop-mode .mac-settings-panel .toggle-row input[type=checkbox]:checked{background:var(--mac-selection)}
+}

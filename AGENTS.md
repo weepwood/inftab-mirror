@@ -386,3 +386,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 桌面/Dock/Spotlight共享彩色内置应用图标、现有Lucide注册表；Spotlight图标/文本与搜索焦点精修，保留排序，未做分组。系统设置为居中模态双栏窗口（宽屏粘性侧栏、窄屏横向导航），复用已有滚动/焦点及业务逻辑。不是独立可拖动系统窗口。经典模式不改样式。
 - 最终本机check、布局单测12/12、生产Edge 52/52（desktop-alpha、alpha2、storage、production-chunks），含真实菜单动作、键盘、设置浅深色/滚动/窄屏、经典模式、右上排列持久化及Spotlight图标。实际截图审查菜单、设置浅深、Spotlight；更新docs/screenshots/macos-desktop。最终build:web首屏59.5/60.5、非Swiper196.9/200、Swiper26.4/30、CSS31.0/64 KiB，PWA额外JS10824/16384 B、全站1708488/4194304 B。未新增依赖、不提高预算。新远程CI待验收。
 - 后续集中Finder导航工具栏、Dock区域和可中断动效、Mission Control真实有窗状态及多分辨率视觉收口，保留#38 Draft直至通过实际验收；不改main/tag。临时playwright.local-macos.config.ts不提交。
+
+## macOS 视觉专项第四批（2026-11-25）
+- #38 05f8108 verify/UI/PWA通过；desktop-cross-browser 45582577208/job/139096033842 Firefox/WebKit均失败：新增设置用例getByRole打开设置匹配两个入口。定位到.home-actions内exact按钮，保留功能断言；新CI待核验。
+- Finder Lucide导航与视图分段控件、搜索框、根路径及列表表头、侧栏/状态栏精修；Dock分隔、真实打开/恢复窗口菜单（复用原激活路径）、菜单与放大/提示互斥。实际截图发现遮挡，首次几何门禁收到-9px重叠，最终锚定图标/停止放大/隐藏提示并保留几何断言通过。Mission Control真实窗口状态生成示意网格（非实时内容截图），保留移动与激活，窗口恢复140ms透明度动效且支持reduced-motion；设置关闭开关中性灰。无新依赖或数据格式变更。
+- 本机check通过，修复前宽范围生产Edge 53/53；最终Dock锚点及CI定位修复后相关4/4通过。最终build:web首屏59.5/60.5、非Swiper197.6/200、Swiper26.4/30、CSS31.8/64 KiB，PWA额外JS10808/16384 B、全站1716315/4194304 B。新增3张真实Mac截图并审核；不宣称完整逐像素macOS还原。保持#38 Draft，#37冻结，main/tag不变。临时playwright.local-macos.config.ts不提交。下一轮复核CI，集中完成余下多分辨率/双主题视觉和窗口动效、必要控件精修，收口发布。

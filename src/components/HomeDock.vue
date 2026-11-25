@@ -7,7 +7,7 @@ import type { LauncherItem } from '../types'
 import { launcherPanelRoutes, shortcutPanelRoutes } from '../plugins/routes'
 import type { PanelId } from '../plugins/ids'
 
-const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean; autoHide?: boolean; runningPanels?: PanelId[] }>(), {
+const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean; autoHide?: boolean; runningPanels?: PanelId[]; desktop?: boolean }>(), {
   magnificationEnabled: false,
   iconSize: 44,
   iconGap: 2,
@@ -221,7 +221,7 @@ function preventGestureClick(event: MouseEvent) {
 }
 
 function updateDockMagnification(event: PointerEvent) {
-  if (event.pointerType === 'touch' || dragId.value || !props.magnificationEnabled || !dock.value) return
+  if (event.pointerType === 'touch' || dragId.value || contextItem.value || !props.magnificationEnabled || !dock.value) return
   pointerX = event.clientX
   hovering = dirty = true
   queueMagnification()
@@ -318,11 +318,13 @@ function closeOnOutsideClick() { closeContextMenu() }
 function showContextMenu(event: Event, item: LauncherItem, x: number, y: number) {
   event.preventDefault()
   contextTrigger = event.currentTarget as HTMLElement
+  if(props.desktop)clearDockMagnification()
+  const iconBounds = contextTrigger.querySelector('.home-dock-icon')?.getBoundingClientRect()
   const width = 176
-  const height = 52
+  const height = props.desktop ? 96 : 52
   contextPosition.value = {
-    left: Math.max(8, Math.min(x, window.innerWidth - width - 8)),
-    top: Math.max(8, Math.min(y, window.innerHeight - height - 8)),
+    left: Math.max(8, Math.min(props.desktop && iconBounds ? iconBounds.left+iconBounds.width/2-width/2 : x, window.innerWidth - width - 8)),
+    top: Math.max(8, Math.min(props.desktop ? (iconBounds?.top??y)-height-24 : y, window.innerHeight - height - 8)),
   }
   contextItem.value = item
   void nextTick(() => contextMenu.value?.querySelector<HTMLElement>('[role="menuitem"]')?.focus())
@@ -340,6 +342,12 @@ function handleItemKeydown(event: KeyboardEvent, item: LauncherItem) {
   if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
   const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
   showContextMenu(event, item, bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
+}
+
+function openContextItem(){
+ const item=contextItem.value
+ closeContextMenu()
+ if(item)emit('open',item)
 }
 
 function removeContextItem() {
@@ -368,7 +376,7 @@ onBeforeUnmount(() => {
 <template>
   <nav v-if="items.length" ref="dock" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled, 'dock-auto-hide': props.autoHide, 'dock-menu-open': Boolean(contextItem), 'dock-dragging': Boolean(dragId) }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px` }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="releaseDockMagnification" @click.capture="preventGestureClick">
     <div class="home-dock-track" @scroll.passive="clearDockMagnification">
-      <div v-for="item in items" :key="item.id" class="home-dock-entry" :data-title="item.title" :class="{ 'dock-drag-source': dragId === item.id, 'dock-drop-before': dropTarget?.id === item.id && !dropTarget.after, 'dock-drop-after': dropTarget?.id === item.id && dropTarget.after }" @dragover="previewDrop($event, item.id)" @drop="dropItem($event, item.id)">
+      <div v-for="(item,index) in items" :key="item.id" class="home-dock-entry" :data-title="item.title" :class="{ 'dock-divider': props.desktop && index>0 && !item.action && !!items[index-1]?.action, 'dock-drag-source': dragId === item.id, 'dock-drop-before': dropTarget?.id === item.id && !dropTarget.after, 'dock-drop-after': dropTarget?.id === item.id && dropTarget.after }" @dragover="previewDrop($event, item.id)" @drop="dropItem($event, item.id)">
         <button
           type="button"
           class="home-dock-item"
@@ -395,7 +403,7 @@ onBeforeUnmount(() => {
     </div>
   </nav>
   <Teleport to="body">
-    <div v-if="contextItem" class="dock-context-theme" :class="{ 'theme-dark': props.darkTheme }">
+    <div v-if="contextItem" class="dock-context-theme" :class="{ 'theme-dark': props.darkTheme, 'mac-dock-context':props.desktop }">
       <div
         ref="contextMenu"
         class="shortcut-context-menu dock-context-menu"
@@ -407,6 +415,7 @@ onBeforeUnmount(() => {
         @focusout="closeMenuOnFocusout($event, closeContextMenu)"
         @keydown.esc.stop.prevent="closeContextMenu(true)"
       >
+        <button v-if="props.desktop" type="button" role="menuitem" @click="openContextItem">{{running(contextItem)?'显示窗口':'打开'}}</button>
         <button type="button" role="menuitem" class="danger" :aria-label="`从 Dock 移除${contextItem.title}`" @click="removeContextItem"><X :size="14" /> 从 Dock 移除</button>
       </div>
     </div>

@@ -49,3 +49,11 @@
 - 系统设置改为居中 800px 上限的窗口；宽屏左侧粘性导航、右侧分组内容，窄屏回到横向导航；复用原有滚动容器、焦点管理及设置业务逻辑。经典模式保持原面板。设置目前是模态窗口，并非可拖动的独立系统窗口。
 - 实际 Mac Edge 1440×900 浅深主题截图审查，新增 [功能菜单](screenshots/macos-desktop/menu.jpg)、[浅色系统设置](screenshots/macos-desktop/settings-light.jpg)、[深色系统设置](screenshots/macos-desktop/settings-dark.jpg)，更新桌面/Finder/Spotlight/概览截图。专项布局单测 12/12，最终生产回归 52/52（desktop-alpha、alpha2、storage、production-chunks）；typecheck 和生产构建通过。新提交远程 CI 待验证。
 - 下一批优先 Finder 工具栏原生控件、Dock 区域/提示及动效、Mission Control 有窗状态和多分辨率对照；继续真实截图审核，完成后统一收口，不拆小 PR。
+
+## 第四批：Finder、Dock 与多窗口概览
+
+- Finder 导航和视图切换采用分段工具组、Lucide 后退/前进/撤销/重做/新建图标，保留原可访问名称；搜索框改为一体式控件，根路径始终显示，列表补齐名称/种类表头。沿用原文件操作、选中与拖动逻辑。
+- Dock 保留用户顺序，在连续内置应用与外部入口的边界加分隔。桌面右键提供打开/显示已运行窗口，沿用原窗口激活逻辑，不重复创建。实际截图发现放大图标、名称提示和右键菜单重叠，改为按图标几何锚定、菜单打开期间停止放大及隐藏提示；新增菜单底边不得遮挡图标的几何门禁，最终截图复核通过。经典模式不增加菜单操作。
+- Mission Control 使用真实窗口列表、当前空间、最小化状态和应用图标生成网格卡片，保留切换/恢复/移动窗口操作。卡片为示意预览，不捕获真实窗口内容。窗口恢复使用140ms透明度过渡，尊重减少动效设置；不引入布局位移或复杂关闭/最小化动画。系统设置开关关闭态改用中性灰。
+- 上轮05f8108 verify/UI/PWA通过，跨浏览器Firefox/WebKit失败为测试设置按钮定位歧义，限定顶部菜单的精确名称；不放宽断言。新提交远程待核验。本机类型检查、第一次宽范围53/53（最终Dock几何修复前），最终生产构建及相关4/4通过。原预算不变。
+- 实际 Mac Edge 1440×900 截图：[Finder 工具栏](screenshots/macos-desktop/finder-controls.jpg)、[Dock 右键菜单](screenshots/macos-desktop/dock-menu.jpg)、[三窗口 Mission Control](screenshots/macos-desktop/mission-windows.jpg)。新E2E验证真实多窗口、最小化恢复、跨空间选择控件及360px边界，减少动效模式。尚未完成系统级同环境逐像素对照、实时窗口内容预览、关闭/最小化完整动画与所有分辨率验收。
