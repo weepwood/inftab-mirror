@@ -13,3 +13,12 @@
 - 本机 check、build:web 通过；最终 App/SettingsPanel/SelectField 96/96 单测、生产 Edge 64/64（desktop-alpha2、custom-theme、production-chunks、layout-editor、productivity、accessibility）。新用例验证排序、双击最大化及恢复、右键不移动、数值标签稳定、禁用状态、设置值持久化。
 - 额外 ui-refinements 宽范围执行73通过、2失败、21未运行，失败为原生下拉键盘回退及强制高对比度用例在Mac Edge中 ArrowDown 未改变值；旧工作树4c507dc同样复现2/2失败，因此不拦截原生按键或放宽测试。未宣称完整浏览器/无障碍验收，新远程CI仍待验证。
 - 最终本机首屏59.8/60.5、非Swiper197.9/200、Swiper26.4/30、CSS32.8/64 KiB；PWA额外10702/16384 B、全站1730103/4194304 B。Linux最终预算以新CI为准。后续优先验证实际失败、原生选择器跨平台交互与窗口边缘调整，不扩大数据迁移范围。
+
+## 精确输入与窗口边缘交互（2026-11-25）
+
+- RangeField 统一 14 项设置的原生 range 与 number。数值单位与模型值分离，提交时限制范围并对齐步长，未改动的已有值保持原值；空值恢复，Enter 提交，Escape 恢复，禁用状态同步。两者拥有独立可访问名称。继续使用原生步进，不自制按钮。
+- WindowFrame 沿用 InteractJS，支持八方向缩放；调整左侧或顶部时对边固定，最小尺寸与视口限制统一由 windowGeometry 计算。宽度至少 600px 时，拖动进入左右 20px 边缘显示停靠预览；预览在活动窗口背后，不遮挡窗口内容。松开停靠，取消或解除停靠恢复原自由窗口位置和尺寸；不新增存储格式。暂不实现顶部停靠、停靠窗口直接拖出或触屏专项手势。
+- 文件夹表单名称错误补充 aria-invalid、aria-describedby 和错误焦点样式。
+
+真实 Mac Edge 生产截图：[精确控件](screenshots/macos-desktop/precision/precise-controls.jpg)、[窗口停靠预览](screenshots/macos-desktop/precision/snap-preview.jpg)。
+本机类型检查、生产构建与相关单测 98/98 通过。宽范围生产浏览器首次 69/70，新增八方向测试累计向上扩大后到达安全边界，修正为有足够空间的起始位置并保留精确几何断言，最终两项专项 2/2。未重复全量浏览器回归。跨浏览器远程 CI 待验收。
