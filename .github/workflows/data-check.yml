@@ -4,11 +4,19 @@ on:
     branches: [main]
     paths:
       - 'src/data/bookmarkHtml.ts'
+      - 'src/data/folderTree.ts'
       - 'src/data/backupHistory.ts'
       - 'src/data/shortcutBatch.ts'
       - 'src/data/workspaceLayout.ts'
+      - 'src/desktop/ownership.ts'
+      - 'src/desktop/desktopOperations.ts'
+      - 'src/desktop/transactionIntent.ts'
+      - 'src/desktop/operationHistory.ts'
+      - 'e2e/desktop-storage.spec.ts'
+      - 'src/data/workspaceOwnership.ts'
       - 'src/data/shortcutTags.ts'
       - 'src/composables/workspaceBackup.ts'
+      - 'src/composables/workspaceSnapshot.ts'
       - 'src/composables/useStoredState.ts'
       - 'src/composables/useLocalWorkspace.ts'
       - 'src/data/storageAdapter.ts'
@@ -41,7 +49,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- e2e/data-management.spec.ts e2e/layout-editor.spec.ts e2e/config-migration.spec.ts e2e/workspace-journal.spec.ts
+      - run: npm run test:e2e -- e2e/data-management.spec.ts e2e/layout-editor.spec.ts e2e/config-migration.spec.ts e2e/workspace-journal.spec.ts e2e/desktop-storage.spec.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

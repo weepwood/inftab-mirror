@@ -46,7 +46,7 @@ async function apply() {
     await captureHistory(before, 'before-change')
     if (disposed) return
     if (signature(props.tools.getBackup()) !== expected) throw new Error('备份期间数据已变化，请重新确认。')
-    const error = props.tools.restore(next, 'replace')
+    const error = await props.tools.restore(next, 'replace')
     if (error) throw new Error(error)
     source.value = undefined; selected.value = []; confirmed.value = false
     status.value = '迁移完成，已保存变更前恢复点。'

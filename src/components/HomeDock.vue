@@ -4,14 +4,20 @@ import { X } from '@lucide/vue'
 import { launcherIcons } from './launcherIcons'
 import { closeMenuOnFocusout, navigateMenu } from './menuNavigation'
 import type { LauncherItem } from '../types'
+import { launcherPanelRoutes, shortcutPanelRoutes } from '../plugins/routes'
+import type { PanelId } from '../plugins/ids'
 
-const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean; autoHide?: boolean }>(), {
+const props = withDefaults(defineProps<{ items: LauncherItem[]; magnificationEnabled?: boolean; iconSize?: number; iconGap?: number; darkTheme?: boolean; autoHide?: boolean; runningPanels?: PanelId[] }>(), {
   magnificationEnabled: false,
   iconSize: 44,
   iconGap: 2,
   darkTheme: false,
 })
 const emit = defineEmits<{ open: [item: LauncherItem, event?: MouseEvent]; remove: [id: string]; reorder: [sourceId: string, targetId?: string, after?: boolean] }>()
+function running(item:LauncherItem) {
+ const panel=item.action?launcherPanelRoutes[item.action]:shortcutPanelRoutes[item.id]
+ return !!panel&&props.runningPanels?.includes(panel)
+}
 const dock = ref<HTMLElement>()
 const contextMenu = ref<HTMLElement>()
 const contextItem = ref<LauncherItem>()
@@ -368,6 +374,7 @@ onBeforeUnmount(() => {
           class="home-dock-item"
           :data-dock-item-id="item.id"
           :aria-label="`打开${item.title}`"
+          :data-running="running(item) || undefined"
           draggable="true"
           @dragstart="startDrag($event, item.id)"
           @dragend="endDrag"
@@ -382,6 +389,7 @@ onBeforeUnmount(() => {
             <img v-else-if="item.icon && failedIcons[item.id] !== item.icon" :src="item.icon" decoding="async" alt="" draggable="false" @error="failedIcons[item.id] = item.icon!" />
             <span v-else>{{ item.mark }}</span>
           </span>
+          <span v-if="running(item)" class="dock-running-dot" aria-hidden="true"/>
         </button>
       </div>
     </div>

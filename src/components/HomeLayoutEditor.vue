@@ -8,19 +8,26 @@ import { homeWidgetPlugins } from '../plugins/widgetRegistry'
 import { homeWidgetPresets } from '../data/homeWidgetPresets'
 import { trapOverlayTab, isComposingKey } from '../composables/overlayFocus'
 
-const props = defineProps<{ workspace: HomeWorkspace; preferences: Preferences; save: (draft: LayoutEditorDraft) => string | undefined }>()
+const props = defineProps<{ workspace: HomeWorkspace; preferences: Preferences; save: (draft: LayoutEditorDraft) => Promise<string | undefined> }>()
 const emit = defineEmits<{ close: [] }>()
 const draft = ref(createLayoutDraft(props.workspace, props.preferences))
 const tab = ref<'layout' | 'widgets'>('layout')
 const dialog = ref<HTMLDialogElement>()
 const error = ref('')
+const saving = ref(false)
 const query = ref('')
 let previousFocus: HTMLElement | undefined
 const preview = computed(() => draft.value.inherit ? resolveWorkspaceLayout(props.preferences) : draft.value.layout)
 const catalog = computed(() => availableHomeWidgetIds.filter(id => !draft.value.widgetIds.includes(id) && (homeWidgetPlugins[id].title + homeWidgetPlugins[id].description).includes(query.value.trim())))
 function toggleWidget(id: HomeWidgetId) { draft.value.widgetIds = draft.value.widgetIds.includes(id) ? draft.value.widgetIds.filter(item => item !== id) : [...draft.value.widgetIds, id] }
 function reorder(id: HomeWidgetId, direction: -1 | 1) { draft.value.widgetIds = moveWidget(draft.value.widgetIds, id, direction) }
-function apply() { error.value = props.save(draft.value) ?? '' }
+async function apply() {
+ if(saving.value)return
+ saving.value=true
+ try{error.value=await props.save(draft.value)??''}
+ catch{error.value='布局保存失败，请重试。'}
+ finally{saving.value=false}
+}
 function keydown(event: KeyboardEvent) {
   if (isComposingKey(event)) { event.stopPropagation(); return }
   if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); event.stopPropagation(); emit('close'); return }
@@ -57,7 +64,7 @@ onBeforeUnmount(() => { dialog.value?.close?.(); if (previousFocus?.isConnected)
         </section>
       </div>
       <p v-if="error" role="alert" class="editor-error">{{ error }}</p>
-      <footer><button class="button-secondary" type="button" @click="emit('close')">取消</button><button class="button-primary" type="button" @click="apply">保存布局与组件</button></footer>
+      <footer><button class="button-secondary" type="button" @click="emit('close')">取消</button><button class="button-primary" type="button" :disabled="saving" @click="apply">{{saving?'正在保存…':'保存布局与组件'}}</button></footer>
     </div>
   </dialog>
 </template>

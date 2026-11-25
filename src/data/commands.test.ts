@@ -14,3 +14,9 @@ describe('home command registry', () => {
     for (const command of homeCommands) if (command.id.startsWith('panel:')) expect(availablePanelIds).toContain(command.id.slice(6))
   })
 })
+
+it('exposes desktop commands only in desktop mode', () => {
+  expect(filterCommands('finder')).toEqual([])
+  expect(filterCommands('finder', true).map(item=>item.id)).toEqual(['desktop:finder'])
+  expect(filterCommands('mission control', true).map(item=>item.id)).toEqual(['desktop:overview'])
+})

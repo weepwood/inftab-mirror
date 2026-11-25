@@ -2,7 +2,7 @@ import { effectScope, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultPreferences } from '../data/defaults'
 import { sanitizePreferences } from '../data/sanitize'
-import { useStoredState } from './useStoredState'
+import { useStoredState, flushStoredState } from './useStoredState'
 
 function installMemoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial))
@@ -443,4 +443,24 @@ it('honors an explicit remote key deletion without resurrecting pending local ed
     expect(state.value).toEqual(fallback)
     expect(values.has('state.v1')).toBe(false)
   } finally { scope.stop() }
+})
+
+it('flushes guarded edits immediately, reports failures and allows a retry',()=>{
+ vi.useFakeTimers()
+ const values=new Map<string,string>()
+ let fail=true
+ const write=vi.fn((key:string,value:string)=>{if(fail)throw new Error('quota');values.set(key,value)})
+ vi.stubGlobal('localStorage',{getItem:(key:string)=>values.get(key)??null,setItem:write})
+ const scope=effectScope()
+ try{
+  const value=scope.run(()=>useStoredState('guarded.v1',0))!
+  value.value=1
+  expect(flushStoredState(value)).toBe(false)
+  expect(values.has('guarded.v1')).toBe(false)
+  fail=false
+  expect(flushStoredState(value)).toBe(true)
+  expect(values.get('guarded.v1')).toBe('1')
+  expect(flushStoredState(value)).toBe(true)
+  expect(write).toHaveBeenCalledTimes(2)
+ }finally{scope.stop()}
 })

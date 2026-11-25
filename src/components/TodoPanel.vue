@@ -3,7 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { Check, Pencil, Plus, Search, Sun, Trash2 } from '@lucide/vue'
 import type { TodoItem } from '../types'
 
-const props = defineProps<{ items: TodoItem[] }>()
+const props = defineProps<{ items: TodoItem[];targetId?:string;targetSequence?:number }>()
 const emit = defineEmits<{
   add: [title: string]
   toggle: [id: string]
@@ -26,6 +26,14 @@ const filteredItems = computed(() => {
   return props.items.filter((item) => (filter.value === 'all' || item.done === (filter.value === 'done')) && item.title.toLowerCase().includes(needle))
 })
 watch([query, filter], () => { editingId.value = '' })
+watch(()=>[props.targetId,props.targetSequence] as const,async ([id])=>{
+ if(!id||!props.items.some(i=>i.id===id))return
+ query.value='';filter.value='all'
+ await nextTick()
+ const row=[...(list.value?.querySelectorAll<HTMLElement>('[data-todo-id]')??[])].find(el=>el.dataset.todoId===id)
+ row?.scrollIntoView({block:'nearest'})
+ row?.querySelector<HTMLButtonElement>('.todo-check')?.focus()
+},{immediate:true,flush:'post'})
 
 async function submit() {
   const title = draft.value.trim()
@@ -89,7 +97,7 @@ function clearSearch(event: KeyboardEvent) {
       <label class="collection-search"><Search :size="15" aria-hidden="true" /><input v-model="query" type="search" maxlength="500" placeholder="查找待办…" aria-label="查找待办" @keydown.esc="clearSearch" /></label>
     </div>
     <ul v-if="filteredItems.length" ref="list" class="todo-list">
-      <li v-for="item in filteredItems" :key="item.id" :data-todo-id="item.id" :class="{ done: item.done }">
+      <li v-for="item in filteredItems" :key="item.id" :data-todo-id="item.id" :class="{ done: item.done, 'spotlight-target': item.id===targetId }">
         <button class="todo-check" type="button" :aria-label="item.done ? '标记为未完成' : '标记为完成'" :aria-pressed="item.done" @click="toggleItem(item.id, $event)"><Check :size="14" /></button>
         <form v-if="editingId === item.id" class="todo-edit-form" @submit.prevent="finishEdit(true)">
           <input v-model="editingTitle" maxlength="500" aria-label="编辑待办" @keydown.esc.stop="finishEdit()" />
@@ -109,3 +117,5 @@ function clearSearch(event: KeyboardEvent) {
     </div>
   </div>
 </template>
+
+<style scoped>.spotlight-target{outline:2px solid var(--ui-accent-text);outline-offset:-2px;border-radius:8px}</style>

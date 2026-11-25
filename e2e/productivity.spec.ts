@@ -36,6 +36,7 @@ test('the phone toolbar creates a shortcut directly without overlapping the bran
   const brand = await page.locator('.home-brand').boundingBox()
   const toolbar = await page.locator('.home-actions').boundingBox()
   expect(brand!.x + brand!.width).toBeLessThan(toolbar!.x)
+  expect(toolbar!.x - (brand!.x + brand!.width)).toBeGreaterThanOrEqual(8)
   const create = page.getByRole('button', { name: '新建快捷入口', exact: true })
   await create.click()
   const dialog = page.getByRole('dialog', { name: '添加快捷入口', exact: true })

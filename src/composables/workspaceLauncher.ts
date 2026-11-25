@@ -135,7 +135,7 @@ export function createLauncherActions({ preferences, shortcuts, folders, launche
       ? folders.value.map((item) => item.id === folder.id ? folder : item)
       : [...folders.value, folder]
     const sanitized = sanitizeFolders(next, shortcuts.value)
-    if (!sanitized.some((item) => item.id === folder.id)) return false
+    if (!sanitized.some((item) => item.id === folder.id && item.parentId === folder.parentId)) return false
     folders.value = sanitized
     launcherOrder.value = sanitizeLauncherOrder([...launcherOrder.value, ...(exists ? [] : [folder.id])], shortcuts.value, folders.value)
     updateWorkspaceLauncherMembership(folder.id, workspaceId)

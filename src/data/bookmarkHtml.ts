@@ -1,3 +1,4 @@
+import { folderParents } from './folderTree'
 import { downloadText } from './downloadBackup'
 import { normalizeWebUrl } from './urls'
 import { truncateCodePoints } from './text'
@@ -41,7 +42,9 @@ export function exportBookmarkHtml(snapshot: Pick<WorkspaceBackup, 'shortcuts' |
   const sections = (snapshot.homeWorkspaces ?? []).map(workspace => {
     const folders = snapshot.folders.filter(folder => workspace.itemIds.includes(folder.id))
     const folderItems = new Set(folders.flatMap(folder => folder.shortcutIds))
-    return group(workspace.name, folders.map(folder => group(folder.title, folder.shortcutIds.map(id => link(byId.get(id))).join(''))).join('')
+    const parents=folderParents(folders,workspace)
+    const render=(folder:typeof folders[number]):string=>group(folder.title,folder.shortcutIds.map(id=>link(byId.get(id))).join('')+folders.filter(f=>parents.get(f.id)===folder.id).map(render).join(''))
+    return group(workspace.name, folders.filter(f=>!parents.has(f.id)).map(render).join('')
       + workspace.itemIds.filter(id => !folderItems.has(id)).map(id => link(byId.get(id))).join(''))
   }).join('')
   return '<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>Inftab Bookmarks</TITLE>\n<H1>Inftab Bookmarks</H1>\n<DL><p>\n' + sections

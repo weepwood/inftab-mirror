@@ -719,6 +719,8 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 
 @media (max-width: 360px) {
   .brand-word { display: none; }
+  .home:not(.desktop-mode) .home-brand { left: 12px; }
+  .home:not(.desktop-mode) .home-actions { right: 12px; gap: 1px; }
 }
 
 @media (max-height: 680px) {
@@ -1295,3 +1297,5 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .home-workspace-trigger { background: linear-gradient(180deg,#34413de0,#202b29e0); }
 .theme-dark .home-actions { background: linear-gradient(180deg,#222b31ad,#171e24bd); }
 .shortcut-name { text-shadow: 0 1px 2px #000f, 0 1px 5px #000c, 0 0 10px #0008; }
+
+.dock-running-dot{position:absolute;left:50%;bottom:-6px;width:4px;height:4px;border-radius:50%;transform:translateX(-50%);background:currentColor;box-shadow:0 0 2px #0004;pointer-events:none}

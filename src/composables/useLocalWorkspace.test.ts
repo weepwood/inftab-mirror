@@ -194,7 +194,7 @@ describe('useLocalWorkspace home workspaces', () => {
     expect(workspace.activeHomeWorkspaceId.value).toBe(defaultWorkspace.id)
   })
 
-  it('round-trips workspace tabs through backup and migrates an older backup', () => {
+  it('round-trips workspace tabs through backup and migrates an older backup', async () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
     const id = workspace.createHomeWorkspace('娱乐')!
@@ -205,14 +205,14 @@ describe('useLocalWorkspace home workspaces', () => {
     expect(backup.activeHomeWorkspaceId).toBe(id)
     expect(backup.homeWorkspaces?.find((item) => item.id === id)?.itemIds).toContain(link.id)
     workspace.removeHomeWorkspace(id)
-    workspace.restoreBackup(backup, 'replace')
+    await workspace.restoreBackup(backup, 'replace')
     expect(workspace.activeHomeWorkspaceId.value).toBe(id)
     expect(workspace.homeWorkspaces.value.find((item) => item.id === id)?.itemIds).toContain(link.id)
 
     const olderBackup = { ...backup }
     delete olderBackup.homeWorkspaces
     delete olderBackup.activeHomeWorkspaceId
-    workspace.restoreBackup(parseWorkspaceBackup(olderBackup), 'replace')
+    await workspace.restoreBackup(parseWorkspaceBackup(olderBackup), 'replace')
     expect(workspace.homeWorkspaces.value).toHaveLength(1)
     expect(workspace.homeWorkspaces.value[0]?.itemIds).toContain(link.id)
   })
@@ -231,7 +231,7 @@ describe('useLocalWorkspace home workspaces', () => {
     expect(workspace.moveHomeWorkspace(firstId, 1)).toBe(false)
   })
 
-  it('round-trips the reordered workspace tab order through backups', () => {
+  it('round-trips the reordered workspace tab order through backups', async () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
     const firstId = workspace.createHomeWorkspace('第一个')!
@@ -242,13 +242,13 @@ describe('useLocalWorkspace home workspaces', () => {
     const expectedOrder = ['default', activeId, firstId]
     expect(backup.homeWorkspaces?.map((item) => item.id)).toEqual(expectedOrder)
 
-    workspace.restoreBackup(backup, 'replace')
+    await workspace.restoreBackup(backup, 'replace')
 
     expect(workspace.homeWorkspaces.value.map((item) => item.id)).toEqual(expectedOrder)
     expect(workspace.activeHomeWorkspaceId.value).toBe(activeId)
   })
 
-  it('merges imported workspace groups without dropping the current active group', () => {
+  it('merges imported workspace groups without dropping the current active group', async () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
     const currentId = workspace.createHomeWorkspace('本机工作区')!
@@ -261,7 +261,7 @@ describe('useLocalWorkspace home workspaces', () => {
     ]
     backup.activeHomeWorkspaceId = 'missing-workspace'
 
-    expect(workspace.restoreBackup(backup, 'merge')).toBeUndefined()
+    expect(await workspace.restoreBackup(backup, 'merge')).toBeUndefined()
     expect(workspace.homeWorkspaces.value.map((item) => item.id)).toContain(currentId)
     expect(workspace.homeWorkspaces.value.map((item) => item.id)).toContain('remote-space')
     expect(workspace.activeHomeWorkspaceId.value).toBe(currentId)
@@ -410,7 +410,7 @@ describe('useLocalWorkspace home workspaces', () => {
       .toEqual(expect.arrayContaining([firstShortcut.id, secondShortcut.id]))
   })
 
-  it('rejects workspace overflow merges before changing any local data', () => {
+  it('rejects workspace overflow merges before changing any local data', async () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
     for (let index = 1; index < 20; index += 1) workspace.createHomeWorkspace(`本机 ${index}`)
@@ -422,7 +422,7 @@ describe('useLocalWorkspace home workspaces', () => {
     backup.activeHomeWorkspaceId = 'missing-workspace'
     const previousShortcutIds = workspace.shortcuts.value.map((item) => item.id)
 
-    expect(workspace.restoreBackup(backup, 'merge')).toMatch(/工作区将超过数量上限/)
+    expect(await workspace.restoreBackup(backup, 'merge')).toMatch(/工作区将超过数量上限/)
     expect(workspace.homeWorkspaces.value).toHaveLength(20)
     expect(workspace.shortcuts.value.map((item) => item.id)).toEqual(previousShortcutIds)
   })
@@ -487,7 +487,7 @@ describe('useLocalWorkspace focus timer', () => {
     expect(backup.focusTimer).toMatchObject({ focusMinutes: 50, endsAt: workspace.focusTimer.value.endsAt })
 
     await workspace.resetFocusTimer()
-    workspace.restoreBackup(backup, 'replace')
+    await workspace.restoreBackup(backup, 'replace')
     expect(workspace.focusTimer.value).toEqual(backup.focusTimer)
   })
 
@@ -505,19 +505,19 @@ describe('useLocalWorkspace focus timer', () => {
     expect(workspace.focusTimer.value.endsAt! - Date.now()).toBe(50 * 60_000)
   })
 
-  it('defaults the timer when replacing from an older backup without timer data', () => {
+  it('defaults the timer when replacing from an older backup without timer data', async () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
     workspace.focusTimer.value = startFocusTimer(defaultFocusTimerState, Date.now())
     const backup = workspace.createBackup()
     delete backup.focusTimer
-    workspace.restoreBackup(backup, 'replace')
+    await workspace.restoreBackup(backup, 'replace')
     expect(workspace.focusTimer.value).toEqual(defaultFocusTimerState)
   })
 })
 
 describe('useLocalWorkspace habits', () => {
-  it('stores local-day check-ins and carries them through backup replacement', () => {
+  it('stores local-day check-ins and carries them through backup replacement', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-12T04:00:00.000Z'))
     scope = effectScope()
@@ -533,7 +533,7 @@ describe('useLocalWorkspace habits', () => {
     expect(backup.habits).toEqual(workspace.habits.value)
     workspace.removeHabit(habit.id)
     expect(workspace.habits.value).toEqual([])
-    expect(workspace.restoreBackup(backup, 'replace')).toBeUndefined()
+    expect(await workspace.restoreBackup(backup, 'replace')).toBeUndefined()
     expect(workspace.habits.value).toEqual(backup.habits)
   })
 
@@ -744,7 +744,7 @@ describe('useLocalWorkspace custom search engines', () => {
     expect(workspace.preferences.value.engine).toBe('baidu')
   })
 
-  it('includes custom engines in backups and merges or replaces them with preferences', () => {
+  it('includes custom engines in backups and merges or replaces them with preferences', async () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
     workspace.addCustomSearchEngine('Existing', 'https://existing.example/?q={query}')
@@ -755,16 +755,16 @@ describe('useLocalWorkspace custom search engines', () => {
     ]
     backup.preferences.engine = 'custom:imported'
 
-    workspace.restoreBackup(backup, 'merge')
+    await workspace.restoreBackup(backup, 'merge')
     expect(workspace.customSearchEngines.value.map((engine) => engine.id)).toEqual([existing.id, 'imported'])
     expect(workspace.preferences.value.engine).toBe('custom:imported')
 
-    workspace.restoreBackup(backup, 'replace')
+    await workspace.restoreBackup(backup, 'replace')
     expect(workspace.customSearchEngines.value.map((engine) => engine.id)).toEqual(['imported'])
     expect(workspace.preferences.value.engine).toBe('custom:imported')
   })
 
-  it.each(['merge', 'replace'] as const)('preserves imported Dock entries and folder membership during %s restore', (mode) => {
+  it.each(['merge', 'replace'] as const)('preserves imported Dock entries and folder membership during %s restore', async (mode) => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
     const backup = workspace.createBackup()
@@ -773,7 +773,7 @@ describe('useLocalWorkspace custom search engines', () => {
     backup.launcherOrder = ['restored-folder', 'restored-shortcut']
     backup.preferences.dockItemIds = ['restored-shortcut', 'restored-folder']
 
-    expect(workspace.restoreBackup(backup, mode)).toBeUndefined()
+    expect(await workspace.restoreBackup(backup, mode)).toBeUndefined()
 
     expect(workspace.preferences.value.dockItemIds).toEqual(['restored-shortcut', 'restored-folder'])
     expect(workspace.folders.value[0]?.shortcutIds).toEqual(['restored-shortcut'])
@@ -849,7 +849,7 @@ describe('useLocalWorkspace custom search engines', () => {
     expect(workspace.folders.value[0]).toEqual(originalFolder)
   })
 
-  it('rejects a merge that exceeds a section limit without applying partial changes', () => {
+  it('rejects a merge that exceeds a section limit without applying partial changes', async () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
     workspace.shortcuts.value = Array.from({ length: 500 }, (_, index) => ({
@@ -863,7 +863,7 @@ describe('useLocalWorkspace custom search engines', () => {
     incoming.habits = [{ id: 'imported-habit', title: 'Imported habit', completedDates: [] }]
     incoming.preferences.showClock = !workspace.preferences.value.showClock
 
-    const result = workspace.restoreBackup(incoming, 'merge')
+    const result = await workspace.restoreBackup(incoming, 'merge')
 
     expect(result).toContain('快捷入口、习惯将超过数量上限')
     expect(workspace.shortcuts.value).toHaveLength(500)
@@ -871,7 +871,7 @@ describe('useLocalWorkspace custom search engines', () => {
     expect(workspace.preferences.value.showClock).not.toBe(incoming.preferences.showClock)
   })
 
-  it('rejects cross-type launcher ID conflicts without dropping existing folders', () => {
+  it('rejects cross-type launcher ID conflicts without dropping existing folders', async () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
     const existingFolder = { id: 'shared-launcher-id', title: 'Existing folder', shortcutIds: [], color: '#abc', mark: 'F' }
@@ -883,14 +883,14 @@ describe('useLocalWorkspace custom search engines', () => {
     incoming.launcherOrder = [existingFolder.id]
     const validatedIncoming = parseWorkspaceBackup(incoming)
 
-    const result = workspace.restoreBackup(validatedIncoming, 'merge')
+    const result = await workspace.restoreBackup(validatedIncoming, 'merge')
 
     expect(result).toContain('相同的入口 ID')
     expect(workspace.folders.value).toEqual([existingFolder])
     expect(workspace.shortcuts.value.some((item) => item.id === existingFolder.id)).toBe(false)
   })
 
-  it('rejects incoming folders that reuse existing shortcut IDs', () => {
+  it('rejects incoming folders that reuse existing shortcut IDs', async () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
     const existingShortcut = { id: 'shared-launcher-id', title: 'Existing shortcut', url: 'https://existing.example/', color: '#abc', mark: 'S' }
@@ -902,7 +902,7 @@ describe('useLocalWorkspace custom search engines', () => {
     incoming.launcherOrder = [existingShortcut.id]
     const validatedIncoming = parseWorkspaceBackup(incoming)
 
-    const result = workspace.restoreBackup(validatedIncoming, 'merge')
+    const result = await workspace.restoreBackup(validatedIncoming, 'merge')
 
     expect(result).toContain('相同的入口 ID')
     expect(workspace.shortcuts.value).toContainEqual(existingShortcut)
@@ -912,7 +912,7 @@ describe('useLocalWorkspace custom search engines', () => {
 
 
 describe('shortcut workspace moves and folders', () => {
-  it('detaches a moved shortcut from its old folder while preserving the folder and its other members', () => {
+  it('detaches a moved shortcut from its old folder while preserving the folder and its other members', async () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
     const targetId = workspace.createHomeWorkspace('目标工作区')!
@@ -934,7 +934,7 @@ describe('shortcut workspace moves and folders', () => {
     expect(workspace.launcherOrder.value).toContain(moving.id)
 
     const backup = parseWorkspaceBackup(workspace.createBackup())
-    expect(workspace.restoreBackup(backup, 'replace')).toBeUndefined()
+    expect(await workspace.restoreBackup(backup, 'replace')).toBeUndefined()
     expect(workspace.folders.value.find((item) => item.id === folder.id)?.shortcutIds).toEqual([staying.id])
     expect(workspace.homeWorkspaces.value.find((item) => item.id === targetId)?.itemIds).toContain(moving.id)
   })
@@ -1005,7 +1005,7 @@ describe('workspace domain boundaries', () => {
 })
 
 
-it('persists independent workspace layouts, round-trips backups and resets to global', () => {
+it('persists independent workspace layouts, round-trips backups and resets to global', async () => {
   scope = effectScope()
   const workspace = scope.run(() => useLocalWorkspace())!
   const id = workspace.createHomeWorkspace('Independent grid')!
@@ -1016,17 +1016,17 @@ it('persists independent workspace layouts, round-trips backups and resets to gl
   const backup = parseWorkspaceBackup(workspace.createBackup())
   expect(workspace.saveWorkspaceLayout(id)).toBe(true)
   expect(workspace.homeWorkspaces.value.find(item => item.id === id)?.layout).toBeUndefined()
-  expect(workspace.restoreBackup(backup, 'replace')).toBeUndefined()
+  expect(await workspace.restoreBackup(backup, 'replace')).toBeUndefined()
   expect(workspace.homeWorkspaces.value.find(item => item.id === id)?.layout).toEqual({ columns: 3, rows: 2, showNames: false })
   const legacy = workspace.createBackup()
   legacy.homeWorkspaces = legacy.homeWorkspaces?.map(({ layout, ...item }) => item)
-  expect(workspace.restoreBackup(legacy, 'merge')).toBeUndefined()
+  expect(await workspace.restoreBackup(legacy, 'merge')).toBeUndefined()
   expect(workspace.homeWorkspaces.value.find(item => item.id === id)?.layout?.columns).toBe(3)
   expect(workspace.saveWorkspaceLayout('missing', { columns: 4 })).toBe(false)
 })
 
 
-it('rejects stale layout drafts and does not turn inherited fields into overrides when only widgets change', () => {
+it('rejects stale layout drafts and does not turn inherited fields into overrides when only widgets change', async () => {
   scope = effectScope()
   const workspace = scope.run(() => useLocalWorkspace())!
   const id = workspace.createHomeWorkspace('Draft workspace')!
@@ -1034,18 +1034,18 @@ it('rejects stale layout drafts and does not turn inherited fields into override
   const current = () => workspace.homeWorkspaces.value.find(item => item.id === id)!
   const draft = createLayoutDraft(current(), workspace.preferences.value)
   draft.widgetIds = ['todo-summary']
-  expect(workspace.saveHomeLayout(draft)).toBeUndefined()
+  expect(await workspace.saveHomeLayout(draft)).toBeUndefined()
   expect(current().layout).toEqual({ columns: 4 })
   expect(workspace.preferences.value.homeWidgetIds).toEqual(['todo-summary'])
   const stale = createLayoutDraft(current(), workspace.preferences.value)
   workspace.updatePreferences({ columns: 8 })
   stale.layout.columns = 2
-  expect(workspace.saveHomeLayout(stale)).toContain('发生变化')
+  expect(await workspace.saveHomeLayout(stale)).toContain('发生变化')
   expect(current().layout).toEqual({ columns: 4 })
   expect(workspace.preferences.value.columns).toBe(8)
 })
 
-it('rejects malformed late backup fields without mutating any earlier section', () => {
+it('rejects malformed late backup fields without mutating any earlier section', async () => {
   scope = effectScope()
   const workspace = scope.run(() => useLocalWorkspace())!
   const before = workspace.createBackup()
@@ -1055,12 +1055,12 @@ it('rejects malformed late backup fields without mutating any earlier section', 
   // An untrusted programmatic caller can bypass the file parser. This field is
   // read late in merge planning, after most sections used to be assigned.
   incoming.notes = null as unknown as typeof incoming.notes
-  expect(workspace.restoreBackup(incoming, 'merge')).toMatch(/导入失败/)
+  expect(await workspace.restoreBackup(incoming, 'merge')).toMatch(/导入失败/)
   expect({ ...workspace.createBackup(), exportedAt: '' }).toEqual({ ...before, exportedAt: '' })
 })
 
 describe('desktop backup compatibility', () => {
-  it('round-trips independent workspace coordinates and keeps them on legacy merge', () => {
+  it('round-trips independent workspace coordinates and keeps them on legacy merge', async () => {
     scope = effectScope()
     const workspace = scope.run(() => useLocalWorkspace())!
     const id = workspace.homeWorkspaces.value[0]!.itemIds[0]!
@@ -1069,11 +1069,11 @@ describe('desktop backup compatibility', () => {
     const backup = parseWorkspaceBackup(workspace.createBackup())
     expect(backup.homeWorkspaces?.[0]?.desktop).toEqual(desktop)
     const legacy = {...backup,homeWorkspaces:backup.homeWorkspaces!.map(({desktop:_,...w})=>w)}
-    expect(workspace.restoreBackup(legacy,'merge')).toBeUndefined()
+    expect(await workspace.restoreBackup(legacy,'merge')).toBeUndefined()
     expect(workspace.homeWorkspaces.value[0]?.desktop).toEqual(desktop)
-    expect(workspace.restoreBackup(legacy,'replace')).toBeUndefined()
+    expect(await workspace.restoreBackup(legacy,'replace')).toBeUndefined()
     expect(workspace.homeWorkspaces.value[0]?.desktop).toBeUndefined()
-    expect(workspace.restoreBackup(backup,'replace')).toBeUndefined()
+    expect(await workspace.restoreBackup(backup,'replace')).toBeUndefined()
     expect(workspace.homeWorkspaces.value[0]?.desktop).toEqual(desktop)
   })
 })

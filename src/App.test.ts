@@ -1111,6 +1111,7 @@ describe('new-tab keyboard search', () => {
     expect(wrapper.get('.backup-dialog').text()).toContain('1 个快捷入口')
     expect(wrapper.get('.backup-dialog').text()).toContain('1 条待办')
     await wrapper.findAll('.backup-dialog button').find((button) => button.text().trim() === '合并导入')!.trigger('click')
+    await vi.dynamicImportSettled()
     await flushLocalStorageWrites()
 
     const shortcuts = JSON.parse(localStorage.getItem('inftab.shortcuts.v1') ?? '[]')
@@ -1136,6 +1137,7 @@ describe('new-tab keyboard search', () => {
       preferences: { ...defaultPreferences, showClock: false },
     }))
     await wrapper.findAll('.backup-dialog button').find((button) => button.text().trim() === '合并导入')!.trigger('click')
+    await vi.dynamicImportSettled()
     await flushLocalStorageWrites()
 
     expect(wrapper.find('.backup-dialog').exists()).toBe(false)
@@ -1151,6 +1153,7 @@ describe('new-tab keyboard search', () => {
     await selectBackupFile(validBackup({ todos: [{ id: 'new-todo', title: 'Restored', done: false }] }))
     expect(JSON.parse(localStorage.getItem('inftab.todos.v1') ?? '[]')).toContainEqual(expect.objectContaining({ id: 'old-todo' }))
     await wrapper.findAll('.backup-dialog button').find((button) => button.text().trim() === '覆盖导入')!.trigger('click')
+    await vi.dynamicImportSettled()
     await flushLocalStorageWrites()
 
     expect(JSON.parse(localStorage.getItem('inftab.todos.v1') ?? '[]')).toEqual([

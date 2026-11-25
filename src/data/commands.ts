@@ -20,7 +20,13 @@ export const homeCommands = [
   { id: 'home', label: '返回第一页', detail: '视图', keywords: 'home' },
 ] as const
 
-export function filterCommands(query: string) {
+const desktopCommands = [
+  { id: 'desktop:finder', label: '打开 Finder', detail: '桌面', keywords: 'finder files' },
+  { id: 'desktop:overview', label: '打开窗口概览', detail: '桌面', keywords: 'mission control windows' },
+  { id: 'desktop:classic', label: '返回经典模式', detail: '桌面', keywords: 'classic launcher' },
+] as const
+
+export function filterCommands(query: string, desktop = false) {
   const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean)
-  return homeCommands.filter(command => terms.every(term => (command.label + ' ' + command.detail + ' ' + command.keywords).toLocaleLowerCase().includes(term)))
+  return (desktop ? [...homeCommands, ...desktopCommands] : homeCommands).filter(command => terms.every(term => (command.label + ' ' + command.detail + ' ' + command.keywords).toLocaleLowerCase().includes(term)))
 }

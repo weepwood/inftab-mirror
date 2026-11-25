@@ -1,4 +1,4 @@
-import { layoutSignature, getLayoutOverrides, type LayoutEditorDraft } from '../data/layoutEditor'
+import type { LayoutEditorDraft } from '../data/layoutEditor'
 import type { ShortcutBatch } from '../data/workspaceTools'
 import { useStoredState } from './useStoredState'
 import { computed, watch } from 'vue'
@@ -7,8 +7,7 @@ import { defaultLauncherOrder, defaultPreferences, defaultShortcuts, launcherIte
 import { sanitizeWorkspaceLayout, type WorkspaceLayoutOverrides } from '../data/workspaceLayout'
 import { createProductivityActions } from './workspaceProductivity'
 import { createLauncherActions } from './workspaceLauncher'
-import { createBackupActions } from './workspaceBackup'
-import { mergeHomeWorkspaceChanges } from '../data/workspaceOwnership'
+import { createBackupActions } from './workspaceSnapshot'
 import { migrateLegacyShortcuts } from '../data/legacyShortcutMigration'
 import { localStorageAdapter } from '../data/storageAdapter'
 import { sanitizeActiveNoteId, sanitizeCountdowns, sanitizeCustomSearchEngines, sanitizeFolders, sanitizeHabits, sanitizeLauncherOrder, sanitizeNotes, sanitizePreferences, sanitizeShortcuts, sanitizeTodos, sanitizeWeatherCity } from '../data/sanitize'
@@ -36,7 +35,7 @@ export function useLocalWorkspace() {
     (value) => sanitizeHomeWorkspaces(value, launcherOrder.value, builtInLauncherIds),
     {
       clearFallback: [defaultHomeWorkspace(defaultLauncherOrder)],
-      resolveConcurrentChanges: (current, previous, external, mergeDefault) => mergeHomeWorkspaceChanges(builtInLauncherIds, current, previous, external, mergeDefault),
+      resolveConcurrentChanges: (current, previous, external, mergeDefault, mergeHomeWorkspaceChanges) => mergeHomeWorkspaceChanges(builtInLauncherIds, current, previous, external, mergeDefault),
     },
   )
   const activeHomeWorkspaceId = useStoredState<string>(
@@ -175,7 +174,8 @@ export function useLocalWorkspace() {
     return true
   }
 
-  function saveHomeLayout(draft: LayoutEditorDraft): string | undefined {
+  async function saveHomeLayout(draft: LayoutEditorDraft): Promise<string | undefined> {
+    const { layoutSignature, getLayoutOverrides } = await import('../data/layoutEditor')
     const workspace = homeWorkspaces.value.find(item => item.id === draft.workspaceId)
     if (!workspace || activeHomeWorkspaceId.value !== draft.workspaceId || layoutSignature(workspace, preferences.value) !== draft.baseline) return '布局已在其他位置发生变化，请关闭后重新编辑。'
     const clean = draft.inherit ? undefined : sanitizeWorkspaceLayout(draft.layout)

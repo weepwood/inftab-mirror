@@ -4,6 +4,14 @@ import { sanitizeStoredValue } from '../data/sanitize'
 
 export const storageWriteErrorEvent = 'inftab:storage-write-error'
 export const storageWriteSuccessEvent = 'inftab:storage-write-success'
+const flushers = new WeakMap<object, () => boolean>()
+const discarders = new WeakMap<object, () => void>()
+/** Only used after explicit recovery has replaced the persisted value, before reload. */
+export function discardStoredWrite(ref:object){discarders.get(ref)?.()}
+/** For guarded multi-record operations only; normal editing keeps debounce. */
+export function flushStoredState(ref: object): boolean {
+  return flushers.get(ref)?.() ?? false
+}
 
 export interface StoredStateOptions<T = unknown> {
   storageAdapter?: StorageAdapter
@@ -15,6 +23,7 @@ export interface StoredStateOptions<T = unknown> {
     previous: T,
     external: T,
     mergeDefault: (current: T, previous: T, external: T) => T,
+    mergeWorkspace: typeof import('../data/workspaceOwnership').mergeHomeWorkspaceChanges,
   ) => T
   /** Use a clean default when another tab clears the entire local storage area. */
   clearFallback?: T
@@ -75,7 +84,10 @@ export function useStoredState<T>(
     if (persistTimer !== undefined) clearTimeout(persistTimer)
     persistTimer = undefined
     if (needsWrite) writeValue(value.value)
+    return !needsWrite
   }
+  flushers.set(value, flushPendingWrite)
+  discarders.set(value,()=>{clearTimeout(persistTimer);persistTimer=undefined;needsWrite=false})
   function scheduleWrite() {
     needsWrite = true
     if (isDisposed) {
@@ -134,11 +146,11 @@ export function useStoredState<T>(
       }
       if (hasPreviousValue && JSON.stringify(value.value) !== JSON.stringify(previousValue!)) {
         try {
-          const { mergeConcurrentEdits, valuesEqual } = await loadConcurrentState()
+          const { mergeConcurrentEdits, valuesEqual, mergeHomeWorkspaceChanges } = await loadConcurrentState()
           const mergeDefault = (current: T, previous: T, external: T) =>
             mergeConcurrentEdits(current, previous, external, normalize)
           nextValue = options.resolveConcurrentChanges
-            ? options.resolveConcurrentChanges(value.value, previousValue!, externalValue, mergeDefault)
+            ? options.resolveConcurrentChanges(value.value, previousValue!, externalValue, mergeDefault, mergeHomeWorkspaceChanges)
             : mergeDefault(value.value, previousValue!, externalValue)
           persistMergedValue = !valuesEqual(nextValue, externalValue)
         } catch {
@@ -188,6 +200,8 @@ export function useStoredState<T>(
   targetDocument?.addEventListener('visibilitychange', handleVisibilityChange)
   if (targetWindow && getCurrentScope()) onScopeDispose(() => {
     isDisposed = true
+    flushers.delete(value)
+    discarders.delete(value)
     targetWindow.removeEventListener('storage', queueStorageEvent)
     targetWindow.removeEventListener('pagehide', flushPendingWrite)
     targetDocument?.removeEventListener('visibilitychange', handleVisibilityChange)

@@ -31,9 +31,13 @@ const SearchBar = defineAsyncComponent({
 })
 const ClockWidget = lazyHome(() => import('./components/ClockWidget.vue'), '时钟')
 const LauncherSearchResults = lazyHome(() => import('./components/LauncherSearchResults.vue'), '入口查找', true)
-const FinderWindow = lazyHome(() => import('./desktop/FinderWindow.vue'), 'Finder', true)
-const finderOpen = ref(false)
-const finderFolderId = ref<string>()
+const DesktopWindows = lazyHome(() => import('./desktop/DesktopWindows.vue'), '桌面窗口', true)
+const finderRequest = shallowRef<{ sequence: number; workspaceId: string; folderId?: string; panelId?: PanelId; targetId?:string }>()
+let finderSequence = 0
+const overviewRequest = ref(0)
+const runningDesktopPanels = ref<PanelId[]>([])
+const finderOperationError = ref('')
+const desktopHistory = shallowRef({undo:false,redo:false})
 const DesktopShell = lazyHome(() => import('./desktop/DesktopShell.vue'), '自由桌面', true)
 const desktopMode = useStoredState('inftab.desktop-mode.v1', false, value => value === true)
 const ShortcutGrid = lazyHome(() => import('./components/ShortcutGrid.vue'), '快捷入口', true)
@@ -373,35 +377,35 @@ function loadPanelRegistry() {
 }
 
 function openPanel(id: PanelId) {
+  if(desktopMode.value && !minimalMode.value && id !== 'settings' && id !== 'bookmarks' && id !== 'history') {
+    finderRequest.value={sequence:++finderSequence,workspaceId:activeHomeWorkspaceId.value,panelId:id}
+    return
+  }
   activePanel.value = id
   loadPanelRegistry()
 }
 
-watch(desktopMode, value => { if(!value) finderOpen.value=false })
+watch(desktopMode, value => { if(!value){finderRequest.value=undefined;overviewRequest.value=0;finderOperationError.value='';runningDesktopPanels.value=[]} })
+function switchDesktopWorkspace(id: string) {
+  if(homeWorkspaces.value.some(w=>w.id===id))activeHomeWorkspaceId.value=id
+}
 function openFinder(folderId?: string) {
-  finderFolderId.value = folderId
-  finderOpen.value = true
+  finderRequest.value = { sequence: ++finderSequence, workspaceId: activeHomeWorkspaceId.value, folderId }
 }
 function desktopOpen(item: LauncherItem, event?: MouseEvent) {
   if (item.folder) openFinder(item.id)
   else openItem(item,event)
 }
-function finderMove(item: LauncherItem, workspaceId: string) {
-  if (!homeWorkspaces.value.some(w=>w.id===workspaceId)) return
-  if (item.shortcut) saveShortcutData(item.shortcut,workspaceId)
-  else if(item.folder && homeWorkspaces.value.some(w=>w.id===workspaceId)) {
-    const current=folders.value.find(f=>f.id===item.id)
-    if(!current)return
-    const ids=new Set([current.id,...current.shortcutIds])
-    homeWorkspaces.value=homeWorkspaces.value.map(w=>({...w,itemIds:w.id===workspaceId?[...new Set([...w.itemIds,...ids])]:w.itemIds.filter(id=>!ids.has(id))}))
-  }
+async function desktopMutation(action: import('./desktop/ownership').DesktopMutation) {
+  try {
+    const { applyDesktopMutation, desktopHistoryAvailability } = await import('./desktop/desktopOperations')
+    finderOperationError.value=(await applyDesktopMutation(action,{workspaces:homeWorkspaces,folders,shortcuts,launcherOrder,createBackup}))??''
+    desktopHistory.value=desktopHistoryAvailability()
+    return !finderOperationError.value
+  }catch{finderOperationError.value='桌面操作暂时无法加载，请重试。';return false}
 }
 function finderMembership(item: LauncherItem, folderId: string | null) {
-  if (!shortcuts.value.some(s=>s.id===item.id) || (folderId && !folders.value.some(f=>f.id===folderId))) return
-  if (!item.shortcut) return
-  const owner=homeWorkspaces.value.find(w=>w.itemIds.includes(item.id))
-  if (!owner || (folderId && !owner.itemIds.includes(folderId))) return
-  folders.value=folders.value.map(f=>({...f,shortcutIds:f.id===folderId?[...new Set([...f.shortcutIds,item.id])]:f.shortcutIds.filter(id=>id!==item.id)}))
+  if(item.shortcut)void desktopMutation({kind:'membership',ids:[item.id],folderId})
 }
 function openItem(item: LauncherItem, event?: MouseEvent) {
   if (item.folder) openFolder(item.folder)
@@ -417,11 +421,14 @@ function openFolder(folder: ShortcutFolder) {
   openFolderEditor(folder)
 }
 
-function openFinderFolderEditor(workspaceId: string) {
+function openFinderFolderEditor(workspaceId: string, parentId?:string) {
   openFolderEditor(undefined, workspaceId)
+  folderParentId.value=parentId
 }
 
+const folderParentId=ref<string>()
 function openFolderEditor(folder?: ShortcutFolder, workspaceId = activeHomeWorkspaceId.value) {
+  folderParentId.value=folder?.parentId
   folderWorkspaceId.value = (folder && homeWorkspaces.value.find(w => w.itemIds.includes(folder.id))?.id) || workspaceId
   folderSaveError.value = ''
   activeFolder.value = folder
@@ -480,7 +487,8 @@ function saveFolder(folder: ShortcutFolder) {
     folderSaveError.value = '工作区或入口归属已发生变化，请关闭后重新打开文件夹。'
     return
   }
-  if (!saveFolderData(folder, target.id)) {
+  if(folderParentId.value&&!folders.value.some(f=>f.id===folderParentId.value&&target.itemIds.includes(f.id))){folderSaveError.value='父文件夹已变化，请重新打开。';return}
+  if (!saveFolderData({...folder,...(folderParentId.value?{parentId:folderParentId.value}:{})}, target.id)) {
     folderSaveError.value = '无法保存文件夹，请检查名称、颜色及数量限制。'
     return
   }
@@ -616,22 +624,22 @@ async function downloadBackup() {
   }
 }
 
-function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode: 'merge' | 'replace') {
-  if (!window.indexedDB) { backupExportError.value = restoreBackup(backup, mode) ?? ''; return }
+async function applyWorkspaceBackup(backup: Parameters<typeof restoreBackup>[0], mode: 'merge' | 'replace') {
+  if (!window.indexedDB) { backupExportError.value = (await restoreBackup(backup, mode)) ?? ''; return }
   const snapshot = createBackup()
   const expected = JSON.stringify({ ...snapshot, exportedAt: '' })
   void import('./data/backupHistory').then(async module => {
     await module.captureHistory(snapshot, 'before-change')
     if (JSON.stringify({ ...createBackup(), exportedAt: '' }) !== expected) throw new Error('备份期间数据已变化，请重新导入。')
-    backupExportError.value = restoreBackup(backup, mode) ?? ''
+    backupExportError.value = (await restoreBackup(backup, mode)) ?? ''
   }).catch(error => { backupExportError.value = '导入已停止：' + (error instanceof Error ? error.message : '无法保存恢复点。') })
 }
 
 function openLayoutEditor() {
   if (!overlayOpen.value) layoutEditorOpen.value = true
 }
-function applyHomeLayout(draft: LayoutEditorDraft) {
-  const error = saveHomeLayout(draft)
+async function applyHomeLayout(draft: LayoutEditorDraft) {
+  const error = await saveHomeLayout(draft)
   if (!error) layoutEditorOpen.value = false
   return error
 }
@@ -649,7 +657,23 @@ async function runCommand(id: string) {
   else if (id === 'minimal') toggleMinimalMode()
   else if (id === 'light' || id === 'dark' || id === 'system') updatePreferences({ themeMode: id })
   else if (id === 'home') goToPage(0)
+  else if (id === 'desktop:finder' && desktopMode.value) openFinder()
+  else if (id === 'desktop:overview' && desktopMode.value) overviewRequest.value++
+  else if (id === 'desktop:classic' && desktopMode.value) desktopMode.value = false
   else if (id.startsWith('panel:')) openPanel(id.slice(6) as PanelId)
+  else if (desktopMode.value && id.startsWith('record:')) openDesktopRecord(id)
+}
+
+function openDesktopRecord(command:string) {
+  const match=/^record:(item|workspace|note|todo):(.+)$/.exec(command)
+  if(!match)return
+  const id=match[2]!
+  if(match[1]==='workspace')switchDesktopWorkspace(id)
+  else if(match[1]==='item'){
+    const item=launcherById.value.get(id),owner=homeWorkspaces.value.find(w=>w.itemIds.includes(id))
+    if(item&&owner){if(item.folder){finderRequest.value={sequence:++finderSequence,workspaceId:owner.id,folderId:id}}else openItem(item)}
+  }else if(match[1]==='note'&&notes.value.some(n=>n.id===id)){activeNoteId.value=id;openPanel('notes')}
+  else if(match[1]==='todo'&&todos.value.some(t=>t.id===id)){finderRequest.value={sequence:++finderSequence,workspaceId:activeHomeWorkspaceId.value,panelId:'todos',targetId:id}}
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -825,6 +849,8 @@ onBeforeUnmount(() => {
     <div class="background-shade"></div>
     <div class="home-brand" aria-label="Infinity 新标签页"><span class="brand-mark" aria-hidden="true">∞</span><span class="brand-word">infinity</span><span class="brand-label">新标签页</span></div>
     <header class="home-actions">
+      <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="openFinder()">Inftab</button>
+      <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="overviewRequest++">窗口</button>
       <button v-if="!minimalMode" type="button" class="round-action desktop-mode-toggle" :aria-label="desktopMode ? '经典模式' : '桌面模式'" :title="desktopMode ? '经典模式' : '桌面模式'" :aria-pressed="desktopMode" @click="desktopMode = !desktopMode"><span aria-hidden="true">▦</span></button>
       <button type="button" class="round-action home-command-toggle" aria-label="打开命令面板" title="命令面板（Ctrl/⌘+Shift+P）" @click="openCommandPalette"><span aria-hidden="true">⌘</span></button>
       <button v-if="!minimalMode" type="button" class="round-action home-create-shortcut" aria-label="新建快捷入口" title="新建快捷入口" @click="openShortcutDialog()"><Plus :size="19" /></button>
@@ -924,8 +950,8 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <FinderWindow v-if="finderOpen && desktopMode && !minimalMode" :key="finderFolderId ?? 'root'" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :folder-id="finderFolderId" :dark="effectiveTheme==='dark'" @close="finderOpen=false" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembership" @create="openFinderFolderEditor" />
-    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
+    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :history="desktopHistory" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="runningDesktopPanels=$event" @create="openFinderFolderEditor" />
+    <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :running-panels="runningDesktopPanels" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
       <span>{{ storageError }}</span>
@@ -951,7 +977,7 @@ onBeforeUnmount(() => {
     </div>
 
     <HomeLayoutEditor v-if="layoutEditorOpen" :workspace="activeHomeWorkspace" :preferences="preferences" :save="applyHomeLayout" @close="layoutEditorOpen = false" />
-    <CommandPalette v-if="commandPaletteOpen" @close="commandPaletteOpen = false" @run="runCommand" />
+    <CommandPalette v-if="commandPaletteOpen" :desktop="desktopMode" :items="desktopMode?availableLauncherItems:undefined" :workspaces="desktopMode?homeWorkspaces:undefined" :notes="desktopMode?notes:undefined" :todos="desktopMode?todos:undefined" @close="commandPaletteOpen = false" @run="runCommand" />
 
     <FolderDialog
       v-if="folderDialogOpen"
@@ -986,5 +1012,16 @@ onBeforeUnmount(() => {
 <style scoped>
 .desktop-mode .home-content{width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;padding-top:82px;padding-bottom:84px}
 .desktop-mode .desktop-shell{min-height:320px}
+.desktop-mode .storage-error-toast{position:fixed;z-index:9;bottom:14px}
 .desktop-mode-toggle{font-size:22px}
+.desktop-mode .home-brand{display:none}
+.desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:42px;padding:2px 14px;gap:5px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--ui-surface);color:var(--ui-text);box-shadow:0 1px 8px #0002;z-index:8}
+.desktop-mode .home-actions .round-action{width:32px;height:32px;color:var(--ui-text);background:transparent}
+.desktop-mode .home-actions .round-action:hover{background:var(--ui-accent-soft)}
+.desktop-menu-label{border:0;background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:600;padding:6px 10px;border-radius:6px;cursor:pointer}
+.desktop-menu-label:hover{background:var(--ui-accent-soft)}
+.desktop-menu-label:first-child{margin-right:2px}
+.desktop-mode .desktop-mode-toggle{margin-left:auto}
+@media(max-width:480px){.desktop-mode .home-actions{padding-inline:5px;gap:2px}.desktop-menu-label{padding:4px 5px;font-size:12px}.desktop-mode .home-actions .round-action{width:29px;height:29px}}
+
 </style>

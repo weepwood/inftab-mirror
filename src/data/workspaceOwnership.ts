@@ -56,14 +56,24 @@ export function mergeHomeWorkspaceChanges(
     const changedRemotely = externalById.has(workspace.id) && JSON.stringify(remote) !== JSON.stringify(before)
     const changedLocally = currentById.has(workspace.id) && JSON.stringify(local) !== JSON.stringify(before)
     const layout = changedRemotely ? remote : changedLocally ? local : workspace.layout
+    const beforeDesktop=previousById.get(workspace.id)?.desktop
+    const localDesktop=currentById.get(workspace.id)?.desktop
+    const remoteDesktop=externalById.get(workspace.id)?.desktop
+    const itemIds=[...workspace.itemIds.filter(id=>!ownerByItem.has(id)),...(resolvedItemsByWorkspace.get(workspace.id)??[])]
+    const desktop=workspace.desktop
+    const positions=desktop&&Object.fromEntries(itemIds.flatMap(id=>{
+      const beforePoint=beforeDesktop?.positions[id],localPoint=localDesktop?.positions[id],remotePoint=remoteDesktop?.positions[id]
+      const changedRemote=externalById.has(workspace.id)&&JSON.stringify(remotePoint)!==JSON.stringify(beforePoint)
+      const changedLocal=currentById.has(workspace.id)&&JSON.stringify(localPoint)!==JSON.stringify(beforePoint)
+      const point=changedRemote?remotePoint:changedLocal?localPoint:desktop.positions[id]
+      return point?[[id,point]]:[]
+    }))
     const { layout: _discarded, ...rest } = workspace
     return {
       ...rest,
       ...(layout ? { layout } : {}),
-    itemIds: [
-      ...workspace.itemIds.filter((itemId) => !ownerByItem.has(itemId)),
-      ...(resolvedItemsByWorkspace.get(workspace.id) ?? []),
-    ],
+      itemIds,
+      ...(desktop&&positions?{desktop:{...desktop,positions}}:{}),
     }
   })
 }
