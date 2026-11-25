@@ -85,7 +85,7 @@ npm run test:e2e:extension
 
 - 日常 PR：类型检查、单元/组件回归、一次生产构建、资源及包体积校验；无需下载浏览器。
 - 合并到 main：仅构建与校验产物后自动更新 Pages，属于持续预览，不等同于正式版本验收。
-- 正式里程碑版本（如 v1.1.0、v1.2.0）：合并 `docs/releases/vX.Y.0.md` 正式里程碑说明、推送对应 tag 或手动运行 Release validation，对相同提交运行全部浏览器、生产和扩展测试。正式 Release/扩展发布前必须确认该提交的完整验证通过；V1.8.0 使用专用发布 job：只有 main 上相同提交的完整验证成功后，才将已验证的独立网站及扩展 ZIP 与 SHA256SUMS 发布至 GitHub Release；已有 Release 不覆盖。其他版本仍需明确发布授权。
+- 正式里程碑版本（如 v1.1.0、v1.2.0）：合并 `docs/releases/vX.Y.0.md` 正式里程碑说明、推送对应 tag 或手动运行 Release validation，对相同提交运行全部浏览器、生产和扩展测试。正式 Release/扩展发布前必须确认该提交的完整验证通过；V2.0.0 使用专用发布 job：只有 main 上相同提交的完整验证成功后，才将已验证的独立网站及扩展 ZIP 与 SHA256SUMS 发布至 GitHub Release；已有 Release 不覆盖。其他版本仍需明确发布授权。
 - 小修订与补丁 tag 默认不触发全量 E2E；涉及数据迁移、权限、导航等高风险改动时，可手动运行 Release validation 或针对性 E2E。
 - Focused UI validation 仅在浮层焦点、首页导航、命令面板、主题令牌或专项测试文件变化时运行 Chromium 专项验证，也支持手动触发；不作为所有普通 PR 的全量回归门禁。
 

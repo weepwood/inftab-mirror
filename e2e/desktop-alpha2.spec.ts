@@ -257,7 +257,7 @@ test('tool resize changes real geometry and stays within the viewport',async({pa
  await expect.poll(async()=>{const box=(await tool.boundingBox())!;return box.x>=0&&box.y>=0&&box.x+box.width<=420&&box.y+box.height<=560}).toBe(true)
 })
 
-test('Dock indicates running tools and restores their existing windows',async({page})=>{
+test('Dock indicates running tools and restores their existing windows',async({page},info)=>{
  await page.addInitScript(()=>{
   localStorage.setItem('inftab.desktop-mode.v1','true')
   localStorage.setItem('inftab.preferences.v1',JSON.stringify({dockItemIds:['todos']}))
@@ -268,6 +268,7 @@ test('Dock indicates running tools and restores their existing windows',async({p
  const tool=page.getByRole('dialog',{name:'待办事项',exact:true})
  await expect(tool).toBeVisible()
  await expect(dock).toHaveAttribute('data-running','true')
+ await info.attach('running-dock',{body:await page.screenshot({animations:'disabled'}),contentType:'image/png'})
  await tool.getByRole('button',{name:'最小化窗口'}).click()
  await dock.click()
  await expect(tool).toBeVisible()
@@ -320,7 +321,7 @@ test('shared Finder frame docks and restores dimensions after reopening',async({
  await page.getByRole('button',{name:'Finder',exact:true}).click()
  await expect.poll(async()=>Math.round((await finder.boundingBox())!.width)).toBe(Math.round(resized.width))
 })
-test('window overview moves tools to another space without duplicating them',async({page})=>{
+test('window overview moves tools to another space without duplicating them',async({page},info)=>{
  await page.setViewportSize({width:1280,height:900})
  await page.addInitScript(()=>{
   localStorage.setItem('inftab.desktop-mode.v1','true')
@@ -334,6 +335,7 @@ test('window overview moves tools to another space without duplicating them',asy
  await expect(tool).toBeVisible()
  await page.getByRole('button',{name:'窗口概览',exact:true}).click()
  const overview=page.getByRole('region',{name:'窗口概览'})
+ await info.attach('mission-control',{body:await page.screenshot({animations:'disabled'}),contentType:'image/png'})
  await overview.getByRole('combobox',{name:'移动窗口 待办事项'}).selectOption('space-b')
  await expect(tool).toBeHidden()
  await overview.getByRole('button',{name:/工作空间.*个窗口/}).click()
@@ -513,7 +515,7 @@ test('Finder reports partial persistence failure instead of claiming success',as
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('inftab.folders.v1')??'[]')[0]?.shortcutIds)).toEqual([])
 })
 
-test('nested folders retain breadcrumbs, move entire subtree and flatten safely in classic mode',async({page})=>{
+test('nested folders retain breadcrumbs, move entire subtree and flatten safely in classic mode',async({page},info)=>{
  await page.setViewportSize({width:1280,height:900})
  await page.addInitScript(()=>{
   if(sessionStorage.getItem('tree-seeded'))return
@@ -532,6 +534,7 @@ test('nested folders retain breadcrumbs, move entire subtree and flatten safely 
  await finder.locator('[data-finder-id="tree-child"]').dblclick()
  await expect(finder.locator('[data-finder-id="tree-link"]')).toBeVisible()
  await expect(finder.locator('.finder-breadcrumb')).toContainText('Parent folder')
+ await info.attach('nested-folder',{body:await page.screenshot({animations:'disabled'}),contentType:'image/png'})
  await finder.locator('.finder-breadcrumb').getByRole('button',{name:'路径：主页'}).click()
  await finder.locator('[data-finder-id="tree-parent"]').click()
  await finder.getByRole('combobox',{name:'移动到工作区'}).selectOption('tree-space')

@@ -31,7 +31,7 @@ test('desktop mutations refuse a cooperating tab lock and persist before reporti
 })
 
 for(const direction of ['完成写入','回退事务','conflict'] as const){
- test('persistent desktop intent survives reload and handles '+direction,async({page})=>{
+ test('persistent desktop intent survives reload and handles '+direction,async({page},info)=>{
   await page.addInitScript(()=>{
    if(sessionStorage.getItem('intent-seeded'))return
    sessionStorage.setItem('intent-seeded','1')
@@ -56,6 +56,8 @@ for(const direction of ['完成写入','回退事务','conflict'] as const){
   await expect(page.getByRole('alert').filter({hasText:'部分数据写入失败'})).toBeVisible()
   const recovery=page.getByRole('region',{name:'桌面事务恢复'})
   await expect(recovery).toBeVisible()
+  await page.locator('.storage-error-toast .storage-error-export').click({trial:true})
+  await info.attach('transaction-recovery-'+direction,{body:await page.screenshot({animations:'disabled'}),contentType:'image/png'})
   if(direction==='conflict'){
    await page.evaluate(()=>{
     const key='inftab.shortcuts.v1',items=JSON.parse(localStorage.getItem(key)??'[]')

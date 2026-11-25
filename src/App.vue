@@ -1012,6 +1012,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .desktop-mode .home-content{width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;padding-top:82px;padding-bottom:84px}
 .desktop-mode .desktop-shell{min-height:320px}
+.desktop-mode .storage-error-toast{position:fixed;z-index:9;bottom:14px}
 .desktop-mode-toggle{font-size:22px}
 .desktop-mode .home-brand{display:none}
 .desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:42px;padding:2px 14px;gap:5px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--ui-surface);color:var(--ui-text);box-shadow:0 1px 8px #0002;z-index:8}
