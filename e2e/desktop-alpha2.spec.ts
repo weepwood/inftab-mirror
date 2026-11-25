@@ -1301,3 +1301,36 @@ test('window motion remains reversible during rapid minimize and restore',async(
  await expect.poll(()=>finder.boundingBox()).toEqual(initial)
  await expect.poll(()=>finder.evaluate(el=>Math.max(...getComputedStyle(el).transitionDuration.split(',').map(value=>parseFloat(value)*(value.trim().endsWith('ms')?0.001:1))))).toBeLessThanOrEqual(.00001)
 })
+
+for(const theme of ['light','dark']){
+ test('desktop menus share visual tokens across the teleported Dock '+theme,async({page},info)=>{
+  await page.setViewportSize({width:1280,height:900})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.addInitScript(theme=>{
+   localStorage.setItem('inftab.desktop-mode.v1','true')
+   localStorage.setItem('inftab.preferences.v1',JSON.stringify({themeMode:theme,themePalette:'indigo',dockItemIds:['todos','notes']}))
+  },theme)
+  await page.goto('/')
+  const nav=page.getByRole('navigation',{name:'桌面功能菜单'})
+  await nav.getByRole('button',{name:'文件',exact:true}).click()
+  const menu=nav.getByRole('menu')
+  const tokens=(el:Element)=>{const s=getComputedStyle(el);return [s.backgroundColor,s.color,s.borderTopColor,s.borderRadius,s.boxShadow]}
+  const expected=await menu.evaluate(tokens)
+  await page.keyboard.press('Escape')
+  const dock=page.locator('[data-dock-item-id="todos"]')
+  await dock.click({button:'right'})
+  const context=page.locator('.mac-dock-context .dock-context-menu')
+  await expect(context).toBeVisible()
+  expect(await context.evaluate(tokens)).toEqual(expected)
+  await page.screenshot({path:info.outputPath('unified-dock-menu.png'),animations:'disabled'})
+  await page.keyboard.press('Escape')
+  await expect(context).toHaveCount(0)
+  const icon=page.locator('.desktop-icon').first()
+  await icon.click({button:'right'})
+  const desktopMenu=page.locator('.desktop-menu')
+  await expect(desktopMenu).toBeVisible()
+  expect(await desktopMenu.evaluate(tokens)).toEqual(expected)
+  await page.keyboard.press('Escape')
+  await expect(desktopMenu).toHaveCount(0)
+ })
+}

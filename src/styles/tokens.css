@@ -190,7 +190,16 @@
 
 /* Desktop chrome is deliberately separate from the classic launcher palette.
    Native system fonts: no redistributed Apple font files, no network fonts. */
-.desktop-mode {
+.desktop-mode, .mac-dock-context {
+  --mac-radius-control: 6px;
+  --mac-radius-menu: 8px;
+  --mac-radius-menu-item: 5px;
+  --mac-radius-popover: 10px;
+  --mac-radius-window: 12px;
+  --mac-menu-padding: 5px;
+  --mac-selection-ink: #fff;
+  --mac-range-track: #c6c6cc;
+  --mac-toggle-track: #b9b9bf;
   --mac-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --mac-bar: rgba(246,247,249,.84);
   --mac-window: #fdfdfd;
@@ -207,7 +216,9 @@
   --mac-shadow-active: 0 32px 100px rgba(0,0,0,.38), 0 7px 22px rgba(0,0,0,.18);
   font-family: var(--mac-font);
 }
-.desktop-mode.theme-dark {
+.desktop-mode.theme-dark, .mac-dock-context.theme-dark {
+  --mac-range-track: #57575f;
+  --mac-toggle-track: #55555c;
   --mac-bar: rgba(30,30,34,.86);
   --mac-window: #222225;
   --mac-toolbar: #303033;
@@ -236,11 +247,11 @@
   --ui-accent-text: #0757a6;
   --ui-accent-soft: var(--mac-selection-soft);
   --ui-focus: #1682ff;
-  --ui-radius-control: 6px;
-  --ui-radius-menu: 8px;
-  --ui-radius-card: 10px;
-  --ui-radius-dialog: 12px;
-  --ui-radius-panel: 12px;
+  --ui-radius-control: var(--mac-radius-control);
+  --ui-radius-menu: var(--mac-radius-menu);
+  --ui-radius-card: var(--mac-radius-popover);
+  --ui-radius-dialog: var(--mac-radius-window);
+  --ui-radius-panel: var(--mac-radius-window);
   --ui-menu-shadow: var(--mac-shadow);
 }
 :root:not([data-custom-theme]) .desktop-mode.theme-dark { --ui-accent-text: #b7d8ff; }
