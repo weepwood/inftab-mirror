@@ -17,3 +17,8 @@
 
 ## 经典 Spotlight 方向（2026-11-26）
 用户明确希望整体设计参考老款 macOS Spotlight。本轮选择 Yosemite / El Capitan 时代的单条搜索入口与展开后的双栏预览，而不是新一代重玻璃或 AI 搜索。历史参考：Apple 2014 MacBook Air Quick Start Guide https://cdsassets.apple.com/live/6GJYWVAV/start/ma1670_mb_air-11-inch-early2014_qs.pdf （搜索结果显示经典左结果、右预览结构；未复制素材）。统一桌面顶部放大镜、Ctrl/Command+K、可被浏览器接收的Ctrl/Command+Space，保留Ctrl/Command+Shift+P。Ctrl/Command+F和查找快捷入口命令仍保留独立快捷入口筛选；现有网页搜索设置及经典模式保留。空查询只显示搜索框，可用方向键或展开按钮显示最近操作及建议；明确查询后才展示本地记录，笔记正文仅在选中预览内以纯文本显示，最长1800字符，不上传。宽屏单击预览、双击/回车打开；窄屏单列单击打开。实际截图存于外置日志目录 classic-spotlight-compact.png / classic-spotlight-results.png。整体桌面、内置应用尚未全部按经典年代视觉重构。
+
+## Liquid Glass 全局材质方向（2026-11-26）
+- 用户要求保留经典 Spotlight 交互，视觉参考 Apple 最新 Liquid Glass。核对 Apple HIG Materials（https://developer.apple.com/design/human-interface-guidelines/materials）、Adopting Liquid Glass（https://developer.apple.com/documentation/TechnologyOverviews/adopting-liquid-glass）、WWDC26 Platforms State of the Union（https://developer.apple.com/videos/play/wwdc2026/102/）。原则：玻璃优先用于导航和浮动操作层，正文层用标准材质；采用层级、边缘光泽、透光度、圆角与内容可读性，不对每个按钮叠加模糊。
+- tokens.css 是桌面及传送Dock菜单的材质所有权：mac-glass-filter/sheen/edge/shadow/focus-shadow/widget/control/control-shadow；浅深独立。Dock较清透、菜单和Spotlight较浓、桌面小组件更厚；窗口正文保持不透明。支持 backdrop-filter 或 -webkit-backdrop-filter 时启用；否则默认实色。prefers-reduced-transparency 与 forced-colors 明确关闭滤镜和光泽，恢复实色及轮廓。没有GPU折射模拟、SVG位移、动态逐像素采样、第三方素材或新依赖，非Apple原生Liquid Glass渲染。
+- Spotlight 仍用旧式紧凑条和左右结果/预览，空态28px/展开22px圆角，窗口18px；菜单13px、弹层18px、Dock24px，窗口停靠按钮和工作区/搜索采用胶囊轮廓。改动仅作用桌面模式，经典模式数据与布局不变。控制中心、内置应用逐页面设计以及真实折射/自适应色彩仍未完整实施。

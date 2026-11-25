@@ -565,3 +565,7 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 用户更正上一条其他项目(MRR)要求，忽略之，仅继续本项目；本轮以Yosemite/El Capitan经典Spotlight为参考，详见docs/macos-visual-reference-study.md。不改用户桌面数据及网页搜索设置；经典模式保留命令面板原有交互。
 - CommandPalette桌面模式空查询紧凑条、展开建议、匹配标题优先/连续分类、双栏预览、纯文本本地内容、选择与执行分离、窄屏单列、清除、方向键/回车/Escape。顶部主入口改放大镜，桌面隐藏重复查找按钮但保留Ctrl/Command+F和命令；Ctrl/Command+K与可被网页收到的Space组合打开/关闭Spotlight。原生系统拦截无法接管。未添加系统文件搜索、全局OS热键、网络索引或新依赖。
 - 首次check发现上轮Finder回调隐式any，改为类型明确的updateRunningWindows后check通过，Spotlight检索单测3/3。Edge开发页六项回归5通过1失败：Spotlight紧凑/展开/笔记预览/键盘打开/390px单列通过，Finder放大/运行状态/恢复通过，旧桌面搜索几何两项及Finder/overview命令通过。旧窄屏菜单测试在resize后立即打开菜单超时，推测ResizeObserver取消手势时序导致，补充两帧等待但未复验；不能宣称已修复。再运行被memory pressure level2门禁拒绝，生产构建及经典模式全量回归未完成，原JS预算缺口仍待治理。实际Spotlight两张截图复制至外置日志目录。预览127.0.0.1:4277持续运行，未推送、不建PR、不发布，中文本地提交。
+
+## Liquid Glass 材质体系第一轮（2026-11-26）
+- 基于本地326e3a8，用户指定经典Spotlight逻辑+最新Apple Liquid Glass视觉；核对Apple HIG、Adopting Liquid Glass和WWDC26，新增研究文档记录。统一共享材质令牌与浅深、无滤镜支持/减少透明度/强制色彩降级，分别接入菜单栏、Dock、Spotlight、搜索栏、桌面右键及顶部菜单、工作区、窗口概览、小组件、设置/窗口外壳与停靠控件。内容区保持实色；未增加shader、网络依赖或改变交互数据。经典模式不受本轮桌面CSS影响。
+- 新增实际浏览器回归用例验证浅深材质、紧凑与展开圆角、实色预览/窗口内容及forced-colors降级；更新原Finder圆角断言18px。git diff --check及Vite七个相关模块HTTP200。run-budgeted因Swap I/O 28.563 MiB/s及此前内存压力2拒绝启动本轮TypeScript/浏览器任务；新增用例未运行，未检查实际截图、跨浏览器、可读性或生产构建。此前窄屏菜单复验及JS预算仍未完成。不绕过资源门禁。仅本地中文提交，不推送、不建PR、不发布，保留127.0.0.1:4277预览服务。

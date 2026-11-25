@@ -192,17 +192,17 @@
    Native system fonts: no redistributed Apple font files, no network fonts. */
 .desktop-mode, .mac-dock-context {
   --mac-radius-control: 6px;
-  --mac-radius-menu: 10px;
-  --mac-radius-menu-item: 5px;
-  --mac-radius-popover: 14px;
-  --mac-radius-window: 15px;
+  --mac-radius-menu: 13px;
+  --mac-radius-menu-item: 8px;
+  --mac-radius-popover: 18px;
+  --mac-radius-window: 18px;
   --mac-menu-padding: 5px;
   --mac-selection-ink: #fff;
   --mac-range-track: #c6c6cc;
   --mac-toggle-track: #b9b9bf;
   --mac-field-line: #85858d;
   --mac-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-  --mac-bar: rgba(250,250,252,.68);
+  --mac-bar: #f2f2f5;
   --mac-window: #fff;
   --mac-toolbar: #f5f5f7;
   --mac-sidebar: #eeeef1;
@@ -211,15 +211,23 @@
   --mac-line: rgba(0,0,0,.10);
   --mac-selection: #0063cc;
   --mac-selection-soft: #dceaff;
-  --mac-dock: rgba(247,247,250,.36);
-  --mac-dock-edge: rgba(255,255,255,.48);
-  --mac-dock-shadow: 0 8px 28px #0004, inset 0 1px 0 #fffa;
+  --mac-dock: #e8e8ed;
+  --mac-dock-edge: var(--mac-glass-edge);
+  --mac-dock-shadow: var(--mac-glass-shadow);
   --mac-desktop-label: transparent;
   --mac-desktop-label-ink: #fff;
   --mac-icon-radius: 14px;
   --mac-icon-edge: rgba(255,255,255,.32);
   --mac-icon-shadow: 0 3px 9px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.4);
-  --mac-menu: rgba(249,249,251,.93);
+  --mac-menu: #f7f7fa;
+  --mac-glass-filter: none;
+  --mac-glass-sheen: none;
+  --mac-glass-edge: #d3d4dc;
+  --mac-glass-shadow: 0 12px 36px #0003, 0 2px 8px #0002;
+  --mac-glass-focus-shadow: 0 20px 60px #0004, 0 3px 12px #0002;
+  --mac-glass-widget: var(--mac-toolbar);
+  --mac-glass-control: #e9e9ee;
+  --mac-glass-control-shadow: 0 2px 8px #0002;
   --mac-shadow: 0 16px 48px #0003, 0 2px 8px #0002;
   --mac-shadow-active: 0 24px 70px #0005, 0 4px 12px #0003;
   font-family: var(--mac-font);
@@ -228,7 +236,7 @@
   --mac-range-track: #57575f;
   --mac-toggle-track: #55555c;
   --mac-field-line: #777780;
-  --mac-bar: rgba(28,28,31,.65);
+  --mac-bar: #303034;
   --mac-window: #242426;
   --mac-toolbar: #303032;
   --mac-sidebar: #2b2b2e;
@@ -237,12 +245,62 @@
   --mac-line: rgba(255,255,255,.14);
   --mac-selection: #0065cc;
   --mac-selection-soft: #284467;
-  --mac-dock: rgba(40,40,44,.46);
-  --mac-dock-edge: rgba(255,255,255,.22);
-  --mac-dock-shadow: 0 10px 32px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.12);
-  --mac-menu: rgba(37,37,41,.97);
+  --mac-dock: #333338;
+  --mac-dock-edge: var(--mac-glass-edge);
+  --mac-dock-shadow: var(--mac-glass-shadow);
+  --mac-menu: #303034;
+  --mac-glass-edge: #515159;
+  --mac-glass-shadow: 0 12px 36px #0006, 0 2px 8px #0004;
+  --mac-glass-focus-shadow: 0 20px 60px #0008, 0 3px 12px #0005;
+  --mac-glass-control: #414146;
+  --mac-glass-control-shadow: 0 2px 8px #0005;
   --mac-shadow: 0 20px 62px rgba(0,0,0,.42), 0 3px 12px rgba(0,0,0,.25);
   --mac-shadow-active: 0 32px 100px rgba(0,0,0,.54), 0 7px 22px rgba(0,0,0,.28);
+}
+/* Liquid Glass-inspired web materials.
+   Opaque base is intentional: unsupported filters and reduced transparency
+   must not leave text on an unfiltered, unpredictable wallpaper. */
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  .desktop-mode,.mac-dock-context {
+    --mac-bar: rgba(247,248,251,.72);
+    --mac-menu: rgba(248,249,252,.84);
+    --mac-dock: rgba(238,242,249,.44);
+    --mac-glass-widget: rgba(247,248,251,.87);
+    --mac-glass-control: rgba(247,248,251,.78);
+    --mac-glass-control-shadow: 0 2px 9px #0002, inset 0 1px 1px #fff9;
+    --mac-glass-filter: blur(28px) saturate(160%);
+    --mac-glass-sheen: linear-gradient(155deg,#ffffff66,transparent 42%,#ffffff12 75%,#ffffff30);
+    --mac-glass-edge: rgba(255,255,255,.65);
+    --mac-glass-shadow: 0 12px 34px #0003, 0 2px 8px #0002, inset 0 1px 1px #fffd, inset 0 -1px 1px #ffffff30;
+    --mac-glass-focus-shadow: 0 24px 64px #0004, 0 3px 12px #0002, inset 0 1px 1px #fffd;
+  }
+  .desktop-mode.theme-dark,.mac-dock-context.theme-dark {
+    --mac-bar: rgba(28,29,34,.76);
+    --mac-menu: rgba(37,38,44,.88);
+    --mac-dock: rgba(31,33,40,.58);
+    --mac-glass-widget: rgba(35,36,42,.90);
+    --mac-glass-control: rgba(57,58,64,.82);
+    --mac-glass-control-shadow: 0 2px 9px #0005, inset 0 1px 1px #ffffff30;
+    --mac-glass-sheen: linear-gradient(155deg,#ffffff20,transparent 45%,#0000000a 75%,#ffffff0e);
+    --mac-glass-edge: rgba(255,255,255,.24);
+    --mac-glass-shadow: 0 12px 36px #0006, 0 2px 8px #0004, inset 0 1px 1px #ffffff40, inset 0 -1px 1px #ffffff12;
+    --mac-glass-focus-shadow: 0 24px 64px #0008, 0 3px 12px #0005, inset 0 1px 1px #ffffff40;
+  }
+}
+@media(prefers-reduced-transparency:reduce),(forced-colors:active){
+  .desktop-mode,.desktop-mode.theme-dark,.mac-dock-context,.mac-dock-context.theme-dark{
+    --mac-bar:var(--mac-toolbar);
+    --mac-menu:var(--mac-window);
+    --mac-dock:var(--mac-sidebar);
+    --mac-glass-widget:var(--mac-toolbar);
+    --mac-glass-control:var(--mac-toolbar);
+    --mac-glass-filter:none;
+    --mac-glass-sheen:none;
+    --mac-glass-edge:var(--mac-field-line);
+    --mac-glass-shadow:var(--mac-shadow);
+    --mac-glass-focus-shadow:var(--mac-shadow-active);
+    --mac-glass-control-shadow:none;
+  }
 }
 /* Existing custom theme remains available for app content; window chrome stays neutral. */
 :root:not([data-custom-theme]) .desktop-mode {

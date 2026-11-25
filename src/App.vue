@@ -1078,7 +1078,7 @@ onBeforeUnmount(() => {
 .desktop-mode .storage-error-toast{position:fixed;z-index:9;bottom:14px}
 .desktop-mode-toggle{font-size:22px}
 .desktop-mode .home-brand{display:none}
-.desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:30px;padding:0 12px;gap:2px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);backdrop-filter:blur(32px) saturate(175%);box-shadow:none;z-index:8}
+.desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:30px;padding:0 12px;gap:2px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);-webkit-backdrop-filter:var(--mac-glass-filter);backdrop-filter:var(--mac-glass-filter);box-shadow:none;z-index:8}
 .desktop-mode .home-actions .round-action{width:27px;height:25px;border-radius:5px;color:var(--mac-ink);background:transparent}
 .desktop-mode .home-actions .round-action:hover,.desktop-mode .home-actions .round-action[aria-pressed=true]{background:var(--mac-selection-soft)}
 .desktop-mode .home-actions .desktop-mode-toggle[aria-pressed=true]{background:transparent}
@@ -1090,8 +1090,8 @@ onBeforeUnmount(() => {
 .home.desktop-mode .home-content:not(.home-content-minimal){z-index:auto}
 .desktop-mode .home-content :deep(.search-area){position:fixed;z-index:2;top:42px;left:50%;transform:translateX(-50%);width:min(420px,calc(100% - 40px));margin:0}
 .desktop-mode .home-content :deep(.search-area.local-search-mode){z-index:10}
-.desktop-mode .home-content :deep(.local-search-results){border-radius:10px;background:var(--mac-menu);border-color:var(--mac-line);box-shadow:var(--mac-shadow)}
-.desktop-mode .home-content :deep(.search-box){height:40px;border-radius:10px;background:var(--mac-bar);border-color:var(--mac-line);box-shadow:0 4px 18px #0002}
+.desktop-mode .home-content :deep(.local-search-results){border-radius:var(--mac-radius-popover);background:var(--mac-glass-sheen) var(--mac-menu);border-color:var(--mac-glass-edge);box-shadow:var(--mac-glass-shadow);-webkit-backdrop-filter:var(--mac-glass-filter);backdrop-filter:var(--mac-glass-filter)}
+.desktop-mode .home-content :deep(.search-box){height:40px;border-radius:999px;background:var(--mac-glass-sheen) var(--mac-bar);border-color:var(--mac-glass-edge);box-shadow:var(--mac-glass-shadow);-webkit-backdrop-filter:var(--mac-glass-filter);backdrop-filter:var(--mac-glass-filter)}
 .desktop-mode .home-actions :deep(.home-clock){display:flex;flex-direction:row-reverse;align-items:center;gap:7px;margin:0 0 0 6px;color:var(--mac-ink);text-shadow:none;white-space:nowrap}
 .desktop-mode .home-actions :deep(.clock-time),.desktop-mode .home-actions :deep(.clock-date){font:500 12px/1.3 var(--mac-font);color:inherit;letter-spacing:0;text-shadow:none}
 @media(max-width:780px){.home.desktop-mode .home-content:not(.home-content-minimal){padding-bottom:138px}}

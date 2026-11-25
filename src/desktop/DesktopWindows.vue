@@ -154,7 +154,7 @@ async function paste(workspaceId:string,folderId:string|null){
 </template>
 <style scoped>
 .desktop-windows{position:fixed;inset:0;pointer-events:none;z-index:9}
-.window-shelf,.window-overview,.window-limit{position:absolute;z-index:20;pointer-events:auto;color:var(--mac-ink);background:var(--mac-menu);border:1px solid var(--mac-line);border-radius:var(--mac-radius-popover);box-shadow:var(--mac-shadow);backdrop-filter:blur(20px) saturate(140%)}
+.window-shelf,.window-overview,.window-limit{position:absolute;z-index:20;pointer-events:auto;color:var(--mac-ink);background:var(--mac-glass-sheen) var(--mac-menu);border:1px solid var(--mac-glass-edge);border-radius:var(--mac-radius-popover);box-shadow:var(--mac-glass-shadow);-webkit-backdrop-filter:var(--mac-glass-filter);backdrop-filter:var(--mac-glass-filter)}
 .window-shelf{left:12px;bottom:84px;display:flex;gap:4px;padding:4px;max-width:calc(100vw - 24px);overflow:auto}
 .window-shelf button,.window-overview button{display:flex;align-items:center;gap:6px;border:0;background:transparent;color:inherit;font:inherit;font-size:12px;padding:8px;border-radius:7px;cursor:pointer;white-space:nowrap}
 .window-shelf button:hover,.window-overview button:hover,.window-shelf button:focus-visible,.window-overview button:focus-visible{background:var(--ui-accent-soft);color:var(--ui-accent-text)}

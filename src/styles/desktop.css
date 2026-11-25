@@ -1,7 +1,7 @@
 /* Desktop-specific visual overrides. Loaded after the shared application stylesheet. */
 /* macOS-inspired desktop-only surfaces. No layout changes to classic mode. */
 .desktop-mode .home-dock {bottom:6px;max-width:calc(100vw - 36px)}
-.desktop-mode .home-dock::before {inset:auto 5px 7px;height:calc(var(--dock-item-size) + 14px);border-radius:20px;background:var(--mac-dock);border-color:var(--mac-dock-edge);box-shadow:var(--mac-dock-shadow);backdrop-filter:blur(36px) saturate(180%)}
+.desktop-mode .home-dock::before {inset:auto 5px 7px;height:calc(var(--dock-item-size) + 14px);border-radius:24px;background:var(--mac-glass-sheen) var(--mac-dock);border-color:var(--mac-dock-edge);box-shadow:var(--mac-dock-shadow);-webkit-backdrop-filter:var(--mac-glass-filter);backdrop-filter:var(--mac-glass-filter)}
 .desktop-mode .home-dock-track {padding:calc(var(--dock-item-size) * .7 + 12px) 14px 14px;align-items:flex-end}
 .desktop-mode .home-dock-icon {corner-shape:squircle;border-radius:24%;border:1px solid var(--mac-icon-edge);box-sizing:border-box;box-shadow:var(--mac-icon-shadow)}
 @media(max-width:780px){
@@ -18,7 +18,7 @@
 .mac-folder-icon::before,.mac-folder-icon::after{content:"";position:absolute;box-sizing:border-box}
 .mac-folder-icon::before{inset:0 2% 14%;border-radius:12% 12% 9% 9%;background:linear-gradient(180deg,#a2d9ff,#43a5e7);clip-path:polygon(0 0,40% 0,50% 19%,100% 19%,100% 100%,0 100%);border:1px solid #438ecf}
 .mac-folder-icon::after{inset:23% 0 0;border:1px solid #4294d3;border-top-color:#c3eaff;border-radius:7% 9% 10% 10%;background:linear-gradient(180deg,#92dbff 0%,#66c2fc 21%,#52b5f6 86%,#4caaf1);box-shadow:inset 0 1px 0 #fff8}
-.desktop-mode .home-workspace-trigger{min-height:36px;padding:0 10px;border-radius:8px;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);box-shadow:0 4px 15px #0002}
+.desktop-mode .home-workspace-trigger{min-height:36px;padding:0 10px;border-radius:999px;background:var(--mac-glass-sheen) var(--mac-glass-control);color:var(--mac-ink);border-color:var(--mac-glass-edge);box-shadow:var(--mac-glass-control-shadow);-webkit-backdrop-filter:var(--mac-glass-filter);backdrop-filter:var(--mac-glass-filter)}
 .desktop-mode .home-workspace-trigger:hover,.desktop-mode .home-workspace-trigger[aria-expanded=true]{background:var(--mac-menu)}
 .desktop-mode :is(.home-dock-entry,.home-dock-system-entry)::before{background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line);font-size:12px}
 .desktop-mode .dock-running-dot{background:var(--mac-ink)}
@@ -28,7 +28,7 @@
    desktop appearance switches only its spatial composition. */
 .desktop-mode .panel-backdrop:has(.mac-settings-panel){align-items:center;justify-content:center;background:#0003;backdrop-filter:none}
 .desktop-mode .mac-settings-panel{width:min(800px,100%);height:min(700px,100%);background:var(--mac-window);border:1px solid var(--mac-line);box-shadow:var(--mac-shadow-active);border-radius:var(--mac-radius-window);scrollbar-color:var(--mac-muted) transparent;animation:none;--panel-header-height:60px}
-.desktop-mode .mac-settings-panel .panel-header{background:var(--mac-toolbar);padding:10px 18px}
+.desktop-mode .mac-settings-panel .panel-header{background:var(--mac-glass-sheen) var(--mac-toolbar);padding:10px 18px}
 .desktop-mode .mac-settings-panel .panel-header h2{font-size:17px;font-weight:600}
 .desktop-mode .mac-settings-panel .panel-header p{margin-top:2px}
 .desktop-mode .mac-settings-panel .panel-close{width:26px;height:26px;border-radius:50%;border:0;background:var(--mac-line)}
@@ -75,7 +75,7 @@
 .desktop-mode :is(.home-dock-entry,.home-dock-system-entry)::before{border-radius:6px;box-shadow:0 5px 16px #0003}
 .desktop-mode .home-dock.dock-menu-open :is(.home-dock-entry,.home-dock-system-entry)::before{opacity:0!important}
 .desktop-mode .home-dock.dock-menu-open .home-dock-icon{transform:none;transition:none}
-.mac-dock-context .dock-context-menu{background:var(--mac-menu);color:var(--mac-ink);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);padding:var(--mac-menu-padding);box-shadow:var(--mac-shadow);backdrop-filter:blur(20px);font-family:var(--mac-font)}
+.mac-dock-context .dock-context-menu{background:var(--mac-glass-sheen) var(--mac-menu);color:var(--mac-ink);border:1px solid var(--mac-glass-edge);border-radius:var(--mac-radius-menu);padding:var(--mac-menu-padding);box-shadow:var(--mac-glass-shadow);-webkit-backdrop-filter:var(--mac-glass-filter);backdrop-filter:var(--mac-glass-filter);font-family:var(--mac-font)}
 .mac-dock-context .dock-context-menu button{color:inherit;border-radius:var(--mac-radius-menu-item);font-size:12px}
 .mac-dock-context .dock-context-menu button:hover,.mac-dock-context .dock-context-menu button:focus-visible{background:var(--mac-selection);color:var(--mac-selection-ink)}
 @media(not (forced-colors:active)){
@@ -94,7 +94,7 @@
 @media(prefers-reduced-motion:reduce){.desktop-mode .command-option,.desktop-mode .toggle-row,.desktop-mode .toggle-row input[type=checkbox],.desktop-mode .toggle-row input[type=checkbox]::after{transition:none}}
 
 /* Desktop popovers: semantic surfaces, compact spacing, consistent focus. */
-.desktop-mode .workspace-panel{background:var(--mac-menu);color:var(--mac-ink);border:1px solid var(--mac-line);border-radius:var(--mac-radius-popover);padding:9px;box-shadow:var(--mac-shadow)}
+.desktop-mode .workspace-panel{background:var(--mac-glass-sheen) var(--mac-menu);color:var(--mac-ink);border:1px solid var(--mac-glass-edge);border-radius:var(--mac-radius-popover);padding:9px;box-shadow:var(--mac-glass-shadow);-webkit-backdrop-filter:var(--mac-glass-filter);backdrop-filter:var(--mac-glass-filter)}
 .desktop-mode .workspace-panel :is(.workspace-panel-heading span,.workspace-form-hint,.workspace-pinned-hint,.workspace-no-results){color:var(--mac-muted)}
 .desktop-mode .workspace-panel :is(.workspace-row:hover,.workspace-row:focus-within,.workspace-row.is-active,.workspace-icon,.workspace-action:hover,.workspace-action[aria-expanded=true],.workspace-actions button:hover,.workspace-actions button:focus-visible){background:var(--mac-selection-soft);color:var(--mac-ink)}
 .desktop-mode .workspace-panel :is(.workspace-filter,.workspace-form input){background:var(--mac-window);border-color:var(--mac-line);color:var(--mac-ink)}
@@ -325,15 +325,15 @@
 .mac-finder-glyph i,.mac-finder-glyph b{position:absolute;width:7%;height:19%;border-radius:50%;background:#25466b;top:29%}
 .mac-finder-glyph i{left:29%}.mac-finder-glyph b{right:27%}
 .desktop-mode .home-workspace-bar{top:36px;left:14px;right:auto;bottom:auto}
-.desktop-mode .home-workspace-trigger{min-height:28px;gap:5px;padding:0 8px;border-radius:7px;box-shadow:none}
+.desktop-mode .home-workspace-trigger{min-height:28px;gap:5px;padding:0 10px;border-radius:999px}
 .desktop-mode .home-workspace-trigger span{font-size:11px;font-weight:500}
-.desktop-mode .workspace-panel{left:0;right:auto;top:calc(100% + 5px);bottom:auto;border-radius:var(--mac-radius-popover);background:var(--mac-menu);border-color:var(--mac-line);box-shadow:var(--mac-shadow);color:var(--mac-ink)}
+.desktop-mode .workspace-panel{left:0;right:auto;top:calc(100% + 5px);bottom:auto}
 .desktop-mode .workspace-panel :is(.workspace-filter,.workspace-icon){background:var(--mac-window);border-color:var(--mac-line);color:var(--mac-muted)}
 .desktop-mode .workspace-row.is-active{background:var(--mac-selection-soft);color:var(--mac-ink)}
 .desktop-mode .workspace-row:hover{background:var(--mac-line)}
 .desktop-mode .workspace-panel :is(.workspace-panel-heading span,.workspace-form-hint,.workspace-pinned-hint){color:var(--mac-muted)}
 .desktop-mode .home-footer{position:fixed;left:12px;right:auto;bottom:3px;z-index:1;font-size:9px;opacity:.55}
-.desktop-mode .home-widget-card{border-radius:16px;background:var(--mac-menu);border-color:var(--mac-line);box-shadow:0 3px 16px #0002,inset 0 1px 0 #fff2;backdrop-filter:blur(24px) saturate(160%);color:var(--mac-ink)}
+.desktop-mode .home-widget-card{border-radius:20px;background:var(--mac-glass-sheen) var(--mac-glass-widget);border-color:var(--mac-glass-edge);box-shadow:0 3px 16px #0002,inset 0 1px 0 #fff2;-webkit-backdrop-filter:var(--mac-glass-filter);backdrop-filter:var(--mac-glass-filter);color:var(--mac-ink)}
 .desktop-mode .home-widget-card :is(.home-widget-highlight,.home-widget-preview li,.home-widget-empty){color:var(--mac-muted)}
 .desktop-mode .home-widget-grip,.desktop-mode .home-widget-size,.desktop-mode .home-widget-remove,.desktop-mode .home-widget-order{color:var(--mac-muted)}
 .desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin{position:relative;box-shadow:0 3px 7px #0003,inset 0 1px 0 #fff5}
@@ -348,14 +348,14 @@
  .desktop-mode .home-workspace-bar{top:auto;left:auto;right:12px;bottom:12px}
  .desktop-mode .workspace-panel{top:auto;left:auto;right:0;bottom:calc(100% + 8px)}
 }
-@media(prefers-reduced-transparency:reduce){.desktop-mode{--mac-bar:var(--mac-toolbar);--mac-menu:var(--mac-window);--mac-dock:var(--mac-sidebar)}}
-@media(forced-colors:active){.home-dock-finder{border:1px solid ButtonText}.desktop-mode .home-dock::before{background:Canvas;border-color:ButtonText}.desktop-mode .home-widget-card{background:Canvas;color:CanvasText}}
+@media(forced-colors:active){.home-dock-finder{border:1px solid ButtonText}.desktop-mode .home-dock::before{background:Canvas;border-color:ButtonText}}
 
 /* Classic Spotlight: compact entry, stable top anchor, split result/preview. */
-.desktop-mode .spotlight-classic{width:min(680px,calc(100% - 24px));margin:min(19vh,150px) auto auto;max-height:calc(100dvh - min(19vh,150px) - 20px);border-radius:12px;border-color:var(--mac-line);background:var(--mac-menu);color:var(--mac-ink);box-shadow:var(--mac-shadow-active);font-family:var(--mac-font);backdrop-filter:blur(30px) saturate(150%)}
+.desktop-mode .spotlight-classic{width:min(680px,calc(100% - 24px));margin:min(19vh,150px) auto auto;max-height:calc(100dvh - min(19vh,150px) - 20px);border-radius:28px;border-color:var(--mac-glass-edge);background:var(--mac-glass-sheen) var(--mac-menu);color:var(--mac-ink);box-shadow:var(--mac-glass-focus-shadow);font-family:var(--mac-font);-webkit-backdrop-filter:var(--mac-glass-filter);backdrop-filter:var(--mac-glass-filter)}
 .desktop-mode .spotlight-classic::backdrop{background:transparent;backdrop-filter:none}
 .desktop-mode .spotlight-classic .command-shell{max-height:inherit}
 .desktop-mode .spotlight-classic header{height:62px;box-sizing:border-box;padding:9px 18px;gap:12px;border-bottom:0}
+.desktop-mode .spotlight-classic.spotlight-expanded{border-radius:22px}
 .desktop-mode .spotlight-classic.spotlight-expanded header{border-bottom:1px solid var(--mac-line)}
 .desktop-mode .spotlight-classic input{height:42px;padding:0;font-size:22px;letter-spacing:-.035em;color:var(--mac-ink);outline:none}
 .desktop-mode .spotlight-classic input::placeholder{color:var(--mac-muted)}
@@ -365,7 +365,7 @@
 .desktop-mode .spotlight-expand{font-size:20px;line-height:1}
 .desktop-mode .spotlight-classic .spotlight-body{height:min(350px,calc(100dvh - min(19vh,150px) - 120px));min-height:0}
 .desktop-mode .spotlight-classic .command-results{flex:0 0 44%;box-sizing:border-box;padding:5px 6px;scrollbar-width:thin}
-.desktop-mode .spotlight-classic .command-option{min-height:32px;padding:4px 7px;gap:4px;border-radius:5px;font-size:13px}
+.desktop-mode .spotlight-classic .command-option{min-height:32px;padding:4px 7px;gap:4px;border-radius:8px;font-size:13px}
 .desktop-mode .spotlight-classic .command-option[aria-selected=true]{background:var(--mac-selection);color:var(--mac-selection-ink)}
 .desktop-mode .spotlight-classic .command-option[aria-selected=true] small{color:var(--mac-selection-ink)}
 .desktop-mode .spotlight-classic .command-option small{display:none}
@@ -374,9 +374,14 @@
 .desktop-mode .spotlight-preview strong{font-size:18px;line-height:1.4;overflow-wrap:anywhere}
 .desktop-mode .spotlight-preview small{font-size:12px;color:var(--mac-muted)}
 .desktop-mode .spotlight-preview p{width:100%;font-size:13px;color:var(--mac-muted);line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;margin:8px 0}
-.desktop-mode .spotlight-preview button{margin-top:auto;border:1px solid var(--mac-line);border-radius:6px;background:var(--mac-toolbar);color:var(--mac-ink);padding:6px 15px;cursor:pointer}
+.desktop-mode .spotlight-preview button{margin-top:auto;border:1px solid var(--mac-line);border-radius:999px;background:var(--mac-glass-sheen) var(--mac-toolbar);color:var(--mac-ink);padding:6px 15px;cursor:pointer}
 .desktop-mode .spotlight-preview kbd{margin-left:12px;color:var(--mac-muted)}
 .desktop-mode .spotlight-classic footer{padding:7px 12px;gap:12px;border-color:var(--mac-line);color:var(--mac-muted)}
 .spotlight-count{margin-left:auto}
 @media(max-width:560px){.desktop-mode .spotlight-classic .command-results{flex:1}.desktop-mode .spotlight-preview{display:none}.desktop-mode .spotlight-classic .command-option small{display:block}.desktop-mode .spotlight-classic .command-option{min-height:42px}.desktop-mode .spotlight-classic header{height:56px;padding-inline:12px}.desktop-mode .spotlight-classic input{font-size:19px}}
 @media(prefers-reduced-motion:no-preference){.desktop-mode .spotlight-classic[open]{animation:spotlight-in .14s ease-out}@keyframes spotlight-in{from{opacity:0}to{opacity:1}}}
+
+@media(forced-colors:active){
+ .desktop-mode :is(.spotlight-classic,.workspace-panel,.home-workspace-trigger,.home-widget-card,.desktop-menu-panel,.desktop-dropdown,.window-overview,.window-shelf){background:Canvas;color:CanvasText;border-color:ButtonText}
+ .desktop-mode .spotlight-classic .command-option[aria-selected=true]{background:Highlight;color:HighlightText}
+}
