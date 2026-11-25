@@ -39,6 +39,12 @@ async function recover(direction:'rollback'|'complete'|'keep'){
 // their inert view until the existing Vue leave transition finishes.
 const closing=ref<DesktopWindow[]>([])
 const renderedWindows=computed(()=>[...state.value.windows,...closing.value])
+const overviewCurrentOnly=ref(false)
+const overviewWindows=computed(()=>state.value.windows.slice().reverse().filter(w=>!overviewCurrentOnly.value||w.spaceId===props.workspaceId))
+function frameProps(w:DesktopWindow,index:number){
+ return {dark:props.dark,active:w.id===active.value,hidden:w.spaceId!==props.workspaceId||closing.value.some(c=>c.id===w.id),minimized:w.minimized,maximized:w.maximized,cascade:w.cascade,layer:index+1}
+}
+
 function finishClose(id:number){if(closing.value.some(w=>w.id===id))closing.value=closing.value.filter(w=>w.id!==id)}
 const active=computed(()=>activeWindow(state.value,props.workspaceId))
 const minimized=computed(()=>state.value.windows.filter(w=>w.minimized&&w.spaceId===props.workspaceId))
@@ -62,6 +68,7 @@ let overviewTrigger:HTMLElement|undefined
 function openOverview(){
  if(props.blocked)return
  overviewTrigger=document.activeElement instanceof HTMLElement?document.activeElement:undefined
+ overviewCurrentOnly.value=false
  overview.value=true
  void nextTick(()=>overviewRoot.value?.querySelector<HTMLButtonElement>('header button')?.focus({preventScroll:true}))
 }
@@ -121,8 +128,8 @@ async function paste(workspaceId:string,folderId:string|null){
 <template>
  <div class="desktop-windows" :class="{dark}">
   <template v-for="(window,index) in renderedWindows" :key="window.id">
-  <ToolWindow v-if="window.panelId" :panel-id="window.panelId" :target-id="window.targetId" :target-sequence="window.sequence" :context="context" :dark="dark" :active="window.id===active" :hidden="window.spaceId!==workspaceId||closing.some(w=>w.id===window.id)" :minimized="window.minimized" :maximized="window.maximized" :cascade="window.cascade" :layer="index+1" @activate="activate(window.id)" @close="close(window.id)" @left="finishClose(window.id)" @minimize="minimize(window.id)" @maximize="maximize(window.id)" @title="title(window.id,$event)" />
-  <FinderWindow v-else :history="history" @history-action="historyAction" :clipboard="clipboard" :pasting="pasting" @clipboard="clipboard=$event" @paste="paste" :items="items" :workspaces="workspaces" :workspace-id="window.workspaceId" :folder-id="window.folderId" :browse-workspace-id="window.browseWorkspaceId" :browse-folder-id="window.browseFolderId" @location="(workspaceId:string,folderId?:string)=>browse(window.id,workspaceId,folderId)" :dark="dark" :active="window.id===active" :hidden="window.spaceId!==workspaceId||closing.some(w=>w.id===window.id)" :minimized="window.minimized" :maximized="window.maximized" :cascade="window.cascade" :layer="index+1" @activate="activate(window.id)" @close="close(window.id)" @left="finishClose(window.id)" @minimize="minimize(window.id)" @maximize="maximize(window.id)" @title="title(window.id,$event)" @open="forwardOpen" @edit="emit('edit',$event)" @remove="emit('remove',$event)" @move="forwardMove" @membership="forwardMembership" @reparent="reparent" @create="createFolder" />
+  <ToolWindow v-if="window.panelId" :panel-id="window.panelId" :target-id="window.targetId" :target-sequence="window.sequence" :context="context" v-bind="frameProps(window,index)" @activate="activate(window.id)" @close="close(window.id)" @left="finishClose(window.id)" @minimize="minimize(window.id)" @maximize="maximize(window.id)" @title="title(window.id,$event)" />
+  <FinderWindow v-else :history="history" @history-action="historyAction" :clipboard="clipboard" :pasting="pasting" @clipboard="clipboard=$event" @paste="paste" :items="items" :workspaces="workspaces" :workspace-id="window.workspaceId" :folder-id="window.folderId" :browse-workspace-id="window.browseWorkspaceId" :browse-folder-id="window.browseFolderId" @location="(workspaceId:string,folderId?:string)=>browse(window.id,workspaceId,folderId)" v-bind="frameProps(window,index)" @activate="activate(window.id)" @close="close(window.id)" @left="finishClose(window.id)" @minimize="minimize(window.id)" @maximize="maximize(window.id)" @title="title(window.id,$event)" @open="forwardOpen" @edit="emit('edit',$event)" @remove="emit('remove',$event)" @move="forwardMove" @membership="forwardMembership" @reparent="reparent" @create="createFolder" />
   </template>
   <div v-if="state.windows.length" class="window-shelf">
    <button type="button" aria-label="窗口概览" :aria-expanded="overview" @click="overview?closeOverview(true):openOverview()"><Layers :size="16"/> {{state.windows.length}} 个窗口</button>
@@ -131,8 +138,9 @@ async function paste(workspaceId:string,folderId:string|null){
   <section v-if="overview" ref="overviewRoot" class="window-overview" aria-label="窗口概览" @keydown.esc.stop.prevent="closeOverview(true)">
    <header><strong>运行中的窗口</strong><button type="button" @click="closeOverview(true)">关闭概览</button></header>
    <div class="space-list"><small>桌面空间</small><button v-for="space in workspaces" :key="space.id" :aria-pressed="space.id===workspaceId" @click="emit('switchWorkspace',space.id);closeOverview(true)"><span class="space-preview" aria-hidden="true"><i v-for="item in previewItems(space)" :key="item.id" :style="{left:item.x+'%',top:item.y+'%'}"/></span><strong>{{space.name}}</strong><span>{{state.windows.filter(w=>w.spaceId===space.id).length}} 个窗口</span></button></div>
-   <p v-if="!state.windows.length">没有运行中的窗口。</p>
-   <div v-if="state.windows.length" class="overview-grid"><div v-for="window in [...state.windows].reverse()" :key="window.id" class="overview-window"><button type="button" class="overview-card" @click="activate(window.id)"><span class="overview-preview" :class="{'is-minimized':window.minimized,'is-active':window.id===active}" aria-hidden="true"><span class="overview-titlebar"><i/><i/><i/></span><span class="overview-preview-body"><component :is="window.panelId?launcherIcons[window.panelId]??Folder:Folder" :size="32" :stroke-width="1.5"/></span></span><span class="overview-caption">{{window.title}}<small>{{spaceName(window.spaceId)}} · {{window.minimized?'已最小化':window.id===active?'当前窗口':'打开中'}}</small></span></button><SelectField :aria-label="'移动窗口 '+window.title" :model-value="window.spaceId" @change="moveWindow(window.id,$event)"><option v-for="space in workspaces" :key="space.id" :value="space.id">{{space.name}}</option></SelectField></div></div>
+   <div class="overview-filter"><span>{{overviewWindows.length}} 个窗口</span><button type="button" :aria-pressed="overviewCurrentOnly" @click="overviewCurrentOnly=!overviewCurrentOnly">仅当前空间</button></div>
+   <p v-if="!overviewWindows.length">{{overviewCurrentOnly?'当前空间没有运行中的窗口。':'没有运行中的窗口。'}}</p>
+   <div v-if="overviewWindows.length" class="overview-grid"><div v-for="window in overviewWindows" :key="window.id" class="overview-window"><button type="button" class="overview-card" @click="activate(window.id)"><span class="overview-preview" :class="{'is-minimized':window.minimized,'is-active':window.id===active}" aria-hidden="true"><span class="overview-titlebar"><i/><i/><i/></span><span class="overview-preview-body"><component :is="window.panelId?launcherIcons[window.panelId]??Folder:Folder" :size="32" :stroke-width="1.5"/></span></span><span class="overview-caption">{{window.title}}<small>{{spaceName(window.spaceId)}} · {{window.minimized?'已最小化':window.id===active?'当前窗口':'打开中'}}</small></span></button><SelectField :aria-label="'移动窗口 '+window.title" :model-value="window.spaceId" @change="moveWindow(window.id,$event)"><option v-for="space in workspaces" :key="space.id" :value="space.id">{{space.name}}</option></SelectField></div></div>
   </section>
   <section v-if="pending" class="window-limit recovery-panel" aria-label="桌面事务恢复">
    <strong>发现未完成的桌面事务</strong><p>{{replayable?'可以继续写入或回退到操作前。':'检测到其他修改，禁止自动回放，请先导出备份。'}}</p>
@@ -151,10 +159,12 @@ async function paste(workspaceId:string,folderId:string|null){
 .window-shelf button:hover,.window-overview button:hover,.window-shelf button:focus-visible,.window-overview button:focus-visible{background:var(--ui-accent-soft);color:var(--ui-accent-text)}
 .window-overview{left:50%;top:56px;bottom:auto;transform:translateX(-50%);width:min(680px,calc(100vw - 24px));padding:14px;max-height:calc(100dvh - 144px);overflow:auto}.window-overview header{display:flex;align-items:center;justify-content:space-between;padding:4px 6px}.window-overview>button{width:100%;text-align:left}.window-overview>button span{flex:1;overflow:hidden;text-overflow:ellipsis}.window-overview small{opacity:.7}
 .space-list{display:flex;gap:5px;flex-wrap:wrap;border-block:1px solid var(--ui-border);padding:8px 0;margin:5px 0}.space-list small{flex-basis:100%;padding:2px 6px;opacity:.7}.space-list button[aria-pressed=true]{background:var(--ui-accent-soft);color:var(--ui-accent-text)}
-.space-list button{display:flex;flex-direction:column;align-items:stretch;width:calc(33.333% - 4px);min-width:105px;white-space:normal;text-align:left;border:1px solid var(--mac-line)}.space-list button>span:last-child{font-size:10px;opacity:.7}.space-preview{min-height:78px;position:relative;overflow:hidden;background:linear-gradient(135deg,#7894a5,#415e71);border-radius:6px;padding:7px}.space-preview i{position:absolute;width:6%;height:9%;background:#ffffffa0;border-radius:2px}.overview-window{display:flex;align-items:center;gap:8px;padding:3px;border-bottom:1px solid var(--mac-line)}.overview-window>button{flex:1;min-width:0;text-align:left}.overview-window>button>span{min-width:0;overflow:hidden;text-overflow:ellipsis}.overview-window small{display:block;font-size:10px}
+.space-list button{display:flex;flex-direction:column;align-items:stretch;width:calc(33.333% - 4px);min-width:105px;white-space:normal;text-align:left;border:1px solid var(--mac-line)}.space-list button>span:last-child{font-size:10px;opacity:.7}.space-preview{min-height:78px;position:relative;overflow:hidden;background:linear-gradient(135deg,#7894a5,#415e71);border-radius:6px;padding:7px}.space-preview i{position:absolute;width:6%;height:9%;background:#ffffffa0;border-radius:2px}.overview-window>button>span{min-width:0;overflow:hidden;text-overflow:ellipsis}.overview-window small{display:block;font-size:10px}
 .recovery-panel{width:min(400px,calc(100vw - 24px));box-sizing:border-box;font-size:13px}.recovery-panel p{margin:6px 0;line-height:1.5}.recovery-panel>div{display:flex;gap:6px;flex-wrap:wrap}.recovery-panel button{border:1px solid var(--ui-border);background:var(--ui-panel);color:inherit;padding:6px 8px;border-radius:6px;cursor:pointer}.recovery-panel button:disabled{opacity:.4;cursor:default}
 .window-limit{left:12px;bottom:130px;padding:10px;max-width:calc(100vw - 24px)}
 
+.overview-filter{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;color:var(--mac-muted);font-size:12px}
+.overview-filter button[aria-pressed=true]{background:var(--ui-accent-soft);color:var(--ui-accent-text)}
 .overview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:10px;padding:4px 0}
 .overview-window{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:5px;border:0;padding:5px;background:var(--mac-window);border-radius:8px}
 .overview-window .overview-card{display:flex;flex-direction:column;align-items:stretch;padding:3px;text-align:left;gap:7px;white-space:normal}
