@@ -139,3 +139,47 @@
  .mac-dock-context .dock-context-menu{background:Canvas;color:CanvasText;border-color:ButtonText}
  .mac-dock-context .dock-context-menu button:hover,.mac-dock-context .dock-context-menu button:focus-visible{background:Highlight;color:HighlightText}
 }
+
+/* Compact desktop forms, without reducing the editor's accessible hit areas.
+   Interactive field boundaries are stronger than decorative separators. */
+.desktop-mode .mac-settings-panel .settings-section{background:var(--mac-toolbar);border-color:var(--mac-line)}
+.desktop-mode .mac-settings-panel .section-heading h3{font-size:14px;color:var(--mac-ink)}
+.desktop-mode .mac-settings-panel .section-heading p{font-size:12px;color:var(--mac-muted);margin-top:3px}
+.desktop-mode .mac-settings-panel .settings-subheading{font-size:12px;letter-spacing:0;font-weight:600;color:var(--mac-ink)}
+.desktop-mode .mac-settings-panel .custom-engine-form{gap:8px}
+.desktop-mode .mac-settings-panel .custom-engine-form .field-label{margin:0;color:var(--mac-ink);font-size:13px}
+.desktop-mode .mac-settings-panel .custom-engine-form .field-label input{font-size:13px;margin-top:5px;background:var(--mac-window)}
+.desktop-mode .mac-settings-panel .custom-engine-form .button-secondary{justify-self:start}
+.desktop-mode .shortcut-editor{--editor-control-border:var(--mac-field-line);--editor-focus:var(--ui-focus);--editor-action-fill:var(--mac-selection);border-radius:var(--mac-radius-window);background:var(--mac-window);color:var(--mac-ink);box-shadow:var(--mac-shadow-active)}
+.desktop-mode .shortcut-editor>header{padding:16px 20px;background:var(--mac-toolbar)}
+.desktop-mode .shortcut-editor>header h2{font-size:17px;letter-spacing:0}
+.desktop-mode .shortcut-editor>header button{border-radius:var(--mac-radius-control)}
+.desktop-mode .shortcut-editor-body{padding:16px 20px}
+.desktop-mode .shortcut-editor .shortcut-editor-footer{padding:12px 20px;background:var(--mac-toolbar)}
+.desktop-mode .shortcut-editor .shortcut-form-field+ .shortcut-form-field{margin-top:14px}
+.desktop-mode .shortcut-editor .shortcut-form-field>input,.desktop-mode .shortcut-editor .ui-select{border-radius:var(--mac-radius-control);background:var(--mac-window)}
+.desktop-mode .shortcut-editor .shortcut-appearance{margin-top:16px;border-radius:var(--mac-radius-popover)}
+.desktop-mode .shortcut-editor .shortcut-appearance>summary{min-height:64px;padding:10px;border-radius:var(--mac-radius-popover)}
+.desktop-mode .shortcut-editor .shortcut-appearance[open]>summary{border-radius:var(--mac-radius-popover) var(--mac-radius-popover) 0 0}
+.desktop-mode .shortcut-editor .shortcut-appearance-fields{gap:12px}
+.desktop-mode .folder-dialog:not(.folder-view-mode){padding:20px;border-radius:var(--mac-radius-window);background:var(--mac-window);box-shadow:var(--mac-shadow-active)}
+.desktop-mode .folder-dialog>header{margin:0 0 12px}
+.desktop-mode .folder-dialog h2{font-size:17px;letter-spacing:0}
+.desktop-mode .folder-dialog:not(.folder-view-mode)>label{margin:8px 0;font-size:13px;color:var(--mac-ink)}
+.desktop-mode .folder-dialog .folder-choice-list{border-color:var(--mac-line);background:var(--mac-toolbar)}
+.desktop-mode .folder-dialog .folder-choice+.folder-choice{border-color:var(--mac-line)}
+.desktop-mode .folder-dialog .folder-choice{color:var(--mac-ink)!important}
+.desktop-mode .folder-dialog .folder-choice.unavailable,.desktop-mode .folder-dialog .folder-choice.unavailable small{color:var(--mac-muted)!important}
+.desktop-mode .folder-dialog .folder-choice:hover{background:var(--mac-selection-soft)}
+@media(forced-colors:none){
+ .desktop-mode .mac-settings-panel :is(.ui-select,.field-label input),.desktop-mode .folder-dialog>label input:not([type=color]),.desktop-mode .shortcut-editor :is(.shortcut-form-field>input,.ui-select){border-color:var(--mac-field-line)}
+ .desktop-mode :is(.mac-settings-panel,.folder-dialog,.shortcut-editor) input[aria-invalid=true]{border-color:var(--ui-danger)}
+ .desktop-mode .shortcut-editor .shortcut-form-field>input:focus-visible{outline-color:var(--editor-focus)}
+}
+@media(forced-colors:active){
+ .desktop-mode :is(.mac-settings-panel,.folder-dialog,.shortcut-editor) input[aria-invalid=true]{border:2px dashed CanvasText}
+}
+@media(max-width:480px){
+ .desktop-mode .shortcut-editor>header,.desktop-mode .shortcut-editor-body,.desktop-mode .shortcut-editor .shortcut-editor-footer{padding-inline:14px}
+ .desktop-mode .mac-settings-panel .settings-section{padding:12px}
+}

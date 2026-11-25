@@ -496,7 +496,7 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .backup-actions button { flex: 1 1 140px; }
 .backup-description, .backup-preview, .backup-warning { color: #8a9098; font-size: 11px; line-height: 1.6; }
 .backup-description { margin: 10px 0 0; }
-.backup-error { margin: 10px 0 0; color: #c3444d; font-size: 12px; line-height: 1.5; }
+.backup-error { margin: 10px 0 0; color: var(--ui-danger); font-size: 12px; line-height: 1.5; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
 .backup-backdrop { z-index: 30; }
 .backup-dialog { margin: auto; }
