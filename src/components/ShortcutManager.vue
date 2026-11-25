@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SelectField from "./SelectField.vue"
 import { computed, onMounted, ref, watch } from 'vue'
 import type { WorkspaceTools, ShortcutBatch } from '../data/workspaceTools'
 import { previewBookmarkHtml, downloadBookmarkHtml, maxBookmarkHtmlBytes } from '../data/bookmarkHtml'
@@ -123,14 +124,14 @@ function exportHistory(id: string) { void execute(async () => { downloadWorkspac
     <fieldset :disabled="busy">
       <legend>批量管理快捷入口</legend>
       <label>搜索入口<input v-model="query" type="search" placeholder="名称、网址、标签" /></label>
-      <label>所属工作区<select v-model="workspaceFilter"><option value="">全部工作区</option><option v-for="workspace in tools.workspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></select></label>
-      <label>标签筛选<select v-model="tagFilter"><option value="">全部标签</option><option v-for="item in tags" :key="item">{{ item }}</option></select></label>
+      <label>所属工作区<SelectField v-model="workspaceFilter"><option value="">全部工作区</option><option v-for="workspace in tools.workspaces" :key="workspace.id" :value="workspace.id">{{ workspace.name }}</option></SelectField></label>
+      <label>标签筛选<SelectField v-model="tagFilter"><option value="">全部标签</option><option v-for="item in tags" :key="item">{{ item }}</option></SelectField></label>
       <div class="manager-actions"><button type="button" @click="selectVisible">全选筛选结果</button><button type="button" @click="selected = []; confirmDelete = false">清空选择</button><span>{{ selectedIds.length }} / {{ tools.shortcuts.length }} 已选</span></div>
       <div class="manager-list" role="group" aria-label="选择快捷入口">
         <label v-for="item in filtered" :key="item.id" class="manager-item"><input v-model="selected" type="checkbox" :value="item.id" /><span><strong>{{ item.title }}</strong><small>{{ owner(item.id) }} · {{ item.url }}</small><small v-if="item.tags?.length">{{ item.tags.join(' · ') }}</small></span></label>
         <p v-if="!filtered.length">没有匹配入口。</p>
       </div>
-      <label>目标工作区<select v-model="destination"><option value="">选择工作区</option><option v-for="item in tools.workspaces" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
+      <label>目标工作区<SelectField v-model="destination"><option value="">选择工作区</option><option v-for="item in tools.workspaces" :key="item.id" :value="item.id">{{ item.name }}</option></SelectField></label>
       <div class="manager-actions"><button type="button" :disabled="!selectedIds.length || !destination" @click="batch('move')">批量移动</button></div>
       <label>标签<input v-model="tag" maxlength="24" placeholder="例如：学习" /></label>
       <div class="manager-actions"><button type="button" :disabled="!selectedIds.length || !tag.trim()" @click="batch('tag')">添加标签</button><button type="button" :disabled="!selectedIds.length || !tag.trim()" @click="batch('untag')">移除标签</button></div>
@@ -164,7 +165,7 @@ function exportHistory(id: string) { void execute(async () => { downloadWorkspac
 fieldset { min-width: 0; border: 1px solid var(--ui-border); border-radius: 12px; padding: 10px; display: grid; gap: 8px; }
 legend { font-size: 13px; font-weight: 600; }
 label { display: grid; gap: 4px; }
-input:not([type=checkbox]), select { width: 100%; min-width: 0; padding: 7px; background: var(--ui-field); color: var(--ui-text); border: 1px solid var(--ui-border); border-radius: 8px; }
+input:not([type=checkbox]) { width: 100%; min-width: 0; padding: 7px; background: var(--ui-field); color: var(--ui-text); border: 1px solid var(--ui-border); border-radius: 8px; }
 button { min-height: 32px; padding: 4px 8px; border: 1px solid var(--ui-border); background: var(--ui-surface); color: var(--ui-text); border-radius: 8px; cursor: pointer; }
 button:disabled { opacity: .5; cursor: not-allowed; }
 .manager-actions, .manager-history { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

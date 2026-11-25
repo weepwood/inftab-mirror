@@ -16,7 +16,7 @@ const style=computed(()=>({left:fitted.value.x+'px',top:fitted.value.y+'px',widt
 let drag:ReturnType<typeof interact>|undefined,resize:ReturnType<typeof interact>|undefined
 let gesture:WindowGeometry|undefined,original:WindowGeometry|undefined
 function onResize(){cancel();viewport.value={w:innerWidth,h:innerHeight}}
-function start(){if(props.maximized||snap.value)return;original={...preferred.value};gesture={...fitted.value}}
+function start(){if(!props.active||props.minimized||props.hidden||props.maximized||snap.value||root.value?.closest('[inert]'))return;original={...preferred.value};gesture={...fitted.value}}
 function move(dx:number,dy:number,resizeMode=false){
  if(!gesture)return
  gesture=resizeMode?{...gesture,width:gesture.width+dx,height:gesture.height+dy}:{...gesture,x:gesture.x+dx,y:gesture.y+dy}
@@ -24,8 +24,11 @@ function move(dx:number,dy:number,resizeMode=false){
 }
 function end(){if(!gesture)return;gesture=undefined;original=undefined;try{saveGeometry(props.geometryKey,preferred.value,sessionStorage)}catch{/* denied storage */}}
 function cancel(){if(original)preferred.value=original;gesture=undefined;original=undefined}
-function toggleSnap(side:Exclude<WindowSnap,null>){if(props.maximized)emit('maximize');snap.value=snap.value===side?null:side}
-function maximize(){snap.value=null;emit('maximize')}
+function toggleSnap(side:Exclude<WindowSnap,null>){cancel();if(props.maximized)emit('maximize');snap.value=snap.value===side?null:side}
+function maximize(){cancel();snap.value=null;emit('maximize')}
+function titleDoubleClick(e:MouseEvent){
+ if(!(e.target as Element)?.closest('button'))maximize()
+}
 function handleKey(e:KeyboardEvent){
  emit('keydown',e)
  if(e.defaultPrevented||e.cancelBubble||e.isComposing||e.target instanceof HTMLInputElement||e.target instanceof HTMLTextAreaElement||e.target instanceof HTMLSelectElement)return
@@ -38,19 +41,19 @@ onMounted(()=>{
  let saved:WindowGeometry|undefined
  try{saved=readGeometry(props.geometryKey,sessionStorage)}catch{/* denied storage */}
  preferred.value=saved??{...preferred.value,x:(innerWidth-preferred.value.width)/2+props.cascade*18,y:64+props.cascade*16}
- if(bar.value)drag=interact(bar.value).draggable({ignoreFrom:'button',listeners:{start,move(e){move(e.dx,e.dy)},end}})
- if(root.value)resize=interact(root.value).resizable({edges:{right:'.resize-handle',bottom:'.resize-handle'},listeners:{start,move(e){move(e.deltaRect.width,e.deltaRect.height,true)},end}})
+ if(bar.value)drag=interact(bar.value).draggable({mouseButtons:1,ignoreFrom:'button',listeners:{start,move(e){move(e.dx,e.dy)},end}})
+ if(root.value)resize=interact(root.value).resizable({mouseButtons:1,edges:{right:'.resize-handle',bottom:'.resize-handle'},listeners:{start,move(e){move(e.deltaRect.width,e.deltaRect.height,true)},end}})
  window.addEventListener('resize',onResize);window.addEventListener('blur',cancel)
  root.value?.addEventListener('pointercancel',cancel,true)
 })
-watch(()=>props.active&&!props.minimized&&!props.hidden,async active=>{if(active){await nextTick();if(root.value&&!root.value.closest('[inert]')&&!root.value.contains(document.activeElement))root.value.focus({preventScroll:true})}},{immediate:true})
+watch(()=>props.active&&!props.minimized&&!props.hidden,async active=>{if(!active)cancel();if(active){await nextTick();if(root.value&&!root.value.closest('[inert]')&&!root.value.contains(document.activeElement))root.value.focus({preventScroll:true})}},{immediate:true})
 onBeforeUnmount(()=>{drag?.unset();resize?.unset();window.removeEventListener('resize',onResize);window.removeEventListener('blur',cancel);root.value?.removeEventListener('pointercancel',cancel,true)})
 </script>
 <template>
  <Transition name="mac-window" appear>
  <section v-show="!minimized&&!hidden" ref="root" class="window-frame" :class="[kind==='finder'?'finder':'tool-window',{active,maximized,dark,snapped:!!snap}]" :style="style" role="dialog" :aria-label="label" :aria-hidden="minimized||hidden||undefined" :inert="(minimized||hidden)||undefined" tabindex="-1" @pointerdown="emit('activate')" @focusin="emit('activate')" @keydown="handleKey">
-  <header ref="bar" class="window-title" :class="kind==='finder'?'finder-title':'tool-title'">
-   <div class="traffic"><button :aria-label="kind==='finder'?'关闭 Finder':'关闭窗口'" class="close" @click="emit('close')"/><button :aria-label="kind==='finder'?'最小化 Finder':'最小化窗口'" class="minimize" @click="emit('minimize')"/><button :aria-label="(maximized?'还原':'最大化')+(kind==='finder'?' Finder':'窗口')" class="maximize" @click="maximize"/></div>
+  <header ref="bar" @dblclick="titleDoubleClick" class="window-title" :class="kind==='finder'?'finder-title':'tool-title'">
+   <div class="traffic"><button type="button" :aria-label="kind==='finder'?'关闭 Finder':'关闭窗口'" class="close" @click="emit('close')"/><button type="button" :aria-label="kind==='finder'?'最小化 Finder':'最小化窗口'" class="minimize" @click="emit('minimize')"/><button type="button" :aria-label="(maximized?'还原':'最大化')+(kind==='finder'?' Finder':'窗口')" class="maximize" @click="maximize"/></div>
    <strong>{{title}}</strong><span class="window-description">{{description}}</span>
    <div class="snap-controls"><button type="button" aria-label="左侧停靠" :aria-pressed="snap==='left'" @click="toggleSnap('left')"><PanelLeft :size="15"/></button><button type="button" aria-label="右侧停靠" :aria-pressed="snap==='right'" @click="toggleSnap('right')"><PanelRight :size="15"/></button></div>
   </header>
@@ -61,9 +64,9 @@ onBeforeUnmount(()=>{drag?.unset();resize?.unset();window.removeEventListener('r
 </template>
 <style scoped>
 .window-frame{position:fixed;pointer-events:auto;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--mac-line);border-radius:12px;background:var(--mac-window);color:var(--mac-ink);box-shadow:var(--mac-shadow);font:13px var(--mac-font);box-sizing:border-box}
-.window-frame.active{box-shadow:var(--mac-shadow-active)}.window-frame.finder{background:var(--mac-window);color:var(--mac-ink)}.window-frame.maximized{border-radius:8px}
-.window-title{display:flex;align-items:center;gap:12px;min-height:40px;padding:7px 14px;background:var(--mac-toolbar);border-bottom:1px solid var(--mac-line);touch-action:none;cursor:grab}.window-title strong{font-size:13px;font-weight:600;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.window-description{margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.65;font-size:11px}
-.traffic{display:flex;gap:8px;flex-shrink:0}.traffic button{position:relative;width:12px;height:12px;padding:0;border:1px solid #0002;border-radius:50%;cursor:pointer}.window-frame:not(.active) .traffic button{background:#a0a0a5}.window-frame:not(.active) .traffic:hover .close{background:#ff5f57}.window-frame:not(.active) .traffic:hover .minimize{background:#febc2e}.window-frame:not(.active) .traffic:hover .maximize{background:#28c840}.traffic:hover button::after,.traffic button:focus-visible::after{position:absolute;inset:0;display:grid;place-items:center;color:#0009;font:10px/1 var(--mac-font);font-weight:700}.traffic .close::after{content:"×"}.traffic .minimize::after{content:"−"}.traffic .maximize::after{content:"+"}.close{background:#ff5f57}.minimize{background:#febc2e}.maximize{background:#28c840}.snap-controls{display:flex;gap:2px;flex-shrink:0;margin-left:auto}.snap-controls button{border:0;border-radius:4px;background:transparent;color:inherit;font-size:16px;cursor:pointer;display:grid;place-items:center;padding:4px 5px}.snap-controls button:hover,.snap-controls button[aria-pressed=true]{background:var(--ui-accent-soft)}
+.window-frame.active{box-shadow:var(--mac-shadow-active)}.window-frame:not(.active) .window-title{background:var(--mac-window);color:var(--mac-muted)}.window-frame.finder{background:var(--mac-window);color:var(--mac-ink)}.window-frame.maximized{border-radius:8px}
+.window-title{display:flex;align-items:center;gap:12px;min-height:40px;padding:7px 14px;background:var(--mac-toolbar);border-bottom:1px solid var(--mac-line);touch-action:none;cursor:grab}.window-title strong{min-width:0;flex-shrink:1;font-size:13px;font-weight:600;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.window-description{min-width:0;flex-shrink:2;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.65;font-size:11px}
+.traffic{display:flex;gap:8px;flex-shrink:0}.traffic button{position:relative;width:12px;height:12px;padding:0;border:1px solid #0002;border-radius:50%;cursor:pointer}.window-frame:not(.active) .traffic button{background:#a0a0a5}.window-frame:not(.active) .traffic:hover .close{background:#ff5f57}.window-frame:not(.active) .traffic:hover .minimize{background:#febc2e}.window-frame:not(.active) .traffic:hover .maximize{background:#28c840}.traffic:hover button::after,.traffic button:focus-visible::after{position:absolute;inset:0;display:grid;place-items:center;color:#0009;font:10px/1 var(--mac-font);font-weight:700}.traffic .close::after{content:"×"}.traffic .minimize::after{content:"−"}.traffic .maximize::after{content:"+"}.close{background:#ff5f57}.minimize{background:#febc2e}.maximize{background:#28c840}.snap-controls{display:flex;gap:2px;flex-shrink:0;margin-left:auto}.snap-controls button{border:0;border-radius:4px;background:transparent;color:inherit;font-size:16px;cursor:pointer;display:grid;place-items:center;padding:4px 5px}.snap-controls button:hover,.snap-controls button[aria-pressed=true]{background:var(--mac-selection-soft);color:var(--mac-ink)}
 .window-title button:focus-visible{outline:2px solid var(--ui-accent-text);outline-offset:2px}.resize-handle{position:absolute;bottom:0;right:0;width:18px;height:18px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 50%,var(--ui-border) 51%,transparent 56%,transparent 67%,var(--ui-border) 68%,transparent 75%)}
 @media(pointer:coarse){.traffic{gap:4px}.traffic button{width:24px;height:24px}.snap-controls button{min-width:32px;min-height:32px}}
 @media(max-width:600px){.window-description{display:none}.window-title{padding-inline:8px;gap:8px}}

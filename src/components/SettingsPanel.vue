@@ -351,7 +351,7 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       </div>
       <p v-if="hasLocalWallpaper" class="wallpaper-note">本地壁纸已压缩并离线保存在此浏览器中。</p>
       <p v-if="wallpaperError" class="backup-error" role="alert">{{ wallpaperError }}</p>
-      <label class="range-label"><span>背景暗度</span><input type="range" min="0" max="0.65" step="0.05" :value="preferences.shade" @input="update('shade', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>背景暗度</span><strong>{{ Math.round(preferences.shade * 100) }}%</strong><input aria-label="背景暗度" type="range" min="0" max="0.65" step="0.05" :value="preferences.shade" @input="update('shade', Number(($event.target as HTMLInputElement).value))" /></label>
     </section>
 
     <section class="settings-section">
@@ -360,14 +360,14 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       <label v-for="effect in transitionEffects" :key="effect.id" class="toggle-row transition-option">
         <span>{{ effect.label }}</span><input type="radio" name="page-transition-effect" :checked="preferences.pageTransitionEffect === effect.id" @change="setTransitionEffect(effect.id)" />
       </label>
-      <label class="range-label"><span>翻页动画时长</span><strong>{{ preferences.pageTransitionMs }} ms</strong><input type="range" min="0" max="2000" step="40" :value="preferences.pageTransitionMs" @input="update('pageTransitionMs', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>翻页动画时长</span><strong>{{ preferences.pageTransitionMs }} ms</strong><input aria-label="翻页动画时长" type="range" min="0" max="2000" step="40" :value="preferences.pageTransitionMs" @input="update('pageTransitionMs', Number(($event.target as HTMLInputElement).value))" /></label>
       <label class="toggle-row"><span>自动隐藏 Dock</span><input type="checkbox" :checked="preferences.dockAutoHide" @change="update('dockAutoHide', ($event.target as HTMLInputElement).checked)" /></label>
       <label class="toggle-row"><span>Dock 图标放大效果</span><input type="checkbox" :checked="preferences.dockMagnification" @change="update('dockMagnification', ($event.target as HTMLInputElement).checked)" /></label>
       <label class="toggle-row"><span>Dock 图标跟随首页大小</span><input type="checkbox" :checked="preferences.dockFollowLauncherSize" @change="update('dockFollowLauncherSize', ($event.target as HTMLInputElement).checked)" /></label>
-      <label class="range-label"><span>Dock 图标大小</span><strong>{{ preferences.dockIconSize }} px</strong><input type="range" min="32" max="60" step="2" :value="preferences.dockIconSize" :disabled="preferences.dockFollowLauncherSize" @input="update('dockIconSize', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>Dock 图标大小</span><strong>{{ preferences.dockIconSize }} px</strong><input aria-label="Dock 图标大小" type="range" min="32" max="60" step="2" :value="preferences.dockIconSize" :disabled="preferences.dockFollowLauncherSize" @input="update('dockIconSize', Number(($event.target as HTMLInputElement).value))" /></label>
       <p class="wallpaper-note">跟随首页时同步首页图标设置；窄屏或浏览器放大时会自动缩小。</p>
-      <label class="range-label"><span>Dock 图标间距</span><strong>{{ preferences.dockIconGap }} px</strong><input type="range" min="0" max="16" step="2" :value="preferences.dockIconGap" @input="update('dockIconGap', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>悬停光晕强度</span><strong>{{ preferences.hoverGlow }}%</strong><input type="range" min="0" max="100" step="5" :value="preferences.hoverGlow" @input="update('hoverGlow', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>Dock 图标间距</span><strong>{{ preferences.dockIconGap }} px</strong><input aria-label="Dock 图标间距" type="range" min="0" max="16" step="2" :value="preferences.dockIconGap" @input="update('dockIconGap', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>悬停光晕强度</span><strong>{{ preferences.hoverGlow }}%</strong><input aria-label="悬停光晕强度" type="range" min="0" max="100" step="5" :value="preferences.hoverGlow" @input="update('hoverGlow', Number(($event.target as HTMLInputElement).value))" /></label>
     </section>
     </div>
 
@@ -375,8 +375,8 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
     <section class="settings-section">
       <div class="section-heading"><div><h3>搜索栏</h3><p>控制首页搜索栏的显示和尺寸</p></div></div>
       <label class="toggle-row"><span>显示搜索栏</span><input type="checkbox" :checked="preferences.showSearchBar" @change="update('showSearchBar', ($event.target as HTMLInputElement).checked)" /></label>
-      <label class="range-label"><span>搜索框宽度</span><strong>{{ preferences.searchWidth }} px</strong><input type="range" min="280" max="1000" step="10" :value="preferences.searchWidth" @input="update('searchWidth', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>搜索框高度</span><strong>{{ preferences.searchHeight }} px</strong><input type="range" min="36" max="100" step="2" :value="preferences.searchHeight" @input="update('searchHeight', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>搜索框宽度</span><strong>{{ preferences.searchWidth }} px</strong><input aria-label="搜索框宽度" type="range" min="280" max="1000" step="10" :value="preferences.searchWidth" @input="update('searchWidth', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>搜索框高度</span><strong>{{ preferences.searchHeight }} px</strong><input aria-label="搜索框高度" type="range" min="36" max="100" step="2" :value="preferences.searchHeight" @input="update('searchHeight', Number(($event.target as HTMLInputElement).value))" /></label>
       <p class="settings-subheading">显示搜索类型</p>
       <label v-for="item in searchModes" :key="item.id" class="toggle-row"><span>{{ item.label }}</span><input type="checkbox" :checked="preferences.visibleSearchModes.includes(item.id)" @change="toggleSearchMode(item.id, ($event.target as HTMLInputElement).checked)" /></label>
       <p class="settings-subheading">自定义搜索引擎（最多 20 个）</p>
@@ -412,13 +412,13 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
 
     <section class="settings-section">
       <div class="section-heading"><div><h3>图标与网格</h3><p>调整每页排布与图标外观</p></div></div>
-      <label class="range-label"><span>每行图标</span><strong>{{ preferences.columns }}</strong><input type="range" min="2" max="12" step="1" :value="preferences.columns" @input="update('columns', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>每页行数</span><strong>{{ preferences.rows }}</strong><input type="range" min="1" max="8" step="1" :value="preferences.rows" @input="update('rows', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>图标大小</span><strong>{{ preferences.iconSize }} px</strong><input type="range" min="32" max="160" step="2" :value="preferences.iconSize" @input="update('iconSize', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>圆角</span><strong>{{ preferences.iconRadius }} px</strong><input type="range" min="0" max="100" step="2" :value="preferences.iconRadius" @input="update('iconRadius', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>图标横向间距</span><strong>{{ preferences.gridGapX }} px</strong><input type="range" min="0" max="80" step="2" :value="preferences.gridGapX" @input="update('gridGapX', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>图标纵向间距</span><strong>{{ preferences.gridGapY }} px</strong><input type="range" min="0" max="100" step="2" :value="preferences.gridGapY" @input="update('gridGapY', Number(($event.target as HTMLInputElement).value))" /></label>
-      <label class="range-label"><span>搜索栏与图标间距</span><strong>{{ preferences.gridTopGap }} px</strong><input type="range" min="0" max="180" step="2" :value="preferences.gridTopGap" @input="update('gridTopGap', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>每行图标</span><strong>{{ preferences.columns }}</strong><input aria-label="每行图标" type="range" min="2" max="12" step="1" :value="preferences.columns" @input="update('columns', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>每页行数</span><strong>{{ preferences.rows }}</strong><input aria-label="每页行数" type="range" min="1" max="8" step="1" :value="preferences.rows" @input="update('rows', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>图标大小</span><strong>{{ preferences.iconSize }} px</strong><input aria-label="图标大小" type="range" min="32" max="160" step="2" :value="preferences.iconSize" @input="update('iconSize', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>圆角</span><strong>{{ preferences.iconRadius }} px</strong><input aria-label="圆角" type="range" min="0" max="100" step="2" :value="preferences.iconRadius" @input="update('iconRadius', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>图标横向间距</span><strong>{{ preferences.gridGapX }} px</strong><input aria-label="图标横向间距" type="range" min="0" max="80" step="2" :value="preferences.gridGapX" @input="update('gridGapX', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>图标纵向间距</span><strong>{{ preferences.gridGapY }} px</strong><input aria-label="图标纵向间距" type="range" min="0" max="100" step="2" :value="preferences.gridGapY" @input="update('gridGapY', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label class="range-label"><span>搜索栏与图标间距</span><strong>{{ preferences.gridTopGap }} px</strong><input aria-label="搜索栏与图标间距" type="range" min="0" max="180" step="2" :value="preferences.gridTopGap" @input="update('gridTopGap', Number(($event.target as HTMLInputElement).value))" /></label>
       <label class="toggle-row"><span>显示网站名称</span><input type="checkbox" :checked="preferences.showNames" @change="update('showNames', ($event.target as HTMLInputElement).checked)" /></label>
     </section>
     </div>
