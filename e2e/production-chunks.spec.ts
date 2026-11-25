@@ -122,7 +122,7 @@ test('offline tools share a lazy chunk without adding homepage requests', async 
 test('recovers a cached production homepage widget chunk failure after reloading', async ({ page }) => {
   let chunkRequests = 0
   let failWidgetChunk = true
-  await page.route(/\/HomeWidgetShelf-[^/]+\.js(?:\?.*)?$/, async (route) => {
+  await page.route(/\/widget-shelf-[^/]+\.js(?:\?.*)?$/, async (route) => {
     chunkRequests += 1
     if (failWidgetChunk) await route.abort('failed')
     else await route.continue()

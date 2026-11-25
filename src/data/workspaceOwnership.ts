@@ -68,10 +68,15 @@ export function mergeHomeWorkspaceChanges(
       const point=changedRemote?remotePoint:changedLocal?localPoint:desktop.positions[id]
       return point?[[id,point]]:[]
     }))
-    const { layout: _discarded, ...rest } = workspace
+    const beforeWidgets=previousById.get(workspace.id)?.widgetSlots
+    const localWidgets=currentById.get(workspace.id)?.widgetSlots
+    const remoteWidgets=externalById.get(workspace.id)?.widgetSlots
+    const widgetSlots=externalById.has(workspace.id)&&JSON.stringify(remoteWidgets)!==JSON.stringify(beforeWidgets)?remoteWidgets:currentById.has(workspace.id)&&JSON.stringify(localWidgets)!==JSON.stringify(beforeWidgets)?localWidgets:workspace.widgetSlots
+    const { layout: _discarded, widgetSlots: _discardedWidgets, ...rest } = workspace
     return {
       ...rest,
       ...(layout ? { layout } : {}),
+      ...(widgetSlots ? {widgetSlots} : {}),
       itemIds,
       ...(desktop&&positions?{desktop:{...desktop,positions}}:{}),
     }

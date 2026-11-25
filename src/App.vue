@@ -279,6 +279,9 @@ const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayo
 const overlayOpen = computed(() => Boolean(activePanel.value || shortcutDialog.value || folderDialogOpen.value || commandPaletteOpen.value || layoutEditorOpen.value || pendingDestructiveAction.value))
 const launcherAnimating = ref(false)
 const { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen, launcherAnimating })
+function saveWidgetSlots(widgetSlots: import('./data/widgetSlots').WidgetSlots|undefined){
+  homeWorkspaces.value=homeWorkspaces.value.map(w=>w.id===activeHomeWorkspaceId.value?{...w,widgetSlots}:w)
+}
 function saveDesktopLayout(layout: DesktopLayout) {
   homeWorkspaces.value = homeWorkspaces.value.map(w => w.id === activeHomeWorkspaceId.value ? {...w,desktop:layout} : w)
 }
@@ -911,6 +914,10 @@ onBeforeUnmount(() => {
         v-if="showHomeWidgets && !minimalMode"
         :widget-ids="preferences.homeWidgetIds"
         :widget-sizes="preferences.homeWidgetSizes"
+        :desktop-layout="desktopMode && viewport.width > 780"
+        :widget-slots="activeHomeWorkspace.widgetSlots"
+        :key="desktopMode ? activeHomeWorkspaceId : 'classic-widgets'"
+        @slots="saveWidgetSlots"
         :context="homeWidgetContext"
         @open="openPanel"
         @remove="removeHomeWidget"

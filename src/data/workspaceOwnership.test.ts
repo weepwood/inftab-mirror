@@ -13,3 +13,13 @@ describe('desktop concurrent ownership',()=>{
   expect(merged[0]?.desktop?.positions).toEqual({a:{x:0,y:70},b:{x:100,y:40}})
  })
 })
+
+it('retains local widget slots while reconciling independent remote icon moves',()=>{
+ const before:HomeWorkspace[]=[{id:'default',name:'主页',itemIds:['a'],desktop:{version:1,snap:false,positions:{a:{x:0,y:0}}},widgetSlots:{'todo-summary':{x:0,y:0}}}]
+ const local=structuredClone(before),external=structuredClone(before)
+ local[0]!.widgetSlots={'todo-summary':{x:1,y:2}}
+ external[0]!.desktop!.positions.a={x:37,y:51}
+ const merged=mergeHomeWorkspaceChanges([],local,before,external,(a,b,c)=>mergeConcurrentEdits(a,b,c,sanitizeHomeWorkspaces))
+ expect(merged[0]?.widgetSlots).toEqual({'todo-summary':{x:1,y:2}})
+ expect(merged[0]?.desktop?.positions.a).toEqual({x:37,y:51})
+})

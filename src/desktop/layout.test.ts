@@ -11,7 +11,7 @@ describe('desktop layout', () => {
   it('handles narrow surfaces',()=>expect(defaultPoint(2,50)).toEqual({x:0,y:192}))
 })
 
-import { resolvePoints } from './layout'
+import { resolvePoints, createOccupancy } from './layout'
 describe('desktop collision resolution', () => {
   it('preserves non-overlapping free coordinates even when spatial buckets intersect',()=>{
     const saved={a:{x:5,y:5},b:{x:102,y:5},c:{x:5,y:101}}
@@ -60,5 +60,24 @@ describe('explicit right-aligned arrangement',()=>{
   const positions=arrangeFromRight(ids,40,40)
   expect(Object.keys(positions)).toHaveLength(ids.length)
   expect(new Set(Object.values(positions).map(p=>p.x+':'+p.y)).size).toBe(ids.length)
+ })
+})
+
+describe('desktop drag occupancy',()=>{
+ it('recognizes exact edges and negative-direction bucket crossings',()=>{
+  const {overlaps,add}=createOccupancy([{x:101,y:101}])
+  expect(overlaps({x:5,y:101})).toBe(false)
+  expect(overlaps({x:6,y:101})).toBe(true)
+  expect(overlaps({x:101,y:197})).toBe(false)
+  add({x:300,y:300})
+  expect(overlaps({x:299,y:299})).toBe(true)
+ })
+ it('indexes stationary icons without treating moving peers as obstacles',()=>{
+  const moving={a:{x:0,y:0},b:{x:96,y:0}}
+  const {overlaps}=createOccupancy([{x:384,y:0}])
+  const safe=translateGroup(moving,{x:37,y:125},960,480)
+  expect(Object.values(safe).some(overlaps)).toBe(false)
+  const blocked=translateGroup(moving,{x:288,y:0},960,480,true)
+  expect(Object.values(blocked).some(overlaps)).toBe(true)
  })
 })

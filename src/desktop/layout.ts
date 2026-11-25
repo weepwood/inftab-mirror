@@ -23,11 +23,9 @@ export function defaultPoint(index: number, width: number): Point {
   return { x: index % columns * cell, y: Math.floor(index/columns)*cell }
 }
 
-// Resolve visible collisions without altering the canonical coordinates.
-export function resolvePoints(ids: string[], saved: Record<string, Point>, width: number, height: number): Record<string, Point> {
-  const result: Record<string, Point> = Object.create(null)
+/** Spatial index for actual 96px hit rectangles; sharing buckets alone is not overlap. */
+export function createOccupancy(points: Point[] = []) {
   const occupied = new Map<string,Point[]>()
-  const columns = Math.max(1, Math.floor(width / cell))
   const key = (x: number, y: number) => x + ':' + y
   function cells(p: Point) {
     const keys: string[] = []
@@ -36,6 +34,18 @@ export function resolvePoints(ids: string[], saved: Record<string, Point>, width
     return keys
   }
   const overlaps=(p:Point)=>cells(p).some(k=>occupied.get(k)?.some(q=>Math.abs(p.x-q.x)<cell&&Math.abs(p.y-q.y)<cell))
+  function add(p:Point){
+    for(const k of cells(p)){const bucket=occupied.get(k);if(bucket)bucket.push(p);else occupied.set(k,[p])}
+  }
+  points.forEach(add)
+  return {add,overlaps}
+}
+
+// Resolve visible collisions without altering the canonical coordinates.
+export function resolvePoints(ids: string[], saved: Record<string, Point>, width: number, height: number): Record<string, Point> {
+  const result: Record<string, Point> = Object.create(null)
+  const {add,overlaps}=createOccupancy()
+  const columns = Math.max(1, Math.floor(width / cell))
   let cursor=0
   for (const id of [...ids.filter(id=>Object.hasOwn(saved,id)), ...ids.filter(id=>!Object.hasOwn(saved,id))]) {
     let p = Object.hasOwn(saved,id) ? fitPoint(saved[id]!,width,height) : undefined
@@ -43,7 +53,7 @@ export function resolvePoints(ids: string[], saved: Record<string, Point>, width
       do { p = {x:cursor%columns*cell,y:Math.floor(cursor/columns)*cell}; cursor++ } while(overlaps(p))
     }
     result[id]=p
-    for(const k of cells(p)){const bucket=occupied.get(k);if(bucket)bucket.push(p);else occupied.set(k,[p])}
+    add(p)
   }
   return result
 }
