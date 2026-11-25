@@ -434,3 +434,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - #43 远程3项全绿（737单测/95文件，Linux非Swiper199.8/200KiB），合并c9361cb，Pages 45629460195成功。首次线上比对94/95、单个资源HTTP503，重试该文件精确匹配，累计95/95。基于此main建立feat/desktop-visual-system（隔离worktree /private/tmp/inftab-window41）。
 - 桌面样式从main.css抽离desktop.css并在共享样式后导入；RangeField共享样式保留，清理废弃与重复规则。tokens.css集中桌面菜单/菜单项/窗口/浮层圆角、菜单间距、选择前景及range/toggle轨道。Teleport Dock菜单在body独立主题作用域复用同一套mac令牌，forced-colors系统色回退。经典与自定义主题边界保留，不改业务/存储，不引入依赖。
 - check/build:web、定向视觉7/7、最终生产Edge宽范围58/58通过，包含双主题计算样式一致性、经典/自定义主题、窗口、触控模拟、键盘、响应式；真实截图两张docs/screenshots/macos-desktop/visual-system。Mac首屏59.8/60.5、非Swiper198.7/200、Swiper26.4/30、CSS33.3/64 KiB；PWA额外10707/16384 B、全站1735077/4194304 B。预算保留。新远程CI待核验，未做全面经典CSS、forced-colors Dock专项或真机验收。临时playwright.local-window41.config.ts不提交。保持#37冻结与V2.0.0 Tag。优先收口本PR，后续视觉密度/对齐、公共表单与真实设备验证。
+
+## 桌面表单层级与反馈（2026-11-25）
+- #44 远程4项全绿（737单测，Linux非Swiper199.7/200KiB），合并160b9b1。新批在独立本地分支feat/desktop-form-density开发，确认#44候选与main源码树一致后更新基线。
+- 设置分组、标题、辅助文字、桌面编辑器头部/正文/底部和文件夹选择列表统一语义表面；mac-field-line独立字段边界令牌，保留44px操作目标和小屏输入字号。自定义搜索引擎错误焦点、必填、aria-invalid/aria-describedby及IME保护；错误色使用ui-danger。保留经典与自定义主题边界、原数据格式和业务规则。
+- 初次构建Vue模板if解析失败，已改布尔短路表达式。最终check/build:web、28/28相关单测、7/7定向、76/76生产Edge宽范围通过。320×360浅深主题实际文本/字段对比度与保存可达性通过。真实截图见docs/screenshots/macos-desktop/forms。Mac首屏59.8/60.5、非Swiper199.0/200、CSS33.8/64KiB；PWA额外10702/16384 B、全站1739903/4194304 B。无新依赖/放宽预算。远程CI需核验Linux预算；未全面覆盖所有表单对比度、强制颜色组合或真机。不提交临时playwright.local-window41.config.ts。保持#37与V2.0.0 Tag不变。

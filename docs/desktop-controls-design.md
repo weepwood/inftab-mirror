@@ -34,3 +34,9 @@
 基线 main c9361cb。将原 main.css 末尾的桌面专项样式抽离至 desktop.css，由 main.ts 在共享样式之后加载，保留原有级联优先级；共享 RangeField 样式留在 main.css，清除已废弃的 range-label strong 和重复的 command-option small 规则。tokens.css 统一桌面菜单、菜单项、窗口、浮层圆角、菜单内边距、选择前景色、滑块及开关轨道；局部布局仍由 Vue 组件负责。Dock 菜单 Teleport 到 body，不能从 home 继承变量，故 mac-dock-context 显式复用同一套浅深主题令牌，不重复硬编码颜色、边框、阴影；强制颜色模式采用系统色。保留经典模式及自定义主题作用域，不改变存储或行为。
 
 真实 Mac Edge 截图：[浅色](screenshots/macos-desktop/visual-system/dock-menu-light.jpg)、[深色](screenshots/macos-desktop/visual-system/dock-menu-dark.jpg)。测试在 indigo 配色下比较顶部菜单、桌面右键菜单、独立 Dock 菜单的计算背景、文字色、边框、圆角、阴影，双主题一致。check/build:web 通过；7/7 定向视觉验收；最终生产浏览器宽范围 58/58（desktop-alpha2、visual-system、custom-theme、accessibility、productivity）。Mac 首屏59.8/60.5、非Swiper198.7/200、Swiper26.4/30、CSS33.3/64 KiB；PWA额外10707/16384 B、全站1735077/4194304 B。未增依赖或放宽预算。尚未专项模拟 forced-colors Dock、全面清理经典 CSS 或完成移动真机验收；远程CI待核验。
+
+## 桌面表单层级与反馈（2026-11-25）
+
+基线 main 160b9b1（与 #44 候选源码树一致）。设置项使用浅/深主题分组表面、明确标题与辅助文字层级。快捷入口编辑器头部、底部操作区、输入控件与外观折叠区统一桌面令牌，保持原有44px按钮目标和小屏16px输入字号。文件夹编辑列表与表面归一。新增独立交互字段边界令牌，区别装饰分隔线；保留经典及自定义主题作用域。自定义搜索引擎必填校验、失败字段聚焦、aria-invalid/aria-describedby、输入法提交保护，错误使用语义色；不修改数据结构。
+
+真实截图：[设置错误](screenshots/macos-desktop/forms/settings-error-light.jpg)、[快捷入口编辑器错误](screenshots/macos-desktop/forms/editor-error-dark.jpg)。生产 Mac Edge 定向7/7，相关单测28/28，最终宽范围76/76，包含320×360双主题编辑器实际文字与控件边界对比度（受测文本≥4.5:1、字段边界≥3:1）、操作可达性、经典及自定义主题回归。初次构建因Vue模板内if表达式解析失败，已改为合法布尔短路表达式，最终check/build:web通过。Mac首屏59.8/60.5、非Swiper199.0/200、Swiper26.4/30、CSS33.8/64 KiB；PWA额外10702/16384 B、全站1739903/4194304 B。未新增依赖或放宽预算，Linux预算余量仍小。尚未验证所有表单对比度、真实移动设备或全部强制颜色组合。

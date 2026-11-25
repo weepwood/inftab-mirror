@@ -271,3 +271,32 @@ test.describe('touch shortcut editor', () => {
     await expect(dialog).toHaveCount(0)
   })
 })
+
+for(const themeMode of ['light','dark']){
+ test('desktop editor preserves contrast and short screen access '+themeMode,async({page})=>{
+  await page.setViewportSize({width:320,height:360})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.addInitScript(themeMode=>{
+   localStorage.setItem('inftab.desktop-mode.v1','true')
+   localStorage.setItem('inftab.preferences.v1',JSON.stringify({themeMode}))
+  },themeMode)
+  await page.goto('/')
+  const dialog=await openEditor(page)
+  const name=dialog.locator('#shortcut-name'),save=dialog.getByRole('button',{name:'保存',exact:true})
+  const colors=await measuredColors(name)
+  expect(contrast(colors.border,colors.background)).toBeGreaterThanOrEqual(3)
+  for(const selector of ['header h2','header p','label[for="shortcut-name"]','.button-primary','.button-secondary']){
+   const c=await measuredColors(dialog.locator(selector).first())
+   expect(contrast(c.text,c.background),selector).toBeGreaterThanOrEqual(4.5)
+  }
+  await expect(save).toBeInViewport()
+  expect((await save.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+  await dialog.locator('summary').click()
+  await dialog.locator('#shortcut-icon').scrollIntoViewIfNeeded()
+  await expect(dialog.locator('#shortcut-icon')).toBeInViewport()
+  await expect(save).toBeInViewport()
+  expect(await dialog.locator('.shortcut-editor-body').evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+ })
+}

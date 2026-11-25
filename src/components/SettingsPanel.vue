@@ -53,6 +53,8 @@ const hasLocalWallpaper = computed(() => props.preferences.customWallpaper.start
 const searchEngineName = ref('')
 const searchEngineTemplate = ref('')
 const searchEngineError = ref('')
+const engineErrorField = ref<'name'|'template'>()
+const engineNameInput = ref<HTMLInputElement>(), engineTemplateInput = ref<HTMLInputElement>()
 const manageableLauncherItems = launcherItems.filter((item) => item.action && item.id !== 'settings')
 
 const settingsGroups = [
@@ -181,25 +183,31 @@ function setCustomWallpaper(value: string) {
   update('wallpaperRotationLastAt', Date.now())
 }
 
+function clearEngineError(){searchEngineError.value='';engineErrorField.value=undefined}
 function addSearchEngine() {
   const name = searchEngineName.value.trim()
   const template = searchEngineTemplate.value.trim()
   if (!name) {
+    engineErrorField.value = 'name'
     searchEngineError.value = '请填写搜索引擎名称。'
+    engineNameInput.value?.focus()
     return
   }
   if (!isValidCustomSearchTemplate(template)) {
+    engineErrorField.value = 'template'
     searchEngineError.value = '请输入 HTTPS 搜索网址，并在查询位置使用 {query}。'
+    engineTemplateInput.value?.focus()
     return
   }
   if (props.customEngines.length >= 20) {
+    engineErrorField.value = undefined
     searchEngineError.value = '最多可以添加 20 个自定义搜索引擎。'
     return
   }
   emit('addSearchEngine', name, template)
   searchEngineName.value = ''
   searchEngineTemplate.value = ''
-  searchEngineError.value = ''
+  clearEngineError()
 }
 
 async function loadWallpaperFile(event: Event) {
@@ -381,11 +389,11 @@ function handleBackupDialogKeydown(event: KeyboardEvent) {
       <p class="settings-subheading">显示搜索类型</p>
       <label v-for="item in searchModes" :key="item.id" class="toggle-row"><span>{{ item.label }}</span><input type="checkbox" :checked="preferences.visibleSearchModes.includes(item.id)" @change="toggleSearchMode(item.id, ($event.target as HTMLInputElement).checked)" /></label>
       <p class="settings-subheading">自定义搜索引擎（最多 20 个）</p>
-      <form class="custom-engine-form" @submit.prevent="addSearchEngine">
-        <label class="field-label">名称<input v-model="searchEngineName" maxlength="40" placeholder="例如：维基百科" @input="searchEngineError = ''" /></label>
-        <label class="field-label">搜索网址模板<input v-model="searchEngineTemplate" maxlength="500" placeholder="https://example.com/search?q={query}" @input="searchEngineError = ''" /></label>
-        <p class="wallpaper-note">必须使用 HTTPS，并用 {query} 标记搜索词的位置。</p>
-        <p v-if="searchEngineError" class="backup-error" role="alert">{{ searchEngineError }}</p>
+      <form class="custom-engine-form" novalidate @submit.prevent="addSearchEngine" @keydown.enter="($event.isComposing||$event.keyCode===229)&&$event.preventDefault()">
+        <label class="field-label">名称<input ref="engineNameInput" v-model="searchEngineName" required maxlength="40" placeholder="例如：维基百科" :aria-invalid="engineErrorField==='name'||undefined" :aria-describedby="engineErrorField==='name'?'search-engine-error':undefined" @input="clearEngineError" /></label>
+        <label class="field-label">搜索网址模板<input ref="engineTemplateInput" v-model="searchEngineTemplate" required inputmode="url" autocomplete="off" autocapitalize="off" :spellcheck="false" maxlength="500" placeholder="https://example.com/search?q={query}" :aria-invalid="engineErrorField==='template'||undefined" :aria-describedby="engineErrorField==='template'?'search-engine-error search-engine-hint':'search-engine-hint'" @input="clearEngineError" /></label>
+        <p id="search-engine-hint" class="wallpaper-note">必须使用 HTTPS，并用 {query} 标记搜索词的位置。</p>
+        <p v-if="searchEngineError" id="search-engine-error" class="backup-error" role="alert">{{ searchEngineError }}</p>
         <button class="button-secondary" type="submit" :disabled="customEngines.length >= 20">添加搜索引擎</button>
       </form>
       <ul v-if="customEngines.length" class="custom-engine-list" aria-label="自定义搜索引擎">
