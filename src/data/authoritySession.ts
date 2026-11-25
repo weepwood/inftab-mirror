@@ -3,6 +3,7 @@ import { strictSnapshot } from './workspaceGeneration'
 import { planWorkspaceConflict } from './workspaceConflict'
 import { same } from './storagePreflight'
 import type { WorkspaceBackup } from './backup'
+import { parseAuthorityDraft, listRecoveryDrafts } from './authorityRecovery'
 
 /** Async editing session: no fallback, no overwrite on CAS failure. */
 export async function openAuthoritySession(sourceOrigin:string){
@@ -41,6 +42,21 @@ export async function openAuthoritySession(sourceOrigin:string){
   token={generation:latest.state.generation,revision:latest.state.revision}
   return {conflicts:[]}
  })}
+ function restore(content:string,recoveryId?:string){return exclusive(async()=>{
+  if(dirty())throw new Error('请先保存或导出当前未提交修改。')
+  const file=parseAuthorityDraft(content),latest=await adapter.read()
+  if(latest.mode!=='active'||file.sourceOrigin!==sourceOrigin||file.generation!==latest.state.generation||file.revision>latest.state.revision)throw new Error('恢复草稿与当前权威世代不匹配。')
+  const retained=file.revision===latest.state.revision?latest.state.head:file.revision===latest.state.revision-1?latest.state.previous:undefined
+  if(retained!==undefined){
+   if(!same(file.base,JSON.parse(retained)))throw new Error('恢复草稿基础快照与保留版本不一致。')
+  }else{
+   // Only a locally persisted checkpoint may supply an older base.
+   if(!recoveryId||!(await listRecoveryDrafts()).some(r=>r.id===recoveryId&&r.content===content))throw new Error('外部草稿基础版本已不在保留范围，请手工合并。')
+  }
+  token={generation:file.generation,revision:file.revision}
+  base=structuredClone(file.base);draft=structuredClone(file.draft)
+  return view()
+ })}
  const exportDraft=()=>JSON.stringify({format:'inftab-authority-draft',version:1,sourceOrigin,targetOrigin:location.origin,...token,base,draft})
- return {view,edit,save,rebase,exportDraft}
+ return {view,edit,save,rebase,restore,exportDraft}
 }

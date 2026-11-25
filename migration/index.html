@@ -39,6 +39,15 @@ select,textarea{font:inherit;padding:8px;border:1px solid #bbc1c9;border-radius:
 <h2>03 · 独立权威工作区编辑</h2>
 <p>实验性笔记和待办编辑会话，其他工作区数据随完整快照保留。明确保存后才写入 IndexedDB；冲突时保留草稿。</p>
 <p id="editor-revision"></p>
+<p id="editor-checkpoint-status" aria-live="polite"></p>
+<button id="editor-checkpoint">立即保存恢复草稿</button>
+<label>本地恢复记录<select id="editor-recovery"><option value="">选择恢复草稿</option></select></label>
+<button id="editor-recovery-refresh">刷新恢复记录</button>
+<button id="editor-recovery-restore">恢复所选草稿</button>
+<button id="editor-recovery-export">下载所选草稿</button>
+<button id="editor-recovery-delete">删除所选草稿</button>
+<label>导入外部恢复草稿<input id="editor-import" type="file" accept=".json,application/json"></label>
+<p>自动保存有短暂延迟；仅“恢复草稿已持久化”表示本地检查点完成。最多 8 份、总计 32 MiB，满时拒绝写入，不自动删除旧记录。恢复不自动提交权威数据。</p>
 <label>笔记<select id="editor-note"></select></label>
 <label>笔记标题<input id="editor-title"></label>
 <label>笔记正文<textarea id="editor-body" rows="5"></textarea></label>
