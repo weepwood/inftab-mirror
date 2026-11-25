@@ -904,7 +904,7 @@ onBeforeUnmount(() => {
     <div class="background-shade"></div>
     <div class="home-brand" aria-label="Infinity 新标签页"><span class="brand-mark" aria-hidden="true">∞</span><span class="brand-word">infinity</span><span class="brand-label">新标签页</span></div>
     <header class="home-actions" :inert="(desktopMode&&overlayOpen)||undefined">
-      <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="openFinder()">Inftab</button>
+      <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label desktop-app-menu" @click="openFinder()"><span aria-hidden="true">∞</span> Inftab</button>
       <DesktopMenus v-if="desktopMode && !minimalMode" @run="$event==='desktop:folder'?openFolderEditor():runCommand($event)" />
       <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="toggleWindowOverview">窗口</button>
       <button v-if="!minimalMode" type="button" class="round-action desktop-mode-toggle" :aria-label="desktopMode ? '经典模式' : '桌面模式'" :title="desktopMode ? '经典模式' : '桌面模式'" :aria-pressed="desktopMode" @click="desktopMode = !desktopMode"><span aria-hidden="true">▦</span></button>
@@ -1007,7 +1007,7 @@ onBeforeUnmount(() => {
     </section>
 
     <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :blocked="overlayOpen||localSearchMode||minimalMode" :inert="(overlayOpen)||undefined" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :history="desktopHistory" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="runningDesktopPanels=$event" @create="openFinderFolderEditor" />
-    <HomeDock v-if="homeDockItems.length && !minimalMode" :blocked="desktopMode&&overlayOpen" :desktop="desktopMode" :items="homeDockItems" :running-panels="runningDesktopPanels" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="dockOpen" @remove="toggleDockItem" />
+    <HomeDock v-if="(homeDockItems.length || desktopMode) && !minimalMode" :blocked="desktopMode&&overlayOpen" :desktop="desktopMode" :items="homeDockItems" :running-panels="runningDesktopPanels" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="dockOpen" @remove="toggleDockItem" @finder="openFinder()" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
       <span>{{ storageError }}</span>
@@ -1066,25 +1066,26 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.home.desktop-mode .home-content:not(.home-content-minimal){width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;justify-content:flex-start;gap:8px;padding-top:54px;padding-bottom:84px}
-.home.desktop-mode .home-content.desktop-search-reserved{padding-top:142px}
+.home.desktop-mode .home-content:not(.home-content-minimal){width:calc(100% - 40px);min-height:calc(100dvh - 90px);display:flex;flex-direction:column;justify-content:flex-start;gap:8px;padding-top:42px;padding-bottom:96px}
+.home.desktop-mode .home-content.desktop-search-reserved{padding-top:104px}
+@media(min-width:781px){.home.desktop-mode .home-content:not(.desktop-search-reserved):has(>.home-widget-shelf){padding-top:70px}}
 .home.desktop-mode{overflow-y:auto;overscroll-behavior-y:contain}
 .desktop-mode .background-shade{position:fixed}
 .desktop-mode .desktop-shell{min-height:240px}
 .desktop-mode .storage-error-toast{position:fixed;z-index:9;bottom:14px}
 .desktop-mode-toggle{font-size:22px}
 .desktop-mode .home-brand{display:none}
-.desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:42px;padding:2px 14px;gap:5px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);backdrop-filter:blur(24px) saturate(140%);box-shadow:0 1px 0 var(--mac-line);z-index:8}
-.desktop-mode .home-actions .round-action{width:30px;height:30px;border-radius:6px;color:var(--mac-ink);background:transparent}
+.desktop-mode .home-actions{position:fixed;inset:0 0 auto;box-sizing:border-box;height:30px;padding:0 12px;gap:2px;border-radius:0;border-width:0 0 1px;align-items:center;background:var(--mac-bar);color:var(--mac-ink);border-color:var(--mac-line);backdrop-filter:blur(32px) saturate(175%);box-shadow:none;z-index:8}
+.desktop-mode .home-actions .round-action{width:27px;height:25px;border-radius:5px;color:var(--mac-ink);background:transparent}
 .desktop-mode .home-actions .round-action:hover,.desktop-mode .home-actions .round-action[aria-pressed=true]{background:var(--mac-selection-soft)}
 .desktop-mode .home-actions .desktop-mode-toggle[aria-pressed=true]{background:transparent}
 .desktop-mode .home-actions .desktop-mode-toggle:hover{background:var(--mac-selection-soft)}
-.desktop-menu-label{border:0;background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:500;padding:6px 10px;border-radius:5px;cursor:pointer}
+.desktop-menu-label{border:0;background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:500;padding:4px 8px;border-radius:5px;cursor:pointer}
 .desktop-menu-label:hover{background:var(--ui-accent-soft)}
-.desktop-menu-label:first-child{margin-right:2px;font-weight:650}
+.desktop-menu-label:first-child{margin-right:5px;font-weight:650}.desktop-app-menu span{font-size:20px;font-weight:650;line-height:12px;vertical-align:-1px;margin-right:5px}
 .desktop-mode .desktop-mode-toggle{margin-left:auto}
 .home.desktop-mode .home-content:not(.home-content-minimal){z-index:auto}
-.desktop-mode .home-content :deep(.search-area){position:fixed;z-index:2;top:54px;left:50%;transform:translateX(-50%);width:min(420px,calc(100% - 40px));margin:0}
+.desktop-mode .home-content :deep(.search-area){position:fixed;z-index:2;top:42px;left:50%;transform:translateX(-50%);width:min(420px,calc(100% - 40px));margin:0}
 .desktop-mode .home-content :deep(.search-area.local-search-mode){z-index:10}
 .desktop-mode .home-content :deep(.local-search-results){border-radius:10px;background:var(--mac-menu);border-color:var(--mac-line);box-shadow:var(--mac-shadow)}
 .desktop-mode .home-content :deep(.search-box){height:40px;border-radius:10px;background:var(--mac-bar);border-color:var(--mac-line);box-shadow:0 4px 18px #0002}
@@ -1094,6 +1095,6 @@ onBeforeUnmount(() => {
 @media(max-width:760px){.desktop-mode .home-actions :deep(.clock-date){display:none}}
 @media(max-width:460px){.desktop-mode .home-actions :deep(.home-clock){display:none}}
 .desktop-mode .home-actions .round-action:focus-visible,.desktop-menu-label:focus-visible{outline:2px solid var(--ui-focus);outline-offset:1px}
-@media(max-width:480px){.desktop-mode .home-actions{padding-inline:5px;gap:2px}.desktop-menu-label{padding:4px 5px;font-size:12px}.desktop-mode .home-actions .round-action{width:29px;height:29px}}
+@media(max-width:480px){.desktop-mode .home-actions{padding-inline:5px;gap:2px}.desktop-menu-label{padding:4px 5px;font-size:12px}.desktop-mode .home-actions .round-action{width:27px;height:25px}}
 
 </style>

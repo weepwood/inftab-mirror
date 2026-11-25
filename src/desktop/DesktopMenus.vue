@@ -46,7 +46,7 @@ onBeforeUnmount(()=>document.removeEventListener('pointerdown',outside,true))
 <template>
  <nav ref="root" class="desktop-menus" aria-label="桌面功能菜单" @keydown="keys" @focusout="focusOut">
   <div v-for="group in groups" :key="group.label" class="desktop-menu-anchor">
-   <button type="button" :data-menu="group.label" aria-haspopup="menu" :aria-expanded="active===group.label" @click="open(group.label)">{{group.label}}</button>
+   <button type="button" :data-menu="group.label" aria-haspopup="menu" :aria-expanded="active===group.label" @click="open(group.label)" @pointerenter="active&&active!==group.label&&(active=group.label)">{{group.label}}</button>
    <div v-if="active===group.label" class="desktop-dropdown" role="menu" :aria-label="group.label+'菜单'" @keydown="navigateMenu">
     <button v-for="[id,label] in group.items" :key="id" type="button" role="menuitem" @click="run(id!)">{{label}}</button>
    </div>
@@ -56,9 +56,9 @@ onBeforeUnmount(()=>document.removeEventListener('pointerdown',outside,true))
 <style scoped>
 .desktop-menus{display:flex;align-items:center;gap:2px;font:400 13px var(--mac-font);color:var(--mac-ink)}
 .desktop-menu-anchor{position:relative}
-button{border:0;background:transparent;color:inherit;cursor:pointer;border-radius:5px;padding:5px 9px;white-space:nowrap}
+button{border:0;background:transparent;color:inherit;cursor:pointer;border-radius:5px;padding:4px 8px;white-space:nowrap}
 button:hover,button[aria-expanded=true]{background:var(--mac-selection-soft)}
-.desktop-dropdown{position:absolute;top:calc(100% + 6px);left:0;z-index:2;min-width:200px;padding:var(--mac-menu-padding);background:var(--mac-menu);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);box-shadow:var(--mac-shadow);backdrop-filter:blur(22px)}
+.desktop-dropdown{position:absolute;top:calc(100% + 3px);left:0;z-index:2;min-width:200px;padding:var(--mac-menu-padding);background:var(--mac-menu);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);box-shadow:var(--mac-shadow);backdrop-filter:blur(28px) saturate(165%)}
 .desktop-dropdown button{display:block;text-align:left;width:100%;padding:6px 10px}
 .desktop-dropdown button:hover,.desktop-dropdown button:focus-visible{background:var(--mac-selection);color:var(--mac-selection-ink);outline:0}
 @media(max-width:800px){.desktop-menus{display:none}}

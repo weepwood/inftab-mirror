@@ -545,3 +545,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 在现有混合画布基础上，WidgetSlot 可选canvas坐标独立于原3列网格；拖动小组件手柄使用原生HTML拖放，可落于真实画布空位，方向键8px微调；拒绝与其他小组件/退出按钮相交，图标通过原保留区算法避让，保存及刷新恢复；窄屏、经典及独立布局仍保留旧网格。此实现使用原生拖放影像，非Pointer Events跟手/触屏，未解决全部视口缩放及动态高度造成的卡片间冲突，也未实现自由尺寸调整。坐标存储限制0..100000。
 - 本机Vite开发服务器127.0.0.1:4277（PID 30863，日志 /Volumes/data/AI-Development/logs/inftab-local-preview.log），已调用系统浏览器open并验证HTTP 200；新端口不注入或覆盖用户数据。保留预览服务，不停止其他项目。
 - 初版npm run check通过，生产build因非Swiper gzip 205258>204800 B失败；开发版单测10/10、生产相同业务E2E在开发服务器3/3通过（独立布局、混合占位、像素拖动/8px方向键/刷新）。随后复用共享Shelf bindings和字段合并、调整按需分包，最近check通过，但build仍205033>204800 B（超233字节，首屏60.2/60.5 KiB）。最后将backupHistory归入workspace-recovery并复用rectsOverlap、boundedInteger，新增坐标校验与碰撞拒绝断言；因内存压力level2资源门禁拒绝新重型任务，最后这组变更尚未完成check、build或浏览器复验，不宣称通过生产预算。后续恢复normal后先执行既有验证，不放宽预算。未改正式main、Tag或PR。工作区仅本地提交；不提交node_modules链接与本地Playwright配置。
+
+## macOS 视觉系统第一轮重构（2026-11-26）
+- 用户要求先研究仿macOS开源项目再完善实际本地代码。查阅PuruVJ/macos-web、Renovamen/playground-macos、ThanasOS、SatyajitOS源码及Apple HIG；记录来源、许可证边界、实际文件与设计原则至docs/macos-visual-reference-study.md。仅参考方法，无复制第三方源码/素材、无新依赖。
+- 视觉重构：30px菜单栏、独立玻璃Dock、固定Finder（不写入用户pins，经典模式无此项）、紧凑桌面工具区、顶部工作区、菜单悬浮切换、窗口材质及交通灯、Finder侧栏/工具栏、原创应用图标材质、标签阴影、小组件材质、浅深和窄屏。初次无layout记录的桌面采用现有arrangeFromRight纵向排列（已有布局不强制覆盖）；预览仍127.0.0.1:4277，HTTP200。实际隔离测试截图4张复制至外置日志目录inftab-macos-visual-20261126。
+- 本地check通过，上一轮新增坐标/工作区等单测13/13；视觉与交互开发Edge首轮8/8，第二轮3项通过1项因Finder无障碍名称断言错误失败，核实实际Finder已打开后修正，专项2/2。最终右上构图、固定Finder、原群组/自由拖动/小组件像素摆放5/5。最近生产构建非Swiper205360>204800 B（超560字节），初始60.3/60.5 KiB、CSS37.4/64 KiB；最终构图调整尚未重跑生产构建。不能宣称生产或跨浏览器通过。固定Finder独立悬浮动效、应用图标与真实窗口工具栏仍需深化。未执行任何远端写入或PR操作，仅本地中文提交。保留预览进程及未跟踪node_modules与本地Playwright配置。

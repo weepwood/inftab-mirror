@@ -79,7 +79,11 @@ function migrate() {
 const width = ref(960)
 const height = ref(480)
 const canvasHeight = computed(() => Math.max(height.value, Math.ceil(visibleItems.value.length / Math.max(1, Math.floor(width.value/cell)))*cell, ...visibleItems.value.map(item => (layout.value.positions[item.id]?.y ?? 0) + cell),...reserved.value.map(r=>r.y+r.height)))
-const resolved = computed(() => resolvePoints(visibleItems.value.map(i=>i.id),layout.value.positions,width.value,canvasHeight.value,reserved.value))
+const resolved = computed(() => {
+ const ids=visibleItems.value.map(i=>i.id)
+ // A fresh desktop follows native right-to-left column arrangement; saved layouts remain canonical.
+ return resolvePoints(ids,props.layout?layout.value.positions:arrangeFromRight(ids,width.value,height.value),width.value,canvasHeight.value,reserved.value)
+})
 const positions = computed(() => visibleItems.value.map(item => ({item,point:resolved.value[item.id]!})))
 const renderedHeight = computed(() => Math.max(canvasHeight.value,...positions.value.map(p=>p.point.y+cell)))
 let observer: ResizeObserver | undefined
@@ -354,9 +358,9 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 </template>
 <style scoped>
 .desktop-shell{width:100%;min-width:0;color:#fff;flex:1;display:flex;flex-direction:column;min-height:0}
-.desktop-toolbar{display:flex;align-items:center;gap:3px;align-self:flex-end;max-width:100%;padding:3px 4px;background:var(--mac-bar);color:var(--mac-ink);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);backdrop-filter:blur(20px) saturate(135%);box-shadow:0 3px 12px #0002;margin-bottom:3px}
+.desktop-toolbar{display:flex;align-items:center;gap:3px;align-self:flex-end;max-width:100%;padding:3px 4px;background:var(--mac-bar);color:var(--mac-ink);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);backdrop-filter:blur(28px) saturate(160%);box-shadow:0 2px 9px #0002;margin-bottom:3px}
 .desktop-toolbar span{min-width:0;overflow:hidden;text-overflow:ellipsis;margin:0 5px;font-size:11px;font-weight:500;white-space:nowrap;color:var(--mac-muted)}
-.desktop-toolbar button{flex-shrink:0;white-space:nowrap;border:0;background:transparent;color:var(--mac-ink);border-radius:var(--mac-radius-menu-item);padding:5px 8px;font-size:12px;cursor:pointer}
+.desktop-toolbar button{flex-shrink:0;white-space:nowrap;border:0;background:transparent;color:var(--mac-ink);border-radius:var(--mac-radius-menu-item);padding:4px 7px;font-size:11px;cursor:pointer}
 .desktop-toolbar button:hover{background:var(--mac-selection-soft)}.desktop-toolbar button[aria-pressed=true]{background:var(--mac-selection-soft);color:var(--mac-ink)}.desktop-toolbar button:focus-visible{outline:2px solid var(--ui-focus);outline-offset:1px}
 .desktop-surface{position:relative;flex:1;min-height:240px;overflow:auto}
 .desktop-canvas{position:relative;min-width:100%;touch-action:pan-y}
@@ -369,10 +373,10 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 .desktop-icon:focus-visible{outline:2px solid white;outline-offset:-3px;border-radius:8px}
 .desktop-shell{--desktop-symbol-size:clamp(32px,calc(var(--shortcut-size,72px) * .75 + 2px),56px)}.desktop-shell.hide-names{--desktop-symbol-size:clamp(32px,calc(var(--shortcut-size,72px) * .75 + 2px),80px)}
 .desktop-shell.hide-names .desktop-icon{justify-content:center;padding:0}
-.desktop-symbol{width:var(--desktop-symbol-size);height:var(--desktop-symbol-size);flex:none;border-radius:var(--mac-icon-radius);border:1px solid var(--mac-icon-edge);display:grid;place-items:center;overflow:hidden;color:white;box-shadow:var(--mac-icon-shadow);font-size:24px}
+.desktop-symbol{width:var(--desktop-symbol-size);height:var(--desktop-symbol-size);flex:none;border-radius:24%;corner-shape:squircle;border:1px solid var(--mac-icon-edge);display:grid;place-items:center;overflow:hidden;color:white;box-shadow:var(--mac-icon-shadow);font-size:24px}
 
 .desktop-symbol img{width:100%;height:100%;object-fit:contain;pointer-events:none}
-.desktop-label{max-width:90px;padding:1px 5px;border-radius:5px;box-sizing:border-box;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;white-space:normal;font-size:12px;font-weight:500;line-height:14px;text-align:center;color:var(--mac-desktop-label-ink);background:var(--mac-desktop-label)}
+.desktop-label{max-width:90px;padding:1px 5px;border-radius:5px;box-sizing:border-box;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;white-space:normal;font-size:12px;font-weight:500;line-height:14px;text-align:center;color:var(--mac-desktop-label-ink);background:var(--mac-desktop-label);text-shadow:0 1px 3px #000c,0 1px 7px #0008}
 .desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon:focus-visible .desktop-symbol{outline:2px solid #fff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection)}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:var(--desktop-symbol-size)}.desktop-menu{position:fixed;z-index:10;background:var(--mac-menu);color:var(--mac-ink);padding:var(--mac-menu-padding);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);box-shadow:var(--mac-shadow);width:170px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);overflow:auto;overscroll-behavior:contain;backdrop-filter:blur(18px)}.desktop-menu button{display:block;width:100%;text-align:left;padding:7px 9px;background:none;border:0;border-radius:var(--mac-radius-menu-item);color:inherit;cursor:pointer}.desktop-menu button:hover,.desktop-menu button:focus-visible{background:var(--mac-selection);color:var(--mac-selection-ink)}
 .desktop-marquee{position:absolute;pointer-events:none;border:1px solid #93c9ff;background:#559aff30;z-index:4}@media(prefers-reduced-motion:no-preference){.desktop-shell{animation:desktop-space-in .14s ease-out}@keyframes desktop-space-in{from{opacity:.65}to{opacity:1}}.desktop-icon.selected .desktop-symbol{transition:outline-color .12s}.finder{animation:finder-appear .15s ease-out}}
 .desktop-menu.dark{background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line)}
