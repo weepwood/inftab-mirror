@@ -2030,3 +2030,29 @@ test('mixed desktop canvas reserves actual widget rectangles and restores separa
  await page.getByRole('button',{name:'经典模式',exact:true}).click()
  await expect(shelf.getByRole('button',{name:'拖动待办概览排序'})).toBeVisible()
 })
+
+test('mixed canvas widget moves by pixel coordinates and survives reload',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000})
+ await page.addInitScript(()=>{
+  if(sessionStorage.getItem('pixel-widget-seed'))return
+  sessionStorage.setItem('pixel-widget-seed','1')
+  localStorage.setItem('inftab.desktop-mode.v1','true')
+  localStorage.setItem('inftab.preferences.v1',JSON.stringify({showSearchBar:false,homeWidgetIds:['todo-summary','notes-summary']}))
+  localStorage.setItem('inftab.home-workspaces.v1',JSON.stringify([{id:'default',name:'主页',itemIds:[],widgetCanvas:true,widgetSlots:{'todo-summary':{x:0,y:0},'notes-summary':{x:2,y:0}}}]))
+ })
+ await page.goto('/')
+ const canvas=page.locator('.desktop-canvas'),card=canvas.locator('[data-widget-id="todo-summary"]'),handle=card.locator('.home-widget-grip')
+ await expect(card).toBeVisible()
+ const box=(await canvas.boundingBox())!,source=(await card.boundingBox())!,grip=(await handle.boundingBox())!
+ await handle.dragTo(canvas,{targetPosition:{x:60+grip.x-source.x+grip.width/2,y:320+grip.y-source.y+grip.height/2}})
+ const coords=()=>card.evaluate(el=>{const a=el.getBoundingClientRect(),b=el.closest('.desktop-canvas')!.getBoundingClientRect();return {x:Math.round(a.left-b.left),y:Math.round(a.top-b.top)}})
+ await expect.poll(coords).toEqual({x:60,y:320})
+ await handle.focus();await handle.press('ArrowRight')
+ await expect.poll(coords).toEqual({x:68,y:320})
+ const note=canvas.locator('[data-widget-id="notes-summary"]')
+ await handle.dragTo(note,{targetPosition:{x:50,y:30}})
+ await expect.poll(coords).toEqual({x:68,y:320})
+ await page.reload()
+ await expect.poll(coords).toEqual({x:68,y:320})
+ expect(box.width).toBeGreaterThan(900)
+})

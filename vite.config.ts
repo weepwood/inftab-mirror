@@ -41,9 +41,10 @@ export default defineConfig({
             },
             // Both desktop shell views mount together, but never on classic home.
             { name: 'desktop-shell', test: /\/src\/desktop\/(?:DesktopShell|DesktopMenus)\.vue/, includeDependenciesRecursively: false },
-            { name: 'widget-shelf', test: /\/src\/(?:components\/HomeWidgetShelf\.vue|data\/widgetSlots\.ts)/, includeDependenciesRecursively: false },
+            { name: 'weather-widget', test: /\/src\/(?:components\/WeatherSummaryWidget\.vue|data\/weatherPermissions\.ts)/, includeDependenciesRecursively: false },
+            { name: 'widget-shelf', test: /\/src\/(?:components\/HomeWidgetShelf\.vue|data\/widgetSlots\.ts|plugins\/widgetRegistry\.ts)/, includeDependenciesRecursively: false },
             { name: 'desktop-transactions', test: /\/src\/desktop\/(?:desktopOperations|transactionIntent|operationHistory)\.ts/, includeDependenciesRecursively: false },
-            { name: 'workspace-recovery', test: /\/src\/(?:data\/(?:backup|themeEditorData|mergeById)\.ts|composables\/workspaceBackup\.ts)/, includeDependenciesRecursively: false },
+            { name: 'workspace-recovery', test: /\/src\/(?:data\/(?:backup|backupHistory|themeEditorData|mergeById)\.ts|composables\/workspaceBackup\.ts)/, includeDependenciesRecursively: false },
             // Related opt-in widgets share templates and imports, but never pull
             // a panel or a permission request into the startup graph.
             {
@@ -76,7 +77,7 @@ export default defineConfig({
             // overhead without pulling them into the homepage startup graph.
             {
               name: 'settings-tools',
-              test: /\/src\/components\/(?:RangeField|SettingsPanel|CustomThemeEditor|ConfigMigration|ShortcutManager|HomeLayoutEditor)\.vue|\/src\/data\/(?:backupHistory|shortcutBatch|downloadBackup|bookmarkHtml|configMigration|themeExchange|homeWidgetPresets|layoutEditor)\.ts/,
+              test: /\/src\/components\/(?:RangeField|SettingsPanel|CustomThemeEditor|ConfigMigration|ShortcutManager|HomeLayoutEditor)\.vue|\/src\/data\/(?:shortcutBatch|downloadBackup|bookmarkHtml|configMigration|themeExchange|homeWidgetPresets|layoutEditor)\.ts/,
               includeDependenciesRecursively: false,
             },
             // Small offline tools share Vue/icon imports and repeated form markup.

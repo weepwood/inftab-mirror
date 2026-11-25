@@ -289,6 +289,11 @@ function saveWidgetSlots(widgetSlots: import('./data/widgetSlots').WidgetSlots|u
 function saveDesktopLayout(layout: DesktopLayout) {
   homeWorkspaces.value = homeWorkspaces.value.map(w => w.id === activeHomeWorkspaceId.value ? {...w,desktop:layout} : w)
 }
+const widgetShelfBindings=computed(()=>({
+  widgetIds:preferences.value.homeWidgetIds,widgetSizes:preferences.value.homeWidgetSizes,context:homeWidgetContext.value,
+  widgetSlots:activeHomeWorkspace.value.widgetSlots,desktopLayout:desktopMode.value&&viewport.value.width>780,
+  onSlots:saveWidgetSlots,onCanvas:toggleWidgetCanvas,onOpen:openPanel,onRemove:removeHomeWidget,onReorder:reorderHomeWidgets,onResize:resizeHomeWidget,
+}))
 function startLauncherSwipe(event: PointerEvent) {
   if (desktopMode.value) return
   if (preferences.value.pageTransitionEffect !== 'particles' && event.target instanceof Element && event.target.closest('.launcher-swiper')) return
@@ -916,18 +921,8 @@ onBeforeUnmount(() => {
       <ClockWidget v-if="preferences.showClock && (!desktopMode || minimalMode)" />
       <HomeWidgetShelf
         v-if="showHomeWidgets && !minimalMode && !mixedWidgets"
-        :widget-ids="preferences.homeWidgetIds"
-        :widget-sizes="preferences.homeWidgetSizes"
-        :desktop-layout="desktopMode && viewport.width > 780"
-        :widget-slots="activeHomeWorkspace.widgetSlots"
         :key="desktopMode ? activeHomeWorkspaceId : 'classic-widgets'"
-        @slots="saveWidgetSlots"
-        @canvas="toggleWidgetCanvas"
-        :context="homeWidgetContext"
-        @open="openPanel"
-        @remove="removeHomeWidget"
-        @reorder="reorderHomeWidgets"
-        @resize="resizeHomeWidget"
+        v-bind="widgetShelfBindings"
       />
       <HomeWorkspaceTabs
         v-if="!minimalMode"
@@ -975,7 +970,7 @@ onBeforeUnmount(() => {
       </SearchBar>
       <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" :folder-shortcuts="folderPreviewItems" :show-names="preferences.showNames" :dark="effectiveTheme==='dark'" :blocked="overlayOpen" :search-active="localSearchMode" @dismiss-search="dismissDesktopSearch" @layout="saveDesktopLayout" @open="desktopOpen" @edit="editLauncherItem" @finder="openFinder()" @create="openFolderEditor()" @remove="removeLauncherItem" @membership="finderMembership">
         <template v-if="mixedWidgets" #widgets>
-          <HomeWidgetShelf :widget-ids="preferences.homeWidgetIds" :widget-sizes="preferences.homeWidgetSizes" :desktop-layout="true" :canvas-mode="true" :widget-slots="activeHomeWorkspace.widgetSlots??{}" :context="homeWidgetContext" @slots="saveWidgetSlots" @canvas="toggleWidgetCanvas" @open="openPanel" @remove="removeHomeWidget" @reorder="reorderHomeWidgets" @resize="resizeHomeWidget" />
+          <HomeWidgetShelf v-bind="widgetShelfBindings" :canvas-mode="true" :widget-slots="activeHomeWorkspace.widgetSlots??{}" />
         </template>
       </DesktopShell>
       <ShortcutGrid

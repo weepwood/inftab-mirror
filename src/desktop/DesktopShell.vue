@@ -360,7 +360,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 .desktop-toolbar button:hover{background:var(--mac-selection-soft)}.desktop-toolbar button[aria-pressed=true]{background:var(--mac-selection-soft);color:var(--mac-ink)}.desktop-toolbar button:focus-visible{outline:2px solid var(--ui-focus);outline-offset:1px}
 .desktop-surface{position:relative;flex:1;min-height:240px;overflow:auto}
 .desktop-canvas{position:relative;min-width:100%;touch-action:pan-y}
-.desktop-widget-layer{position:absolute;top:0;right:0;width:min(960px,100%);z-index:1;pointer-events:none}
+.desktop-widget-layer{position:absolute;top:0;right:0;width:100%;z-index:1;pointer-events:none}
 .desktop-widget-layer :deep(.home-widget-shelf){width:100%;margin:0;overflow:visible}
 .desktop-widget-layer :deep(.home-widget-card),.desktop-widget-layer :deep(.widget-layout-toggle),.desktop-widget-layer :deep(.widget-drop-slot.ready){pointer-events:auto}
 .desktop-icon{position:absolute;top:0;left:0;width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:5px 0 0;gap:4px;border:0;background:none;color:white;touch-action:pan-y;user-select:none;-webkit-touch-callout:none;cursor:pointer}

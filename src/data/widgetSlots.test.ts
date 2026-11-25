@@ -21,3 +21,7 @@ describe('independent widget positions',()=>{
   expect(sanitizeHomeWorkspaces(undefined)[0]?.widgetSlots).toBeUndefined()
  })
 })
+
+it('preserves valid canvas points and bounds malformed coordinates without changing grid slots',()=>{
+ expect(sanitizeWidgetSlots({'todo-summary':{x:1,y:2,canvas:{x:68,y:320}},'notes-summary':{x:0,y:1,canvas:{x:-4,y:200000}},'weather-summary':{x:2,y:0,canvas:{x:NaN,y:0}}})).toEqual({'todo-summary':{x:1,y:2,canvas:{x:68,y:320}},'notes-summary':{x:0,y:1,canvas:{x:0,y:100000}},'weather-summary':{x:2,y:0}})
+})

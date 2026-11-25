@@ -1,7 +1,8 @@
 import { type HomeWidgetId } from '../plugins/ids'
 import type { HomeWidgetSize } from '../types'
 import type { Point } from '../desktop/layout'
-export type WidgetSlots = Partial<Record<HomeWidgetId, Point>>
+export type WidgetSlot = Point & {canvas?:Point}
+export type WidgetSlots = Partial<Record<HomeWidgetId, WidgetSlot>>
 const columns=3,rows=16
 export function widgetSpan(size:HomeWidgetSize){return size==='full'?3:size==='wide'?2:1}
 export function canPlaceWidget(id:HomeWidgetId,p:Point,slots:WidgetSlots,sizes:Record<HomeWidgetId,HomeWidgetSize>){

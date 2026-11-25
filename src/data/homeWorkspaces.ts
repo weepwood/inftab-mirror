@@ -1,7 +1,7 @@
 import type { WidgetSlots } from './widgetSlots'
 import { availableHomeWidgetIds } from '../plugins/ids'
 import { normalizeLayout, type DesktopLayout } from '../desktop/layout'
-import { isRecord, isValidRecordId } from './validation'
+import { isRecord, isValidRecordId, boundedInteger } from './validation'
 import { truncateCodePoints } from './text'
 import { sanitizeWorkspaceLayout, type WorkspaceLayoutOverrides } from './workspaceLayout'
 
@@ -41,7 +41,7 @@ export function sanitizeWidgetSlots(value:unknown):WidgetSlots|undefined{
  const raw=value as WidgetSlots
  return Object.fromEntries(availableHomeWidgetIds.flatMap(id=>{
   const p=raw[id]
-  return p&&Number.isFinite(p.x)&&Number.isFinite(p.y)?[[id,{x:Math.max(0,Math.min(2,Math.round(p.x))),y:Math.max(0,Math.min(15,Math.round(p.y)))}]]:[]
+  return p&&Number.isFinite(p.x)&&Number.isFinite(p.y)?[[id,{x:boundedInteger(p.x,0,0,2),y:boundedInteger(p.y,0,0,15),...(p.canvas&&Number.isFinite(p.canvas.x)&&Number.isFinite(p.canvas.y)?{canvas:{x:boundedInteger(p.canvas.x,0,0,100000),y:boundedInteger(p.canvas.y,0,0,100000)}}:{})}]]:[]
  }))
 }
 

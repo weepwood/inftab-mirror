@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { resolveWidgetSlots, canPlaceWidget, widgetSpan, type WidgetSlots } from '../data/widgetSlots'
-import type { Point } from '../desktop/layout'
+import { rectsOverlap, type Point } from '../desktop/layout'
 import { ArrowDown, ArrowUp, GripVertical, X } from '@lucide/vue'
 import { getHomeWidgetListeners, getHomeWidgetProps, homeWidgetPlugins, type HomeWidgetContext, type HomeWidgetPluginRegistry } from '../plugins/widgetRegistry'
 import type { PanelId } from '../plugins/registry'
@@ -26,6 +26,38 @@ const emit = defineEmits<{
 }>()
 const draggingIndex = ref<number | null>(null)
 const moveAnnouncement = ref('')
+const shelf=ref<HTMLElement>()
+let canvas:HTMLElement|null=null
+let grab:Point={x:0,y:0}
+function canvasMove(id:HomeWidgetId,x:number,y:number){
+ const el=shelf.value?.querySelector<HTMLElement>('[data-widget-id="'+id+'"]')
+ if(!el||!canvas)return
+ const base=canvas.getBoundingClientRect(),r=el.getBoundingClientRect()
+ x=Math.round(Math.max(0,Math.min(base.width-r.width,x)))
+ y=Math.round(Math.max(0,Math.min(base.height-r.height,y)))
+ const occupied=Array.from(shelf.value!.querySelectorAll('.home-widget-card,.widget-layout-toggle')).some(other=>{
+  return other!==el&&rectsOverlap({x:x+base.left,y:y+base.top,width:r.width,height:r.height},other.getBoundingClientRect())
+ })
+ if(occupied){moveAnnouncement.value='目标位置已占用。';return}
+ emit('slots',{...slots.value,[id]:{...slots.value[id]!,canvas:{x,y}}})
+ moveAnnouncement.value=props.plugins[id].title+'已移动。'
+}
+function canvasOver(e:DragEvent){if(draggingIndex.value!==null){e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='move'}}
+function canvasDrop(e:DragEvent){
+ if(draggingIndex.value===null||!canvas)return
+ e.preventDefault()
+ const id=props.widgetIds[draggingIndex.value],r=canvas.getBoundingClientRect()
+ if(id)canvasMove(id,e.clientX-r.left-grab.x,e.clientY-r.top-grab.y)
+ draggingIndex.value=null
+}
+onMounted(()=>{
+ if(!props.canvasMode)return
+ canvas=shelf.value?.closest<HTMLElement>('.desktop-canvas')??null
+ canvas?.addEventListener('dragover',canvasOver)
+ canvas?.addEventListener('drop',canvasDrop)
+})
+onBeforeUnmount(()=>{canvas?.removeEventListener('dragover',canvasOver);canvas?.removeEventListener('drop',canvasDrop)})
+
 const free=computed(()=>props.desktopLayout&&props.widgetSlots!==undefined)
 const slots=computed(()=>resolveWidgetSlots(props.widgetIds,props.widgetSlots??{},props.widgetSizes))
 const emptySlots=computed(()=>{
@@ -42,6 +74,11 @@ function freeKey(e:KeyboardEvent,id:HomeWidgetId){
  if(!free.value||!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))return
  e.preventDefault()
  const p=slots.value[id]
+ if(props.canvasMode&&canvas){
+  const r=(e.currentTarget as HTMLElement).closest('.home-widget-card')!.getBoundingClientRect(),base=canvas.getBoundingClientRect()
+  canvasMove(id,r.left-base.left+(e.key==='ArrowRight'?8:e.key==='ArrowLeft'?-8:0),r.top-base.top+(e.key==='ArrowDown'?8:e.key==='ArrowUp'?-8:0))
+  return
+ }
  if(p)place(id,{x:p.x+(e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0),y:p.y+(e.key==='ArrowDown'?1:e.key==='ArrowUp'?-1:0)})
 }
 function freeDrop(e:DragEvent,p:Point){
@@ -52,6 +89,10 @@ function freeDrop(e:DragEvent,p:Point){
 }
 function cardStyle(id:HomeWidgetId){
  const p=slots.value[id]
+ if(props.canvasMode&&p?.canvas){
+  const span=widgetSpan(props.widgetSizes[id]),w='calc((min(960px, 100%) - 24px) / 3 * '+span+' + '+(span-1)*12+'px)'
+  return {position:'absolute' as const,width:w,left:'min('+p.canvas.x+'px, calc(100% - '+w+'))',top:p.canvas.y+'px'}
+ }
  return free.value&&p?{gridColumn:(p.x+1)+' / span '+widgetSpan(props.widgetSizes[id]),gridRow:String(p.y+1)}:undefined
 }
 
@@ -69,6 +110,10 @@ function openWidget(id: HomeWidgetId) {
 
 function startDrag(event: DragEvent, index: number) {
   draggingIndex.value = index
+  if(props.canvasMode){
+   const r=(event.currentTarget as HTMLElement).closest('.home-widget-card')!.getBoundingClientRect()
+   grab={x:event.clientX-r.left,y:event.clientY-r.top}
+  }
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', String(index))
@@ -109,11 +154,11 @@ function widgetSizeButtonText(size: HomeWidgetSize) {
 </script>
 
 <template>
-  <section class="home-widget-shelf" :class="{'widget-free':free}" aria-label="首页小组件">
+  <section ref="shelf" class="home-widget-shelf" :class="{'widget-free':free,'widget-canvas':canvasMode}" aria-label="首页小组件">
     <button v-if="desktopLayout" class="widget-layout-toggle" type="button" :aria-pressed="free" @click="canvasMode?emit('canvas'):emit('slots',free?undefined:{})">{{canvasMode?'移出桌面画布':free?'自动排列小组件':'自由排布小组件'}}</button>
     <button v-if="desktopLayout&&free&&!canvasMode" class="widget-canvas-toggle" type="button" @click="emit('canvas')">放入桌面画布</button>
     <span class="visually-hidden" role="status" aria-live="polite">{{ moveAnnouncement }}</span>
-    <div v-for="p in emptySlots" :key="'slot:'+p.x+':'+p.y" class="widget-drop-slot" :class="{ready:draggingIndex!==null&&canPlaceWidget(widgetIds[draggingIndex]!,p,slots,widgetSizes)}" :style="{gridColumn:String(p.x+1),gridRow:String(p.y+1)}" aria-hidden="true" @dragover.prevent @drop="freeDrop($event,p)" />
+    <div v-for="p in canvasMode?[]:emptySlots" :key="'slot:'+p.x+':'+p.y" class="widget-drop-slot" :class="{ready:draggingIndex!==null&&canPlaceWidget(widgetIds[draggingIndex]!,p,slots,widgetSizes)}" :style="{gridColumn:String(p.x+1),gridRow:String(p.y+1)}" aria-hidden="true" @dragover.prevent @drop="freeDrop($event,p)" />
     <article
       v-for="(id, index) in widgetIds"
       :key="id"
@@ -122,7 +167,7 @@ function widgetSizeButtonText(size: HomeWidgetSize) {
       :style="cardStyle(id)"
       :class="{ dragging: draggingIndex === index, 'home-widget-card-wide': widgetSizes[id] === 'wide', 'home-widget-card-full': widgetSizes[id] === 'full' }"
       @dragover.prevent
-      @drop="free&&slots[id]?freeDrop($event,slots[id]!):dropWidget($event, index)"
+      @drop="!canvasMode&&(free&&slots[id]?freeDrop($event,slots[id]!):dropWidget($event, index))"
       @dragend="draggingIndex = null"
     >
       <header class="home-widget-header">
@@ -146,6 +191,7 @@ function widgetSizeButtonText(size: HomeWidgetSize) {
 .widget-layout-toggle,.widget-canvas-toggle{grid-column:1/-1;justify-self:start;font:inherit;font-size:12px;border:1px solid var(--mac-line);border-radius:6px;padding:5px 10px;background:var(--mac-window);color:var(--mac-ink);cursor:pointer}
 .widget-free{grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(112px,auto);position:relative;padding-top:36px;align-items:stretch}
 .widget-free .widget-layout-toggle,.widget-free .widget-canvas-toggle{position:absolute;top:0;left:0}.widget-free .widget-canvas-toggle{left:130px}
+.widget-canvas{grid-template-columns:repeat(3,minmax(0,calc((min(960px,100%) - 24px)/3)));justify-content:end}.widget-canvas .widget-layout-toggle{left:auto;right:0}.widget-canvas .home-widget-card.dragging{transform:none}
 .widget-drop-slot{min-height:112px;border:1px dashed transparent;border-radius:var(--ui-radius-card)}
 .widget-drop-slot.ready{border-color:var(--mac-selection);background:var(--mac-selection-soft)}
 </style>

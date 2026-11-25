@@ -50,12 +50,14 @@ export function mergeHomeWorkspaceChanges(
   }
 
   return merged.map((workspace) => {
-    const before = previousById.get(workspace.id)?.layout
-    const local = currentById.get(workspace.id)?.layout
-    const remote = externalById.get(workspace.id)?.layout
-    const changedRemotely = externalById.has(workspace.id) && JSON.stringify(remote) !== JSON.stringify(before)
-    const changedLocally = currentById.has(workspace.id) && JSON.stringify(local) !== JSON.stringify(before)
-    const layout = changedRemotely ? remote : changedLocally ? local : workspace.layout
+    const beforeWorkspace=previousById.get(workspace.id),localWorkspace=currentById.get(workspace.id),remoteWorkspace=externalById.get(workspace.id)
+    function mergeField<K extends 'layout'|'widgetSlots'|'widgetCanvas'>(key:K):HomeWorkspace[K]{
+      const before=JSON.stringify(beforeWorkspace?.[key])
+      if(remoteWorkspace&&JSON.stringify(remoteWorkspace[key])!==before)return remoteWorkspace[key]
+      if(localWorkspace&&JSON.stringify(localWorkspace[key])!==before)return localWorkspace[key]
+      return workspace[key]
+    }
+    const layout=mergeField('layout'),widgetSlots=mergeField('widgetSlots'),widgetCanvas=mergeField('widgetCanvas')
     const beforeDesktop=previousById.get(workspace.id)?.desktop
     const localDesktop=currentById.get(workspace.id)?.desktop
     const remoteDesktop=externalById.get(workspace.id)?.desktop
@@ -68,12 +70,6 @@ export function mergeHomeWorkspaceChanges(
       const point=changedRemote?remotePoint:changedLocal?localPoint:desktop.positions[id]
       return point?[[id,point]]:[]
     }))
-    const beforeWidgets=previousById.get(workspace.id)?.widgetSlots
-    const localWidgets=currentById.get(workspace.id)?.widgetSlots
-    const remoteWidgets=externalById.get(workspace.id)?.widgetSlots
-    const widgetSlots=externalById.has(workspace.id)&&JSON.stringify(remoteWidgets)!==JSON.stringify(beforeWidgets)?remoteWidgets:currentById.has(workspace.id)&&JSON.stringify(localWidgets)!==JSON.stringify(beforeWidgets)?localWidgets:workspace.widgetSlots
-    const priorCanvas=previousById.get(workspace.id)?.widgetCanvas,localCanvas=currentById.get(workspace.id)?.widgetCanvas,remoteCanvas=externalById.get(workspace.id)?.widgetCanvas
-    const widgetCanvas=externalById.has(workspace.id)&&remoteCanvas!==priorCanvas?remoteCanvas:currentById.has(workspace.id)&&localCanvas!==priorCanvas?localCanvas:workspace.widgetCanvas
     const { layout: _discarded, widgetSlots: _discardedWidgets, widgetCanvas:_discardedCanvas, ...rest } = workspace
     return {
       ...rest,
