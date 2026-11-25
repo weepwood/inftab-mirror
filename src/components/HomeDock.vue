@@ -379,7 +379,7 @@ onBeforeUnmount(() => {
   <nav v-if="items.length || props.desktop" ref="dock" :inert="(props.blocked)||undefined" class="home-dock" :class="{ 'magnification-off': !props.magnificationEnabled, 'dock-auto-hide': props.autoHide, 'dock-menu-open': Boolean(contextItem), 'dock-dragging': Boolean(dragId) }" :style="{ '--dock-size-setting': `${props.iconSize}px`, '--dock-gap-setting': `${props.iconGap}px` }" aria-label="常驻 Dock" @pointerdown="startDockGesture" @pointermove="updateDockMagnification" @pointerleave="releaseDockMagnification" @click.capture="preventGestureClick">
     <div class="home-dock-track" @scroll.passive="clearDockMagnification">
       <div v-if="props.desktop" class="home-dock-system-entry">
-        <button type="button" class="home-dock-finder" aria-label="打开 Finder" title="Finder" @click="emit('finder')">
+        <button type="button" class="home-dock-finder" aria-label="Finder" title="Finder" @click="emit('finder')">
           <span class="home-dock-icon mac-finder-glyph" aria-hidden="true"><i/><b/></span>
         </button>
       </div>

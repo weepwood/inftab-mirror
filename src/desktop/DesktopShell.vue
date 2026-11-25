@@ -40,6 +40,44 @@ const selected = ref<string[]>([])
 const visibleItems=computed(()=>{const parents=folderParents(props.items.flatMap(i=>i.folder?[i.folder]:[]),{id:props.workspaceId,name:'',itemIds:props.items.map(i=>i.id)});return props.items.filter(i=>!parents.has(i.id))})
 const menu = ref<{x:number;y:number;item?:LauncherItem}>()
 const menuRoot=ref<HTMLElement>()
+const branch=ref<'view'|'arrange'>()
+const submenu=ref<HTMLElement>()
+const submenuPosition=ref({left:0,top:0})
+function hideBranch(restore=false){
+ const previous=branch.value
+ branch.value=undefined
+ if(restore&&previous)menuRoot.value?.querySelector<HTMLElement>('[data-branch="'+previous+'"]')?.focus({preventScroll:true})
+}
+function showBranch(kind:'view'|'arrange',anchor:HTMLElement,focus=false){
+ branch.value=kind
+ const r=anchor.getBoundingClientRect()
+ void nextTick(()=>{
+  if(branch.value!==kind||!submenu.value)return
+  const {width,height}=submenu.value.getBoundingClientRect()
+  const right=r.right+3,left=r.left-width-3
+  submenuPosition.value={left:Math.max(4,Math.min(right+width<=innerWidth-4?right:left,innerWidth-width-4)),top:Math.max(4,Math.min(r.top-5,innerHeight-height-4))}
+  if(focus)submenu.value.querySelector<HTMLElement>('button')?.focus({preventScroll:true})
+ })
+}
+function menuKeys(e:KeyboardEvent){
+ const target=e.target as HTMLElement
+ const kind=target.dataset.branch as 'view'|'arrange'|undefined
+ if(e.key==='ArrowRight'&&kind){e.preventDefault();e.stopPropagation();showBranch(kind,target,true);return}
+ if(e.key==='ArrowLeft'&&branch.value){e.preventDefault();e.stopPropagation();hideBranch(true);return}
+ navigateMenu(e)
+}
+function toggleSnap(){
+ update({...layout.value,snap:!layout.value.snap,positions:{...layout.value.positions,...resolved.value}})
+}
+function blankKey(e:KeyboardEvent){
+ if(e.target!==surface.value||props.blocked)return
+ if(e.key==='ContextMenu'||(e.shiftKey&&e.key==='F10')){
+  e.preventDefault();e.stopPropagation()
+  const r=surface.value.getBoundingClientRect()
+  openMenu(r.left+12,r.top+12,undefined,surface.value)
+ }
+}
+
 let menuTrigger:HTMLElement|undefined
 const marquee=ref<{x:number;y:number;endX:number;endY:number}>()
 let marqueePointer:number|undefined,marqueeOwner:HTMLElement|undefined
@@ -149,7 +187,7 @@ function pointerStart(event:PointerEvent,item:LauncherItem){
   suppressClick=false
   press={pointer:event.pointerId,button:event.button,item,el,x:event.clientX,y:event.clientY,at:performance.now(),travelled:false,touch:event.pointerType==='touch'}
   const p=press
-  if(p.touch&&!touchArrange.value)p.timer=setTimeout(()=>{
+  if(p.touch)p.timer=setTimeout(()=>{
     if(press!==p||p.travelled||props.blocked)return
     suppressClick=true;selected.value=[item.id];emit('dismissSearch')
     openMenu(p.x,p.y,item,el,false)
@@ -210,7 +248,7 @@ function pointerEnd(event:PointerEvent){
   dragging=undefined;moving.value=false
   releasePress(p)
   if(p.button===0&&!d){
-    if(p.touch&&!touchArrange.value&&!p.travelled&&performance.now()-p.at>=touchHoldMs){
+    if(p.touch&&!p.travelled&&performance.now()-p.at>=touchHoldMs){
       suppressClick=true;event.preventDefault();event.stopPropagation()
       if(!menu.value)openMenu(p.x,p.y,p.item,p.el,false)
     }
@@ -271,17 +309,18 @@ function cancelDrag() {
 function closeMenu(restore=false){
   if(!menu.value)return
   const trigger=menuTrigger
-  menu.value=undefined;menuTrigger=undefined
+  menu.value=undefined;menuTrigger=undefined;hideBranch()
   if(restore&&trigger?.isConnected)trigger.focus({preventScroll:true})
 }
 function cancelKey(event:KeyboardEvent){
   if(event.key!=='Escape'||(!press&&!menu.value&&!marquee.value))return
   event.preventDefault();event.stopImmediatePropagation()
+  if(branch.value){hideBranch(true);return}
   cancelDrag();boxEnd();closeMenu(true)
 }
 function openMenu(x:number,y:number,item?:LauncherItem,trigger?:HTMLElement,focus=true){
   if(props.blocked)return
-  menuTrigger=trigger
+  hideBranch();menuTrigger=trigger
   menu.value={x,y,item}
   void nextTick(()=>{
     const root=menuRoot.value
@@ -292,7 +331,7 @@ function openMenu(x:number,y:number,item?:LauncherItem,trigger?:HTMLElement,focu
     if(focus)root.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true})
   })
 }
-function context(event:MouseEvent){openMenu(event.clientX,event.clientY,undefined,surface.value)}
+function context(event:MouseEvent){emit('dismissSearch');openMenu(event.clientX,event.clientY,undefined,surface.value)}
 function menuAction(action:()=>void){closeMenu(true);action()}
 function openMenuItem(){const item=menu.value?.item;menuAction(()=>{if(item)emit('open',item)})}
 function editMenuItem(remove=false){const item=menu.value?.item;menuAction(()=>{if(item){if(remove)emit('remove',item);else emit('edit',item)}})}
@@ -326,14 +365,8 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 </script>
 <template>
   <section class="desktop-shell" :class="{'is-moving':moving,'hide-names':showNames===false,'touch-arrange':touchArrange}" aria-label="自由桌面">
-    <div class="desktop-toolbar" @pointerdown="emit('dismissSearch')">
-      <span>{{selected.length?selected.length+' 项已选':layout.snap?'桌面':'自由排布'}}</span>
-      <button type="button" @click="emit('finder')">Finder</button>
-      <button type="button" :aria-pressed="layout.snap" :title="layout.snap?'关闭吸附，启用左键自由拖动':'启用网格吸附'" @click="blur();update({...layout,snap:!layout.snap})">网格吸附</button>
-      <button type="button" @click="update({...layout,positions:{}})">整理图标</button>
-      <button v-if="touchArrange" type="button" @click="blur();touchArrange=false">完成排布</button>
-    </div>
-    <div ref="surface" tabindex="-1" class="desktop-surface" @click.self="selected=[];closeMenu()" @scroll.passive="cancelDrag();boxEnd();closeMenu()" @contextmenu.self.prevent="context($event)">
+    <div v-if="touchArrange" class="visually-hidden" role="status">触屏排布已开启，长按图标可结束排布。</div>
+    <div ref="surface" tabindex="0" aria-label="桌面空白区域，Shift+F10 打开菜单" class="desktop-surface" @keydown="blankKey" @click.self="selected=[];closeMenu()" @scroll.passive="cancelDrag();boxEnd();closeMenu()" @contextmenu.self.prevent="context($event)">
       <div class="desktop-canvas" @pointerdown="boxStart" @pointermove="boxMove" @pointerup="boxEnd" @pointercancel="boxEnd" @lostpointercapture="boxEnd" @contextmenu.self.prevent="context($event)" :style="{height: renderedHeight+'px'}">
         <button v-for="{item,point} in positions" :key="item.id" type="button" class="desktop-icon" :class="{selected:selected.includes(item.id)}" :data-item-id="item.id" :style="{transform:'translate('+point.x+'px,'+point.y+'px)'}" :aria-label="item.title" :aria-pressed="selected.includes(item.id)" @pointerdown="pointerStart($event,item)" @pointermove="pointerMove" @pointerup="pointerEnd" @pointercancel="pointerCancel" @lostpointercapture="pointerCancel" @click="activate(item,$event)" @auxclick.middle.prevent="activate(item,$event)" @auxclick.right.prevent @contextmenu.stop.prevent @keydown="keyMove($event,item.id)">
           <span class="desktop-symbol" :class="{builtin:item.action}" :data-action="item.action" :style="{background:item.action ? undefined : item.color}">
@@ -348,20 +381,33 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
         <div v-if="marquee" class="desktop-marquee" :style="{left:Math.min(marquee.x,marquee.endX)+'px',top:Math.min(marquee.y,marquee.endY)+'px',width:Math.abs(marquee.endX-marquee.x)+'px',height:Math.abs(marquee.endY-marquee.y)+'px'}"/>
       </div>
     </div>
-    <div v-if="menu" ref="menuRoot" class="desktop-menu" @keydown="navigateMenu" @focusout="!menuRoot?.contains($event.relatedTarget as Node)&&closeMenu()" :class="{dark}" :style="{left:menu.x+'px',top:menu.y+'px'}" role="menu">
-      <button v-if="menu.item" role="menuitem" @click="openMenuItem">打开</button><button role="menuitem" @click="menuAction(()=>emit('create'))">新建文件夹</button>
-      <button role="menuitem" @click="menuAction(()=>emit('finder'))">打开 Finder</button>
-      <button role="menuitem" @click="menuAction(()=>update({...layout,positions:{}}))">整理图标</button><button role="menuitem" @click="menuAction(arrangeRight)">从右上排列</button><button role="menuitem" @click="menuAction(()=>{touchArrange=!touchArrange})">{{touchArrange?'完成排布':'触屏排布'}}</button>
-      <template v-if="menu.item?.shortcut||menu.item?.folder"><button role="menuitem" @click="editMenuItem()">编辑</button><button role="menuitem" @click="editMenuItem(true)">删除</button></template>
+    <div v-if="menu" ref="menuRoot" class="desktop-menu" @focusout="!menuRoot?.contains($event.relatedTarget as Node)&&closeMenu()" :class="{dark}" :style="{left:menu.x+'px',top:menu.y+'px'}">
+      <div class="desktop-menu-panel" role="menu" aria-label="桌面操作菜单" @keydown="menuKeys">
+        <button v-if="menu.item" role="menuitem" @pointerenter="hideBranch()" @click="openMenuItem">打开</button>
+        <button v-if="menu.item" role="menuitem" @pointerenter="hideBranch()" @click="menuAction(()=>emit('create'))">新建文件夹</button>
+        <button role="menuitem" data-branch="view" aria-haspopup="menu" :aria-expanded="branch==='view'" @pointerenter="$event.pointerType==='mouse'&&showBranch('view',$event.currentTarget as HTMLElement)" @click="showBranch('view',$event.currentTarget as HTMLElement,true)">查看 <span class="menu-chevron" aria-hidden="true">›</span></button>
+        <button role="menuitem" data-branch="arrange" aria-haspopup="menu" :aria-expanded="branch==='arrange'" @pointerenter="$event.pointerType==='mouse'&&showBranch('arrange',$event.currentTarget as HTMLElement)" @click="showBranch('arrange',$event.currentTarget as HTMLElement,true)">排列方式 <span class="menu-chevron" aria-hidden="true">›</span></button>
+        <div role="separator" class="desktop-menu-separator"/>
+        <button v-if="!menu.item" role="menuitem" @pointerenter="hideBranch()" @click="menuAction(()=>emit('create'))">新建文件夹</button>
+        <button role="menuitem" @pointerenter="hideBranch()" @click="menuAction(()=>emit('finder'))">打开 Finder</button>
+        <template v-if="menu.item?.shortcut||menu.item?.folder"><div role="separator" class="desktop-menu-separator"/><button role="menuitem" @pointerenter="hideBranch()" @click="editMenuItem()">编辑</button><button role="menuitem" @pointerenter="hideBranch()" @click="editMenuItem(true)">删除</button></template>
+      </div>
+      <div v-if="branch" ref="submenu" class="desktop-menu-panel desktop-submenu" role="menu" :aria-label="branch==='view'?'查看子菜单':'排列方式子菜单'" :style="{left:submenuPosition.left+'px',top:submenuPosition.top+'px'}" @keydown="menuKeys" :key="branch">
+        <template v-if="branch==='view'">
+          <button role="menuitemcheckbox" :aria-checked="layout.snap" @click="menuAction(toggleSnap)"><span class="menu-check" aria-hidden="true">{{layout.snap?'✓':''}}</span>将图标与网格对齐</button>
+          <div role="separator" class="desktop-menu-separator"/>
+          <button role="menuitem" @click="menuAction(()=>{touchArrange=!touchArrange})">{{touchArrange?'完成排布':'触屏排布'}}</button>
+        </template>
+        <template v-else>
+          <button role="menuitem" @click="menuAction(arrangeRight)">从右上排列</button>
+          <button role="menuitem" @click="menuAction(()=>update({...layout,positions:{}}))">整理图标</button>
+        </template>
+      </div>
     </div>
   </section>
 </template>
 <style scoped>
 .desktop-shell{width:100%;min-width:0;color:#fff;flex:1;display:flex;flex-direction:column;min-height:0}
-.desktop-toolbar{display:flex;align-items:center;gap:3px;align-self:flex-end;max-width:100%;padding:3px 4px;background:var(--mac-bar);color:var(--mac-ink);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);backdrop-filter:blur(28px) saturate(160%);box-shadow:0 2px 9px #0002;margin-bottom:3px}
-.desktop-toolbar span{min-width:0;overflow:hidden;text-overflow:ellipsis;margin:0 5px;font-size:11px;font-weight:500;white-space:nowrap;color:var(--mac-muted)}
-.desktop-toolbar button{flex-shrink:0;white-space:nowrap;border:0;background:transparent;color:var(--mac-ink);border-radius:var(--mac-radius-menu-item);padding:4px 7px;font-size:11px;cursor:pointer}
-.desktop-toolbar button:hover{background:var(--mac-selection-soft)}.desktop-toolbar button[aria-pressed=true]{background:var(--mac-selection-soft);color:var(--mac-ink)}.desktop-toolbar button:focus-visible{outline:2px solid var(--ui-focus);outline-offset:1px}
 .desktop-surface{position:relative;flex:1;min-height:240px;overflow:auto}
 .desktop-canvas{position:relative;min-width:100%;touch-action:pan-y}
 .desktop-widget-layer{position:absolute;top:0;right:0;width:100%;z-index:1;pointer-events:none}
@@ -369,7 +415,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 .desktop-widget-layer :deep(.home-widget-card),.desktop-widget-layer :deep(.widget-layout-toggle),.desktop-widget-layer :deep(.widget-drop-slot.ready){pointer-events:auto}
 .desktop-icon{position:absolute;top:0;left:0;width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:5px 0 0;gap:4px;border:0;background:none;color:white;touch-action:pan-y;user-select:none;-webkit-touch-callout:none;cursor:pointer}
 .desktop-shell.is-moving,.desktop-shell.is-moving .desktop-icon{cursor:grabbing}
-.touch-arrange .desktop-icon{touch-action:none;cursor:grab}.touch-arrange .desktop-toolbar{flex-wrap:wrap}.desktop-icon[data-drop=ready]{border-radius:8px;background:#559aff20}.desktop-icon[data-drop=blocked]{border-radius:8px;background:#d84c4c35;outline:1px solid #ffaaa7;outline-offset:-2px}
+.touch-arrange .desktop-icon{touch-action:none;cursor:grab}.desktop-icon[data-drop=ready]{border-radius:8px;background:#559aff20}.desktop-icon[data-drop=blocked]{border-radius:8px;background:#d84c4c35;outline:1px solid #ffaaa7;outline-offset:-2px}
 .desktop-icon:focus-visible{outline:2px solid white;outline-offset:-3px;border-radius:8px}
 .desktop-shell{--desktop-symbol-size:clamp(32px,calc(var(--shortcut-size,72px) * .75 + 2px),56px)}.desktop-shell.hide-names{--desktop-symbol-size:clamp(32px,calc(var(--shortcut-size,72px) * .75 + 2px),80px)}
 .desktop-shell.hide-names .desktop-icon{justify-content:center;padding:0}
@@ -377,10 +423,18 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 
 .desktop-symbol img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .desktop-label{max-width:90px;padding:1px 5px;border-radius:5px;box-sizing:border-box;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;white-space:normal;font-size:12px;font-weight:500;line-height:14px;text-align:center;color:var(--mac-desktop-label-ink);background:var(--mac-desktop-label);text-shadow:0 1px 3px #000c,0 1px 7px #0008}
-.desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon:focus-visible .desktop-symbol{outline:2px solid #fff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection)}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:var(--desktop-symbol-size)}.desktop-menu{position:fixed;z-index:10;background:var(--mac-menu);color:var(--mac-ink);padding:var(--mac-menu-padding);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);box-shadow:var(--mac-shadow);width:170px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);overflow:auto;overscroll-behavior:contain;backdrop-filter:blur(18px)}.desktop-menu button{display:block;width:100%;text-align:left;padding:7px 9px;background:none;border:0;border-radius:var(--mac-radius-menu-item);color:inherit;cursor:pointer}.desktop-menu button:hover,.desktop-menu button:focus-visible{background:var(--mac-selection);color:var(--mac-selection-ink)}
+.desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon:focus-visible .desktop-symbol{outline:2px solid #fff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection)}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:var(--desktop-symbol-size)}.desktop-menu{position:fixed;z-index:10;width:190px;max-width:calc(100vw - 8px);color:var(--mac-ink)}
+.desktop-menu-panel{background:var(--mac-menu);color:var(--mac-ink);padding:var(--mac-menu-padding);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);box-shadow:var(--mac-shadow);box-sizing:border-box;max-height:calc(100dvh - 8px);overflow:auto;overscroll-behavior:contain;backdrop-filter:blur(24px) saturate(165%)}
+.desktop-submenu{position:fixed;width:218px;max-width:calc(100vw - 8px)}
+.desktop-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;white-space:nowrap;padding:7px 9px;background:none;border:0;border-radius:var(--mac-radius-menu-item);color:inherit;cursor:pointer;font:13px var(--mac-font)}
+.desktop-menu button:hover,.desktop-menu button:focus-visible,.desktop-menu button[aria-expanded=true]{background:var(--mac-selection);color:var(--mac-selection-ink)}
+.desktop-menu-separator{height:1px;background:var(--mac-line);margin:4px 5px}
+.menu-chevron{margin-left:auto;font-size:17px;line-height:14px;opacity:.7}
+.menu-check{width:13px;text-align:center;flex:none}
+.desktop-surface:focus-visible{outline:2px solid var(--mac-selection);outline-offset:-2px}
 .desktop-marquee{position:absolute;pointer-events:none;border:1px solid #93c9ff;background:#559aff30;z-index:4}@media(prefers-reduced-motion:no-preference){.desktop-shell{animation:desktop-space-in .14s ease-out}@keyframes desktop-space-in{from{opacity:.65}to{opacity:1}}.desktop-icon.selected .desktop-symbol{transition:outline-color .12s}.finder{animation:finder-appear .15s ease-out}}
-.desktop-menu.dark{background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line)}
+
 @media(forced-colors:active){.desktop-label{color:CanvasText;background:Canvas}.desktop-icon.selected .desktop-label{color:HighlightText;background:Highlight}.desktop-icon:focus-visible{outline-color:Highlight}}
 @media(pointer:coarse){.desktop-menu button{min-height:44px;padding:9px 12px}}
-@media(max-width:480px){.desktop-toolbar{gap:3px}.desktop-toolbar span{font-size:10px;margin-inline:2px}.desktop-toolbar button{padding:5px;font-size:11px}}
+
 </style>
