@@ -2,6 +2,7 @@
  * Isolated transactional workspace rehearsal. The application still uses v1
  * localStorage. This store must never be selected implicitly at bootstrap.
  */
+import { accessSnapshot } from './snapshotStore'
 import { parseWorkspaceBackup, type WorkspaceBackup } from './backup'
 import { createLocalId } from './createId'
 import { isCandidateCurrent, readMigrationSource, validateMigrationCandidate, type MigrationCandidate } from './storagePreflight'
@@ -40,27 +41,11 @@ function validateState(value:unknown):GenerationState|undefined{
   if(v.phase==='prepared'&&(v.revision!==1||v.previous!==undefined||!same(JSON.parse(v.head),JSON.parse(JSON.stringify(parseWorkspaceBackup(v.candidate.backup))))))throw new Error('初始化记录不一致。')
   return v
 }
-function open():Promise<IDBDatabase>{
-  return new Promise((resolve,reject)=>{
-    const req=indexedDB.open(generationDatabase,1);let blocked=false
-    req.onupgradeneeded=()=>req.result.createObjectStore(storeName)
-    req.onblocked=()=>{blocked=true;reject(new Error('存储世代数据库被占用。'))}
-    req.onerror=()=>reject(req.error)
-    req.onsuccess=()=>{if(blocked){req.result.close();return}req.result.onversionchange=()=>req.result.close();resolve(req.result)}
-  })
-}
-async function access<T>(mode:IDBTransactionMode,operation:(state:GenerationState|undefined,store:IDBObjectStore)=>T):Promise<T>{
-  const db=await open()
-  try{return await new Promise<T>((resolve,reject)=>{
-    let tx:IDBTransaction
-    try{tx=db.transaction(storeName,mode,mode==='readwrite'?{durability:'strict'}:undefined)}
-    catch(e){if(!(e instanceof TypeError))throw e;tx=db.transaction(storeName,mode)}
-    const store=tx.objectStore(storeName),req=store.get(slot)
-    let result:T,failure:unknown
-    tx.oncomplete=()=>resolve(result)
-    tx.onabort=()=>reject(failure??tx.error??new Error('存储世代事务中止。'))
-    req.onsuccess=()=>{try{result=operation(validateState(req.result),store)}catch(e){failure=e;tx.abort()}}
-  })}finally{db.close()}
+function access<T>(mode:IDBTransactionMode,operation:(state:GenerationState|undefined,store:IDBObjectStore)=>T){
+ return accessSnapshot<T>(generationDatabase,storeName,mode,(store,finish,abort)=>{
+  const req=store.get(slot)
+  req.onsuccess=()=>{try{finish(operation(validateState(req.result),store))}catch(e){abort(e)}}
+ })
 }
 function assertToken(state:GenerationState|undefined,token:GenerationToken):asserts state is GenerationState{
   if(!state||state.generation!==token.generation||state.revision!==token.revision||state.revision>=Number.MAX_SAFE_INTEGER)throw new Error('存储世代或版本冲突，请重新读取。')

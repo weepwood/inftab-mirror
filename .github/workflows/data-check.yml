@@ -22,6 +22,7 @@ on:
       - 'src/data/storageAdapter.ts'
       - 'src/data/workspaceJournal.ts'
       - 'src/data/workspaceGeneration.ts'
+      - 'src/data/snapshotStore.ts'
       - 'src/data/workspaceConflict.ts'
       - 'src/data/workspaceConflict.test.ts'
       - 'e2e/workspace-generation.spec.ts'

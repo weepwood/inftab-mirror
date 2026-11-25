@@ -1,18 +1,10 @@
+import { accessSnapshot } from '../data/snapshotStore'
 import { createLocalId } from '../data/createId'
 export const transactionKeys=['inftab.shortcuts.v1','inftab.folders.v1','inftab.launcher-order.v1','inftab.home-workspaces.v1'] as const
 type Key=typeof transactionKeys[number]
 export type TransactionValues=Record<Key,string|null>
 export interface TransactionIntent {id:string;before:TransactionValues;after:TransactionValues;createdAt:number}
 const dbName='inftab-desktop-transactions',storeName='intents',slot='pending'
-function open():Promise<IDBDatabase>{
- return new Promise((resolve,reject)=>{
-  const request=indexedDB.open(dbName,1);let blocked=false
-  request.onupgradeneeded=()=>request.result.createObjectStore(storeName)
-  request.onblocked=()=>{blocked=true;reject(new Error('桌面事务数据库被占用。'))}
-  request.onerror=()=>reject(request.error)
-  request.onsuccess=()=>{if(blocked){request.result.close();return}request.result.onversionchange=()=>request.result.close();resolve(request.result)}
- })
-}
 function validate(value:unknown):TransactionIntent|undefined{
  if(value===undefined)return
  const v=value as TransactionIntent
@@ -25,17 +17,8 @@ export function readTransactionValues(storage:Pick<Storage,'getItem'>=localStora
 export function canReplay(intent:TransactionIntent,current:TransactionValues){
  return transactionKeys.every(k=>current[k]===intent.before[k]||current[k]===intent.after[k])
 }
-async function access<T>(mode:IDBTransactionMode,run:(store:IDBObjectStore,finish:(value:T)=>void,abort:(error:unknown)=>void)=>void):Promise<T>{
- const db=await open()
- try{return await new Promise<T>((resolve,reject)=>{
-  let tx:IDBTransaction
-  try{tx=db.transaction(storeName,mode,mode==='readwrite'?{durability:'strict'}:undefined)}
-  catch(error){if(!(error instanceof TypeError))throw error;tx=db.transaction(storeName,mode)}
-  let result:T,error:unknown
-  tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(error??tx.error??new Error('桌面事务已中止。'))
-  const abort=(reason:unknown)=>{error=reason;tx.abort()}
-  try{run(tx.objectStore(storeName),value=>{result=value},abort)}catch(e){abort(e)}
- })}finally{db.close()}
+function access<T>(mode:IDBTransactionMode,run:(store:IDBObjectStore,finish:(value:T)=>void,abort:(error:unknown)=>void)=>void){
+ return accessSnapshot(dbName,storeName,mode,run)
 }
 export function readIntent(){return access<TransactionIntent|undefined>('readonly',(store,finish,abort)=>{
  const request=store.get(slot);request.onsuccess=()=>{try{finish(validate(request.result))}catch(e){abort(e)}}

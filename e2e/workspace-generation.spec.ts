@@ -1,6 +1,7 @@
 import {expect,test,type Page} from '@playwright/test'
 import {build} from 'vite'
 import {fileURLToPath} from 'node:url'
+import {readFile} from 'node:fs/promises'
 import type {GenerationState,GenerationToken} from '../src/data/workspaceGeneration'
 
 let code:string
@@ -29,7 +30,7 @@ async function seed(page:Page){
   await preflight.getByRole('button',{name:'保存独立迁移候选'}).click()
   await expect(preflight.getByRole('status')).toContainText('原存储未修改')
 }
-type Action={kind:'inspect'}|{kind:'prepare';expected:GenerationToken|null;acceptNormalization?:boolean;discardRetiredDraft?:boolean}|{kind:'start'|'retire'|'rollback';token:GenerationToken}|{kind:'commit';token:GenerationToken;content:string;fault?:boolean}
+type Action={kind:'inspect'}|{kind:'prepare';expected:GenerationToken|null;acceptNormalization?:boolean;discardRetiredDraft?:boolean;noncanonical?:boolean}|{kind:'start'|'retire'|'rollback';token:GenerationToken}|{kind:'commit';token:GenerationToken;content:string;fault?:boolean}
 async function run(page:Page,action:Action){
  return page.evaluate(async({code,action})=>{
    const url=URL.createObjectURL(new Blob([code],{type:'text/javascript'}))
@@ -42,6 +43,7 @@ async function run(page:Page,action:Action){
          const req=indexedDB.open('inftab-storage-preflight',1);req.onerror=()=>reject(req.error)
          req.onsuccess=()=>{const db=req.result,r=db.transaction('candidates').objectStore('candidates').get('latest');r.onsuccess=()=>{db.close();resolve(r.result)};r.onerror=()=>{db.close();reject(r.error)}}
        })
+       if(action.noncanonical)delete candidate.backup.habits
        return {state:await engine.prepareGeneration(candidate,action.expected,()=>candidate.backup,action.acceptNormalization===true,action.discardRetiredDraft===true)}
      }
      if(action.kind==='commit'&&action.fault)IDBObjectStore.prototype.put=function(value,key){
@@ -60,7 +62,7 @@ function edit(state:GenerationState,title:string){
 test('generation initialization, CAS, rollback and retirement preserve legacy bytes',async({page,context})=>{
  await seed(page)
  const raw=await page.evaluate(()=>localStorage.getItem('inftab.notes.v1'))
- const refused=await run(page,{kind:'prepare',expected:null});expect(refused.error).toContain('显式确认规范化')
+ const refused=await run(page,{kind:'prepare',expected:null,noncanonical:true});expect(refused.error).toContain('显式确认规范化')
  expect((await run(page,{kind:'inspect'})).inspection?.state).toBeUndefined()
  const prepared=await run(page,{kind:'prepare',expected:null,acceptNormalization:true});expect(prepared.error).toBeUndefined()
  const first=prepared.state!;expect(first.phase).toBe('prepared')
@@ -102,4 +104,41 @@ test('generation quota, invalid snapshot and legacy drift refuse writes without 
  expect(stopped.state?.phase).toBe('retired')
  expect(JSON.parse(stopped.state!.head).notes[0].title).toBe('Saved draft')
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('inftab.notes.v1')!)[0].title)).toBe('Legacy writer')
+})
+
+test('production rehearsal UI prepares live data, imports and exports draft, rolls back and retires',async({page},info)=>{
+ await seed(page)
+ const panel=page.getByRole('group',{name:'本地存储迁移预检'})
+ const raw=await page.evaluate(()=>localStorage.getItem('inftab.notes.v1'))
+ page.once('dialog',d=>d.accept())
+ await panel.getByRole('button',{name:'准备演练世代'}).click()
+ await expect(panel).toContainText('已准备 · Revision 1')
+ await panel.getByRole('button',{name:'启动演练'}).click()
+ await expect(panel).toContainText('演练中 · Revision 2')
+ const download=await Promise.all([page.waitForEvent('download'),panel.getByRole('button',{name:'导出独立草稿',exact:true}).click()]).then(([d])=>d)
+ const original=JSON.parse(await readFile((await download.path())!,'utf8'))
+ expect(original.notes[0].body).toBe('keep')
+ const draft=structuredClone(original);draft.notes[0].title='Isolated UI draft'
+ page.once('dialog',d=>d.accept())
+ await panel.getByLabel('提交独立 JSON 草稿').setInputFiles({name:'draft.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(draft))})
+ await expect(panel.getByRole('status')).toContainText('独立草稿已提交')
+ await expect(panel).toContainText('Revision 3')
+ const exported=await Promise.all([page.waitForEvent('download'),panel.getByRole('button',{name:'导出完整演练记录'}).click()]).then(([d])=>d)
+ const record=JSON.parse(await readFile((await exported.path())!,'utf8'))
+ expect(JSON.parse(record.head).notes[0].title).toBe('Isolated UI draft')
+ expect(JSON.parse(record.previous).notes[0].title).toBe('Original')
+ await info.attach('rehearsal-ui',{body:await page.screenshot({animations:'disabled'}),contentType:'image/png'})
+ page.once('dialog',d=>d.accept())
+ await panel.getByRole('button',{name:'回退独立草稿'}).click()
+ await expect(panel).toContainText('Revision 4')
+ page.once('dialog',d=>d.accept())
+ await panel.getByRole('button',{name:'结束演练'}).click()
+ await expect(panel).toContainText('已退役 · Revision 5')
+ expect(await page.evaluate(()=>localStorage.getItem('inftab.notes.v1'))).toBe(raw)
+ await page.reload()
+ await page.locator('.home-actions').getByRole('button',{name:'打开设置',exact:true}).click()
+ const settings=page.getByRole('dialog',{name:'设置'})
+ await settings.getByRole('button',{name:'数据',exact:true}).click()
+ await settings.getByRole('button',{name:'打开存储预检'}).click()
+ await expect(settings.getByRole('group',{name:'本地存储迁移预检'})).toContainText('已退役 · Revision 5')
 })

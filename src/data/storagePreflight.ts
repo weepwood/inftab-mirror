@@ -1,3 +1,4 @@
+import { accessSnapshot } from './snapshotStore'
 import { parseWorkspaceBackup, type WorkspaceBackup } from './backup'
 import { createLocalId } from './createId'
 import { readIntent } from '../desktop/transactionIntent'
@@ -77,27 +78,8 @@ export function validateMigrationCandidate(value: unknown): MigrationCandidate |
   parseWorkspaceBackup(c.backup)
   return c
 }
-async function open(): Promise<IDBDatabase> {
-  return new Promise((resolve,reject)=>{
-    const req=indexedDB.open(database,1);let blocked=false
-    req.onupgradeneeded=()=>req.result.createObjectStore(store)
-    req.onblocked=()=>{blocked=true;reject(new Error('迁移候选数据库被占用。'))}
-    req.onerror=()=>reject(req.error)
-    req.onsuccess=()=>{if(blocked){req.result.close();return}req.result.onversionchange=()=>req.result.close();resolve(req.result)}
-  })
-}
-async function access<T>(mode:IDBTransactionMode,run:(object:IDBObjectStore,set:(value:T)=>void,abort:(reason:unknown)=>void)=>void):Promise<T>{
-  const db=await open()
-  try{return await new Promise<T>((resolve,reject)=>{
-    let tx:IDBTransaction
-    try{tx=db.transaction(store,mode,mode==='readwrite'?{durability:'strict'}:undefined)}
-    catch(error){if(!(error instanceof TypeError))throw error;tx=db.transaction(store,mode)}
-    let result:T,error:unknown
-    tx.oncomplete=()=>resolve(result)
-    tx.onabort=()=>reject(error??tx.error??new Error('迁移候选事务已中止。'))
-    const abort=(reason:unknown)=>{error=reason;tx.abort()}
-    try{run(tx.objectStore(store),v=>{result=v},abort)}catch(e){abort(e)}
-  })}finally{db.close()}
+function access<T>(mode:IDBTransactionMode,run:(object:IDBObjectStore,set:(value:T)=>void,abort:(reason:unknown)=>void)=>void){
+ return accessSnapshot(database,store,mode,run)
 }
 export function readMigrationCandidate(){return access<MigrationCandidate|undefined>('readonly',(object,set,abort)=>{
   const req=object.get(slot);req.onsuccess=()=>{try{set(validateMigrationCandidate(req.result))}catch(e){abort(e)}}

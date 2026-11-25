@@ -382,3 +382,9 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 新增 workspaceConflict.ts 独立三方规划器，按ID与字段合并非冲突修改，保留插入锚点，删除/编辑、同字段、顺序、引用冲突拒绝输出。尚未接入实际编辑及冲突UI。详见docs/workspace-transaction-design.md。
 - 本机最终npm run check、冲突规划6/6单测、真实Edge预检+世代6/6 E2E通过（包含隔离初始化、双标签CAS、回退、代际淘汰、草稿保护、损坏快照、注入配额错误、旧存储漂移）；E2E通过Vite仅打包测试入口运行真实解析器，来源取真实键，逻辑回调取已保存候选，生产响应式接线未验证。新增用例纳入data-smoke。build:web通过（首屏59.3/60.5、非Swiper198.7/200、CSS28.7/64 KiB，PWA额外JS10823/16384 B）；后续改动仅未接生产图的引擎与测试，不扩大预算、无新依赖。
 - 下一轮优先复查#37 CI，治理资源分包后再接入可操作演练/草稿导出与实际响应式快照初始化。全数据权威适配器、真实旧客户端隔离方案、冲突交互、进程终止/跨浏览器迁移专项及V2.1正式发布仍待实施。不将隔离演练当作正式数据迁移。临时playwright.local-v21.config.ts不提交。
+
+## V2.1 演练界面与资源治理（2026-11-25）
+- #37 31022ff verify/ui/cross-browser通过，data-smoke 45557743211/job/139013787850失败：Linux开发环境初始候选已经规范化，错误断言要求prepare必拒绝（error undefined）。使用固定缺失habits的非规范化样本测试显式确认，不降低生产验证。
+- 复用snapshotStore.ts，桌面意图、预检及世代三个库沿用原数据库/存储名及数据格式。按需设置资源合并StoragePreflight、storagePreflight、workspaceGeneration、backup、layoutEditor等；桌面合并试验触发实际桌面加载失败，已停止试验并撤销，保留原分包。最终build:web首屏59.3/60.5、非Swiper198.8/200、Swiper26.4/30、CSS28.5/64 KiB；PWA额外JS10655/16384 B，完整1706266/4194304 B。Linux预算待新CI，门禁不变。
+- 预检界面接入实际实时getBackup初始化、显式接受规范化、替换退役记录确认、开始/回退/结束、JSON文件独立提交、当前草稿及含原始候选与previous的完整记录导出、重载读回。来源漂移限制写入，不修改旧数据，不切换权威存储。完整记录含用户数据，仅本地下载。
+- 最终npm run check通过；冲突规划与桌面意图单测8/8；生产Edge 51/51（desktop-alpha2、desktop-storage、config-migration、storage-preflight、workspace-generation、production-chunks）；实际下载与读回断言已验证。尚未完成Linux重新验收、冲突交互、正式权威适配器及真实跨版本隔离，仍保留#37 Draft。下一轮复查CI，特别关注非Swiper预算；继续集中开发。临时playwright.local-v21.config.ts不提交。
