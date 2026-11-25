@@ -279,6 +279,10 @@ const { showHomeWidgets, shortHomeScrollEnabled, backgroundStyle } = useHomeLayo
 const overlayOpen = computed(() => Boolean(activePanel.value || shortcutDialog.value || folderDialogOpen.value || commandPaletteOpen.value || layoutEditorOpen.value || pendingDestructiveAction.value))
 const launcherAnimating = ref(false)
 const { movePage, goToPage, startHomeSwipe, finishHomeSwipe, handleHomeWheel, cancelHomeSwipe } = useHomeNavigation({ currentPage, pageDirection, pageCount, minimalMode, shortHomeScrollEnabled, overlayOpen, launcherAnimating })
+const mixedWidgets=computed(()=>desktopMode.value&&viewport.value.width>780&&showHomeWidgets.value&&activeHomeWorkspace.value.widgetCanvas===true)
+function toggleWidgetCanvas(){
+ homeWorkspaces.value=homeWorkspaces.value.map(w=>w.id===activeHomeWorkspaceId.value?{...w,widgetCanvas:w.widgetCanvas?undefined:true,widgetSlots:w.widgetSlots??{}}:w)
+}
 function saveWidgetSlots(widgetSlots: import('./data/widgetSlots').WidgetSlots|undefined){
   homeWorkspaces.value=homeWorkspaces.value.map(w=>w.id===activeHomeWorkspaceId.value?{...w,widgetSlots}:w)
 }
@@ -911,13 +915,14 @@ onBeforeUnmount(() => {
     <section id="main-content" :inert="(desktopMode&&overlayOpen)||undefined" class="home-content" :class="{ 'home-content-minimal': minimalMode, 'desktop-search-reserved': desktopMode&&!minimalMode&&preferences.showSearchBar }" tabindex="-1">
       <ClockWidget v-if="preferences.showClock && (!desktopMode || minimalMode)" />
       <HomeWidgetShelf
-        v-if="showHomeWidgets && !minimalMode"
+        v-if="showHomeWidgets && !minimalMode && !mixedWidgets"
         :widget-ids="preferences.homeWidgetIds"
         :widget-sizes="preferences.homeWidgetSizes"
         :desktop-layout="desktopMode && viewport.width > 780"
         :widget-slots="activeHomeWorkspace.widgetSlots"
         :key="desktopMode ? activeHomeWorkspaceId : 'classic-widgets'"
         @slots="saveWidgetSlots"
+        @canvas="toggleWidgetCanvas"
         :context="homeWidgetContext"
         @open="openPanel"
         @remove="removeHomeWidget"
@@ -968,7 +973,11 @@ onBeforeUnmount(() => {
           />
         </template>
       </SearchBar>
-      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" :folder-shortcuts="folderPreviewItems" :show-names="preferences.showNames" :dark="effectiveTheme==='dark'" :blocked="overlayOpen" :search-active="localSearchMode" @dismiss-search="dismissDesktopSearch" @layout="saveDesktopLayout" @open="desktopOpen" @edit="editLauncherItem" @finder="openFinder()" @create="openFolderEditor()" @remove="removeLauncherItem" @membership="finderMembership" />
+      <DesktopShell v-if="desktopMode && !minimalMode" :key="activeHomeWorkspaceId" :workspace-id="activeHomeWorkspaceId" :items="allLauncherItems" :layout="activeHomeWorkspace.desktop" :folder-shortcuts="folderPreviewItems" :show-names="preferences.showNames" :dark="effectiveTheme==='dark'" :blocked="overlayOpen" :search-active="localSearchMode" @dismiss-search="dismissDesktopSearch" @layout="saveDesktopLayout" @open="desktopOpen" @edit="editLauncherItem" @finder="openFinder()" @create="openFolderEditor()" @remove="removeLauncherItem" @membership="finderMembership">
+        <template v-if="mixedWidgets" #widgets>
+          <HomeWidgetShelf :widget-ids="preferences.homeWidgetIds" :widget-sizes="preferences.homeWidgetSizes" :desktop-layout="true" :canvas-mode="true" :widget-slots="activeHomeWorkspace.widgetSlots??{}" :context="homeWidgetContext" @slots="saveWidgetSlots" @canvas="toggleWidgetCanvas" @open="openPanel" @remove="removeHomeWidget" @reorder="reorderHomeWidgets" @resize="resizeHomeWidget" />
+        </template>
+      </DesktopShell>
       <ShortcutGrid
         v-if="!minimalMode && !desktopMode"
         :items="allLauncherItems"

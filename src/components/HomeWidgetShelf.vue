@@ -12,6 +12,7 @@ const props = withDefaults(defineProps<{
   widgetSizes: Record<HomeWidgetId, HomeWidgetSize>
   context: HomeWidgetContext
   desktopLayout?: boolean
+  canvasMode?: boolean
   widgetSlots?: WidgetSlots
   plugins?: HomeWidgetPluginRegistry
 }>(), { plugins: () => homeWidgetPlugins })
@@ -21,6 +22,7 @@ const emit = defineEmits<{
   reorder: [from: number, to: number]
   resize: [id: HomeWidgetId, size: HomeWidgetSize]
   slots: [slots: WidgetSlots|undefined]
+  canvas: []
 }>()
 const draggingIndex = ref<number | null>(null)
 const moveAnnouncement = ref('')
@@ -108,7 +110,8 @@ function widgetSizeButtonText(size: HomeWidgetSize) {
 
 <template>
   <section class="home-widget-shelf" :class="{'widget-free':free}" aria-label="首页小组件">
-    <button v-if="desktopLayout" class="widget-layout-toggle" type="button" :aria-pressed="free" @click="emit('slots',free?undefined:{})">{{free?'自动排列小组件':'自由排布小组件'}}</button>
+    <button v-if="desktopLayout" class="widget-layout-toggle" type="button" :aria-pressed="free" @click="canvasMode?emit('canvas'):emit('slots',free?undefined:{})">{{canvasMode?'移出桌面画布':free?'自动排列小组件':'自由排布小组件'}}</button>
+    <button v-if="desktopLayout&&free&&!canvasMode" class="widget-canvas-toggle" type="button" @click="emit('canvas')">放入桌面画布</button>
     <span class="visually-hidden" role="status" aria-live="polite">{{ moveAnnouncement }}</span>
     <div v-for="p in emptySlots" :key="'slot:'+p.x+':'+p.y" class="widget-drop-slot" :class="{ready:draggingIndex!==null&&canPlaceWidget(widgetIds[draggingIndex]!,p,slots,widgetSizes)}" :style="{gridColumn:String(p.x+1),gridRow:String(p.y+1)}" aria-hidden="true" @dragover.prevent @drop="freeDrop($event,p)" />
     <article
@@ -140,9 +143,9 @@ function widgetSizeButtonText(size: HomeWidgetSize) {
   </section>
 </template>
 <style scoped>
-.widget-layout-toggle{grid-column:1/-1;justify-self:start;font:inherit;font-size:12px;border:1px solid var(--mac-line);border-radius:6px;padding:5px 10px;background:var(--mac-window);color:var(--mac-ink);cursor:pointer}
+.widget-layout-toggle,.widget-canvas-toggle{grid-column:1/-1;justify-self:start;font:inherit;font-size:12px;border:1px solid var(--mac-line);border-radius:6px;padding:5px 10px;background:var(--mac-window);color:var(--mac-ink);cursor:pointer}
 .widget-free{grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(112px,auto);position:relative;padding-top:36px;align-items:stretch}
-.widget-free .widget-layout-toggle{position:absolute;top:0;left:0}
+.widget-free .widget-layout-toggle,.widget-free .widget-canvas-toggle{position:absolute;top:0;left:0}.widget-free .widget-canvas-toggle{left:130px}
 .widget-drop-slot{min-height:112px;border:1px dashed transparent;border-radius:var(--ui-radius-card)}
 .widget-drop-slot.ready{border-color:var(--mac-selection);background:var(--mac-selection-soft)}
 </style>

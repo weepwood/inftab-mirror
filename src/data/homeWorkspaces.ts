@@ -15,6 +15,7 @@ export interface HomeWorkspace {
   itemIds: string[]
   desktop?: DesktopLayout
   widgetSlots?: WidgetSlots
+  widgetCanvas?: true
   layout?: WorkspaceLayoutOverrides
 }
 
@@ -51,6 +52,7 @@ function parseWorkspace(value: unknown): HomeWorkspace | undefined {
   return {
     ...(layout ? { layout } : {}),
     ...(widgetSlots ? { widgetSlots } : {}),
+    ...(value.widgetCanvas === true ? {widgetCanvas:true as const} : {}),
     ...(isRecord(value.desktop) && value.desktop.version === 1 ? { desktop: normalizeLayout(value.desktop) } : {}),
     id: value.id,
     name: typeof value.name === 'string' ? truncateCodePoints(value.name.trim(), maxHomeWorkspaceNameLength) : '',
@@ -94,6 +96,7 @@ export function sanitizeHomeWorkspaces(
       itemIds,
       ...(workspace.layout ? { layout: workspace.layout } : {}),
       ...(workspace.widgetSlots ? { widgetSlots: workspace.widgetSlots } : {}),
+      ...(workspace.widgetCanvas ? {widgetCanvas:true as const} : {}),
       ...(workspace.desktop ? { desktop: { ...workspace.desktop, positions: Object.fromEntries(Object.entries(workspace.desktop.positions).filter(([id]) => allowedDesktopIds.has(id))) } } : {}),
     }]
   })

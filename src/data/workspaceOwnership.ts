@@ -72,11 +72,14 @@ export function mergeHomeWorkspaceChanges(
     const localWidgets=currentById.get(workspace.id)?.widgetSlots
     const remoteWidgets=externalById.get(workspace.id)?.widgetSlots
     const widgetSlots=externalById.has(workspace.id)&&JSON.stringify(remoteWidgets)!==JSON.stringify(beforeWidgets)?remoteWidgets:currentById.has(workspace.id)&&JSON.stringify(localWidgets)!==JSON.stringify(beforeWidgets)?localWidgets:workspace.widgetSlots
-    const { layout: _discarded, widgetSlots: _discardedWidgets, ...rest } = workspace
+    const priorCanvas=previousById.get(workspace.id)?.widgetCanvas,localCanvas=currentById.get(workspace.id)?.widgetCanvas,remoteCanvas=externalById.get(workspace.id)?.widgetCanvas
+    const widgetCanvas=externalById.has(workspace.id)&&remoteCanvas!==priorCanvas?remoteCanvas:currentById.has(workspace.id)&&localCanvas!==priorCanvas?localCanvas:workspace.widgetCanvas
+    const { layout: _discarded, widgetSlots: _discardedWidgets, widgetCanvas:_discardedCanvas, ...rest } = workspace
     return {
       ...rest,
       ...(layout ? { layout } : {}),
       ...(widgetSlots ? {widgetSlots} : {}),
+      ...(widgetCanvas ? {widgetCanvas} : {}),
       itemIds,
       ...(desktop&&positions?{desktop:{...desktop,positions}}:{}),
     }

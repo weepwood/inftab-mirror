@@ -4,10 +4,38 @@ import type { LauncherItem } from '../types'
 import { navigateMenu } from '../components/menuNavigation'
 import { desktopHabitIcon, launcherIcons } from '../components/launcherIcons'
 import { folderParents } from '../data/folderTree'
-import { cell, arrangeFromRight, resolvePoints, fitPoint, freshLayout, normalizeLayout, translateGroup, createOccupancy, type Point, type DesktopLayout } from './layout'
+import { cell, arrangeFromRight, resolvePoints, fitPoint, freshLayout, normalizeLayout, translateGroup, createRectOccupancy, type DesktopRect, type Point, type DesktopLayout } from './layout'
 const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout; folderShortcuts?: LauncherItem[]; dark?: boolean; blocked?:boolean; searchActive?:boolean; showNames?:boolean}>()
 const emit = defineEmits<{open: [item: LauncherItem, event?: MouseEvent]; edit: [item: LauncherItem]; layout: [layout: DesktopLayout]; finder:[]; create:[]; remove:[item:LauncherItem]; membership:[item:LauncherItem,folderId:string]; dismissSearch:[]}>()
-const surface = ref<HTMLElement>()
+const surface = ref<HTMLElement>(),widgetLayer=ref<HTMLElement>()
+const reserved=ref<DesktopRect[]>([])
+let widgetObserver:ResizeObserver|undefined,widgetMutation:MutationObserver|undefined
+let widgetFrame=0
+function measureWidgets(){
+ cancelAnimationFrame(widgetFrame)
+ widgetFrame=requestAnimationFrame(()=>{
+  const layer=widgetLayer.value
+  const cards=layer?.querySelectorAll<HTMLElement>('.home-widget-card,.widget-layout-toggle')
+  const canvas=layer?.parentElement?.getBoundingClientRect()
+  const next=canvas?Array.from(cards??[],el=>{
+   const r=el.getBoundingClientRect(),x=Math.floor(r.left-canvas.left),y=Math.floor(r.top-canvas.top)
+   return {x,y,width:Math.ceil(r.right-canvas.left)-x,height:Math.ceil(r.bottom-canvas.top)-y}
+  }).filter(r=>r.width>0&&r.height>0):[]
+  if(JSON.stringify(next)!==JSON.stringify(reserved.value)){blur();reserved.value=next}
+ })
+}
+watch(widgetLayer,layer=>{
+ widgetObserver?.disconnect();widgetMutation?.disconnect()
+ if(layer){
+  widgetObserver=new ResizeObserver(measureWidgets)
+  widgetObserver.observe(layer)
+  const observe=()=>{widgetObserver?.disconnect();widgetObserver?.observe(layer);layer.querySelectorAll('.home-widget-card,.widget-layout-toggle').forEach(el=>widgetObserver?.observe(el));measureWidgets()}
+  widgetMutation=new MutationObserver(records=>{if(records.some(r=>r.type==='childList'))observe();else measureWidgets()})
+  widgetMutation.observe(layer,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']})
+  observe()
+ }else{cancelAnimationFrame(widgetFrame);reserved.value=[]}
+},{flush:'post'})
+const iconRect=(p:Point)=>({...p,width:cell,height:cell})
 const selected = ref<string[]>([])
 const visibleItems=computed(()=>{const parents=folderParents(props.items.flatMap(i=>i.folder?[i.folder]:[]),{id:props.workspaceId,name:'',itemIds:props.items.map(i=>i.id)});return props.items.filter(i=>!parents.has(i.id))})
 const menu = ref<{x:number;y:number;item?:LauncherItem}>()
@@ -50,8 +78,8 @@ function migrate() {
 }
 const width = ref(960)
 const height = ref(480)
-const canvasHeight = computed(() => Math.max(height.value, Math.ceil(visibleItems.value.length / Math.max(1, Math.floor(width.value/cell)))*cell, ...visibleItems.value.map(item => (layout.value.positions[item.id]?.y ?? 0) + cell)))
-const resolved = computed(() => resolvePoints(visibleItems.value.map(i=>i.id),layout.value.positions,width.value,canvasHeight.value))
+const canvasHeight = computed(() => Math.max(height.value, Math.ceil(visibleItems.value.length / Math.max(1, Math.floor(width.value/cell)))*cell, ...visibleItems.value.map(item => (layout.value.positions[item.id]?.y ?? 0) + cell),...reserved.value.map(r=>r.y+r.height)))
+const resolved = computed(() => resolvePoints(visibleItems.value.map(i=>i.id),layout.value.positions,width.value,canvasHeight.value,reserved.value))
 const positions = computed(() => visibleItems.value.map(item => ({item,point:resolved.value[item.id]!})))
 const renderedHeight = computed(() => Math.max(canvasHeight.value,...positions.value.map(p=>p.point.y+cell)))
 let observer: ResizeObserver | undefined
@@ -77,7 +105,7 @@ function commitPositions(moved:Record<string,Point>){
   // Materialize the visible baseline before moving: unsaved defaults must
   // not fill the vacated cell and shift unrelated icons.
   const next={...layout.value.positions,...resolved.value,...moved}
-  const candidate=resolvePoints(visibleItems.value.map(item=>item.id),next,width.value,renderedHeight.value)
+  const candidate=resolvePoints(visibleItems.value.map(item=>item.id),next,width.value,renderedHeight.value,reserved.value)
   if(positions.value.some(({item,point})=>{
     const expected=moved[item.id]??point,actual=candidate[item.id]
     return !actual||actual.x!==expected.x||actual.y!==expected.y
@@ -149,7 +177,8 @@ function pointerMove(event:PointerEvent){
     })
     if(!members.length)return cancelDrag()
     const source=Object.fromEntries(members.map(m=>[m.id,m.point]))
-    const {overlaps}=createOccupancy(positions.value.filter(q=>!Object.hasOwn(source,q.item.id)).map(q=>q.point))
+    const index=createRectOccupancy([...reserved.value,...positions.value.filter(q=>!Object.hasOwn(source,q.item.id)).map(q=>iconRect(q.point))])
+    const overlaps=(p:Point)=>index.overlaps(iconRect(p))
     dragging={id:p.item.id,x:point.x,y:point.y,dx:0,dy:0,members,source,overlaps}
     moving.value=true
     for(const member of members)member.el.style.zIndex='2'
@@ -280,7 +309,7 @@ onMounted(()=>{
  document.addEventListener('scroll',ancestorScroll,true)
 })
 onBeforeUnmount(()=>{
- blur();observer?.disconnect()
+ blur();observer?.disconnect();widgetObserver?.disconnect();widgetMutation?.disconnect();cancelAnimationFrame(widgetFrame)
  window.removeEventListener('blur',blur)
  window.removeEventListener('keydown',cancelKey,true)
  document.removeEventListener('pointerdown',outside,true)
@@ -311,6 +340,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
           </span>
           <span v-if="showNames!==false" class="desktop-label">{{item.title}}</span>
         </button>
+        <div v-if="$slots.widgets" ref="widgetLayer" class="desktop-widget-layer"><slot name="widgets"/></div>
         <div v-if="marquee" class="desktop-marquee" :style="{left:Math.min(marquee.x,marquee.endX)+'px',top:Math.min(marquee.y,marquee.endY)+'px',width:Math.abs(marquee.endX-marquee.x)+'px',height:Math.abs(marquee.endY-marquee.y)+'px'}"/>
       </div>
     </div>
@@ -330,6 +360,9 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 .desktop-toolbar button:hover{background:var(--mac-selection-soft)}.desktop-toolbar button[aria-pressed=true]{background:var(--mac-selection-soft);color:var(--mac-ink)}.desktop-toolbar button:focus-visible{outline:2px solid var(--ui-focus);outline-offset:1px}
 .desktop-surface{position:relative;flex:1;min-height:240px;overflow:auto}
 .desktop-canvas{position:relative;min-width:100%;touch-action:pan-y}
+.desktop-widget-layer{position:absolute;top:0;right:0;width:min(960px,100%);z-index:1;pointer-events:none}
+.desktop-widget-layer :deep(.home-widget-shelf){width:100%;margin:0;overflow:visible}
+.desktop-widget-layer :deep(.home-widget-card),.desktop-widget-layer :deep(.widget-layout-toggle),.desktop-widget-layer :deep(.widget-drop-slot.ready){pointer-events:auto}
 .desktop-icon{position:absolute;top:0;left:0;width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:5px 0 0;gap:4px;border:0;background:none;color:white;touch-action:pan-y;user-select:none;-webkit-touch-callout:none;cursor:pointer}
 .desktop-shell.is-moving,.desktop-shell.is-moving .desktop-icon{cursor:grabbing}
 .touch-arrange .desktop-icon{touch-action:none;cursor:grab}.touch-arrange .desktop-toolbar{flex-wrap:wrap}.desktop-icon[data-drop=ready]{border-radius:8px;background:#559aff20}.desktop-icon[data-drop=blocked]{border-radius:8px;background:#d84c4c35;outline:1px solid #ffaaa7;outline-offset:-2px}
