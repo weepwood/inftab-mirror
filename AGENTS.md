@@ -364,3 +364,8 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - #36 上轮5675b00六项CI全部通过；Linux生产首屏59.5/60.5 KiB、非Swiper196.2/200 KiB；Firefox/WebKit专项58/58（45547482821/job/138980466549）。完成本机实际Finder浅/深、嵌套目录、叠层窗口、Mission Control、Dock运行状态与事务恢复截图检查。恢复时全局存储错误提示被窗口遮挡，修正desktop-mode下提示层级与位置；测试验证导出备份按钮可实际点击，重新审核截图。保留经典模式视觉。Edge生产候选5项视觉功能通过，最后Dock及三项恢复回归4/4通过；最终本机build:web首屏59.3/60.5、非Swiper195.2/200、Swiper26.4/30、CSS28.4/64 KiB，PWA bootstrap485/512 B、额外JS10722/16384 B、网站1691563/4194304 B。无新依赖或放宽预算。
 - package.json、lockfile根版本、MV3 manifest统一2.0.0；CHANGELOG及docs/releases/v2.0.0.md准确说明功能和限制。README与事务设计文档同步。权威IndexedDB迁移未完成，列为独立后续高风险工程；V1.8数据兼容读取、旧版重存可能失层级、sessionStorage恢复及其他已知边界明确记录。
 - Release validation 扩展PR里程碑触发，专用publish-v20只在main同一提交通过完整验收后执行，检查main SHA、拒绝覆盖已有Release/Tag、下载经验证的web/extension独立产物、生成及回下载校验SHA256、解压校验、最终核对Tag SHA。保留v1.8.0正式发布。不要从未验收的本地构建直接发布。PR仍需最终新提交全部检查（含新增release-verify）通过；通过后标ready、用预期SHA审查合并；验证main Pages与Release workflow、实际Tag/资产/线上文件。若CI失败仅修真实阻塞。不再增加外围功能。临时playwright.local-36.config.ts不提交。
+
+## V2.0.0 发布候选移动端回归修复（2026-11-25）
+- #36 8ab5c0a 六项专项CI通过，完整Release validation 45548634139/job/138984196222 在 Chromium全量E2E阶段 216通过、1失败、1既有跳过；手机320px品牌右边42.109375大于工具栏左边42，三次复现，已审核下载的实际失败截图。后续稳定浏览器、生产预览和扩展验收被跳过，不能宣称通过。
+- 仅调整<=360px经典模式品牌左距与工具栏右距为12px、工具栏间距1px，保留按钮尺寸和桌面模式。原不重叠断言保留，增加至少8px安全间距断言。初次边距修复本机间距5.609375不足，增加间距压缩后生产Edge productivity全部6/6通过；build:web通过（首屏59.3/60.5、非Swiper195.2/200、Swiper26.4/30、CSS28.4/64 KiB；PWA bootstrap485/512 B、额外JS10716/16384 B、全站1691668/4194304 B）。未改变门禁、依赖或业务功能。
+- main无强制状态检查，因此继续保留Draft，不能用自动合并绕过完整验收。最新修复提交CI全绿后才审查合并并核实main发布及Pages；v1.8.0保留原tag f486d393，v2.0.0此前不存在。不要重复扩大功能或创建其他PR。
