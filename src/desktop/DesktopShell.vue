@@ -2,7 +2,7 @@
 import { computed, ref, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import type { LauncherItem } from '../types'
 import { navigateMenu } from '../components/menuNavigation'
-import { launcherIcons } from '../components/launcherIcons'
+import { desktopHabitIcon, launcherIcons } from '../components/launcherIcons'
 import { folderParents } from '../data/folderTree'
 import { cell, arrangeFromRight, resolvePoints, fitPoint, freshLayout, normalizeLayout, translateGroup, type Point, type DesktopLayout } from './layout'
 const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout; folderShortcuts?: LauncherItem[]; dark?: boolean; blocked?:boolean; searchActive?:boolean}>()
@@ -281,7 +281,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 <template>
   <section class="desktop-shell" :class="{'is-moving':moving}" aria-label="自由桌面">
     <div class="desktop-toolbar" @pointerdown="emit('dismissSearch')">
-      <span>桌面 · {{selected.length}} 项已选</span>
+      <span>{{selected.length?selected.length+' 项已选':'桌面'}}</span>
       <button type="button" @click="emit('finder')">Finder</button>
       <button type="button" :aria-pressed="layout.snap" @click="update({...layout,snap:!layout.snap})">网格吸附</button>
       <button type="button" @click="update({...layout,positions:{}})">整理图标</button>
@@ -291,7 +291,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
         <button v-for="{item,point} in positions" :key="item.id" type="button" class="desktop-icon" :class="{selected:selected.includes(item.id)}" :data-item-id="item.id" :style="{transform:'translate('+point.x+'px,'+point.y+'px)'}" :aria-label="item.title" :aria-pressed="selected.includes(item.id)" @pointerdown="pointerStart($event,item)" @pointermove="pointerMove" @pointerup="pointerEnd" @pointercancel="pointerCancel" @lostpointercapture="pointerCancel" @click="activate(item,$event)" @auxclick.middle.prevent="activate(item,$event)" @auxclick.right.prevent @contextmenu.stop.prevent @keydown="keyMove($event,item.id)">
           <span class="desktop-symbol" :class="{builtin:item.action}" :data-action="item.action" :style="{background:item.action ? undefined : item.color}">
             <span v-if="item.folder" class="mac-folder mac-folder-icon" aria-hidden="true"></span>
-            <component v-else-if="item.action && launcherIcons[item.action]" :is="launcherIcons[item.action]" :size="30" :stroke-width="1.8"/>
+            <component v-else-if="item.action && launcherIcons[item.action]" :is="item.action==='habits'?desktopHabitIcon:launcherIcons[item.action]" :size="30" :stroke-width="1.8"/>
             <img v-else-if="item.icon && failedIcons[item.id]!==item.icon" :src="item.icon" alt="" draggable="false" @error="failedIcons[item.id]=item.icon!"/>
             <span v-else>{{item.mark}}</span>
           </span>
@@ -310,22 +310,23 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 </template>
 <style scoped>
 .desktop-shell{width:100%;min-width:0;color:#fff;flex:1;display:flex;flex-direction:column;min-height:0}
-.desktop-toolbar{display:flex;align-items:center;gap:8px;align-self:flex-end;max-width:100%;padding:3px 5px;background:#20283045;border:1px solid #ffffff30;border-radius:8px;backdrop-filter:blur(18px) saturate(130%);margin-bottom:3px}
-.desktop-toolbar span{min-width:0;overflow:hidden;text-overflow:ellipsis;margin:0 5px;font-size:11px;font-weight:500;white-space:nowrap}
-.desktop-toolbar button{flex-shrink:0;white-space:nowrap;border:0;background:transparent;color:white;border-radius:5px;padding:5px 8px;font-size:12px;cursor:pointer}
-.desktop-toolbar button:hover{background:#ffffff25}.desktop-toolbar button[aria-pressed=true]{background:#ffffff30;color:#fff}
+.desktop-toolbar{display:flex;align-items:center;gap:3px;align-self:flex-end;max-width:100%;padding:3px 4px;background:var(--mac-bar);color:var(--mac-ink);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);backdrop-filter:blur(20px) saturate(135%);box-shadow:0 3px 12px #0002;margin-bottom:3px}
+.desktop-toolbar span{min-width:0;overflow:hidden;text-overflow:ellipsis;margin:0 5px;font-size:11px;font-weight:500;white-space:nowrap;color:var(--mac-muted)}
+.desktop-toolbar button{flex-shrink:0;white-space:nowrap;border:0;background:transparent;color:var(--mac-ink);border-radius:var(--mac-radius-menu-item);padding:5px 8px;font-size:12px;cursor:pointer}
+.desktop-toolbar button:hover{background:var(--mac-selection-soft)}.desktop-toolbar button[aria-pressed=true]{background:var(--mac-selection-soft);color:var(--mac-ink)}.desktop-toolbar button:focus-visible{outline:2px solid var(--ui-focus);outline-offset:1px}
 .desktop-surface{position:relative;flex:1;min-height:240px;overflow:auto}
 .desktop-canvas{position:relative;min-width:100%;touch-action:pan-y}
-.desktop-icon{position:absolute;top:0;left:0;width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;background:none;color:white;touch-action:pan-y;user-select:none;-webkit-touch-callout:none;cursor:pointer}
+.desktop-icon{position:absolute;top:0;left:0;width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:5px 0 0;gap:4px;border:0;background:none;color:white;touch-action:pan-y;user-select:none;-webkit-touch-callout:none;cursor:pointer}
 .desktop-shell.is-moving,.desktop-shell.is-moving .desktop-icon{cursor:grabbing}
 .desktop-icon:focus-visible{outline:2px solid white;outline-offset:-3px;border-radius:8px}
-.desktop-symbol{width:56px;height:56px;border-radius:14px;border:1px solid #ffffff48;display:grid;place-items:center;overflow:hidden;color:white;box-shadow:0 4px 14px #0004,inset 0 1px 1px #ffffff50;font-size:24px}
+.desktop-symbol{width:56px;height:56px;flex:none;border-radius:var(--mac-icon-radius);border:1px solid var(--mac-icon-edge);display:grid;place-items:center;overflow:hidden;color:white;box-shadow:var(--mac-icon-shadow);font-size:24px}
 
 .desktop-symbol img{width:100%;height:100%;object-fit:contain;pointer-events:none}
-.desktop-label{max-width:90px;padding:1px 5px;border-radius:4px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500;line-height:1.25;text-shadow:0 1px 3px #000,0 1px 6px #0009}
-.desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection)}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:56px}.desktop-menu{position:fixed;z-index:10;background:var(--mac-menu);color:var(--mac-ink);padding:var(--mac-menu-padding);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);box-shadow:var(--mac-shadow);width:170px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);overflow:auto;overscroll-behavior:contain;backdrop-filter:blur(18px)}.desktop-menu button{display:block;width:100%;text-align:left;padding:7px 9px;background:none;border:0;border-radius:var(--mac-radius-menu-item);color:inherit;cursor:pointer}.desktop-menu button:hover,.desktop-menu button:focus-visible{background:var(--mac-selection);color:var(--mac-selection-ink)}
+.desktop-label{max-width:90px;padding:1px 5px;border-radius:5px;box-sizing:border-box;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;white-space:normal;font-size:12px;font-weight:500;line-height:14px;text-align:center;color:var(--mac-desktop-label-ink);background:var(--mac-desktop-label)}
+.desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon:focus-visible .desktop-symbol{outline:2px solid #fff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection)}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:56px}.desktop-menu{position:fixed;z-index:10;background:var(--mac-menu);color:var(--mac-ink);padding:var(--mac-menu-padding);border:1px solid var(--mac-line);border-radius:var(--mac-radius-menu);box-shadow:var(--mac-shadow);width:170px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);overflow:auto;overscroll-behavior:contain;backdrop-filter:blur(18px)}.desktop-menu button{display:block;width:100%;text-align:left;padding:7px 9px;background:none;border:0;border-radius:var(--mac-radius-menu-item);color:inherit;cursor:pointer}.desktop-menu button:hover,.desktop-menu button:focus-visible{background:var(--mac-selection);color:var(--mac-selection-ink)}
 .desktop-marquee{position:absolute;pointer-events:none;border:1px solid #93c9ff;background:#559aff30;z-index:4}@media(prefers-reduced-motion:no-preference){.desktop-icon.selected .desktop-symbol{transition:outline-color .12s}.finder{animation:finder-appear .15s ease-out}}
 .desktop-menu.dark{background:var(--mac-menu);color:var(--mac-ink);border-color:var(--mac-line)}
+@media(forced-colors:active){.desktop-label{color:CanvasText;background:Canvas}.desktop-icon.selected .desktop-label{color:HighlightText;background:Highlight}.desktop-icon:focus-visible{outline-color:Highlight}}
 @media(pointer:coarse){.desktop-menu button{min-height:44px;padding:9px 12px}}
 @media(max-width:480px){.desktop-toolbar{gap:3px}.desktop-toolbar span{font-size:10px;margin-inline:2px}.desktop-toolbar button{padding:5px;font-size:11px}}
 </style>

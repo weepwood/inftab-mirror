@@ -145,13 +145,22 @@ describe('SettingsPanel local wallpaper upload', () => {
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })
 
-  it('clears the local wallpaper when the user removes it', async () => {
-    wrapper = mount(SettingsPanel, {
-      props: { preferences: { ...defaultPreferences, customWallpaper: 'data:image/webp;base64,YWJj' } },
-    })
-    await wrapper.findAll('button').find((button) => button.text().trim() === '移除本地壁纸')!.trigger('click')
-    expect(wrapper.emitted('update')).toContainEqual([{ customWallpaper: '' }])
-  })
+  it.each(['data:image/webp;base64,YWJj', 'DATA:IMAGE/WEBP;BASE64,YWJj'])(
+    'recognizes and clears an imported local wallpaper: %s', async (customWallpaper) => {
+      wrapper = mount(SettingsPanel, {
+        props: { preferences: { ...defaultPreferences, customWallpaper, shade: 0.35 } },
+      })
+      expect(wrapper.get('.wallpaper-current figcaption').text()).toContain('本地壁纸')
+      expect(wrapper.get('.wallpaper-current figcaption').text()).toContain('35%')
+      expect((wrapper.get('input[placeholder="https://example.com/wallpaper.jpg"]').element as HTMLInputElement).value).toBe('')
+      expect(wrapper.findAll('.wallpaper-option[aria-pressed="true"]')).toHaveLength(0)
+      await wrapper.findAll('button').find((button) => button.text().trim() === '移除本地壁纸')!.trigger('click')
+      expect(wrapper.emitted('update')).toContainEqual([{ customWallpaper: '' }])
+      await wrapper.setProps({ preferences: { ...defaultPreferences } })
+      expect(wrapper.get('.wallpaper-current figcaption').text()).toContain('雾林')
+      expect(wrapper.get('button[aria-label="雾林"]').attributes('aria-pressed')).toBe('true')
+    },
+  )
 
   it('does not let a slower image upload override the latest wallpaper choice', async () => {
     let resolveCompression!: (dataUrl: string) => void

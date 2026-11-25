@@ -1441,3 +1441,133 @@ for(const theme of ['light','dark']){
   await page.screenshot({path:info.outputPath('calculator.png'),animations:'disabled'})
  })
 }
+
+for(const [width,height,theme] of [[1440,900,'light'],[1280,800,'dark'],[360,740,'light']] as const){
+ test('desktop visual composition '+width+' '+theme,async({page},info)=>{
+  await page.setViewportSize({width,height})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.addInitScript(theme=>{
+   localStorage.setItem('inftab.desktop-mode.v1','true')
+   localStorage.setItem('inftab.preferences.v1',JSON.stringify({themeMode:theme,shade:0,showClock:true,showSearchBar:false,dockItemIds:['todos','notes','calendar','calculator','weather','bookmarks','visual-link']}))
+   localStorage.setItem('inftab.shortcuts.v1',JSON.stringify([{id:'visual-link',title:'Research library',url:'https://example.com',color:'#5275a5',mark:'R'}]))
+   localStorage.setItem('inftab.folders.v1',JSON.stringify([{id:'visual-folder',title:'Projects',shortcutIds:[],color:'#4176e8',mark:'P'}]))
+   localStorage.setItem('inftab.home-workspaces.v1',JSON.stringify([{id:'default',name:'个人工作区',itemIds:['visual-folder','visual-link','todos','notes','calendar','calculator','weather','bookmarks','habits','focus-timer']}]))
+  },theme)
+  await page.goto('/')
+  await expect(page.locator('.desktop-icon[data-item-id="visual-folder"]')).toBeVisible()
+  await expect(page.locator('.desktop-icon[data-item-id="visual-link"]')).toBeVisible()
+  await expect(page.locator('.home-dock')).toBeVisible()
+  const dock=page.locator('.home-dock'),workspace=page.locator('.home-workspace-trigger')
+  await expect(dock.locator('.home-dock-item')).toHaveCount(7)
+  const long=page.locator('.desktop-icon[data-item-id="visual-link"]')
+  const label=long.locator('.desktop-label')
+  const metrics=await long.evaluate(el=>{
+   const label=el.querySelector('.desktop-label')!,symbol=el.querySelector('.desktop-symbol')!,r=el.getBoundingClientRect(),l=label.getBoundingClientRect(),icon=symbol.getBoundingClientRect(),style=getComputedStyle(label)
+   const [red,green,blue,alpha]=style.backgroundColor.match(/[\d.]+/g)!.map(Number)
+   const lum=[red!,green!,blue!].map(v=>(v*alpha!+255*(1-alpha!))/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i]!,0)
+   return {contrast:1.05/(lum+.05),height:r.height,width:r.width,inside:l.bottom<=r.bottom+1,iconBeforeLabel:icon.bottom<=l.top,lines:l.height/parseFloat(style.lineHeight),labelFits:label.scrollHeight<=label.clientHeight+1}
+  })
+  expect(metrics.contrast).toBeGreaterThanOrEqual(4.5)
+  expect(metrics.width).toBe(96);expect(metrics.height).toBe(96)
+  expect(metrics.inside&&metrics.iconBeforeLabel&&metrics.labelFits).toBe(true)
+  expect(metrics.lines).toBeGreaterThan(1.9)
+  await expect(page.locator('.desktop-toolbar span')).toHaveText('桌面')
+  if(width===360){
+   const bounds=await dock.evaluate(el=>{
+    const tray=getComputedStyle(el,'::before'),r=el.getBoundingClientRect(),items=[...el.querySelectorAll('.home-dock-icon')].map(i=>i.getBoundingClientRect())
+    return {left:r.left+parseFloat(tray.left),right:r.right-parseFloat(tray.right),first:items[0]!.left,last:items.at(-1)!.right,bottom:r.bottom}
+   })
+   expect(bounds.first).toBeGreaterThanOrEqual(bounds.left-1)
+   expect(bounds.last).toBeLessThanOrEqual(bounds.right+1)
+   expect(bounds.bottom).toBeLessThanOrEqual((await workspace.boundingBox())!.y)
+  }
+  await page.screenshot({path:info.outputPath('desktop-composition.png'),animations:'disabled'})
+  await workspace.click()
+  await expect(page.locator('.workspace-panel')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.workspace-panel')).toHaveCount(0)
+  if(width===360){
+   await page.setViewportSize({width:320,height:740})
+   await dock.locator('.home-dock-item').last().scrollIntoViewIfNeeded()
+   await expect(dock.locator('.home-dock-item').last()).toBeInViewport()
+  }
+ })
+}
+
+for(const theme of ['light','dark']){
+ test('desktop app icon identities agree across launcher Dock and Spotlight '+theme,async({page},info)=>{
+  await page.setViewportSize({width:1440,height:900})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.addInitScript(theme=>{
+   localStorage.setItem('inftab.desktop-mode.v1','true')
+   localStorage.setItem('inftab.preferences.v1',JSON.stringify({themeMode:theme,showSearchBar:false,dockItemIds:['todos','notes','calendar','habits','audit-folder']}))
+   localStorage.setItem('inftab.folders.v1',JSON.stringify([{id:'audit-folder',title:'Projects',shortcutIds:[],mark:'F',color:'#4176e8'}]))
+  },theme)
+  await page.goto('/')
+  const desktop=page.locator('.desktop-icon[data-item-id="habits"] .desktop-symbol'),dock=page.locator('.home-dock-item[data-dock-item-id="habits"] .home-dock-icon')
+  await expect(desktop).toBeVisible()
+  await expect(dock.locator('svg')).toHaveClass(/lucide-calendar-check/)
+  await expect(desktop.locator('svg')).toHaveClass(/lucide-calendar-check/)
+  await expect(page.locator('.desktop-icon[data-item-id="todos"] svg')).toHaveClass(/lucide-list-todo/)
+  const material=(el:Element)=>{const s=getComputedStyle(el);return [s.backgroundImage,s.color,s.boxShadow]}
+  const expected=await desktop.evaluate(material)
+  expect(await dock.evaluate(material)).toEqual(expected)
+  await expect(page.locator('[data-dock-item-id="audit-folder"] .mac-folder-icon')).toBeVisible()
+  await page.screenshot({path:info.outputPath('icon-materials.png'),animations:'disabled'})
+  await page.getByRole('button',{name:'打开命令面板'}).click()
+  const search=page.getByRole('combobox',{name:'搜索命令'})
+  await search.fill('习惯')
+  const spotlight=page.locator('.spotlight-icon[data-action="habits"]')
+  await expect(spotlight).toBeVisible()
+  expect(await spotlight.evaluate(material)).toEqual(expected)
+  await expect(spotlight.locator('svg')).toHaveClass(/lucide-calendar-check/)
+  await page.keyboard.press('Escape')
+  await page.getByRole('button',{name:'经典模式',exact:true}).click()
+  await expect(page.locator('.home-dock-item[data-dock-item-id="habits"] svg')).toHaveClass(/lucide-list-todo/)
+ })
+}
+
+for(const theme of ['light','dark']){
+ test('desktop wallpaper preview reflects saved background and shade '+theme,async({page},info)=>{
+  await page.setViewportSize({width:1280,height:900})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.addInitScript(theme=>{
+   localStorage.setItem('inftab.desktop-mode.v1','true')
+   if(!localStorage.getItem('inftab.preferences.v1'))localStorage.setItem('inftab.preferences.v1',JSON.stringify({themeMode:theme,showSearchBar:false,shade:.24}))
+  },theme)
+  await page.goto('/')
+  const home=page.locator('.home.desktop-mode')
+  const icon=page.locator('.desktop-icon[data-item-id="todos"]')
+  await expect(icon).toBeVisible()
+  const original=await icon.boundingBox()
+  await page.locator('.home-actions').getByRole('button',{name:'打开设置',exact:true}).click()
+  const panel=page.getByRole('dialog',{name:'设置',exact:true})
+  const preview=panel.locator('.wallpaper-current-image'),caption=panel.locator('.wallpaper-current figcaption')
+  await expect(preview).toBeVisible()
+  const background=()=>home.evaluate(el=>getComputedStyle(el).backgroundImage)
+  for(const name of ['雾林','暮色','海面','暖沙']){
+   await panel.getByRole('button',{name,exact:true}).click()
+   await expect(caption).toContainText(name)
+   await expect.poll(()=>preview.evaluate(el=>getComputedStyle(el).backgroundImage)).toBe(await background())
+   await expect(panel.getByRole('button',{name,exact:true})).toHaveAttribute('aria-pressed','true')
+  }
+  const shade=panel.getByRole('spinbutton',{name:'背景暗度精确值（%）'})
+  await shade.fill('35');await shade.press('Enter')
+  await expect(caption).toContainText('35%')
+  await expect(preview).toHaveCSS('--preview-shade','0.35')
+  await panel.locator('.wallpaper-current').evaluate(el=>el.scrollIntoView({block:'start'}))
+  await expect(preview).toBeInViewport()
+  await page.screenshot({path:info.outputPath('wallpaper-gallery.png'),animations:'disabled'})
+  await panel.getByPlaceholder('https://example.com/wallpaper.jpg').fill('linear-gradient(135deg, #122638, #be9c78)')
+  await expect(caption).toContainText('自定义背景')
+  await expect.poll(()=>preview.evaluate(el=>getComputedStyle(el).backgroundImage)).toBe(await background())
+  await expect(panel.locator('.wallpaper-option[aria-pressed=true]')).toHaveCount(0)
+  await panel.getByRole('button',{name:'海面',exact:true}).click()
+  await panel.getByRole('button',{name:'关闭',exact:true}).click()
+  await expect.poll(()=>icon.boundingBox()).toEqual(original)
+  const saved=await background()
+  await page.reload()
+  await expect.poll(background).toBe(saved)
+  await expect.poll(()=>icon.boundingBox()).toEqual(original)
+ })
+}

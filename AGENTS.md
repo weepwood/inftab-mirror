@@ -449,5 +449,22 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 8eb4104 的 verify 139272400284、cross 139272400092 都因 Linux gzip 204831 > 204800 B（超31 B）构建失败，UI通过。未放宽预算。保留desktop-shell合并菜单/画布及workspace-recovery合并备份解析/恢复，撤销会使桌面窗口静态加载settings-tools的事务合并实验。保持Swiper独立、经典首屏及桌面外壳按需加载契约。
 - WindowFrame 标题栏和缩放手柄 user-select:none，正文保持可选择，双主题笔记缩放新增DOM无误选断言；生产分包新增经典/设置不加载desktop-shell、桌面仅加载一次且可往返验证。首次新测试同名设置按钮定位歧义已修正。最终check/build:web、生产Edge 71/71（desktop-alpha2、production-chunks、desktop-storage、config-migration）通过。Mac首屏59.8/60.5、非Swiper198.4/200、CSS34.4/64KiB，PWA额外10666/16384 B、全站1746653/4194304 B。Linux待CI，未重复全量单测或真机。追加现有#46，不创建新PR；#45线上8de2601保持不变，#37与正式Tag保持。通过后合并部署，再继续其他业务应用视觉。
 
+## 桌面整体视觉专项（2026-11-25）
+- 在 #46 779c71a 候选上独立分支 feat/desktop-visual-refinement，后续基线随 #46 收口；不修改保存图标坐标、排列规则、经典模式或数据格式。共享图标材质及标签衬底、长名称两行、图标顶对齐、顶部反馈/桌面工具条主题、壁纸中性暗度、Dock材质和窄屏独立布局、备案位置。保留PWA入口、工作区和横向滚动。
+- 真实前后截图6张 docs/screenshots/macos-desktop/composition。最终check/build:web、3/3视觉专项与84/84宽范围生产Edge回归通过；360px七图标托盘内，320px最后入口滚动可达、标签96px几何及合成白底对比度≥4.5。Mac非Swiper198.4/200、首屏59.8/60.5、CSS34.9/64KiB；不提高预算。实际默认雾林壁纸，未覆盖所有壁纸/强制颜色/真机。#46 最新常规/PWA/UI通过（737单测，Linux非Swiper199.4/200），cross WebKit两项文本误选失败，独立修复，不提前合并或称上线。
+
 ## #46 WebKit 缩放选择回归
 - 779c71a 常规737/737、PWA、UI通过，Linux非Swiper199.4/200KiB；cross 139280374918 实际106通过/2跳过/2失败，两个WebKit笔记缩放用例仍选中页脚文字，CSS user-select单独不足。缩放手柄新增mousedown.prevent阻止原生鼠标文本选择起始，保留原选择断言及正文编辑，不改其他行为。本机build:web、四项核心缩放专项4/4通过，Mac非Swiper198.5/200KiB。对应Playwright WebKit 2370未安装，远程复验待核验。#47独立视觉提交c66dc28，基于本PR分支，合并#46后再转main，保留6张截图与84/84本机回归记录，不提前合并。
+
+## #47 应用图标与桌面空间深化
+- 保留#47作为集中视觉PR，同步#46 da76a3d（仅AGENTS.md冲突，双方记录均保留）。桌面/Dock/Spotlight材质前景按应用归一，纸白/黄页眉/红页眉/深灰/银灰等独立身份；复用现有Lucide CalendarCheck区分习惯打卡，经典ListTodo不变，Dock文件夹共用原CSS文件夹。顶部操作分组及窄屏取消额外间距，系统强制颜色回退。无新增依赖、外部图标、业务数据或坐标变更。
+- Mac check/build:web、最终定向生产Edge10/10通过，含双主题三处计算材质和习惯图标、经典切换、既有320/360窄屏几何。五张截图 docs/screenshots/macos-desktop/icon-materials。首屏59.8/60.5、非Swiper198.6/200、CSS35.2/64KiB；PWA额外10671/16384 B、全站1751375/4194304 B。此前84/84是图标改动前，未重跑全量。保留预算，远程Linux与WebKit待验收；未完成所有图标对比度、真机或其他壁纸、个性化密度。保持#37与正式Tag，临时playwright.local-window41.config.ts不提交。
+
+## #47 壁纸图库与预览收口
+- #46 da76a3d 远程四项全绿，737单测/95文件，cross108通过/2跳过，Linux非Swiper199.4/200；合并7600b50，Pages 45642782444成功，首次93/94一个CSS503，单独重试后94/94。#47合入该main，无冲突。
+- 继续原#47，桌面背景区添加装饰性当前背景缩略图与暗度、两列宽幅图库、选中/焦点/forced-colors规则。保持经典图库、四种内置背景、轮换/上传/持久化及坐标规则；没有新依赖或外部图片。实际预览不是交互桌面，远程/本地自定义图片未逐一视觉测试。
+- 最终check/build:web，SettingsPanel23/23，生产Edge宽范围84/84（desktop-alpha2、desktop-alpha、production-chunks、custom-theme、workspace-switcher），含全部四种内置背景/自定义渐变/暗度/刷新坐标保护。两张真实截图docs/screenshots/macos-desktop/wallpaper。Mac非Swiper198.8/200、首屏59.8/60.5、CSS35.6/64KiB；PWA额外10662/16384 B、全站1754673/4194304 B。无预算放宽。#47转main后等待实际Linux与跨浏览器门禁，暂不新增图标密度/小组件/真机专项，不改#37或V2.0.0 Tag。
+
+## #47 导入壁纸兼容性与正式 CI 收口（2026-11-25）
+- aea2801 的手动 Focused UI validation 45643971433 已通过（ui-smoke、desktop-cross-browser 均成功）；该提交没有普通 PR CI check，不能以手动 UI 代替完整验收。
+- 审查发现 sanitizePreferences 接受大小写不同的本地 data:image 地址，而 SettingsPanel 仅识别小写前缀，导入后可能显示完整数据地址且缺少移除按钮。改为大小写不敏感判定，补充本地壁纸预览标签、暗度、输入框、选择状态、移除及回退断言，不改保存格式或壁纸实际渲染。SettingsPanel 24/24 通过；本机类型检查因资源门禁内存压力 2 未启动，保留门禁，依赖新提交的常规 CI 复验。不重复新增 PR、不修改 main、#37 或 V2.0.0 Tag。

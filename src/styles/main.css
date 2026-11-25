@@ -1309,3 +1309,6 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .range-number input:focus-visible{outline:none}
 .range-number:has(input:disabled){opacity:.55}
 @media(forced-colors:active){.range-number{border-color:ButtonText}.range-number:focus-within{outline-color:Highlight}}
+
+/* Wallpaper preview is a decorative miniature, not a second interactive desktop. */
+.wallpaper-current{display:none}
