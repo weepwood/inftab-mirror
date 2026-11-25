@@ -464,3 +464,7 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - #46 da76a3d 远程四项全绿，737单测/95文件，cross108通过/2跳过，Linux非Swiper199.4/200；合并7600b50，Pages 45642782444成功，首次93/94一个CSS503，单独重试后94/94。#47合入该main，无冲突。
 - 继续原#47，桌面背景区添加装饰性当前背景缩略图与暗度、两列宽幅图库、选中/焦点/forced-colors规则。保持经典图库、四种内置背景、轮换/上传/持久化及坐标规则；没有新依赖或外部图片。实际预览不是交互桌面，远程/本地自定义图片未逐一视觉测试。
 - 最终check/build:web，SettingsPanel23/23，生产Edge宽范围84/84（desktop-alpha2、desktop-alpha、production-chunks、custom-theme、workspace-switcher），含全部四种内置背景/自定义渐变/暗度/刷新坐标保护。两张真实截图docs/screenshots/macos-desktop/wallpaper。Mac非Swiper198.8/200、首屏59.8/60.5、CSS35.6/64KiB；PWA额外10662/16384 B、全站1754673/4194304 B。无预算放宽。#47转main后等待实际Linux与跨浏览器门禁，暂不新增图标密度/小组件/真机专项，不改#37或V2.0.0 Tag。
+
+## #47 导入壁纸兼容性与正式 CI 收口（2026-11-25）
+- aea2801 的手动 Focused UI validation 45643971433 已通过（ui-smoke、desktop-cross-browser 均成功）；该提交没有普通 PR CI check，不能以手动 UI 代替完整验收。
+- 审查发现 sanitizePreferences 接受大小写不同的本地 data:image 地址，而 SettingsPanel 仅识别小写前缀，导入后可能显示完整数据地址且缺少移除按钮。改为大小写不敏感判定，补充本地壁纸预览标签、暗度、输入框、选择状态、移除及回退断言，不改保存格式或壁纸实际渲染。SettingsPanel 24/24 通过；本机类型检查因资源门禁内存压力 2 未启动，保留门禁，依赖新提交的常规 CI 复验。不重复新增 PR、不修改 main、#37 或 V2.0.0 Tag。

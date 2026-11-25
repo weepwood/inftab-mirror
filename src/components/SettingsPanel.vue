@@ -49,7 +49,7 @@ const backupExportedAtLabel = computed(() => {
   const timestamp = Date.parse(pendingBackup.value?.exportedAt ?? '')
   return Number.isFinite(timestamp) ? new Date(timestamp).toLocaleString() : '未知'
 })
-const hasLocalWallpaper = computed(() => props.preferences.customWallpaper.startsWith('data:image/'))
+const hasLocalWallpaper = computed(() => /^data:image\//i.test(props.preferences.customWallpaper))
 const wallpaperPreview = computed(() => {
   const choice = wallpaperChoices.find(item => item.value === props.preferences.wallpaper) ?? wallpaperChoices[0]!
   const value = props.preferences.customWallpaper.trim()
