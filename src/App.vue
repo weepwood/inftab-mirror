@@ -131,6 +131,7 @@ const sidePanel = ref<HTMLElement>()
 const shortcutDialogElement = ref<HTMLDialogElement>()
 const folderDialogOpen = ref(false)
 const activeFolder = ref<ShortcutFolder>()
+const folderWorkspaceId = ref('default')
 const folderSaveError = ref('')
 const shortcutDialog = ref(false)
 let shortcutDialogReturnFocusTarget: HTMLElement | undefined
@@ -181,8 +182,10 @@ const homeDockItems = computed(() => preferences.value.dockItemIds.flatMap((id) 
 const unavailableFolderShortcutIds = computed(() => folders.value
   .filter((folder) => folder.id !== activeFolder.value?.id)
   .flatMap((folder) => folder.shortcutIds))
-const folderEditorShortcuts = computed(() => shortcuts.value.filter((shortcut) => activeHomeWorkspaceItemIds.value.has(shortcut.id)
-  || activeFolder.value?.shortcutIds.includes(shortcut.id)))
+const folderEditorShortcuts = computed(() => {
+  const workspace = homeWorkspaces.value.find(w => w.id === folderWorkspaceId.value)
+  return shortcuts.value.filter(shortcut => workspace?.itemIds.includes(shortcut.id))
+})
 const pageCount = computed(() => Math.max(1, Math.ceil(allLauncherItems.value.length / pageSize.value)))
 const pageNavigation = computed(() => getPageNavigation(pageCount.value, currentPage.value))
 watch(activeHomeWorkspaceId, () => { currentPage.value = 0 })
@@ -411,12 +414,11 @@ function openItem(item: LauncherItem, event?: MouseEvent) {
 }
 
 function openFolder(folder: ShortcutFolder) {
-  folderSaveError.value = ''
-  activeFolder.value = folder
-  folderDialogOpen.value = true
+  openFolderEditor(folder)
 }
 
-function openFolderEditor(folder?: ShortcutFolder) {
+function openFolderEditor(folder?: ShortcutFolder, workspaceId = activeHomeWorkspaceId.value) {
+  folderWorkspaceId.value = (folder && homeWorkspaces.value.find(w => w.itemIds.includes(folder.id))?.id) || workspaceId
   folderSaveError.value = ''
   activeFolder.value = folder
   folderDialogOpen.value = true
@@ -469,8 +471,13 @@ async function confirmDestructiveAction() {
 }
 
 function saveFolder(folder: ShortcutFolder) {
-  if (!saveFolderData(folder)) {
-    folderSaveError.value = '最多只能保存 500 个文件夹。'
+  const target = homeWorkspaces.value.find(w => w.id === folderWorkspaceId.value)
+  if (!target || (activeFolder.value && !target.itemIds.includes(activeFolder.value.id)) || folder.shortcutIds.some(id => !target.itemIds.includes(id))) {
+    folderSaveError.value = '工作区或入口归属已发生变化，请关闭后重新打开文件夹。'
+    return
+  }
+  if (!saveFolderData(folder, target.id)) {
+    folderSaveError.value = '无法保存文件夹，请检查名称、颜色及数量限制。'
     return
   }
   folderSaveError.value = ''
@@ -913,7 +920,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <FinderWindow v-if="finderOpen && desktopMode && !minimalMode" :key="finderFolderId ?? 'root'" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :folder-id="finderFolderId" :dark="effectiveTheme==='dark'" @close="finderOpen=false" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembership" @create="openFolderEditor()" />
+    <FinderWindow v-if="finderOpen && desktopMode && !minimalMode" :key="finderFolderId ?? 'root'" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :folder-id="finderFolderId" :dark="effectiveTheme==='dark'" @close="finderOpen=false" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" @move="finderMove" @membership="finderMembership" @create="id => openFolderEditor(undefined, id)" />
     <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">

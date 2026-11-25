@@ -82,3 +82,41 @@ test('desktop drag into folder and move folder with members across workspaces',a
  await expect(folder).toBeVisible()
  await expect(link).toHaveCount(0)
 })
+
+test('Finder creates and edits folders in the browsed workspace without switching desktops',async({page})=>{
+ await page.setViewportSize({width:1280,height:900})
+ await page.addInitScript(()=>{
+  if(sessionStorage.getItem('alpha2-folder-owner'))return
+  sessionStorage.setItem('alpha2-folder-owner','1')
+  localStorage.setItem('inftab.desktop-mode.v1','true')
+  localStorage.setItem('inftab.shortcuts.v1',JSON.stringify([
+   {id:'home-link',title:'Home link',url:'https://example.com',mark:'H',color:'#5689aa'},
+   {id:'work-link',title:'Work link',url:'https://example.org',mark:'W',color:'#5689aa'}
+  ]))
+  localStorage.setItem('inftab.home-workspaces.v1',JSON.stringify([{id:'default',name:'主页',itemIds:['home-link']},{id:'second',name:'工作',itemIds:['work-link']}]))
+ })
+ await page.goto('/')
+ await page.getByRole('button',{name:'Finder',exact:true}).click()
+ const finder=page.getByRole('dialog',{name:'Finder 入口管理'})
+ await finder.getByRole('button',{name:'工作',exact:true}).click()
+ await finder.getByRole('button',{name:'新建文件夹'}).click()
+ const create=page.getByRole('dialog',{name:'新建文件夹'})
+ await create.getByLabel('文件夹名称').fill('Work folder')
+ await expect(create.getByRole('checkbox',{name:/Home link/})).toHaveCount(0)
+ await create.getByRole('checkbox',{name:/Work link/}).check()
+ await create.getByRole('button',{name:'保存文件夹'}).click()
+ await finder.locator('.finder-items button').filter({hasText:'Work folder'}).click()
+ await finder.getByRole('button',{name:'编辑',exact:true}).click()
+ await page.getByRole('dialog',{name:'Work folder'}).getByRole('button',{name:'编辑',exact:true}).click()
+ const edit=page.getByRole('dialog',{name:'编辑文件夹'})
+ await edit.getByLabel('文件夹名称').fill('Renamed work folder')
+ await expect(edit.getByRole('checkbox',{name:/Work link/})).toBeChecked()
+ await edit.getByRole('button',{name:'保存文件夹'}).click()
+ await expect(finder.locator('.finder-items button').filter({hasText:'Renamed work folder'})).toBeVisible()
+ await expect(page.getByRole('button',{name:'切换工作区，当前：主页'})).toBeVisible()
+ await expect.poll(()=>page.evaluate(()=>{
+  const f=JSON.parse(localStorage.getItem('inftab.folders.v1')??'[]').find((f:{title:string})=>f.title==='Renamed work folder')
+  const spaces=JSON.parse(localStorage.getItem('inftab.home-workspaces.v1')??'[]')
+  return {members:f?.shortcutIds,owners:spaces.filter((w:{itemIds:string[]})=>w.itemIds.includes(f?.id)).map((w:{id:string})=>w.id)}
+ })).toEqual({members:['work-link'],owners:['second']})
+})

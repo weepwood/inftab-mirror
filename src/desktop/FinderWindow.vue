@@ -7,7 +7,7 @@ import { Folder, Grid2X2, List, Search, ArrowUpRight } from '@lucide/vue'
 import type {LauncherItem} from '../types'
 import type {HomeWorkspace} from '../data/homeWorkspaces'
 const props=defineProps<{items:LauncherItem[]; workspaces:HomeWorkspace[]; workspaceId:string; folderId?:string; dark?:boolean}>()
-const emit=defineEmits<{close:[];open:[item:LauncherItem,event?:MouseEvent];edit:[item:LauncherItem];remove:[item:LauncherItem];move:[item:LauncherItem,id:string];membership:[item:LauncherItem,folderId:string|null];create:[]}>()
+const emit=defineEmits<{close:[];open:[item:LauncherItem,event?:MouseEvent];edit:[item:LauncherItem];remove:[item:LauncherItem];move:[item:LauncherItem,id:string];membership:[item:LauncherItem,folderId:string|null];create:[workspaceId:string]}>()
 const root=ref<HTMLElement>(), titlebar=ref<HTMLElement>(), search=ref('')
 const currentSpace=ref(props.workspaceId), currentFolder=ref(props.folderId??'')
 const minimized=ref(false), maximized=ref(false), list=ref(false), selected=ref<string[]>([])
@@ -38,6 +38,10 @@ function constrain(){const r=root.value?.getBoundingClientRect();if(!r||minimize
 onMounted(()=>window.addEventListener('resize',constrain))
 watch(minimized,async v=>{if(!v){await nextTick();constrain();root.value?.focus()}})
 watch(visible,items=>{selected.value=selected.value.filter(id=>items.some(i=>i.id===id))})
+watch([space,folder],([workspace,current])=>{
+ if(!workspace)navigate(props.workspaces.find(w=>w.id===props.workspaceId)?.id??props.workspaces[0]?.id??'')
+ else if(currentFolder.value&&!current)navigate(workspace.id)
+})
 onBeforeUnmount(()=>{window.removeEventListener('resize',constrain);binding?.unset();if(previousFocus?.isConnected)previousFocus.focus()})
 function keys(e:KeyboardEvent){if(e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement)return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='a'){e.preventDefault();selected.value=visible.value.map(i=>i.id);return}if(e.key==='Escape'){e.stopPropagation();emit('close')}else if(e.key==='Enter'&&e.target===root.value&&selectedItems.value.length===1)open(selectedItems.value[0]!)}
 </script>
@@ -46,7 +50,7 @@ function keys(e:KeyboardEvent){if(e.target instanceof HTMLInputElement||e.target
   <header ref="titlebar" class="finder-title"><div class="lights"><button class="close" aria-label="关闭 Finder" @click="emit('close')"/><button class="minimize" aria-label="最小化 Finder" @click="minimized=true"/><button class="maximize" :aria-label="maximized?'还原 Finder':'最大化 Finder'" @click="maximized=!maximized;offset={x:0,y:0}"/></div><strong>{{folder?.title??space?.name??'Finder'}}</strong><span>Finder</span></header>
   <div class="finder-body">
    <aside><small>工作区</small><button v-for="w in workspaces" :key="w.id" :class="{active:currentSpace===w.id&&!currentFolder}" @click="navigate(w.id)"><Grid2X2 :size="16"/>{{w.name}}</button><small>文件夹</small><button v-for="f in folders" :key="f.id" :class="{active:currentFolder===f.id}" @click="navigate(currentSpace,f.id)"><Folder :size="17"/>{{f.title}}</button></aside>
-   <main><nav><button @click="emit('create')">新建文件夹</button><button :aria-pressed="!list" aria-label="图标视图" @click="list=false"><Grid2X2 :size="17"/></button><button :aria-pressed="list" aria-label="列表视图" @click="list=true"><List :size="17"/></button><label><Search :size="15"/><input v-model="search" placeholder="搜索入口" aria-label="搜索 Finder"/></label></nav>
+   <main><nav><button @click="emit('create',currentSpace)">新建文件夹</button><button :aria-pressed="!list" aria-label="图标视图" @click="list=false"><Grid2X2 :size="17"/></button><button :aria-pressed="list" aria-label="列表视图" @click="list=true"><List :size="17"/></button><label><Search :size="15"/><input v-model="search" placeholder="搜索入口" aria-label="搜索 Finder"/></label></nav>
     <div class="finder-items" :class="{list}"><button v-for="item in visible" :key="item.id" :aria-pressed="selected.includes(item.id)" @click="select(item,$event)" @dblclick="open(item,$event)" @keydown.enter.stop="open(item)"><Folder v-if="item.folder" :size="40" fill="#65baf0" color="#258acb"/><img v-else-if="item.icon" :src="item.icon" alt=""/><span v-else class="mark" :style="{background:item.color}">{{item.mark}}</span><span>{{item.title}}</span><span v-if="list" class="finder-type">{{item.folder?'文件夹':'快捷入口'}}</span></button><p v-if="!visible.length">没有入口</p></div>
     <footer><span>{{visible.length}} 项 · 已选 {{selectedItems.length}} 项</span><template v-if="selectedItems.length===1"><button @click="open(selectedItems[0]!)"><ArrowUpRight :size="14"/>打开</button><button @click="emit('edit',selectedItems[0]!)">编辑</button><button @click="emit('remove',selectedItems[0]!)">删除</button></template><select v-if="selectedItems.length" aria-label="移动到工作区" value="" @change="[...selectedItems].forEach(i=>emit('move',i,($event.target as HTMLSelectElement).value));selected=[]"><option value="" disabled>移动到…</option><option v-for="w in workspaces.filter(w=>w.id!==currentSpace)" :key="w.id" :value="w.id">{{w.name}}</option></select><select v-if="selectedItems.length&&selectedItems.every(i=>i.shortcut)" aria-label="移动到文件夹" value="" @change="[...selectedItems].forEach(i=>emit('membership',i,($event.target as HTMLSelectElement).value==='__root'?null:($event.target as HTMLSelectElement).value));selected=[]"><option value="" disabled>文件夹…</option><option value="__root">移出文件夹</option><option v-for="f in folders.filter(f=>f.id!==currentFolder)" :key="f.id" :value="f.id">{{f.title}}</option></select></footer>
    </main>
