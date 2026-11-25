@@ -7,6 +7,7 @@ on:
       - 'src/App.vue'
       - 'src/desktop/**'
       - 'e2e/desktop-alpha.spec.ts'
+      - 'e2e/desktop-alpha2.spec.ts'
       - 'src/components/SearchBar.vue'
       - 'src/components/HomeDock.vue'
       - 'vite.config.ts'
@@ -63,7 +64,7 @@ jobs:
       - name: Verify overlay and visual contracts
         env:
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-ui-report
-        run: npm run test:e2e -- --output=test-results-ui e2e/visual-system.spec.ts e2e/accessibility.spec.ts e2e/ui-refinements.spec.ts e2e/workspace-switcher.spec.ts e2e/custom-theme.spec.ts e2e/desktop-alpha.spec.ts
+        run: npm run test:e2e -- --output=test-results-ui e2e/visual-system.spec.ts e2e/accessibility.spec.ts e2e/ui-refinements.spec.ts e2e/workspace-switcher.spec.ts e2e/custom-theme.spec.ts e2e/desktop-alpha.spec.ts e2e/desktop-alpha2.spec.ts
       - name: Verify release regression cases
         run: npm run test:e2e -- e2e/appearance.spec.ts e2e/new-tab.spec.ts --grep 'tall calendar presets|every built-in panel route|touch scrolling over shortcuts'
       - name: Save UI report and diagnostics
