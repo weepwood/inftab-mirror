@@ -37,6 +37,7 @@ let finderSequence = 0
 const overviewRequest = ref(0)
 const runningDesktopPanels = ref<PanelId[]>([])
 const finderOperationError = ref('')
+const desktopHistory = shallowRef({undo:false,redo:false})
 const DesktopShell = lazyHome(() => import('./desktop/DesktopShell.vue'), '自由桌面', true)
 const desktopMode = useStoredState('inftab.desktop-mode.v1', false, value => value === true)
 const ShortcutGrid = lazyHome(() => import('./components/ShortcutGrid.vue'), '快捷入口', true)
@@ -397,8 +398,9 @@ function desktopOpen(item: LauncherItem, event?: MouseEvent) {
 }
 async function desktopMutation(action: import('./desktop/ownership').DesktopMutation) {
   try {
-    const { applyDesktopMutation } = await import('./desktop/desktopOperations')
-    finderOperationError.value=(await applyDesktopMutation(action,{workspaces:homeWorkspaces,folders,shortcuts,addShortcuts:addShortcutsData,createBackup}))??''
+    const { applyDesktopMutation, desktopHistoryAvailability } = await import('./desktop/desktopOperations')
+    finderOperationError.value=(await applyDesktopMutation(action,{workspaces:homeWorkspaces,folders,shortcuts,launcherOrder,addShortcuts:addShortcutsData,createBackup}))??''
+    desktopHistory.value=desktopHistoryAvailability()
     return !finderOperationError.value
   }catch{finderOperationError.value='桌面操作暂时无法加载，请重试。';return false}
 }
@@ -944,7 +946,7 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="runningDesktopPanels=$event" @create="openFinderFolderEditor" />
+    <DesktopWindows v-if="desktopMode" v-show="!minimalMode" :request="finderRequest" :context="panelContext" :overview-request="overviewRequest" :operation-error="finderOperationError" :history="desktopHistory" :items="availableLauncherItems" :workspaces="homeWorkspaces" :workspace-id="activeHomeWorkspaceId" :dark="effectiveTheme==='dark'" @open="openItem" @edit="editLauncherItem" @remove="removeLauncherItem" :mutate="desktopMutation" @dismiss-error="finderOperationError=''" @switch-workspace="switchDesktopWorkspace" @running="runningDesktopPanels=$event" @create="openFinderFolderEditor" />
     <HomeDock v-if="homeDockItems.length && !minimalMode" :items="homeDockItems" :running-panels="runningDesktopPanels" :magnification-enabled="preferences.dockMagnification" :icon-size="preferences.dockFollowLauncherSize ? layoutPreferences.iconSize : preferences.dockIconSize" :icon-gap="preferences.dockIconGap" :dark-theme="effectiveTheme === 'dark'" :auto-hide="preferences.dockAutoHide" @reorder="dockLauncherItem" @open="openItem" @remove="toggleDockItem" />
 
     <div v-if="storageError" class="storage-error-toast" role="alert">
