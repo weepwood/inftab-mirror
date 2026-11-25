@@ -1290,6 +1290,8 @@ test('window motion remains reversible during rapid minimize and restore',async(
  await page.getByRole('button',{name:'Finder',exact:true}).click()
  const finder=page.locator('.window-frame.finder')
  await expect(finder).toBeVisible()
+ await expect.poll(async()=>Math.round((await finder.boundingBox())!.width)).toBe(850)
+ await expect.poll(()=>finder.evaluate(el=>el.getAnimations().filter(a=>a.playState==='running').length)).toBe(0)
  const initial=(await finder.boundingBox())!
  for(let i=0;i<3;i++){
   await finder.getByRole('button',{name:'最小化 Finder'}).click()
@@ -1690,4 +1692,64 @@ test('desktop icon preferences resize visuals and hide labels without moving hit
  await expect(symbol).toHaveCSS('width','80px')
  await expect(icon.locator('.desktop-label')).toHaveCount(0)
  await expect.poll(()=>icon.boundingBox()).toEqual(box)
+})
+
+test('free desktop mode supports left drag at exact pixel positions and preserves data',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000})
+ await page.emulateMedia({reducedMotion:'reduce'})
+ await page.addInitScript(()=>{
+  localStorage.setItem('inftab.desktop-mode.v1','true')
+  if(localStorage.getItem('inftab.home-workspaces.v1'))return
+  localStorage.setItem('inftab.preferences.v1',JSON.stringify({showSearchBar:false}))
+  localStorage.setItem('inftab.home-workspaces.v1',JSON.stringify([{id:'default',name:'主页',itemIds:['todos'],desktop:{version:1,snap:true,positions:{todos:{x:0,y:384}}}}]))
+ })
+ await page.goto('/')
+ const icon=page.locator('.desktop-icon[data-item-id="todos"]'),toggle=page.getByRole('button',{name:'网格吸附'})
+ await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 0, 384)')
+ await toggle.click()
+ await expect(toggle).toHaveAttribute('aria-pressed','false')
+ const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('inftab.home-workspaces.v1')??'[]')[0].desktop)
+ await expect.poll(async()=>(await read()).snap).toBe(false)
+ const baseline=await read()
+ const box=(await icon.boundingBox())!
+ async function start(){
+  await page.mouse.move(box.x+30,box.y+30);await page.mouse.down()
+  await page.mouse.move(box.x+67,box.y+61,{steps:8})
+ }
+ await start()
+ await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 37, 415)')
+ await expect.poll(read).toEqual(baseline)
+ await page.keyboard.press('Escape');await page.mouse.up()
+ await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 0, 384)')
+ await expect.poll(read).toEqual(baseline)
+ await start();await page.mouse.up()
+ await expect.poll(async()=>(await read()).positions.todos).toEqual({x:37,y:415})
+ await expect(page.getByRole('dialog',{name:'待办事项',exact:true})).toHaveCount(0)
+ await page.reload()
+ await expect(icon).toHaveCSS('transform','matrix(1, 0, 0, 1, 37, 415)')
+ await expect(toggle).toHaveAttribute('aria-pressed','false')
+ await icon.click()
+ await expect(page.getByRole('dialog',{name:'待办事项',exact:true})).toBeVisible()
+})
+
+test('window geometry animation retargets and honors reduced motion',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000})
+ await page.emulateMedia({reducedMotion:'no-preference'})
+ await page.addInitScript(()=>localStorage.setItem('inftab.desktop-mode.v1','true'))
+ await page.goto('/')
+ await page.getByRole('button',{name:'Finder',exact:true}).click()
+ const finder=page.getByRole('dialog',{name:'Finder 入口管理'})
+ await expect.poll(async()=>Math.round((await finder.boundingBox())!.width)).toBe(850)
+ await expect.poll(()=>finder.evaluate(el=>el.getAnimations().filter(a=>a.playState==='running').length)).toBe(0)
+ const free=(await finder.boundingBox())!
+ const max=finder.getByRole('button',{name:'最大化 Finder'})
+ await max.click()
+ await expect.poll(()=>finder.evaluate(el=>el.getAnimations().some(a=>a.playState==='running'&&a.effect?.getTiming().duration===220))).toBe(true)
+ await page.keyboard.press('Enter')
+ await expect(finder).not.toHaveClass(/maximized/)
+ await expect.poll(()=>finder.boundingBox()).toEqual(free)
+ await page.emulateMedia({reducedMotion:'reduce'})
+ await max.click()
+ await expect.poll(async()=>Math.round((await finder.boundingBox())!.width)).toBe(1416)
+ expect(await finder.evaluate(el=>el.getAnimations().some(a=>a.playState==='running'&&a.effect?.getTiming().duration===220))).toBe(false)
 })

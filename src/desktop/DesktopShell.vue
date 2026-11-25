@@ -133,10 +133,12 @@ function pointerMove(event:PointerEvent){
   if(!p||p.pointer!==event.pointerId)return
   const dx=event.clientX-p.x,dy=event.clientY-p.y
   if(Math.hypot(dx,dy)>=moveThreshold)p.travelled=true
-  if(p.button===0){if(p.travelled){suppressClick=true;clearTimeout(p.timer);if(p.touch)closeMenu()}return}
-  if(!(event.buttons&2)){cancelDrag();return}
+  const freeDrag=p.button===0&&!p.touch&&!layout.value.snap
+  if(p.button===0){if(p.travelled){suppressClick=true;clearTimeout(p.timer);if(p.touch)closeMenu()}if(!freeDrag)return}
+  if(!(event.buttons&(freeDrag?1:2))){cancelDrag();return}
   if(!dragging){
-    if(!p.travelled||performance.now()-p.at<holdMs)return
+    if(!p.travelled||(!freeDrag&&performance.now()-p.at<holdMs))return
+    if(freeDrag){emit('dismissSearch');if(!selected.value.includes(p.item.id))selected.value=[p.item.id]}
     const point=resolved.value[p.item.id]
     if(!point)return cancelDrag()
     const members=selectedGroup(p.item.id).flatMap(id=>{
@@ -164,7 +166,7 @@ function pointerEnd(event:PointerEvent){
   const d=dragging
   dragging=undefined;moving.value=false
   releasePress(p)
-  if(p.button===0){
+  if(p.button===0&&!d){
     if(p.touch&&!p.travelled&&performance.now()-p.at>=touchHoldMs){
       suppressClick=true;event.preventDefault();event.stopPropagation()
       if(!menu.value)openMenu(p.x,p.y,p.item,p.el,false)
@@ -180,7 +182,7 @@ function pointerEnd(event:PointerEvent){
   else{
     const source=visibleItems.value.find(i=>i.id===d.id)
     const target=positions.value.find(q=>q.item.id!==d.id&&q.item.folder&&Math.abs(q.point.x-d.x)<40&&Math.abs(q.point.y-d.y)<40)
-    if(source?.shortcut&&target)emit('membership',source,target.item.id)
+    if(source?.shortcut&&target&&p.button===2)emit('membership',source,target.item.id)
     else save(d.id,d.x,d.y)
   }
   void nextTick(()=>{if(!dragging)restoreDrag(d.members)})
@@ -282,9 +284,9 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 <template>
   <section class="desktop-shell" :class="{'is-moving':moving,'hide-names':showNames===false}" aria-label="自由桌面">
     <div class="desktop-toolbar" @pointerdown="emit('dismissSearch')">
-      <span>{{selected.length?selected.length+' 项已选':'桌面'}}</span>
+      <span>{{selected.length?selected.length+' 项已选':layout.snap?'桌面':'自由排布'}}</span>
       <button type="button" @click="emit('finder')">Finder</button>
-      <button type="button" :aria-pressed="layout.snap" @click="update({...layout,snap:!layout.snap})">网格吸附</button>
+      <button type="button" :aria-pressed="layout.snap" :title="layout.snap?'关闭吸附，启用左键自由拖动':'启用网格吸附'" @click="blur();update({...layout,snap:!layout.snap})">网格吸附</button>
       <button type="button" @click="update({...layout,positions:{}})">整理图标</button>
     </div>
     <div ref="surface" tabindex="-1" class="desktop-surface" @click.self="selected=[];closeMenu()" @scroll.passive="cancelDrag();boxEnd();closeMenu()" @contextmenu.self.prevent="context($event)">
