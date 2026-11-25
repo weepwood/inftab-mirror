@@ -10,22 +10,35 @@ const props=defineProps<{kind:'finder'|'tool'; title:string; description?:string
 const emit=defineEmits<{activate:[];close:[];minimize:[];maximize:[];keydown:[event:KeyboardEvent]}>()
 const root=ref<HTMLElement>(),bar=ref<HTMLElement>(),snap=ref<WindowSnap>(null)
 const preferred=ref<WindowGeometry>({x:12,y:64,width:props.kind==='finder'?850:640,height:props.kind==='finder'?570:530})
-const preview=ref<WindowSnap>(null)
+const preview=ref<WindowSnap|'top'>(null)
 const viewport=ref({w:innerWidth,h:innerHeight})
 const fitted=computed(()=>props.maximized?fitWindow({x:12,y:48,width:viewport.value.w-24,height:viewport.value.h-96},viewport.value.w,viewport.value.h):snap.value?dockWindow(snap.value,viewport.value.w,viewport.value.h):fitWindow(preferred.value,viewport.value.w,viewport.value.h))
-const previewStyle=computed(()=>{const g=dockWindow(preview.value??'left',viewport.value.w,viewport.value.h);return {left:g.x+'px',top:g.y+'px',width:g.width+'px',height:g.height+'px',zIndex:props.layer}})
+const previewStyle=computed(()=>{const {w,h}=viewport.value;const g=preview.value==='top'?fitWindow({x:12,y:48,width:w-24,height:h-96},w,h):dockWindow(preview.value??'left',w,h);return {left:g.x+'px',top:g.y+'px',width:g.width+'px',height:g.height+'px',zIndex:props.layer}})
 const style=computed(()=>({left:fitted.value.x+'px',top:fitted.value.y+'px',width:fitted.value.width+'px',height:fitted.value.height+'px',zIndex:props.layer}))
 let drag:ReturnType<typeof interact>|undefined,resize:ReturnType<typeof interact>|undefined
 let gesture:WindowGeometry|undefined,original:WindowGeometry|undefined
+let originalSnap:WindowSnap=null
 let delta={left:0,right:0,top:0,bottom:0}
 function onResize(){cancel();viewport.value={w:innerWidth,h:innerHeight}}
-function start(){if(!props.active||props.minimized||props.hidden||props.maximized||snap.value||root.value?.closest('[inert]'))return;original={...preferred.value};gesture={...fitted.value};delta={left:0,right:0,top:0,bottom:0}}
-function move(dx:number,dy:number,x:number){
+function start(x?:number,y?:number){
+ if(!props.active||props.minimized||props.hidden||props.maximized||root.value?.closest('[inert]'))return
+ if(snap.value&&x===undefined)return
+ original={...preferred.value};originalSnap=snap.value
+ const current=fitted.value,{w,h}=viewport.value
+ if(snap.value&&x!==undefined&&y!==undefined){
+  const free=fitWindow(preferred.value,w,h)
+  const ratio=Math.max(0,Math.min(1,(x-current.x)/current.width))
+  snap.value=null
+  preferred.value=fitWindow({...free,x:x-ratio*free.width,y:current.y},w,h)
+ }
+ gesture={...fitted.value};delta={left:0,right:0,top:0,bottom:0}
+}
+function move(dx:number,dy:number,x:number,y:number){
  if(!gesture)return
  if(root.value?.closest('[inert]'))return cancel()
  gesture={...gesture,x:gesture.x+dx,y:gesture.y+dy}
  preferred.value=fitWindow(gesture,viewport.value.w,viewport.value.h)
- preview.value=viewport.value.w>=600?(x<=20?'left':x>=viewport.value.w-20?'right':null):null
+ preview.value=viewport.value.w>=600?(y<=44?'top':x<=20?'left':x>=viewport.value.w-20?'right':null):null
 }
 function resizing(change:typeof delta,edges:ResizeEdges){
  if(!gesture)return
@@ -36,11 +49,11 @@ function resizing(change:typeof delta,edges:ResizeEdges){
 function end(){
  if(!gesture)return
  if(root.value?.closest('[inert]'))return cancel()
- if(preview.value){snap.value=preview.value;if(original)preferred.value=original}
+ if(preview.value){if(original)preferred.value=original;if(preview.value==='top'){snap.value=null;emit('maximize')}else snap.value=preview.value}
  else try{saveGeometry(props.geometryKey,preferred.value,sessionStorage)}catch{/* denied storage */}
- gesture=undefined;original=undefined;preview.value=null
+ gesture=undefined;original=undefined;originalSnap=null;preview.value=null
 }
-function cancel(){if(original)preferred.value=original;gesture=undefined;original=undefined;preview.value=null}
+function cancel(){if(original){preferred.value=original;snap.value=originalSnap}gesture=undefined;original=undefined;originalSnap=null;preview.value=null}
 function toggleSnap(side:Exclude<WindowSnap,null>){cancel();if(props.maximized)emit('maximize');snap.value=snap.value===side?null:side}
 function maximize(){cancel();snap.value=null;emit('maximize')}
 function titleDoubleClick(e:MouseEvent){
@@ -58,8 +71,8 @@ onMounted(()=>{
  let saved:WindowGeometry|undefined
  try{saved=readGeometry(props.geometryKey,sessionStorage)}catch{/* denied storage */}
  preferred.value=saved??{...preferred.value,x:(innerWidth-preferred.value.width)/2+props.cascade*18,y:64+props.cascade*16}
- if(bar.value)drag=interact(bar.value).draggable({mouseButtons:1,ignoreFrom:'button',listeners:{start,move(e){move(e.dx,e.dy,e.clientX)},end}})
- if(root.value)resize=interact(root.value).resizable({mouseButtons:1,edges:{left:'.resize-w,.resize-nw,.resize-sw',right:'.resize-e,.resize-ne,.resize-handle',top:'.resize-n,.resize-nw,.resize-ne',bottom:'.resize-s,.resize-sw,.resize-handle'},listeners:{start,move(e){resizing(e.deltaRect,e.edges)},end}})
+ if(bar.value)drag=interact(bar.value).draggable({mouseButtons:1,ignoreFrom:'button',listeners:{start(e){start(e.clientX,e.clientY)},move(e){move(e.dx,e.dy,e.clientX,e.clientY)},end}})
+ if(root.value)resize=interact(root.value).resizable({mouseButtons:1,edges:{left:'.resize-w,.resize-nw,.resize-sw',right:'.resize-e,.resize-ne,.resize-handle',top:'.resize-n,.resize-nw,.resize-ne',bottom:'.resize-s,.resize-sw,.resize-handle'},listeners:{start(){start()},move(e){resizing(e.deltaRect,e.edges)},end}})
  window.addEventListener('resize',onResize);window.addEventListener('blur',cancel)
  root.value?.addEventListener('pointercancel',cancel,true)
 })
@@ -95,9 +108,10 @@ onBeforeUnmount(()=>{drag?.unset();resize?.unset();window.removeEventListener('r
 @media(max-width:600px){.window-description{display:none}.window-title{padding-inline:8px;gap:8px}}
 
 @media(prefers-reduced-motion:no-preference){
- .mac-window-enter-active{transition:opacity .14s ease-out}
- .mac-window-enter-from{opacity:0}
- .mac-window-leave-active{transition:opacity .1s ease-in;pointer-events:none}
- .mac-window-leave-to{opacity:0}
+ .mac-window-enter-active,.mac-window-leave-active{transition:opacity .14s ease,filter .14s ease;filter:brightness(1)}
+ .mac-window-enter-from,.mac-window-leave-to{opacity:0;filter:brightness(.97)}
+ .mac-window-leave-active{pointer-events:none}
+ .window-snap-preview{animation:preview-in .12s ease-out}
+ @keyframes preview-in{from{opacity:0}}
 }
 </style>

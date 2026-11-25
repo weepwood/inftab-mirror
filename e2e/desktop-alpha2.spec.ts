@@ -1234,3 +1234,70 @@ test('desktop touch tap, long press and scroll have distinct outcomes',async({br
   await cdp.detach()
  }finally{await context.close()}
 })
+
+test('window snap can be cancelled, dragged out and maximized at the top edge',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000})
+ await page.emulateMedia({reducedMotion:'reduce'})
+ await page.addInitScript(()=>localStorage.setItem('inftab.desktop-mode.v1','true'))
+ await page.goto('/')
+ await page.getByRole('button',{name:'Finder',exact:true}).click()
+ const finder=page.getByRole('dialog',{name:'Finder 入口管理'}),left=finder.getByRole('button',{name:'左侧停靠'})
+ const free=(await finder.boundingBox())!
+ await left.click()
+ await expect(left).toHaveAttribute('aria-pressed','true')
+ await expect.poll(async()=>Math.round((await finder.boundingBox())!.x)).toBe(12)
+ const docked=(await finder.boundingBox())!
+ async function dragTo(x:number,y:number){
+  const title=(await finder.locator('.window-title strong').boundingBox())!
+  await page.mouse.move(title.x+5,title.y+5);await page.mouse.down()
+  await page.mouse.move(x,y,{steps:12})
+ }
+ await dragTo(800,180)
+ await expect(left).toHaveAttribute('aria-pressed','false')
+ await page.keyboard.press('Escape');await page.mouse.up()
+ await expect(left).toHaveAttribute('aria-pressed','true')
+ await expect.poll(()=>finder.boundingBox()).toEqual(docked)
+ await dragTo(800,180);await page.mouse.up()
+ await expect(left).toHaveAttribute('aria-pressed','false')
+ await expect.poll(async()=>Math.round((await finder.boundingBox())!.width)).toBe(Math.round(free.width))
+ const restored=(await finder.boundingBox())!
+ await dragTo(700,43)
+ await expect(page.locator('.window-snap-preview')).toBeVisible()
+ await page.mouse.up()
+ await expect(finder).toHaveClass(/maximized/)
+ await finder.getByRole('button',{name:'还原 Finder'}).click()
+ await expect.poll(()=>finder.boundingBox()).toEqual(restored)
+ await finder.getByRole('button',{name:'最小化 Finder'}).click()
+ await expect(finder).toBeHidden()
+ await page.getByRole('button',{name:'恢复 Finder'}).click()
+ await expect(finder).toBeVisible()
+ await expect.poll(()=>finder.boundingBox()).toEqual(restored)
+})
+
+test('window motion remains reversible during rapid minimize and restore',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000})
+ await page.emulateMedia({reducedMotion:'no-preference'})
+ await page.addInitScript(()=>localStorage.setItem('inftab.desktop-mode.v1','true'))
+ await page.goto('/')
+ await page.getByRole('button',{name:'Finder',exact:true}).click()
+ const finder=page.locator('.window-frame.finder')
+ await expect(finder).toBeVisible()
+ const initial=(await finder.boundingBox())!
+ for(let i=0;i<3;i++){
+  await finder.getByRole('button',{name:'最小化 Finder'}).click()
+  await expect(finder).toHaveAttribute('inert','')
+  await page.getByRole('button',{name:'恢复 Finder'}).click()
+  await expect(finder).not.toHaveAttribute('inert','')
+  await expect(finder).toBeVisible()
+ }
+ await expect.poll(()=>finder.boundingBox()).toEqual(initial)
+ await expect.poll(()=>finder.evaluate(el=>getComputedStyle(el).opacity)).toBe('1')
+ await expect.poll(()=>finder.evaluate(el=>el.contains(document.activeElement))).toBe(true)
+ await page.emulateMedia({reducedMotion:'reduce'})
+ await finder.getByRole('button',{name:'最小化 Finder'}).click()
+ await expect(finder).toBeHidden()
+ await page.getByRole('button',{name:'恢复 Finder'}).click()
+ await expect(finder).toBeVisible()
+ await expect.poll(()=>finder.boundingBox()).toEqual(initial)
+ await expect.poll(()=>finder.evaluate(el=>Math.max(...getComputedStyle(el).transitionDuration.split(',').map(value=>parseFloat(value)*(value.trim().endsWith('ms')?0.001:1))))).toBeLessThanOrEqual(.00001)
+})
