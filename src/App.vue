@@ -38,6 +38,7 @@ const overviewRequest = ref(0)
 const runningDesktopPanels = ref<PanelId[]>([])
 const finderOperationError = ref('')
 const desktopHistory = shallowRef({undo:false,redo:false})
+const DesktopMenus = defineAsyncComponent(() => import('./desktop/DesktopMenus.vue'))
 const DesktopShell = lazyHome(() => import('./desktop/DesktopShell.vue'), '自由桌面', true)
 const desktopMode = useStoredState('inftab.desktop-mode.v1', false, value => value === true)
 const ShortcutGrid = lazyHome(() => import('./components/ShortcutGrid.vue'), '快捷入口', true)
@@ -850,6 +851,7 @@ onBeforeUnmount(() => {
     <div class="home-brand" aria-label="Infinity 新标签页"><span class="brand-mark" aria-hidden="true">∞</span><span class="brand-word">infinity</span><span class="brand-label">新标签页</span></div>
     <header class="home-actions">
       <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="openFinder()">Inftab</button>
+      <DesktopMenus v-if="desktopMode && !minimalMode" @run="$event==='desktop:folder'?openFolderEditor():runCommand($event)" />
       <button v-if="desktopMode && !minimalMode" type="button" class="desktop-menu-label" @click="overviewRequest++">窗口</button>
       <button v-if="!minimalMode" type="button" class="round-action desktop-mode-toggle" :aria-label="desktopMode ? '经典模式' : '桌面模式'" :title="desktopMode ? '经典模式' : '桌面模式'" :aria-pressed="desktopMode" @click="desktopMode = !desktopMode"><span aria-hidden="true">▦</span></button>
       <button type="button" class="round-action home-command-toggle" aria-label="打开命令面板" title="命令面板（Ctrl/⌘+Shift+P）" @click="openCommandPalette"><span aria-hidden="true">⌘</span></button>
@@ -962,7 +964,7 @@ onBeforeUnmount(() => {
     <footer class="home-footer">渝ICP备15002199号-1</footer>
 
     <div v-if="activePanel" class="panel-backdrop" @click.self="activePanel = null">
-      <aside ref="sidePanel" class="side-panel" :class="{ 'notes-panel': activePanel === 'notes' }" aria-modal="true" role="dialog" :aria-label="activePanelPlugin?.title ?? '功能面板'" @keydown="handlePanelKeydown">
+      <aside ref="sidePanel" class="side-panel" :class="{ 'notes-panel': activePanel === 'notes', 'mac-settings-panel': desktopMode&&!minimalMode&&activePanel==='settings' }" aria-modal="true" role="dialog" :aria-label="activePanelPlugin?.title ?? '功能面板'" @keydown="handlePanelKeydown">
         <header class="panel-header">
           <button v-if="activePanel !== 'settings'" class="back-button" type="button" aria-label="返回设置" @click="openPanel('settings')"><ArrowLeft :size="19" /></button>
           <div><h2>{{ activePanelPlugin?.title ?? (panelRegistryError ? '面板加载失败' : '正在加载…') }}</h2><p>{{ activePanelPlugin?.description ?? '' }}</p></div>

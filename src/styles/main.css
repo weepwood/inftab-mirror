@@ -1328,3 +1328,33 @@ select { background-color: var(--ui-field); color: var(--ui-text); }
 .desktop-mode .command-palette{margin:min(17vh,120px) auto auto;max-height:min(480px,calc(100dvh - min(17vh,120px) - 16px))}
 .desktop-mode .command-palette .command-shell input{color:var(--mac-ink)}
 @media(forced-colors:active){.mac-folder-icon{forced-color-adjust:none}.desktop-mode .home-workspace-trigger{border-color:ButtonText}}
+
+/* Settings has the same scroll container and focus trap as classic mode;
+   desktop appearance switches only its spatial composition. */
+.desktop-mode .panel-backdrop:has(.mac-settings-panel){align-items:center;justify-content:center;background:#0003;backdrop-filter:none}
+.desktop-mode .mac-settings-panel{width:min(800px,100%);height:min(700px,100%);background:var(--mac-window);border:1px solid var(--mac-line);box-shadow:var(--mac-shadow-active);border-radius:12px;scrollbar-color:var(--mac-muted) transparent;animation:none;--panel-header-height:60px}
+.desktop-mode .mac-settings-panel .panel-header{background:var(--mac-toolbar);padding:10px 18px}
+.desktop-mode .mac-settings-panel .panel-header h2{font-size:17px;font-weight:600}
+.desktop-mode .mac-settings-panel .panel-header p{margin-top:2px}
+.desktop-mode .mac-settings-panel .panel-close{width:26px;height:26px;border-radius:50%;border:0;background:var(--mac-line)}
+.desktop-mode .mac-settings-panel .settings-section{margin:10px 0;padding:12px 14px;border-radius:8px;box-shadow:none}
+.desktop-mode .mac-settings-panel .section-heading{margin-bottom:10px}
+.desktop-mode .mac-settings-panel .section-heading h3{letter-spacing:0;font-weight:600}
+@media(min-width:760px){
+ .desktop-mode .mac-settings-panel .settings-content{position:relative;display:grid;grid-template-columns:174px minmax(0,1fr);column-gap:16px;padding:0 16px 20px 0;align-items:start;background:linear-gradient(90deg,var(--mac-sidebar) 174px,var(--mac-window) 174px)}
+ .desktop-mode .mac-settings-panel .settings-nav{grid-column:1;grid-row:1/span 5;display:flex;flex-direction:column;align-self:start;gap:3px;margin:0;padding:14px 8px;top:var(--panel-header-height);background:var(--mac-sidebar);border:0}
+ .desktop-mode .mac-settings-panel .settings-nav-button{min-height:34px;flex-direction:row;justify-content:flex-start;gap:8px;padding:5px 9px;font-size:13px;color:var(--mac-ink);border-radius:6px;box-shadow:none}
+ .desktop-mode .mac-settings-panel .settings-nav-button.active{background:var(--mac-selection);color:#fff;border-color:transparent}
+ .desktop-mode .mac-settings-panel .settings-group{grid-column:2;min-width:0;scroll-margin-top:calc(var(--panel-header-height) + 8px)}
+}
+
+.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin{color:#fff;background:linear-gradient(150deg,#ffffff38,transparent 75%),var(--app-icon,#677587);border-color:#ffffff55;box-shadow:0 4px 10px #0003,inset 0 1px 0 #fff8}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="weather"]{--app-icon:#208bd7}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="todos"]{--app-icon:#3479db}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="notes"]{--app-icon:#cb931b}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="calendar"]{--app-icon:#d64c55}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="habits"]{--app-icon:#26956d}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="focus-timer"]{--app-icon:#7a62c3}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="countdowns"]{--app-icon:#c27a37}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="calculator"]{--app-icon:#4b626f}.desktop-mode :is(.desktop-symbol,.home-dock-icon,.spotlight-icon).builtin[data-action="bookmarks"]{--app-icon:#258b9a}
+
+.desktop-mode .spotlight-icon{width:26px;height:26px;flex:0 0 26px;display:grid;place-items:center;border-radius:6px;background:var(--mac-toolbar);color:var(--mac-muted)}
+.desktop-mode .spotlight-label{display:flex;align-items:center;gap:10px;min-width:0}
+.desktop-mode .spotlight-label>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.desktop-mode .command-option[aria-selected=true] .spotlight-icon:not(.builtin){background:#ffffff26;color:#fff}
+.desktop-mode .command-option small{flex:none}
+.desktop-mode .command-shell header:focus-within{box-shadow:inset 0 -2px 0 var(--mac-selection)}
+.desktop-mode .command-shell input:focus-visible{outline:none}
+.desktop-mode .command-shell header .spotlight-search-icon{color:var(--mac-muted);flex:none}

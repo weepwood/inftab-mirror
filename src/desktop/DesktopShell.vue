@@ -6,7 +6,7 @@ import '@interactjs/auto-start'
 import type { LauncherItem } from '../types'
 import { launcherIcons } from '../components/launcherIcons'
 import { folderParents } from '../data/folderTree'
-import { cell, resolvePoints, fitPoint, freshLayout, normalizeLayout, translateGroup, type Point, type DesktopLayout } from './layout'
+import { cell, arrangeFromRight, resolvePoints, fitPoint, freshLayout, normalizeLayout, translateGroup, type Point, type DesktopLayout } from './layout'
 const props = defineProps<{items: LauncherItem[]; workspaceId: string; layout?: DesktopLayout; folderShortcuts?: LauncherItem[]; dark?: boolean}>()
 const emit = defineEmits<{open: [item: LauncherItem, event?: MouseEvent]; edit: [item: LauncherItem]; layout: [layout: DesktopLayout]; finder:[]; create:[]; remove:[item:LauncherItem]; membership:[item:LauncherItem,folderId:string]}>()
 const surface = ref<HTMLElement>()
@@ -22,6 +22,11 @@ const failedIcons = ref<Record<string,string>>({})
 // Parent keys this component by workspace ID; each space has an independent record.
 const layout = computed(() => props.layout ?? freshLayout())
 function update(next: DesktopLayout) { emit('layout', next) }
+function arrangeRight(){
+ if(dragging)return
+ const positions=arrangeFromRight(visibleItems.value.map(i=>i.id),width.value,surface.value?.clientHeight??height.value)
+ update({...layout.value,positions:{...layout.value.positions,...positions}})
+}
 function migrate() {
   if (props.layout) return
   try {
@@ -156,7 +161,7 @@ function cancelDrag() {
   suppressedId=d.id; suppressUntil=performance.now()+300
 }
 function cancelKey(event: KeyboardEvent) { if(event.key==='Escape'){cancelDrag(); menu.value=undefined;selected.value=[]} }
-function context(event:MouseEvent,item?:LauncherItem){menu.value={x:Math.min(event.clientX,innerWidth-180),y:Math.min(event.clientY,innerHeight-180),item}}
+function context(event:MouseEvent,item?:LauncherItem){menu.value={x:Math.max(0,Math.min(event.clientX,innerWidth-180)),y:Math.max(0,Math.min(event.clientY,innerHeight-230)),item}}
 function menuAction(action:()=>void){menu.value=undefined;action()}
 onMounted(() => { window.addEventListener('blur',cancelDrag); window.addEventListener('keydown',cancelKey); surface.value?.addEventListener('pointercancel',cancelDrag,true) })
 onBeforeUnmount(() => { cancelDrag(); observer?.disconnect(); binding?.unset(); window.removeEventListener('blur',cancelDrag); window.removeEventListener('keydown',cancelKey); surface.value?.removeEventListener('pointercancel',cancelDrag,true) })
@@ -190,7 +195,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
     <div v-if="menu" class="desktop-menu" :class="{dark}" :style="{left:menu.x+'px',top:menu.y+'px'}" role="menu">
       <button role="menuitem" @click="menuAction(()=>emit('create'))">新建文件夹</button>
       <button role="menuitem" @click="menuAction(()=>emit('finder'))">打开 Finder</button>
-      <button role="menuitem" @click="menuAction(()=>update({...layout,positions:{}}))">整理图标</button>
+      <button role="menuitem" @click="menuAction(()=>update({...layout,positions:{}}))">整理图标</button><button role="menuitem" @click="menuAction(arrangeRight)">从右上排列</button>
       <template v-if="menu.item?.shortcut||menu.item?.folder"><button role="menuitem" @click="emit('edit',menu.item!);menu=undefined">编辑</button><button role="menuitem" @click="emit('remove',menu.item!);menu=undefined">删除</button></template>
     </div>
   </section>
@@ -207,7 +212,7 @@ watch(() => visibleItems.value.map(i=>i.id), ids => {
 .desktop-icon:active{cursor:grabbing}
 .desktop-icon:focus-visible{outline:2px solid white;outline-offset:-3px;border-radius:8px}
 .desktop-symbol{width:56px;height:56px;border-radius:14px;border:1px solid #ffffff48;display:grid;place-items:center;overflow:hidden;color:white;box-shadow:0 4px 14px #0004,inset 0 1px 1px #ffffff50;font-size:24px}
-.desktop-symbol.builtin{color:var(--builtin-ink,#6c8b7b);background:linear-gradient(150deg,#ffffff60,transparent 65%),var(--builtin-paper,#f4f8f3)}
+
 .desktop-symbol img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .desktop-label{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500;line-height:1.25;text-shadow:0 1px 3px #000,0 1px 6px #0009}
 .desktop-icon.selected .desktop-symbol{outline:2px solid #90c9ff;outline-offset:3px}.desktop-icon.selected .desktop-label{background:var(--mac-selection);border-radius:4px;padding:1px 5px}.desktop-symbol:has(.mac-folder){background:none!important;box-shadow:none;border:0;overflow:visible}.mac-folder{--folder-size:56px}.desktop-menu{position:fixed;z-index:18;background:var(--mac-menu);color:var(--mac-ink);padding:5px;border:1px solid var(--mac-line);border-radius:8px;box-shadow:var(--mac-shadow);width:170px;backdrop-filter:blur(18px)}.desktop-menu button{display:block;width:100%;text-align:left;padding:7px 9px;background:none;border:0;border-radius:5px;color:inherit;cursor:pointer}.desktop-menu button:hover,.desktop-menu button:focus-visible{background:var(--mac-selection);color:#fff}

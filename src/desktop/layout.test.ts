@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { fitPoint, defaultPoint, normalizeLayout } from './layout'
+import { fitPoint, defaultPoint, normalizeLayout, arrangeFromRight } from './layout'
 describe('desktop layout', () => {
   it('clamps view without mutating saved coordinates', () => {
     const p={x:700,y:400}
@@ -37,4 +37,16 @@ describe('desktop group movement', () => {
     expect(translateGroup({ a: { x: 14, y: 22 }, b: { x: 115, y: 25 } }, { x: -20, y: 13 }, 400, 400)).toEqual({ a: { x: 0, y: 35 }, b: { x: 101, y: 38 } })
     expect(translateGroup({}, { x: 10, y: 10 }, 400, 400)).toEqual({})
   })
+})
+
+describe('explicit right-aligned arrangement',()=>{
+ it('fills rightmost column first and preserves every item on overflow',()=>{
+  expect(arrangeFromRight(['a','b','c','d','e'],192,192)).toEqual({a:{x:96,y:0},b:{x:96,y:96},c:{x:0,y:0},d:{x:0,y:96},e:{x:96,y:192}})
+ })
+ it('has no collisions on small screens and large collections',()=>{
+  const ids=Array.from({length:1000},(_,i)=>String(i))
+  const positions=arrangeFromRight(ids,40,40)
+  expect(Object.keys(positions)).toHaveLength(ids.length)
+  expect(new Set(Object.values(positions).map(p=>p.x+':'+p.y)).size).toBe(ids.length)
+ })
 })

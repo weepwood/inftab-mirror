@@ -380,3 +380,9 @@ V1.4 已测搜索基准（合成数据、GitHub Actions 45378690939，非实际�
 - 复用ClockWidget移入菜单栏，窄屏日期/时间收纳；桌面紧凑搜索和操作条、更多画布空间、原创CSS文件夹图标、Finder紧凑列表及路径/窗口层级、顶部居中Mission Control概览、Spotlight位置、工作区和Dock材质。保留经典模式、用户偏好与保存坐标，不改数据格式，不新增依赖/字体资产。
 - 真实Mac Edge截图发现Dock底座悬空，修复旧height与inset冲突，新增底座包围图标几何门禁。已审核最终桌面/Finder/Spotlight/概览截图，压缩JPG及说明放docs/screenshots/macos-desktop；深色Finder另有既有真实截图。未完成Apple系统同分辨率逐像素对照，仍存在菜单栏真实功能、默认排列、原生控件/动效与设置差距。
 - 本机首次宽范围生产Edge 50/50（desktop-alpha、alpha2、storage、production-chunks），Dock修复后最终相关4/4；build:web首屏59.3/60.5、非Swiper195.1/200、Swiper26.4/30、CSS29.9/64 KiB，PWA额外JS10712/16384 B、1699262/4194304 B。未放宽预算。新的远程CI待验收。临时playwright.local-macos.config.ts不提交。继续集中在#38，下一轮优先菜单栏、图标与设置实际视觉，而不是数据迁移。
+
+## macOS 视觉专项第三批（2026-11-25）
+- #38 上一提交1327490四项CI全部通过。继续独立worktree /private/tmp/inftab-macos38；#37冻结Draft。新增按需DesktopMenus.vue文件/显示/设置真实菜单，复用runCommand及navigateMenu；外部点击、键盘导航/Escape焦点恢复。窄屏隐藏扩展菜单，保留现有操作。桌面右键显式右上排列（arrangeFromRight），不自动改已有位置，保留原网格、隐藏项坐标和备份格式。
+- 桌面/Dock/Spotlight共享彩色内置应用图标、现有Lucide注册表；Spotlight图标/文本与搜索焦点精修，保留排序，未做分组。系统设置为居中模态双栏窗口（宽屏粘性侧栏、窄屏横向导航），复用已有滚动/焦点及业务逻辑。不是独立可拖动系统窗口。经典模式不改样式。
+- 最终本机check、布局单测12/12、生产Edge 52/52（desktop-alpha、alpha2、storage、production-chunks），含真实菜单动作、键盘、设置浅深色/滚动/窄屏、经典模式、右上排列持久化及Spotlight图标。实际截图审查菜单、设置浅深、Spotlight；更新docs/screenshots/macos-desktop。最终build:web首屏59.5/60.5、非Swiper196.9/200、Swiper26.4/30、CSS31.0/64 KiB，PWA额外JS10824/16384 B、全站1708488/4194304 B。未新增依赖、不提高预算。新远程CI待验收。
+- 后续集中Finder导航工具栏、Dock区域和可中断动效、Mission Control真实有窗状态及多分辨率视觉收口，保留#38 Draft直至通过实际验收；不改main/tag。临时playwright.local-macos.config.ts不提交。

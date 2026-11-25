@@ -40,3 +40,12 @@
 - [窗口概览](screenshots/macos-desktop/overview.jpg)
 
 下一批优先补齐真正的应用菜单、图标默认排列可选策略、Dock/窗口交互与 Spotlight 分类层级；不改变用户已保存位置。系统设置窗口及完整多分辨率/同环境视觉对照仍待完成。
+
+## 第三批：菜单、图标与系统设置
+
+- 新增桌面专用 `DesktopMenus.vue`，复用现有命令和键盘菜单辅助函数。文件、显示、设置菜单支持点击、方向键、Home/End、Escape、焦点恢复与外部点击关闭；现有 Inftab/Finder、窗口概览入口保持可用。窄屏隐藏扩展菜单，但保留原快捷操作与桌面右键入口。不是完整 macOS 系统菜单。
+- 桌面右键提供「从右上排列」，以右列自上而下填充，超出一屏继续向下。仅显式操作写入坐标；旧位置及备份格式不自动迁移。已有「整理图标」仍保留。复用原拖动与碰撞引擎。
+- 桌面、Dock、Spotlight 共享彩色内置应用图标，复用 Lucide 和原有图标注册表；不引入 Apple 私有图标。Spotlight 搜索图标、结果图标、文本层级与焦点反馈改善；保留原检索排序，尚未增加独立分类分组。
+- 系统设置改为居中 800px 上限的窗口；宽屏左侧粘性导航、右侧分组内容，窄屏回到横向导航；复用原有滚动容器、焦点管理及设置业务逻辑。经典模式保持原面板。设置目前是模态窗口，并非可拖动的独立系统窗口。
+- 实际 Mac Edge 1440×900 浅深主题截图审查，新增 [功能菜单](screenshots/macos-desktop/menu.jpg)、[浅色系统设置](screenshots/macos-desktop/settings-light.jpg)、[深色系统设置](screenshots/macos-desktop/settings-dark.jpg)，更新桌面/Finder/Spotlight/概览截图。专项布局单测 12/12，最终生产回归 52/52（desktop-alpha、alpha2、storage、production-chunks）；typecheck 和生产构建通过。新提交远程 CI 待验证。
+- 下一批优先 Finder 工具栏原生控件、Dock 区域/提示及动效、Mission Control 有窗状态和多分辨率对照；继续真实截图审核，完成后统一收口，不拆小 PR。

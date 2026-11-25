@@ -68,3 +68,13 @@ export function translateGroup(points: Record<string, Point>, delta: Point, widt
   for (const [id, point] of entries) result[id] = { x: point.x + dx, y: point.y + dy }
   return result
 }
+
+/** Explicit arrange operation: columns fill downwards, from the right edge.
+ * Overflow remains accessible below the first screen; never discards an ID. */
+export function arrangeFromRight(ids:string[],width:number,height:number):Record<string,Point>{
+ const columns=Math.max(1,Math.floor(width/cell)),rows=Math.max(1,Math.floor(height/cell)),capacity=columns*rows
+ return Object.fromEntries(ids.map((id,i)=>{
+  const slot=i%capacity
+  return [id,{x:(columns-1-Math.floor(slot/rows))*cell,y:(Math.floor(i/capacity)*rows+slot%rows)*cell}]
+ }))
+}
